@@ -53,7 +53,7 @@ func test_vertical_scroll_does_not_change_game_and_single_game_never_duplicates(
 	carousel._drag(Vector2(500, 300))
 	assert_eq(carousel.selected, 0)
 	assert_eq(carousel.islands.size(), 1)
-	assert_false(carousel.find_child("NextGame", true, false).visible)
+	assert_null(carousel.find_child("NextGame", true, false), "no arrow buttons")
 	var pair: HubGameCarousel = _carousel(2)
 	assert_eq(
 		pair.islands.filter(func(island: HubGameIsland) -> bool: return island.visible).size(), 2

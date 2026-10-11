@@ -25,30 +25,12 @@ var _last_ms: int = 0
 var _velocity: float = 0.0
 var _tween: Tween
 var _cancel_watch: HubTouchCancel
-var _previous: XomDaoIconButton = XomDaoIconButton.create("arrow-left")
-var _next: XomDaoIconButton = XomDaoIconButton.create("arrow-left")
 
 
 func _init() -> void:
 	name = "Cards"
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
-	_previous.name = "PreviousGame"
-	_next.name = "NextGame"
-	_next.icon = null
-	var arrow := TextureRect.new()
-	arrow.texture = XomDaoUi.icon("arrow-left")
-	arrow.flip_h = true
-	arrow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	arrow.modulate = XomDaoUi.CREAM
-	arrow.position = Vector2(20, 20)
-	arrow.size = Vector2(48, 48)
-	_next.add_child(arrow)
-	_previous.pressed.connect(step.bind(-1))
-	_next.pressed.connect(step.bind(1))
-	add_child(_previous)
-	add_child(_next)
 	resized.connect(_layout)
 
 
@@ -72,8 +54,6 @@ func show_games(cards: Array[XomDaoGameCard], catalog: HubCatalog, id: String) -
 		if item.id == id:
 			selected = islands.size() - 1
 	turn = selected
-	_previous.visible = islands.size() > 1
-	_next.visible = islands.size() > 1
 
 
 func select_game(id: String) -> void:
@@ -151,10 +131,6 @@ func _layout() -> void:
 	order.sort_custom(func(a: int, b: int) -> bool: return islands[a].size.x < islands[b].size.x)
 	for i: int in order:
 		move_child(islands[i], -1)
-	move_child(_previous, -1)
-	move_child(_next, -1)
-	_previous.position = Vector2(size.x / 2.0 - 120.0, size.y - 88.0)
-	_next.position = Vector2(size.x / 2.0 + 32.0, size.y - 88.0)
 	queue_redraw()
 
 

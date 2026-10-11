@@ -173,7 +173,7 @@ Trò chọn một trong hai bố cục mẫu, để các trò cùng loại trôn
 
 - Trên cùng giữ quay lại, **tab thể loại**, số xu và cài đặt. Tab có thể kéo ngang khi cỡ HUD lớn.
 - Giữa là ba **đảo trò**: đảo đang chọn lớn, có màu và nổi nhẹ; hai đảo cạnh nhỏ, đứng yên và
-  xám xanh. Chạm đảo cạnh, vuốt ngang hoặc dùng mũi tên để đổi trò. Băng chuyền đi vòng; thể
+  xám xanh. Chạm đảo cạnh, vuốt ngang hoặc bấm phím mũi tên để đổi trò (không có nút mũi tên trên màn hình). Băng chuyền đi vòng; thể
   loại ít trò chỉ hiện những đảo có thật. Trò sắp có hiện ổ khóa và không tạo phòng được.
 - Nền toàn màn chuyển mờ sang **splash riêng của trò**. Bên trái là tên, mô tả ngắn, số chỗ,
   trên lớp nâu đậm trong dần từ trên xuống. Dưới phải chỉ có **Tạo phòng** lớn và **Luật** với

@@ -47,19 +47,6 @@ export default async function run(t) {
   const stage = await page.evaluate(() => window.xomdao.rect('Cards'));
   const first = await godotText(page, 'FocusName');
   await page.screenshot({ path: t.shot('1-phone-select.png') });
-  const next = await page.evaluate(() => window.xomdao.rect('NextGame'));
-  await page.mouse.move(next.x + next.width / 2, next.y + next.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(100);
-  const held = await page.evaluate(() => window.xomdao.rect('NextGame'));
-  if (Math.abs(held.y + held.height / 2 - next.y - next.height / 2) > 4)
-    throw new Error('Arrow feedback moved its touch target');
-  await page.mouse.up();
-  await page.waitForTimeout(400);
-  if ((await godotText(page, 'FocusName')) === first) throw new Error('Next arrow did not select');
-  await tap(page, 'PreviousGame');
-  await page.waitForTimeout(400);
-  await godotText(page, 'FocusName', first);
   await swipe(page, cdp, stage, -stage.width * 0.29);
   const second = await godotText(page, 'FocusName');
   if (second === first) throw new Error('Native touch swipe did not change focus');
