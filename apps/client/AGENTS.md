@@ -86,10 +86,12 @@ export_presets.cfg  The Web preset: single-threaded, PWA
     `money()` / `delta()`, `play()` for the shared sounds, `bounce()`;
   - widgets: `XomDaoButton` (colour by `XomDaoUi.Kind`), `XomDaoIconButton`, `XomDaoBoard`,
     `XomDaoMoney`, `XomDaoDelta`, `XomDaoChip`, `XomDaoAvatar`, `XomDaoPlayerSlot`,
-    `XomDaoGameTile`, `XomDaoChoice`, `XomDaoToast`, `XomDaoDot`, `XomDaoDivider`, `XomDaoMenu`;
+    `XomDaoGameTile`, `XomDaoChoice`, `XomDaoSlider`, `XomDaoToast`, `XomDaoDot`, `XomDaoDivider`, `XomDaoMenu`;
   - card games: `XomDaoCard` (a playing card, face or back) and `XomDaoMat` (the straw mat);
-  - `XomDaoSettings`: sound, HUD scale, margin, picture quality (user://settings.cfg). The
-    quality is saved but does not change the rendering yet.
+  - `XomDaoSettings`: music and sound effects (a switch and a volume each), HUD scale, margin,
+    picture quality (user://settings.cfg). The quality is saved but does not change the
+    rendering yet. Music plays on the `Music` bus and every sound effect on the `Sfx` bus
+    (`default_bus_layout.tres`): a game sets `bus = XomDaoSettings.SFX_BUS` on its players.
   Each script's header shows its use. Add a new component to the gallery
   (`hub/gallery/gallery.gd`) and check it there.
 - Look at a gallery page without a browser:

@@ -39,8 +39,8 @@ Phần Godot của một trò nằm ở `games/<id>/godot/` và chỉ được d
 Mọi màn và mọi trò dựng giao diện từ bộ thành phần trong `addons/xomdao_sdk/ui/`, làm theo
 [hướng nghệ thuật](../../docs/art-direction.md): nút có màu theo loại hành động, bảng gỗ ruột giấy,
 hàng tiền, ô người chơi (ảnh tròn trong vòng tre, cấp, vòng thời gian, 👑), thẻ trò, ô lựa chọn,
-thông báo nhanh, chấm đỏ và nút menu ☰ với bảng menu chung (rời phòng, âm thanh, cỡ giao diện, lề,
-chất lượng hình, luật, biểu cảm). Font Baloo 2 và Be Vietnam Pro, icon Phosphor (Fill), âm thanh
+thông báo nhanh, chấm đỏ và nút menu ☰ với bảng menu chung (cài đặt chia hai tab Giao diện và Âm
+thanh, rời phòng, luật, biểu cảm), thanh trượt âm lượng. Font Baloo 2 và Be Vietnam Pro, icon Phosphor (Fill), âm thanh
 chạm, mở bảng và xu đều nằm trong đó. Chất lượng hình mới được lưu lại, chưa đổi cách vẽ.
 
 Xem mọi thành phần ở màn gallery: `?gallery=1` tới `?gallery=4` trên bản web, hoặc

@@ -109,13 +109,59 @@ func test_settings_are_saved_and_loaded() -> void:
 	DirAccess.remove_absolute(path)
 
 
-func test_sound_setting_mutes_the_master_bus() -> void:
+func test_music_and_effects_have_their_own_bus() -> void:
 	var settings: XomDaoSettings = _settings()
-	var master: int = AudioServer.get_bus_index("Master")
-	settings.set_value("sound", false)
-	assert_true(AudioServer.is_bus_mute(master))
-	settings.set_value("sound", true)
-	assert_false(AudioServer.is_bus_mute(master))
+	var music: int = AudioServer.get_bus_index(XomDaoSettings.MUSIC_BUS)
+	var sfx: int = AudioServer.get_bus_index(XomDaoSettings.SFX_BUS)
+	assert_gt(music, 0)
+	assert_gt(sfx, 0)
+	settings.set_value("music", false)
+	assert_true(AudioServer.is_bus_mute(music))
+	assert_false(AudioServer.is_bus_mute(sfx), "effects stay on")
+	settings.set_value("music", true)
+	settings.set_value("sfx", false)
+	assert_false(AudioServer.is_bus_mute(music))
+	assert_true(AudioServer.is_bus_mute(sfx))
+	settings.set_value("sfx", true)
+	settings.set_value("sfx_volume", 0.5)
+	assert_almost_eq(AudioServer.get_bus_volume_db(sfx), linear_to_db(0.5), 0.01)
+	assert_almost_eq(AudioServer.get_bus_volume_db(music), linear_to_db(0.8), 0.01)
+	settings.set_value("music_volume", 0.0)
+	assert_true(AudioServer.is_bus_mute(music), "no volume is silence")
+	settings.set_value("music_volume", 0.8)
+	settings.set_value("sfx_volume", 1.0)
+
+
+func test_an_old_sound_switch_turns_both_off() -> void:
+	var path: String = "user://test_settings_old.cfg"
+	var file := ConfigFile.new()
+	file.set_value("ui", "sound", false)
+	file.save(path)
+	var settings := XomDaoSettings.new()
+	settings.path = path
+	settings.load_file()
+	assert_false(settings.music)
+	assert_false(settings.sfx)
+	settings.set_value("music", true)
+	settings.set_value("sfx", true)
+	var again := XomDaoSettings.new()
+	again.path = path
+	again.load_file()
+	assert_true(again.music)
+	assert_almost_eq(again.music_volume, 0.8, 0.001)
+	DirAccess.remove_absolute(path)
+
+
+func test_slider_snaps_and_reports_only_changes() -> void:
+	var slider: XomDaoSlider = add_child_autofree(XomDaoSlider.create(0.5))
+	watch_signals(slider)
+	slider.slide_to(0.5)
+	assert_signal_not_emitted(slider, "changed")
+	slider.slide_to(0.62)
+	assert_almost_eq(slider.value, 0.6, 0.001)
+	assert_signal_emit_count(slider, "changed", 1)
+	slider.slide_to(7.0)
+	assert_almost_eq(slider.value, 1.0, 0.001)
 
 
 func test_menu_opens_and_reports_choices() -> void:
@@ -144,10 +190,27 @@ func test_menu_changes_the_settings() -> void:
 	assert_eq(menu.button.scale, Vector2.ONE * XomDaoSettings.SCALES[2])
 	menu.margin.choose(2)
 	assert_eq(settings.margin, XomDaoSettings.MARGINS[2])
-	menu.sound.choose(1)
-	assert_false(settings.sound)
-	settings.set_value("sound", true)
-	assert_eq(menu.sound.selected, 0, "the board follows the settings")
+	menu.sfx_switch.pressed.emit()
+	assert_false(settings.sfx)
+	assert_true(settings.music)
+	assert_eq(menu.sfx_switch.icon_name, "speaker-slash")
+	menu.music.slide_to(0.3)
+	assert_almost_eq(settings.music_volume, 0.3, 0.001)
+	settings.set_value("sfx", true)
+	settings.set_value("sfx_volume", 0.4)
+	assert_almost_eq(menu.sfx.value, 0.4, 0.001, "the board follows the settings")
+
+
+func test_menu_shows_one_settings_tab_at_a_time() -> void:
+	var menu: XomDaoMenu = add_child_autofree(XomDaoMenu.new(_settings()))
+	var interface: Control = menu.board.find_child("Interface", true, false)
+	var audio: Control = menu.board.find_child("Audio", true, false)
+	assert_true(interface.visible)
+	assert_false(audio.visible)
+	menu.board.find_child("Tab_1", true, false).pressed.emit()
+	assert_false(interface.visible)
+	assert_true(audio.visible)
+	assert_eq(interface.custom_minimum_size, audio.custom_minimum_size, "the board keeps its size")
 
 
 func test_choice_reports_only_changes() -> void:

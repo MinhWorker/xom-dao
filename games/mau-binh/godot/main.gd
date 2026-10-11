@@ -200,6 +200,7 @@ func _ready() -> void:
 	add_child(_boards)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
+		player.bus = XomDaoSettings.SFX_BUS
 		var path: String = "res://content/mau-binh/sounds/%s.wav" % sound
 		if not ResourceLoader.exists(path):
 			path = path.get_basename() + ".mp3"
@@ -865,7 +866,7 @@ func _show_countdown() -> void:
 
 func _sfx(sound: String) -> void:
 	var player: AudioStreamPlayer = _sounds.get(sound)
-	if player != null and XomDaoSettings.current().sound and is_inside_tree():
+	if player != null and XomDaoSettings.current().sfx and is_inside_tree():
 		player.play()
 
 

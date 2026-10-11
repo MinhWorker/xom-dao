@@ -1,8 +1,8 @@
 class_name HubMusic
 extends AudioStreamPlayer
 ## A game's music while its table shows: one of the tracks in its pack's music/ folder
-## (`res://content/<id>/music/*.mp3`), picked at random, then another when it ends. Quiet when
-## the player turned sound off.
+## (`res://content/<id>/music/*.mp3`), picked at random, then another when it ends. It plays
+## on the music bus, at the settings' music volume, and stops while the player has music off.
 
 const VOLUME_DB := -10.0
 
@@ -12,6 +12,7 @@ var _tracks: Array[String] = []
 func _init() -> void:
 	name = "Music"
 	volume_db = VOLUME_DB
+	bus = XomDaoSettings.MUSIC_BUS
 	finished.connect(_next)
 	XomDaoSettings.current().changed.connect(_on_settings)
 
@@ -33,7 +34,7 @@ func quiet() -> void:
 
 
 func _next() -> void:
-	if _tracks.is_empty() or not XomDaoSettings.current().sound or not is_inside_tree():
+	if _tracks.is_empty() or not XomDaoSettings.current().music or not is_inside_tree():
 		stop()
 		return
 	stream = load(_tracks.pick_random())
@@ -41,7 +42,7 @@ func _next() -> void:
 
 
 func _on_settings() -> void:
-	if not XomDaoSettings.current().sound:
+	if not XomDaoSettings.current().music:
 		stop()
 	elif not playing:
 		_next()

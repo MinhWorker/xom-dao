@@ -194,9 +194,10 @@ static func delta_color(amount: int, on_paper: bool = false, still: Color = INK)
 	return still
 
 
-## Plays a shared UI sound (SOUND_TAP, SOUND_PANEL, SOUND_COIN) unless the player muted sound.
+## Plays a shared UI sound (SOUND_TAP, SOUND_PANEL, SOUND_COIN) on the
+## sound effects bus, unless the player turned them off.
 static func play(from: Node, sound: String) -> void:
-	if not XomDaoSettings.current().sound or from == null or not from.is_inside_tree():
+	if not XomDaoSettings.current().sfx or from == null or not from.is_inside_tree():
 		return
 	var root: Window = from.get_tree().root
 	var player: AudioStreamPlayer = _players.get(sound)
@@ -205,6 +206,7 @@ static func play(from: Node, sound: String) -> void:
 		player.name = "XomDaoSound_" + sound
 		player.stream = load(_DIR + "sounds/%s.wav" % sound)
 		player.max_polyphony = 4
+		player.bus = XomDaoSettings.SFX_BUS
 		# Deferred: the root may be busy adding children when the first sound plays.
 		root.add_child.call_deferred(player)
 		_players[sound] = player

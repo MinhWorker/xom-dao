@@ -170,6 +170,7 @@ func _ready() -> void:
 		_icons.append(icon)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
+		player.bus = XomDaoSettings.SFX_BUS
 		player.stream = load("res://content/tic-tac-toe/sounds/%s.wav" % sound)
 		player.max_polyphony = 3
 		add_child(player)
@@ -540,7 +541,7 @@ func _on_swap() -> void:
 
 func _sfx(sound: String) -> void:
 	var player: AudioStreamPlayer = _sounds.get(sound)
-	if player != null and XomDaoSettings.current().sound and is_inside_tree():
+	if player != null and XomDaoSettings.current().sfx and is_inside_tree():
 		player.play()
 
 

@@ -47,13 +47,16 @@ tài liệu này). Cỡ chữ và nút nhân với nó; kích thước bàn chơ
 ## HUD
 
 - Trong ván, phần khung chỉ có **nút menu ☰** ở góc trên trái (88 × 88), cách mép một **lề**. Menu
-  mở bảng chung: rời phòng, âm thanh, cài đặt, luật chơi, biểu cảm. Bố cục bàn (**Bàn** hoặc
+  mở bảng chung: cài đặt, rời phòng, luật chơi, biểu cảm. Bố cục bàn (**Bàn** hoặc
   **Hành động**) ở [experience.md](experience.md#hud-trong-ván); trò để trống ô của nút ☰.
 - Không ghi tên game hay tên phòng trong ván: người chơi biết mình đang ở đâu, chỗ đó dành cho bàn.
   Chủ phòng có 👑 trong ô người chơi.
 - Người chơi chỉnh được **cỡ giao diện** (85–130%, chữ và nút) và **lề màn hình** (12, 24 hoặc 40
   đơn vị) trong bảng cài đặt, lưu theo từng máy (`XomDaoSettings`, `user://settings.cfg`).
-- Cùng bảng đó có **chất lượng hình** (Thấp, Vừa, Cao). Lựa chọn được lưu lại nhưng chưa đổi cách
+- Bảng cài đặt có hai tab. **Giao diện**: cỡ giao diện, lề, chất lượng hình. **Âm thanh**: **nhạc**
+  và **hiệu ứng** tách riêng, mỗi thứ có nút bật/tắt và thanh âm lượng (0–100). Mỗi dòng là nhãn
+  bên trái, điều khiển bên phải.
+- Tab Giao diện có **chất lượng hình** (Thấp, Vừa, Cao). Lựa chọn được lưu lại nhưng chưa đổi cách
   vẽ.
 - Mọi màn và mọi bàn dựng nút, bảng, chữ từ bộ thành phần chung trong
   `apps/client/addons/xomdao_sdk/ui/`, nên luôn khớp nhau.

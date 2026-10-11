@@ -129,7 +129,8 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
   `{reason: "Đen thắng · Trắng hết nước", rows: [["Số lượt đi", 42], …]}`.
 - Hình và âm thanh: chép bản cần dùng từ `assets/` vào `godot/art/`, `godot/sounds/`, rồi
   `load("res://content/<id>/art/<tên>.webp")`. Nhạc nền: đặt file nhạc vào `godot/music/`; hub
-  phát ngẫu nhiên một bài khi game đang chơi.
+  phát ngẫu nhiên một bài khi game đang chơi. Mỗi `AudioStreamPlayer` của game đặt
+  `bus = XomDaoSettings.SFX_BUS` để theo nút bật/tắt và âm lượng hiệu ứng trong Cài đặt.
 - Hub vẽ nút ☰, phòng chờ, bảng kết quả (có **Xem bàn** để xem bàn cuối, **Kết quả** để mở lại)
   và bảng Luật (đọc `RULES.md`). Game để trống ô vuông
   88 × 88 ở góc trên trái cho nút ☰ và chỉ vẽ bàn chơi.

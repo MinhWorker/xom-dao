@@ -151,7 +151,8 @@ Cỡ tối thiểu (vùng chạm 88, chữ nhỏ nhất 24…) theo bảng
 > **dưới**; ảnh lại vẽ Minh ở trên.
 
 **Phần khung chỉ giữ một thứ: nút menu ☰** ở góc trên trái (88 × 88, sát mép). Menu mở một bảng
-chung: rời phòng, âm thanh, cài đặt (cỡ giao diện, lề, chất lượng hình), luật chơi, biểu cảm. Trò
+chung: cài đặt (tab Giao diện: cỡ giao diện, lề, chất lượng hình; tab Âm thanh: nhạc và hiệu ứng
+riêng), rời phòng, luật chơi, biểu cảm. Trò
 để trống ô vuông đó, còn lại cả màn hình là của trò.
 
 Trò chọn một trong hai bố cục mẫu, để các trò cùng loại trông giống nhau:
