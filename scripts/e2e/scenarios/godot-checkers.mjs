@@ -12,6 +12,7 @@ import {
   onScene,
   openGodot,
   PHONE,
+  ready,
   tap,
   tapCard,
   typeInto,
@@ -73,11 +74,6 @@ export default async function run(t) {
   await tap(host, 'Island_co');
   await onScene(host, 'select');
   await tapCard(host, 'checkers');
-  await tap(host, 'Back');
-  await onScene(host, 'lobby');
-  await godotText(host, 'SelectedName', 'Cờ Đam');
-  await tap(host, 'CreateRoom');
-  await tap(host, 'ConfirmCreate');
   await onScene(host, 'room');
   const code = await godotText(host, 'RoomCode', /^[A-Z0-9]{4}$/);
   await onScene(guest, 'lobby');
@@ -87,6 +83,7 @@ export default async function run(t) {
   await tap(guest, 'Join');
   await onScene(guest, 'room');
   await host.waitForFunction(() => window.xomdao.state().room?.players.length === 2);
+  await ready(host, guest);
   await tap(host, 'Start');
   await onScene(host, 'checkers');
   await onScene(guest, 'checkers');

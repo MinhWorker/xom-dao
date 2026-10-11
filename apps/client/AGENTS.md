@@ -19,17 +19,17 @@ the server; this project only shows state and sends moves. Folder guide (Vietnam
 ## Layout
 
 ```
-project.godot       960 × 720 base, canvas_items + expand, landscape, Compatibility renderer
+project.godot       1280 × 720 frame locked to 16:9 (canvas_items + keep, black bars), landscape, Compatibility renderer
 core/               Autoloads: Net (the app's XomDaoClient, server_url()), Session (saved token, /api/auth register/login/logout),
                     Wallet, ContentLoader (game packs), TestBridge (window.xomdao, debug web only)
 hub/                main.gd routes the screens: lobby (island ring + HUD), select (game select),
                     ben (Bến), room (waiting room), the game with ☰, the result over it
   lobby/            HubLobby, HubIslandRing (ring layout, swipe/tap), HubIsland (drawn islands)
-  select/           Three-island game carousel, fading detail and per-game splash art (art/)
+  select/           Game select: a rail of posters (splash art/ + flat logo/), genre objects
   touch_cancel.gd   DOM touchcancel capture for web gestures (before Godot releases the touch)
-  ben/ room/        Bến; waiting room, Tạo phòng board, result, paged Luật board
-  home/ shop/       Nhà (HubHome: profile + shelf, someone else's read-only) and Chợ (HubShop);
-                    shelf.gd (HubShelf) is the tabbed shelf of item tiles both use
+  ben/ room/        Bến; waiting room (seat cards, option rows), result, paged Luật board
+  home/ shop/       Nhà (HubHome: tabs stacked down the left beside one page, someone else's
+                    read-only) and Chợ (HubShop)
   gallery/          Every UI kit component on 4 pages: ?gallery=<page> or `-- --gallery=<page>`
 addons/xomdao_sdk/  The only API a game's Godot code uses: XomDaoFrame, XomDaoClient (client.gd)
   ui/               The shared UI kit (theme, widgets, fonts, Phosphor icons, UI sounds)
@@ -48,12 +48,13 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 - A game's tests are `test_*.gd` anywhere in its folder; its `test/` folder is left out of its pack.
 - The main scene prints `xomdao:ready`; `godot:smoke` waits for it.
 - Web safe areas come from CSS env(safe-area-inset-*) through XomDaoFrame.safe_inset,
-  converted from CSS pixels to frame units. The exporter adds viewport-fit=cover to the shell.
+  converted from CSS pixels to frame units, less what the black bars already cover. The exporter adds viewport-fit=cover to the shell.
 - A game's Godot entry is `res://content/<id>/main.tscn`. Its root gets `bind(client:
   XomDaoClient)` once in the tree, draws `client.snapshot` and follows `state_changed`. It may
   define `sandbox_options() -> Dictionary`, the room options for `?play=<id>` (debug builds: a
   real room with the computer in the seats, started at once), and `room_setup() -> Array`, the
-  Tạo phòng board's rows (`{key, label, options: [[label, value], …], default?}`: the first
+  rows of options on the waiting room's plate
+  (`{key, label, options: [[label, value], …], default?}`: the first
   option is picked, or the one at index `default`), and `result_detail() -> Dictionary`, what
   the result board adds under its title: `{reason: String, rows: [[label, value], …]}` after the
   hub's own Thời gian row.
@@ -84,12 +85,16 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   (docs/art-direction.md made into code), never their own buttons, fonts or HUD colours:
   - `XomDaoUi`: palette, fonts, icons (`XomDaoUi.icon("gear")`, Phosphor Fill), `theme()`,
     `money()` / `delta()`, `play()` for the shared sounds, `bounce()`;
-  - widgets: `XomDaoButton` (colour by `XomDaoUi.Kind`), `XomDaoIconButton`, `XomDaoBoard`,
+  - widgets: `XomDaoButton` (colour by `XomDaoUi.Kind`), `XomDaoIconButton`, `XomDaoPuff` (the raised
+    body of a text button: `XomDaoPuff.behind(button)` or `XomDaoPuff.paint(...)`; an icon
+    button gets the lip without the gloss), `XomDaoBoard`,
     `XomDaoMoney`, `XomDaoDelta`, `XomDaoChip`, `XomDaoAvatar`, `XomDaoPlayerSlot`,
-    `XomDaoGameTile`, `XomDaoChoice`, `XomDaoToast`, `XomDaoDot`, `XomDaoDivider`, `XomDaoMenu`;
+    `XomDaoGameTile`, `XomDaoChoice`, `XomDaoSlider`, `XomDaoToast`, `XomDaoDot`, `XomDaoDivider`, `XomDaoMenu`;
   - card games: `XomDaoCard` (a playing card, face or back) and `XomDaoMat` (the straw mat);
-  - `XomDaoSettings`: sound, HUD scale, margin, picture quality (user://settings.cfg). The
-    quality is saved but does not change the rendering yet.
+  - `XomDaoSettings`: music and sound effects (a switch and a volume each), HUD scale, margin,
+    picture quality (user://settings.cfg). The quality is saved but does not change the
+    rendering yet. Music plays on the `Music` bus and every sound effect on the `Sfx` bus
+    (`default_bus_layout.tres`): a game sets `bus = XomDaoSettings.SFX_BUS` on its players.
   Each script's header shows its use. Add a new component to the gallery
   (`hub/gallery/gallery.gd`) and check it there.
 - Look at a gallery page without a browser:

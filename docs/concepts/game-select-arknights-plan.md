@@ -20,7 +20,7 @@ Chỉ tham khảo cách tổ chức giao diện của Arknights: game focus ở 
 | Dưới phải | Nút Tạo phòng lớn, rõ; nút Luật có icon cuộn giấy ngay bên trái |
 | Toàn màn | Splash art riêng của game đang focus, phủ kín nền và được giảm tương phản để UI dễ đọc |
 
-- Chạm đảo bên cạnh, vuốt ngang hoặc dùng mũi tên sẽ đưa game đó vào giữa.
+- Chạm đảo bên cạnh, vuốt ngang hoặc bấm phím mũi tên sẽ đưa game đó vào giữa.
 - Game giữa có màu đầy đủ, quầng vàng ấm nhẹ và animation. Hai game bên cạnh chỉ dùng ảnh tĩnh, giảm bão hòa và nhuộm xám xanh.
 - Mỗi lần đổi focus, tên/mô tả/số chỗ và nền splash đổi đồng bộ theo game.
 - Nút Tạo phòng vẫn mở bảng tùy chỉnh phòng hiện có của game trước khi tạo phòng thật.

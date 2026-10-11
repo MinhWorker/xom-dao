@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+  <title>Sảnh</title>
+  <ellipse cx="64" cy="100" rx="56" ry="16" fill="#3EC1C9" stroke="#1E8FA6"/>
+  <path d="M18 98 C22 78 44 66 66 66 C90 66 108 80 110 98 C96 106 32 106 18 98 Z" fill="#F3DDB0" stroke="#9C5F2A"/>
+  <path d="M34 86 C40 70 56 62 70 64 C82 66 92 74 96 86 C80 92 50 92 34 86 Z" fill="#6DB34A" stroke="#3F7F33"/>
+  <path d="M72 80 C70 60 72 46 78 32" fill="none" stroke="#9C5F2A" stroke-width="7"/>
+  <path d="M78 32 C64 22 50 26 44 36 C56 32 68 34 78 32 Z" fill="#6DB34A" stroke="#3F7F33"/>
+  <path d="M78 32 C92 20 108 24 114 36 C102 32 90 34 78 32 Z" fill="#6DB34A" stroke="#3F7F33"/>
+  <path d="M78 32 C74 18 80 8 92 6 C86 14 84 24 78 32 Z" fill="#6DB34A" stroke="#3F7F33"/>
+  <path d="M26 108 h14 M88 110 h16" fill="none" stroke="#FFF6E3" stroke-width="4"/>
+</svg>

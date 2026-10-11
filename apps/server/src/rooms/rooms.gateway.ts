@@ -346,10 +346,22 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  @On('room:ready')
+  ready(socket: Client, req: { ready: boolean }) {
+    return this.handle(() => {
+      const { roomCode, playerId } = this.requireSeat(socket);
+      this.broadcast(this.rooms.setReady(roomCode, playerId, Boolean(req?.ready)));
+      return {};
+    });
+  }
+
   @On('game:start')
   start(socket: Client) {
     return this.handle(() => {
       const { roomCode, playerId } = this.requireSeat(socket);
+      if (this.rooms.unready(roomCode).length > 0) {
+        throw new RoomError('Chờ mọi người sẵn sàng đã');
+      }
       this.broadcast(this.rooms.start(roomCode, playerId));
       return {};
     });

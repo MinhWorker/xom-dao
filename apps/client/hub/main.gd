@@ -11,6 +11,18 @@ extends Control
 
 ## How long to keep trying while the server wakes up.
 const WAKE_MS := 120_000
+## How long a game's own screen (HubGameIntro) stays at least, between the room and the table.
+const INTRO_MS := 1800
+## What the curtain says on the way to each place.
+const PLACE_NAMES: Dictionary = {
+	"lobby": "Sảnh",
+	"select": "Chọn trò",
+	"nha": "Nhà",
+	"cho": "Chợ",
+	"dinh": "Đình",
+	"ben": "Bến",
+	"room": "Phòng",
+}
 
 var _client: XomDaoClient = Net.client
 var _screen: Control
@@ -37,9 +49,11 @@ var _buying: bool = false
 ## An event:claim is on its way.
 var _claiming: bool = false
 var _opening_rules: bool = false
-var _opening_setup: bool = false
 ## The screen on now (the lobby, the waiting room…).
 var _current: Control
+## The curtain between two screens, and the screens it is about to take away.
+var _transition := HubTransition.new()
+var _outgoing: Array[Node] = []
 
 
 func _ready() -> void:
@@ -64,6 +78,8 @@ func _ready() -> void:
 	_menu.rules_requested.connect(func() -> void: _show_rules(_client.snapshot.game_id))
 	add_child(_menu)
 	add_child(_music)
+	add_child(_transition)
+	_transition.covered.connect(_finish_swap)
 	_client.state_changed.connect(func(_s: XomDaoRoomSnapshot) -> void: _refresh())
 	_client.room_changed.connect(_on_room_changed)
 	_client.rewarded.connect(_on_rewarded)
@@ -93,7 +109,7 @@ func _start() -> void:
 		if _client.refused():
 			_show_update()
 		else:
-			_show_status("Không đăng nhập được")
+			_show_gate()
 		return
 	_client.error.connect(_say)
 	_coins = _balance()
@@ -150,6 +166,14 @@ func _reload_page() -> void:
 		get_tree().reload_current_scene()
 
 
+## Nobody is logged in: the login board over the loading screen's pictures, until they are.
+func _show_gate() -> void:
+	_show_status("")
+	var gate: HubAccount = HubAccount.gate()
+	gate.signed_in.connect(_switch_account)
+	add_child(gate)
+
+
 ## Tài khoản over your Nhà.
 func _show_account() -> void:
 	var account := HubAccount.create(_client.user)
@@ -162,7 +186,7 @@ func _show_account() -> void:
 	add_child(account)
 
 
-## Starts again as another player: `token` ("" = a new guest).
+## Starts again as another player: `token` ("" = nobody, back to the login board).
 func _switch_account(token: String) -> void:
 	Session.save_token(token)
 	await _client.reset()
@@ -171,7 +195,7 @@ func _switch_account(token: String) -> void:
 
 ## Debug builds: a real room for this game, the computer in the seats it can take, started.
 func _sandbox(id: String) -> void:
-	_show_status("Đang tải")
+	_show_status("Đang tải", id)
 	var scene: PackedScene = await ContentLoader.load_game(id)
 	if scene == null:
 		_show_status("Không tải được %s" % id)
@@ -210,7 +234,8 @@ func _refresh() -> void:
 		return
 	var snapshot: XomDaoRoomSnapshot = _client.snapshot
 	var playing: bool = snapshot != null and snapshot.status != "lobby"
-	_menu.button.visible = playing
+	# ☰ belongs to the table: not over the game's own screen on the way in.
+	_menu.button.visible = playing and _shown == "game"
 	if not playing and _menu.is_open() and _shown != "lobby":
 		_menu.close()
 	if _client.room_code == "":
@@ -262,8 +287,7 @@ func _show_lobby() -> void:
 	lobby.show_catalog(_catalog, _genre)
 	lobby.show_game(_catalog.card(_game_id), _catalog.can_play(_game_id))
 	lobby.genre_changed.connect(_on_genre_changed.bind(lobby))
-	lobby.play_pressed.connect(_quick_match)
-	lobby.create_pressed.connect(_open_setup)
+	lobby.play_pressed.connect(_play)
 	lobby.select_opened.connect(_show_select)
 	lobby.place_pressed.connect(_on_place)
 	lobby.event_pressed.connect(
@@ -327,7 +351,8 @@ func _show_profile_of(user_id: String) -> void:
 
 
 ## Fills a Nhà with `inventory:get` (yours for ""), naming the items from `shop:list`, then
-## its level, achievements and ranks (`stats:get`).
+## its level and achievements (`stats:get`) and, in your own, your finished games
+## (`history:recent`).
 func _fill_home(home: HubHome, user_id: String) -> bool:
 	var data: Dictionary = {} if user_id == "" else {"userId": user_id}
 	var reply: Dictionary = await _client.request(XomDaoProtocol.INVENTORY_GET, data)
@@ -341,6 +366,14 @@ func _fill_home(home: HubHome, user_id: String) -> bool:
 	var stats: Dictionary = await _client.request(XomDaoProtocol.STATS_GET, data)
 	if stats.get("ok") == true and is_instance_valid(home):
 		home.show_stats(XomDaoPlayerStats.from_dict(stats), _catalog.names())
+	if user_id == "" and is_instance_valid(home):
+		var history: Dictionary = await _client.request(XomDaoProtocol.HISTORY_RECENT)
+		if history.get("ok") == true and is_instance_valid(home):
+			var matches: Array[XomDaoMatchRecord] = []
+			for item: Variant in history.get("matches", []):
+				if item is Dictionary:
+					matches.append(XomDaoMatchRecord.from_dict(item))
+			home.show_history(matches, _catalog.names())
 	return true
 
 
@@ -443,9 +476,7 @@ func _show_select(genre_id: String) -> void:
 	select.top.money.show_balance(_coins)
 	select.top.money.settings_pressed.connect(_menu.open_settings)
 	select.back_pressed.connect(_back_to_lobby)
-	select.chosen.connect(_choose_game)
-	select.create_pressed.connect(_open_setup)
-	select.rules_pressed.connect(_show_rules)
+	select.play_pressed.connect(_play)
 	select.progress_needed.connect(_fill_progress.bind(select))
 	select.join_pressed.connect(_quick_match)
 	select.claim_pressed.connect(_claim.bind(select))
@@ -515,6 +546,13 @@ func _back_to_lobby() -> void:
 	_show_lobby()
 
 
+## CHƠI: a room of your own for this game, with its usual options. The room's screen is where
+## they change, friends come in and the host starts.
+func _play(game_id: String) -> void:
+	_choose_game(game_id)
+	await _client.create_room(game_id)
+
+
 func _quick_match(game_id: String) -> void:
 	_choose_game(game_id)
 	_quick = true
@@ -522,40 +560,8 @@ func _quick_match(game_id: String) -> void:
 		_quick = false
 
 
-## Tạo phòng: the game's own options board, then the room.
-func _open_setup(game_id: String) -> void:
-	if _opening_setup or _opening_rules or has_node("RoomSetup") or has_node("RulesBoard"):
-		return
-	_opening_setup = true
-	var origin: Node = _current
-	_choose_game(game_id)
-	var card: XomDaoGameCard = _catalog.card(game_id)
-	var scene: PackedScene = await ContentLoader.load_game(game_id)
-	_opening_setup = false
-	if not is_instance_valid(origin) or origin != _current:
-		return
-	if origin is HubGameSelect and origin.selected_game() != game_id:
-		return
-	if scene == null or card == null:
-		_say("Không tải được trò chơi")
-		return
-	var probe: Node = scene.instantiate()
-	var spec: Array = probe.call("room_setup") if probe.has_method("room_setup") else []
-	probe.free()
-	var setup := HubRoomSetup.new()
-	add_child(setup)
-	_obscure_select(setup)
-	setup.show_setup(card.name, spec)
-	setup.cancelled.connect(setup.queue_free)
-	setup.created.connect(
-		func(options: Dictionary) -> void:
-			setup.queue_free()
-			await _client.create_room(game_id, options if not options.is_empty() else null)
-	)
-
-
 func _show_rules(game_id: String) -> void:
-	if _opening_rules or _opening_setup or has_node("RulesBoard") or has_node("RoomSetup"):
+	if _opening_rules or has_node("RulesBoard"):
 		return
 	var card: XomDaoGameCard = _catalog.card(game_id)
 	if card == null:
@@ -570,23 +576,8 @@ func _show_rules(game_id: String) -> void:
 	_opening_rules = false
 	if not is_instance_valid(origin) or origin != _current:
 		return
-	if origin is HubGameSelect and origin.selected_game() != game_id:
-		return
 	var board: HubRulesBoard = HubRulesBoard.create("Luật %s" % card.name, text)
 	add_child(board)
-	_obscure_select(board)
-
-
-func _obscure_select(overlay: Node) -> void:
-	var select: HubGameSelect = _current as HubGameSelect
-	if select == null:
-		return
-	select.set_obscured(true)
-	overlay.tree_exiting.connect(
-		func() -> void:
-			if is_instance_valid(select):
-				select.set_obscured(false)
-	)
 
 
 # ── In a room ─────────────────────────────────────────────────────────────────────────────
@@ -603,16 +594,65 @@ func _show_waiting_room(snapshot: XomDaoRoomSnapshot) -> void:
 		room.invite_pressed.connect(_invite)
 		room.start_pressed.connect(_client.start_game)
 		room.player_pressed.connect(_show_profile_of)
+		room.options_changed.connect(_set_options)
+		room.ready_pressed.connect(_set_ready)
+		room.rules_pressed.connect(_toggle_room_rules)
 	if snapshot == null:
 		return
-	var card: XomDaoGameCard = _catalog.card(snapshot.game_id)
-	room.show_room(snapshot, _client.player_id, card.max_players if card != null else 2, _quick)
+	room.show_room(snapshot, _client.player_id, _catalog.card(snapshot.game_id), _quick)
 	if snapshot.game_id != _game_id:
 		_choose_game(snapshot.game_id)
-	ContentLoader.preload_game(snapshot.game_id)
+	if room.setup_game != snapshot.game_id:
+		_load_setup(room, snapshot.game_id)
+
+
+## Fills the room's plate with the game's own options, once its pack is loaded.
+func _load_setup(room: HubWaitingRoom, game_id: String) -> void:
+	if room.loading_game == game_id:
+		return
+	room.loading_game = game_id
+	var scene: PackedScene = await ContentLoader.load_game(game_id)
+	# Gone, or in another game's room by now.
+	if not is_instance_valid(room) or room.loading_game != game_id:
+		return
+	if scene == null:
+		room.loading_game = ""
+		return
+	var probe: Node = scene.instantiate()
+	var spec: Array = probe.call("room_setup") if probe.has_method("room_setup") else []
+	probe.free()
+	room.show_setup(game_id, spec)
+
+
+func _set_ready(ready: bool) -> void:
+	var ack: Dictionary = await _client.request(XomDaoProtocol.ROOM_READY, {"ready": ready})
+	if not ack.get("ok", false):
+		_say(str(ack.get("error", "Không đổi được")))
+
+
+## The scroll in the room: the game's Luật board, or away with it when it is up.
+func _toggle_room_rules() -> void:
+	var board: Node = get_node_or_null("RulesBoard")
+	if board != null:
+		board.queue_free()
+	elif _client.snapshot != null:
+		_show_rules(_client.snapshot.game_id)
+
+
+## The host picked another option in the room. A refusal puts the choices back.
+func _set_options(options: Dictionary) -> void:
+	var ack: Dictionary = await _client.request(XomDaoProtocol.ROOM_OPTIONS, {"options": options})
+	if not ack.get("ok", false):
+		_say(str(ack.get("error", "Không đổi được")))
+	if _shown == "room":
+		_refresh()
 
 
 func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
+	# The rules opened in the waiting room do not follow the players to the table.
+	var rules: Node = get_node_or_null("RulesBoard")
+	if rules != null and _shown == "room":
+		rules.queue_free()
 	if _game_id_shown != snapshot.game_id:
 		_drop_game()
 		_game_id_shown = snapshot.game_id
@@ -622,8 +662,14 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 		if _loading:
 			return
 		_loading = true
-		_show_status("Đang tải")
+		var began: int = Time.get_ticks_msec()
+		var card: XomDaoGameCard = _catalog.card(snapshot.game_id)
+		_set_screen("status", HubGameIntro.new(snapshot.game_id, card.name if card != null else ""))
 		var scene: PackedScene = await ContentLoader.load_game(snapshot.game_id)
+		# The game's own screen stays long enough to be seen, however fast the pack came.
+		var left: int = INTRO_MS - (Time.get_ticks_msec() - began)
+		if left > 0:
+			await get_tree().create_timer(left / 1000.0).timeout
 		_loading = false
 		if scene == null:
 			_show_status("Không tải được trò chơi")
@@ -637,7 +683,6 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 		return
 	if _shown != "game":
 		_set_screen("game", _game)
-	TestBridge.scene = snapshot.game_id
 	if snapshot.status == "finished":
 		if _result == null:
 			_show_result(snapshot)
@@ -743,24 +788,27 @@ func _invite() -> void:
 # ── Screens ───────────────────────────────────────────────────────────────────────────────
 
 
-func _show_status(text: String) -> void:
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var label := Label.new()
-	label.name = "Status"
-	label.text = text
-	label.theme_type_variation = "HudLabel"
-	center.add_child(label)
-	_set_screen("status", center)
+## The loading screen (HubLoading) with `text` in its corner; it opens on `game_id`'s slide. One
+## already up keeps turning its slides and only changes its text.
+func _show_status(text: String, game_id: String = "") -> void:
+	var loading: HubLoading = _current as HubLoading if _shown == "status" else null
+	if loading == null:
+		loading = HubLoading.new(game_id)
+		_set_screen("status", loading)
+	loading.status = text
+	loading.busy = text.begins_with("Đang")
 
 
-## Puts `screen` on, freeing the one before (the game stays: it lives across rounds).
+## Puts `screen` on in place of the one before (the game stays: it lives across rounds). Between
+## two real screens the curtain (HubTransition) comes down first: the old screen stays until it
+## covers everything, then the new one is there when it lifts.
 func _set_screen(shown: String, screen: Control) -> void:
+	var before: String = _shown
 	_shown = shown
 	_current = screen
 	for child: Node in _screen.get_children():
-		if child != _game and child != screen:
-			child.queue_free()
+		if child != _game and child != screen and not _outgoing.has(child):
+			_outgoing.append(child)
 	if _result != null and not is_instance_valid(_result):
 		_result = null
 	if shown != "game" and _result != null:
@@ -769,9 +817,41 @@ func _set_screen(shown: String, screen: Control) -> void:
 		_ben = null
 	if screen.get_parent() == null:
 		_screen.add_child(screen)
+	# Nothing to leave (the first screen), or only words changing: no curtain.
+	if before == "" or not is_inside_tree() or (before == "status" and screen is HubLoading):
+		_finish_swap()
+		return
+	screen.visible = false
+	if shown == "game":
+		_transition.play("", null, HubTransition.Style.FADE)
+		return
+	var card: XomDaoGameCard = null
+	if shown == "room" and _catalog != null and _client.snapshot != null:
+		card = _catalog.card(_client.snapshot.game_id)
+	if shown == "room" and card == null and _catalog != null:
+		card = _catalog.card(_game_id)
+	# On the way to a game's own screen the curtain already wears the game's logo.
+	if screen is HubGameIntro and _catalog != null:
+		card = _catalog.card(_game_id_shown)
+	if card != null:
+		_transition.play(card.name, HubGameArt.logo(card.id))
+	else:
+		_transition.play(str(PLACE_NAMES.get(shown, "")))
+
+
+## The curtain covers everything (or there is none): the old screens go, the new one shows.
+func _finish_swap() -> void:
+	for old: Node in _outgoing:
+		if is_instance_valid(old) and old != _current:
+			old.queue_free()
+	_outgoing.clear()
+	if is_instance_valid(_current):
+		_current.visible = true
 	if _game != null:
-		_game.visible = shown == "game"
-	TestBridge.scene = shown if shown != "game" else _game_id_shown
+		_game.visible = _shown == "game"
+	if _shown == "game":
+		_menu.button.visible = true
+	TestBridge.scene = _shown if _shown != "game" else _game_id_shown
 
 
 func _drop_game() -> void:

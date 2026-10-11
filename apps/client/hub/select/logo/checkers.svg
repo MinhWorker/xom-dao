@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" stroke-linejoin="round" stroke-linecap="round">
+  <title>Cờ Đam</title>
+  <path d="M12 64 v16 a52 22 0 0 0 104 0 v-16 Z" fill="#FFF6E3" stroke="#16233F" stroke-width="5"/>
+  <ellipse cx="64" cy="62" rx="52" ry="34" fill="#FFF6E3" stroke="#16233F" stroke-width="5"/>
+  <ellipse cx="64" cy="62" rx="39" ry="24" fill="none" stroke="#16233F" stroke-width="3.5"/>
+  <path d="M44 72 L40 50 L53 59 L64 44 L75 59 L88 50 L84 72 Z" fill="#FFD54A" stroke="#16233F" stroke-width="5"/>
+</svg>

@@ -51,7 +51,7 @@ Một game có hai phần nói chuyện với nhau qua sự kiện:
 ```
 
 Mẫu tối thiểu nằm trong `scripts/templates/` (`game/`, `event/`, `godot/`, `e2e/`). Ví dụ hoàn
-chỉnh: `games/tic-tac-toe` (Caro: tuỳ chọn phòng, người chơi máy, bảng Tạo phòng) và
+chỉnh: `games/tic-tac-toe` (Caro: tuỳ chọn phòng, người chơi máy) và
 `games/tien-len` (Tiến Lên trong Godot: bài, hiệu ứng, âm thanh).
 
 ## Các hook
@@ -123,13 +123,14 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
 - Gửi sự kiện: `await _client.send("add", {"amount": 2})`.
 - `sandbox_options() -> Dictionary`: tuỳ chọn phòng cho `?play=<id>` (bản debug), thường là có
   máy chơi.
-- `room_setup() -> Array`: các hàng của bảng Tạo phòng,
+- `room_setup() -> Array`: các hàng tuỳ chọn trong phòng,
   `{key, label, options: [[nhãn, giá trị], …], default?}`, khớp `room.options`.
 - `result_detail() -> Dictionary`: phần game thêm vào bảng kết quả, dưới dòng Thời gian của hub:
   `{reason: "Đen thắng · Trắng hết nước", rows: [["Số lượt đi", 42], …]}`.
 - Hình và âm thanh: chép bản cần dùng từ `assets/` vào `godot/art/`, `godot/sounds/`, rồi
   `load("res://content/<id>/art/<tên>.webp")`. Nhạc nền: đặt file nhạc vào `godot/music/`; hub
-  phát ngẫu nhiên một bài khi game đang chơi.
+  phát ngẫu nhiên một bài khi game đang chơi. Mỗi `AudioStreamPlayer` của game đặt
+  `bus = XomDaoSettings.SFX_BUS` để theo nút bật/tắt và âm lượng hiệu ứng trong Cài đặt.
 - Hub vẽ nút ☰, phòng chờ, bảng kết quả (có **Xem bàn** để xem bàn cuối, **Kết quả** để mở lại)
   và bảng Luật (đọc `RULES.md`). Game để trống ô vuông
   88 × 88 ở góc trên trái cho nút ☰ và chỉ vẽ bàn chơi.
@@ -137,8 +138,8 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
   người chơi quanh bàn, của mình ở dưới, nút hành động dưới phải) hoặc **Hành động** (cảnh chơi,
   mục tiêu trên trái dưới ☰, bộ đếm trên phải, điều khiển dưới trái, nút hành động dưới phải).
 - Dựng giao diện bằng bộ UI chung (`XomDaoButton`, `XomDaoPlayerSlot`, `XomDaoChip`, màu và font
-  trong `XomDaoUi`), không tự làm nút hay font riêng. Toạ độ là đơn vị thiết kế trên khung cao
-  720, rộng 960 đến 1600; đặt vị trí trong `_layout()` theo `XomDaoFrame.safe_inset(self)` và lề
+  trong `XomDaoUi`), không tự làm nút hay font riêng. Toạ độ là đơn vị thiết kế trên khung cố
+  định 1280 × 720; đặt vị trí trong `_layout()` theo `XomDaoFrame.safe_inset(self)` và lề
   `XomDaoSettings.current().margin`.
 - Script của game chỉ dùng thư mục của nó (`res://content/<id>/`) và `res://addons/xomdao_sdk/`;
   `npm run godot:check` kiểm tra điều này, định dạng, lint và chạy test GUT.
@@ -292,9 +293,10 @@ và lệnh `dice`, `tp`, `cash`, `card`.
 
 ## Tuỳ chọn phòng và chơi với máy (tuỳ chọn)
 
-Một game có thể có tuỳ chọn phòng (ví dụ "chơi với bạn hay với máy?"). Khi ai đó bấm
-**Tạo phòng**, hub hiện bảng Tạo phòng với các hàng do bàn Godot khai trong `room_setup()`, rồi
-gửi object đã chọn làm tuỳ chọn của phòng. Không có `room_setup()` thì phòng được tạo ngay.
+Một game có thể có tuỳ chọn phòng (ví dụ "chơi với bạn hay với máy?"). Phòng luôn được
+tạo với giá trị mặc định; trong phòng, hub hiện các hàng do bàn Godot khai trong `room_setup()` và
+chủ phòng đổi chúng (`room:options`). Hub tự chọn kiểu hàng: công tắc cho cặp Tắt/Bật, − giá trị +
+cho con số, các ô cho vài chữ ngắn, ‹ giá trị › cho chữ dài.
 `npm run new -- options <id>` tạo sẵn `src/game/options.ts`.
 
 ```gdscript
@@ -334,8 +336,8 @@ export default definePlugin({
 - Giữa các ván, chủ phòng có thể thay tuỳ chọn bằng yêu cầu `room:options`; `onStart` kế tiếp
   nhận tuỳ chọn mới.
 
-`optionsSchema.parse({})` phải chạy được: các giá trị mặc định đó dùng cho phòng tạo không qua
-bảng Tạo phòng. Ghế của máy đứng sau người thật. Khi tuỳ chọn mới cần nhiều hay ít máy hơn, máy
+`optionsSchema.parse({})` phải chạy được: các giá trị mặc định đó là tuỳ chọn của phòng
+vừa tạo. Ghế của máy đứng sau người thật. Khi tuỳ chọn mới cần nhiều hay ít máy hơn, máy
 sẽ vào (nếu còn ghế) hoặc rời đi, và tỉ số tính lại từ đầu. Phòng đóng khi người thật cuối cùng
 rời đi. Caro (games/tic-tac-toe) là ví dụ (`godot/main.gd`, `src/game/bot.ts`).
 

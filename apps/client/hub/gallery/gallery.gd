@@ -177,6 +177,11 @@ func _board_page() -> Control:
 		var options: Array[String] = []
 		options.assign(row[1])
 		grid.add_child(XomDaoChoice.create(options, row[2]))
+	var volume := Label.new()
+	volume.text = "Âm lượng"
+	volume.add_theme_font_override("font", XomDaoUi.body_font(true))
+	grid.add_child(volume)
+	grid.add_child(XomDaoSlider.create(0.6))
 	board.content.add_child(grid)
 	board.content.add_child(XomDaoDivider.create())
 	var buttons := _row(16)

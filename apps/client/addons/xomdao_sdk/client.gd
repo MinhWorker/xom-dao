@@ -284,8 +284,13 @@ func _entered(ack: Dictionary) -> bool:
 	if ack.is_empty():
 		return false
 	var joined := XomDaoJoinedRoom.from_dict(ack)
+	var known: bool = player_id == joined.player_id
 	player_id = joined.player_id
 	_set_room(joined.room_code)
+	# The room's state can come before this reply: whoever drew it without knowing who they
+	# are in the room draws it again.
+	if not known and snapshot != null and snapshot.code == joined.room_code:
+		state_changed.emit(snapshot)
 	return true
 
 

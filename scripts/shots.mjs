@@ -6,7 +6,7 @@
 //   npm run shots -- --path '/?play=xiangqi'  a game's sandbox against the computer (debug build:
 //                                             npm run godot:export -- --debug)
 //   npm run shots -- --devices iphone-15,ipad some devices (comma separated)
-//   npm run shots -- --screen select         the game selector (rules for its modal)
+//   npm run shots -- --screen select         the game selector (rules: the rules board of a room)
 //   npm run shots -- --tab                    in a browser tab (minus its bars), not the app
 //   --wait MS    wait after the client's first screen past loading (default 2500)
 //   --crop X,Y,W,H  the 1:1 detail crop, in CSS px (default: the middle of the screen)
@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { chromium } from 'playwright';
 import sharp from 'sharp';
+import { signIn } from './e2e/godot.mjs';
 
 /**
  * Landscape screens in CSS px with their pixel density, notch/home-bar insets (the app runs full
@@ -84,6 +85,7 @@ for (const name of names) {
     const cdp = await context.newCDPSession(page);
     await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: d.inset });
   }
+  await signIn(page, base);
   await page.goto(new URL(args.path, base).href);
   // The release build has no test bridge: then only the wait.
   await page
@@ -96,13 +98,15 @@ for (const name of names) {
   if (args.screen) {
     if (!['select', 'rules'].includes(args.screen))
       throw new Error('screen must be select or rules');
-    const card = await (
-      await page.waitForFunction(() => window.xomdao?.rect('SelectedGame'))
+    // select: the lobby's card opens it. rules: CHƠI opens a room, whose scroll opens them.
+    const rules = args.screen === 'rules';
+    const first = await (
+      await page.waitForFunction((n) => window.xomdao?.rect(n), rules ? 'Play' : 'SelectedGame')
     ).jsonValue();
-    await page.mouse.click(card.x + card.width / 2, card.y + card.height / 2);
-    await page.waitForFunction(() => window.xomdao.scene() === 'select');
-    if (args.screen === 'rules') {
-      await page.waitForFunction(() => window.xomdao.click('GameRules'));
+    await page.mouse.click(first.x + first.width / 2, first.y + first.height / 2);
+    await page.waitForFunction((s) => window.xomdao.scene() === s, rules ? 'room' : 'select');
+    if (rules) {
+      await page.waitForFunction(() => window.xomdao.click('RoomRules'));
       await page.waitForFunction(() => window.xomdao.rect('RulesPanel'));
     }
   }

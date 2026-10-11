@@ -105,7 +105,7 @@ func _init() -> void:
 	_shade.gui_input.connect(_on_shade_input)
 	add_child(_shade)
 	_board.name = "RulesPanel"
-	_board._close.name = "CloseRules"
+	_board.close_button.name = "CloseRules"
 	_board.closed.connect(_dismiss)
 	add_child(_board)
 	_body.mouse_filter = Control.MOUSE_FILTER_STOP

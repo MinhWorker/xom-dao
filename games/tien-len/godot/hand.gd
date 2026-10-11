@@ -43,6 +43,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	resized.connect(_layout.bind(false))
 	_sound = AudioStreamPlayer.new()
+	_sound.bus = XomDaoSettings.SFX_BUS
 	_sound.stream = load("res://content/tien-len/sounds/card-select.wav")
 	_sound.max_polyphony = 3
 	add_child(_sound)
@@ -116,7 +117,7 @@ func _toggle(card: int, on: bool) -> void:
 		picked.append(card)
 	else:
 		picked.erase(card)
-	if XomDaoSettings.current().sound and is_inside_tree():
+	if XomDaoSettings.current().sfx and is_inside_tree():
 		_sound.play()
 	_layout(true)
 	picked_changed.emit()

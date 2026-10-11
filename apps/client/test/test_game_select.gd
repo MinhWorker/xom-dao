@@ -1,5 +1,6 @@
 extends GutTest
-## Real gesture ownership, selection boundaries, and lossless measured rules pagination.
+## The select screen's rail of posters (a drag slides, a tap picks) and genre row, and lossless
+## measured rules pagination.
 
 
 func _catalog(count: int) -> HubCatalog:
@@ -14,73 +15,74 @@ func _catalog(count: int) -> HubCatalog:
 	return HubCatalog.create(catalog, ids)
 
 
-func _carousel(count: int) -> HubGameCarousel:
-	var carousel: HubGameCarousel = add_child_autofree(HubGameCarousel.new())
-	carousel.size = Vector2(1000, 460)
+func _strip(count: int) -> HubGameStrip:
+	var strip: HubGameStrip = add_child_autofree(HubGameStrip.new())
+	strip.size = Vector2(700, 480)
 	var catalog: HubCatalog = _catalog(count)
-	carousel.show_games(catalog.catalog.games, catalog, "battleship")
-	return carousel
+	strip.show_games(catalog.catalog.games, catalog)
+	return strip
 
 
-func test_a_short_drag_is_a_tap_and_does_not_select_the_next_game() -> void:
-	var carousel: HubGameCarousel = _carousel(3)
-	carousel._begin(Vector2(500, 180))
-	carousel._drag(Vector2(490, 183))
-	carousel._release(Vector2(490, 183))
-	assert_eq(carousel.selected, 0)
+func _middle(strip: HubGameStrip, index: int) -> Vector2:
+	return strip.posters[index].position + strip.posters[index].size / 2.0
 
 
-func test_a_swipe_snaps_once_and_cannot_become_a_tap_on_a_neighbour() -> void:
-	var carousel: HubGameCarousel = _carousel(3)
-	watch_signals(carousel)
-	carousel._begin(Vector2(500, 180))
-	carousel._drag(Vector2(330, 180))
-	carousel._release(Vector2(330, 180))
-	assert_eq(carousel.selected, 1)
-	assert_signal_emit_count(carousel, "selected_changed", 1)
-	await wait_seconds(0.35)
-	assert_almost_eq(carousel.turn, 1.0, 0.01)
-	assert_true(carousel.islands[1].is_processing())
-	assert_false(carousel.islands[0].is_processing())
-	assert_false(carousel.islands[2].is_processing())
-	carousel.set_obscured(true)
-	assert_false(carousel.islands[1].is_processing())
+func test_a_tap_picks_the_poster_under_it() -> void:
+	var strip: HubGameStrip = _strip(3)
+	watch_signals(strip)
+	var at: Vector2 = _middle(strip, 1)
+	strip._begin(at)
+	strip._drag(at + Vector2(6, 3))
+	strip._release(at + Vector2(6, 3))
+	assert_signal_emitted_with_parameters(strip, "picked", ["tic-tac-toe"])
+	assert_eq(strip.scroll, 0.0, "a tap does not slide the row")
 
 
-func test_vertical_scroll_does_not_change_game_and_single_game_never_duplicates() -> void:
-	var carousel: HubGameCarousel = _carousel(1)
-	carousel._begin(Vector2(500, 180))
-	carousel._drag(Vector2(500, 300))
-	assert_eq(carousel.selected, 0)
-	assert_eq(carousel.islands.size(), 1)
-	assert_false(carousel.find_child("NextGame", true, false).visible)
-	var pair: HubGameCarousel = _carousel(2)
-	assert_eq(
-		pair.islands.filter(func(island: HubGameIsland) -> bool: return island.visible).size(), 2
-	)
+func test_a_drag_slides_the_row_and_picks_nothing() -> void:
+	var strip: HubGameStrip = _strip(3)
+	watch_signals(strip)
+	assert_gt(strip.max_scroll(), 0.0, "three posters are wider than the strip")
+	var first: float = strip.posters[0].position.x
+	var at: Vector2 = _middle(strip, 1)
+	strip._begin(at)
+	strip._drag(at - Vector2(200, 0))
+	strip._release(at - Vector2(200, 0))
+	assert_signal_not_emitted(strip, "picked")
+	assert_almost_eq(strip.posters[0].position.x, first - 200.0, 0.01)
+	strip.scroll = 99999.0
+	assert_almost_eq(strip.scroll, strip.max_scroll(), 0.01, "it stops at the last poster")
+	strip.reveal("battleship")
+	assert_eq(strip.scroll, 0.0, "the first poster is back in view")
 
 
-func test_native_touch_ignores_other_fingers_and_cancel_preserves_selection() -> void:
-	var carousel: HubGameCarousel = _carousel(3)
-	var press := InputEventScreenTouch.new()
-	press.index = 2
-	press.position = Vector2(500, 180)
-	press.pressed = true
-	carousel._gui_input(press)
-	var other := InputEventScreenTouch.new()
-	other.index = 3
-	other.position = Vector2(100, 180)
-	other.pressed = false
-	carousel._input(other)
-	assert_eq(carousel._touch_index, 2)
-	var cancel := InputEventScreenTouch.new()
-	cancel.index = 2
-	cancel.canceled = true
-	cancel.pressed = false
-	carousel._input(cancel)
-	assert_eq(carousel.selected, 0)
-	assert_eq(carousel._touch_index, -1)
-	assert_eq(carousel._press, Vector2.INF)
+func test_a_short_row_sits_in_the_middle_and_stays() -> void:
+	var strip: HubGameStrip = _strip(1)
+	assert_eq(strip.max_scroll(), 0.0)
+	var poster: HubGamePoster = strip.posters[0]
+	assert_almost_eq(poster.position.x + poster.size.x / 2.0, strip.size.x / 2.0, 0.01)
+	assert_eq(poster.name, "Card_battleship")
+	assert_not_null(HubGameArt.logo("battleship"), "every poster carries a logo")
+
+
+func test_select_plays_a_tapped_game_and_keeps_genres_in_the_bottom_left() -> void:
+	var select: HubGameSelect = add_child_autofree(HubGameSelect.new())
+	select.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	select.size = Vector2(1280, 720)
+	var catalog: HubCatalog = _catalog(2)
+	var genre := XomDaoGenre.new()
+	genre.id = "co"
+	genre.name = "Cờ"
+	genre.island = "co"
+	catalog.catalog.genres.append(genre)
+	select.show_genre(catalog, "co")
+	watch_signals(select)
+	(select.find_child("Card_tic-tac-toe", true, false) as Button).pressed.emit()
+	assert_signal_emitted_with_parameters(select, "play_pressed", ["tic-tac-toe"])
+	var tab: HubGenreTab = select.find_child("Tab_co", true, false)
+	assert_true(tab.selected)
+	assert_lt(tab.global_position.x, select.size.x / 3.0, "on the left")
+	assert_gt(tab.global_position.y, select.strip.position.y + select.strip.size.y - 1.0, "below")
+	assert_gt(HubGenreTab.OBJECT, HubGenreTab.PLATE_H, "the object stands out of its plate")
 
 
 func test_long_rules_are_split_without_losing_text() -> void:
@@ -97,21 +99,6 @@ func test_long_rules_are_split_without_losing_text() -> void:
 		)
 		assert_lte(measured.y, 220.0)
 	assert_eq(" ".join(restored), body)
-
-
-func test_cancel_during_a_snap_keeps_committed_focus_and_releases_pointer() -> void:
-	var carousel: HubGameCarousel = _carousel(3)
-	carousel.select_game("tic-tac-toe")
-	carousel.turn = 0.25
-	var press := InputEventScreenTouch.new()
-	press.index = 2
-	press.position = Vector2(500, 180)
-	press.pressed = true
-	carousel._gui_input(press)
-	carousel._drag(Vector2(490, 300))
-	assert_eq(carousel.selected, 1)
-	assert_eq(carousel._touch_index, -1)
-	assert_eq(carousel.turn, 1.0)
 
 
 func test_paged_rules_disable_endpoints_and_support_optional_illustrations() -> void:
@@ -141,19 +128,6 @@ func test_repeated_button_feedback_preserves_user_hud_scale() -> void:
 	XomDaoUi.bounce(button)
 	await wait_seconds(0.35)
 	assert_almost_eq(button.scale.x, 1.3, 0.001)
-
-
-func test_tablet_detail_measures_long_names_and_description_before_seats() -> void:
-	var select: HubGameSelect = add_child_autofree(HubGameSelect.new())
-	select.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	select.size = Vector2(1036, 720)
-	var catalog: HubCatalog = _catalog(1)
-	catalog.card("battleship").name = "Cờ Tỷ Phú Cổ Điển"
-	catalog.card("battleship").tagline = "Đoán chỗ và bắn chìm hạm đội đối phương."
-	select.show_genre(catalog, "co", "battleship")
-	select._layout()
-	assert_gte(select._tagline.position.y, select._title.position.y + select._title.size.y)
-	assert_gte(select._players.position.y, select._tagline.position.y + select._tagline.size.y)
 
 
 func test_pagination_keeps_paragraphs_and_bullet_line_breaks() -> void:

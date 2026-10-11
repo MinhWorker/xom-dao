@@ -60,23 +60,51 @@ func test_nha_shows_the_level_and_reached_achievements_first() -> void:
 	assert_eq((home.find_child("HomeLevel", true, false) as XomDaoChip).text, "Cấp 2")
 	var bar: ProgressBar = home.find_child("HomeXp", true, false)
 	assert_eq([bar.value, bar.max_value], [50.0, 200.0])
-	assert_eq((home.find_child("HomeWon", true, false) as XomDaoChip).text, "3 thắng")
-	(home.find_child("Tab_thanh-tich", true, false) as XomDaoButton).pressed.emit()
+	assert_eq((home.find_child("HomeWon", true, false) as Label).text, "3 thắng")
+	assert_true((home.find_child("Tab_ho-so", true, false) as HubHomeTab).selected)
+	(home.find_child("Tab_thanh-tich", true, false) as Button).pressed.emit()
 	await wait_process_frames(1)
-	var row: Node = home.find_child("Shelf", true, false).get_child(0)
+	var row: Node = home.find_child("Shelf", true, false)
 	var names: Array = row.get_children().map(func(n: Node) -> String: return str(n.name))
 	assert_eq(names, ["Achievement_tien-len-chop", "Achievement_core-played-10"])
 	assert_not_null(row.get_child(0).find_child("Reached", true, false))
 
 
-func test_nha_lists_the_boards_a_player_is_on() -> void:
+func test_nha_lists_your_finished_games_newest_first() -> void:
 	var home: HubHome = add_child_autofree(HubHome.new())
-	home.show_stats(_stats(), {"tien-len": "Tiến Lên"})
-	(home.find_child("Tab_xep-hang", true, false) as XomDaoButton).pressed.emit()
-	await wait_process_frames(1)
-	var tile: Node = home.find_child("Rank_tien-len", true, false)
-	assert_eq((tile.find_child("RankValue", true, false) as Label).text, "Hạng 1")
-	assert_not_null(home.find_child("Rank_core", true, false))
+	assert_null(home.find_child("Tab_xep-hang", true, false), "ranks live in Đình")
+	(home.find_child("Tab_lich-su", true, false) as Button).pressed.emit()
+	assert_eq((home.find_child("ShelfEmpty", true, false) as Label).text, "Đang tải")
+	var matches: Array[XomDaoMatchRecord] = [
+		(
+			XomDaoMatchRecord
+			. from_dict(
+				{
+					"id": "m2",
+					"gameId": "tien-len",
+					"outcome": "win",
+					"startedAt": 1000.0,
+					"endedAt": 1000.0 + 12 * 60000.0,
+					"players":
+					[
+						{"name": "Minh", "bot": false, "won": true, "left": false, "me": true},
+						{"name": "Lan", "bot": false, "won": false, "left": false, "me": false},
+					],
+				}
+			)
+		),
+		XomDaoMatchRecord.from_dict({"id": "m1", "gameId": "go", "outcome": "loss"}),
+	]
+	home.show_history(matches, {"tien-len": "Tiến Lên"})
+	var first: Node = home.find_child("Match_0", true, false)
+	assert_eq((first.find_child("MatchOutcome", true, false) as Label).text, "Thắng")
+	assert_eq((first.find_child("MatchGame", true, false) as Label).text, "Tiến Lên")
+	assert_eq(HubMatchRow.took(matches[0]), "12 phút")
+	assert_eq(HubMatchRow.ago(3 * 3600000.0), "3 giờ trước")
+	var second: Node = home.find_child("Match_1", true, false)
+	assert_eq((second.find_child("MatchOutcome", true, false) as Label).text, "Thua")
+	var other: HubHome = add_child_autofree(HubHome.new(null, false))
+	assert_null(other.find_child("Tab_lich-su", true, false), "someone else's games are theirs")
 
 
 func test_dinh_shows_a_board_and_your_row_below_it() -> void:

@@ -10,8 +10,42 @@ export const PHONE = { width: 844, height: 390 };
 /** Chromium flags: Godot needs WebGL 2, which headless Chromium gives through SwiftShader. */
 export const launch = { args: ['--use-gl=angle', '--use-angle=swiftshader'] };
 
-/** Opens the Godot client (with a query such as `?room=K7M2`) and waits for its first screen. */
-export async function openGodot(t, page, query = '') {
+const signedIn = new WeakSet();
+
+/**
+ * Everyone plays with an account: makes one over HTTP and leaves its token where the client
+ * looks for a login kept by the browser (localStorage), so the page opens logged in. Once per
+ * page; a token already there is kept.
+ */
+export async function signIn(page, base) {
+  if (signedIn.has(page)) return;
+  signedIn.add(page);
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  const reply = await fetch(new URL('/api/auth/register', base), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: `e2e${id}`.slice(0, 20),
+      password: 'mat-khau-e2e',
+      name: `Khách ${100 + Math.floor(Math.random() * 900)}`,
+      avatar: 'boy',
+    }),
+  });
+  const { token } = await reply.json();
+  if (!token) throw new Error(`No account for the page: ${reply.status}`);
+  await page.addInitScript((value) => {
+    try {
+      if (!localStorage.getItem('xomdao:token')) localStorage.setItem('xomdao:token', value);
+    } catch {}
+  }, token);
+}
+
+/**
+ * Opens the Godot client (with a query such as `?room=K7M2`) and waits for its first screen,
+ * logged in as a new account unless `account` is false (the login board then shows).
+ */
+export async function openGodot(t, page, query = '', { account = true } = {}) {
+  if (account) await signIn(page, t.url);
   await page.goto(new URL(`/${query}`, t.url).href);
   await page.waitForFunction(() => window.xomdao, null, { timeout: 60_000 });
   return page;
@@ -20,6 +54,15 @@ export async function openGodot(t, page, query = '') {
 /** Waits until the screen (xomdao.scene()) is `scene`. */
 export async function onScene(page, scene, timeout = 30_000) {
   await page.waitForFunction((s) => window.xomdao.scene() === s, scene, { timeout });
+}
+
+/** The guest says Sẵn sàng in the waiting room, and the host waits to see it. */
+export async function ready(host, guest) {
+  await tap(guest, 'Ready');
+  await host.waitForFunction(() => {
+    const room = window.xomdao.state().room;
+    return room?.players.every((p) => p.bot || p.ready || p.id === room.hostId);
+  });
 }
 
 /** Waits until a node's text is `text` (or matches it, for a RegExp; any text when left out).
@@ -44,6 +87,12 @@ export async function godotText(page, name, text, timeout = 30_000) {
   return handle.jsonValue();
 }
 
+/** From the lobby: CHƠI opens a room of the selected game. */
+export async function createRoom(page) {
+  await tap(page, 'Play');
+  await onScene(page, 'room');
+}
+
 /** Taps a visible node by name with the mouse, once it is there and enabled. */
 export async function tap(page, name, timeout = 30_000) {
   const box = await (
@@ -59,19 +108,10 @@ export async function tap(page, name, timeout = 30_000) {
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 }
 
-/** Brings a catalog island into view using the carousel's actual navigation controls. */
+/** On the game select: picks a game's poster, wherever it is on the rail, into its room. */
 export async function tapCard(page, id) {
-  for (let i = 0; i < 30; i++) {
-    const visible = await page.evaluate((name) => window.xomdao.rect(name), `Card_${id}`);
-    if (visible) {
-      await tap(page, `Card_${id}`);
-      await page.waitForTimeout(400);
-      return;
-    }
-    await tap(page, 'NextGame');
-    await page.waitForTimeout(400);
-  }
-  throw new Error(`Catalog island ${id} did not become visible`);
+  await page.waitForFunction((name) => window.xomdao.click(name), `Card_${id}`);
+  await onScene(page, 'room');
 }
 
 /**

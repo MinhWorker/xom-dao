@@ -72,6 +72,7 @@ try {
     throw new Error(`Room missing from list: ${JSON.stringify(rooms)}`);
   await bob.send('room:join', { roomCode: room.roomCode, role: 'player' });
   await cam.send('room:join', { roomCode: room.roomCode, role: 'spectator' });
+  await bob.send('room:ready', { ready: true });
   await alice.send('game:start', {});
   const refused = await cam
     .send('game:move', { move: { event: 'place', payload: { x: 4, y: 4 } } })

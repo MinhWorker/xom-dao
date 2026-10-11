@@ -33,7 +33,7 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const url = `http://127.0.0.1:${server.address().port}/`;
 
-// A 20:9 phone held sideways (CSS pixels), the widest frame in docs/ui-guide.md.
+// A 20:9 phone held sideways (CSS pixels): the 16:9 frame with black bars at the sides.
 const viewport = { width: 800, height: 360 };
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader'] });
 const errors = [];

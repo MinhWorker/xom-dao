@@ -139,14 +139,41 @@ func test_no_island_overlaps_the_hud() -> void:
 						)
 
 
+func test_picking_a_game_again_keeps_the_hud_where_it_was() -> void:
+	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
+	lobby.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	lobby.size = Vector2(1280, 720)
+	var catalog: HubCatalog = _catalog(1)
+	lobby.show_catalog(catalog, "co")
+	lobby.show_game(catalog.card("tic-tac-toe"), true)
+	await wait_process_frames(2)
+	var before: Array[Rect2] = lobby.hud_rects()
+	lobby.show_game(catalog.card("tic-tac-toe"), true)
+	await wait_process_frames(2)
+	assert_eq(lobby.play.seats, "2 người")
+	var after: Array[Rect2] = lobby.hud_rects()
+	for i: int in before.size():
+		assert_almost_eq(after[i].position, before[i].position, Vector2.ONE * 0.01)
+		assert_almost_eq(after[i].size, before[i].size, Vector2.ONE * 0.01)
+
+
+func test_a_long_name_is_written_smaller_not_cut() -> void:
+	var card: HubGameCard = add_child_autofree(HubGameCard.new())
+	card.show_title("Cờ")
+	assert_eq(card.title.get_theme_font_size("font_size"), HubGameCard.TITLE_SIZE)
+	card.show_title("Cờ tỷ phú Classic phiên bản đặc biệt")
+	assert_lt(card.title.get_theme_font_size("font_size"), HubGameCard.TITLE_SIZE)
+	assert_eq(card.title.text_overrun_behavior, TextServer.OVERRUN_NO_TRIMMING)
+
+
 func test_the_card_follows_what_can_be_played() -> void:
 	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
 	var catalog: HubCatalog = _catalog(0)
 	lobby.show_game(catalog.card("tic-tac-toe"), true)
-	assert_eq(lobby._card_name.text, "Caro")
+	assert_eq(lobby._card.title.text, "Caro")
 	assert_false(lobby.play.disabled)
 	lobby.show_game(null, false)
-	assert_eq(lobby._card_name.text, "Sắp có")
+	assert_eq(lobby._card.title.text, "Sắp có")
 	assert_true(lobby.play.disabled)
 	assert_eq(catalog.games_of("co").size(), 1)
 	assert_eq(catalog.ready_genres(), ["co"] as Array[String])

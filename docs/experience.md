@@ -41,7 +41,7 @@ Thế giới có ba tầng, giống "chế độ chơi" và "bản đồ" của 
 | --- | --- | --- |
 | **Sảnh** | Sảnh chờ, chọn chế độ ngay trên đó | Bầu trời có **vòng đảo thể loại** bay lơ lửng, xoay được |
 | **Thể loại** | Chế độ chơi (Cổ điển, Giải trí…) | Một **đảo thể loại** trên vòng: Cờ, Bài, rồi các thể loại phụ |
-| **Trò** | Bản đồ trong một chế độ | Một **đảo trò** trong băng chuyền của thể loại |
+| **Trò** | Bản đồ trong một chế độ | Một **thẻ trò** trong dãy thẻ của thể loại |
 
 Sảnh không có đảo trung tâm cố định hay nhân vật. Các đảo thể loại là đảo bay, cùng cỡ, xếp đều trên
 một vòng tròn nằm nghiêng giữa trời, nhìn chéo từ trên như một băng chuyền. Nền là núi đá vôi kiểu
@@ -83,11 +83,11 @@ Sảnh theo bố cục ba cột của client game PC (League of Legends), vẽ h
 
 | Vùng | Chứa |
 | --- | --- |
-| Cột trái | Thanh dọc sát mép trái: **Trang chủ** (đang chọn), Chợ, Đình, Bến; icon phẳng có chữ dưới |
-| Trên trái | Ảnh đại diện, tên, chip cấp và thanh kinh nghiệm → **Nhà** |
+| Cột trái | Khay nổi bo tròn ở mép trái: **Sảnh** (hình hòn đảo, đang chọn, trên tấm vàng nổi, hình nhấp nhô), Chợ, Đình, Bến; mỗi nút một hình minh hoạ có chữ dưới |
+| Trên trái | Ảnh đại diện (hình của tài khoản, trong khung đang dùng) đè lên đầu một tấm xanh đậm; trên tấm là tên, dưới tên là một thanh bắt đầu bằng chip cấp rồi tới kinh nghiệm → **Nhà** |
 | Trên phải | Xu, hộp thư, quà, ⚙ |
-| Phải, trên | Lối tắt: **Chợ** (có tranh), **Sự kiện** (chấm đỏ và số ngày còn lại khi có sự kiện), **Nhiệm vụ** |
-| Phải, dưới | Thẻ trò đang chọn: đầu (tên, số đang chơi), thân (tranh), chân (số người, thời lượng), rồi **CHƠI** (vàng) và **Tạo phòng** (xanh) |
+| Phải, dưới thanh trên | Lối tắt, tấm phẳng xanh đậm viền mảnh: **Chợ** (tranh phủ kín tấm), **Sự kiện** (hình hộp quà; chấm đỏ và số ngày còn lại khi có sự kiện), **Nhiệm vụ** (hình bảng kẹp) |
+| Góc dưới phải | Thẻ trò đang chọn, hai góc bo lớn và hai góc bo nhỏ: tranh của trò phủ kín thẻ, tối ở phía trên; tên trò viết thẳng lên tranh ở góc trên trái, số đang chơi ở góc trên phải, không có nền. **CHƠI** là một tấm vàng lớn chiếm trọn đáy thẻ, vát góc trên trái, ghi kèm số người của trò (`2–4 người`). Không ghi thời lượng, không có nút Tạo phòng ở sảnh |
 | Giữa | Vòng đảo thể loại, phần lớn màn hình |
 
 Mắt đi theo thứ tự: đảo giữa → thẻ trò đang chọn → **CHƠI**.
@@ -108,36 +108,51 @@ của sảnh; Nhà mở bằng cách chạm ảnh đại diện.
 ```
 Mở game ─► Sảnh (vòng đảo)
   │
-  ├─ CHƠI ──────────────────────────► Ghép phòng ─► Ván đấu ─► Kết quả ─┬─► Chơi tiếp
-  │   (trò đang chọn)                                                     └─► về Sảnh
+  ├─ CHƠI ──────────────────────────► Phòng ─► Ván đấu ─► Kết quả ─┬─► Chơi tiếp
+  │   (trò đang chọn)                                               └─► về Sảnh
   │
   ├─ xoay vòng ─► đảo đang chọn đổi, thẻ dưới phải đổi theo
   ├─ chạm đảo đang chọn / thẻ trò đang chọn
   │      ▼
-  │   Chọn trò: tab thể loại + băng chuyền đảo trò
-  │      ├─ Đổi focus ─► nhớ trò và tải ngầm gói trò
-  │      ├─ Tạo phòng ─► tuỳ chỉnh phòng ─► phòng chờ (có mã phòng) ─► Ván đấu
-  │      └─ Luật ──────► bảng phân trang, hình minh họa tùy chọn
+  │   Chọn trò: dãy thẻ trò của một thể loại + hàng thể loại dưới trái
+  │      ├─ Chạm thẻ trò ─► Phòng (có mã phòng, tuỳ chọn, Luật) ─► Ván đấu
+  │      └─ Chạm thẻ sự kiện ─► bảng sự kiện (điểm, mốc thưởng, Tham gia)
   │
   ├─ Bến ─► Nhập mã phòng / danh sách phòng / bạn bè đang online / lời mời
   │
-  ├─ Tạo phòng (ở Sảnh) ─► tuỳ chỉnh phòng của trò đang chọn
   └─ Nhà / Chợ / Bến / Sự kiện …  ─► màn nơi chốn ─► ← về Sảnh
 ```
 
-- **CHƠI** = ghép nhanh: vào phòng còn chỗ của trò đang chọn, không có thì mở phòng mới, chờ một
-  lúc rồi cho máy ngồi ghế trống.
+- **CHƠI** mở ngay một phòng của bạn cho trò đang chọn, với tuỳ chọn mặc định của trò. Mọi việc
+  còn lại làm trong phòng: đổi tuỳ chọn (kể cả cho máy ngồi), mời bạn, bắt đầu.
+- **Phòng** chia hai bên. Bên trái là tấm giấy ghi mọi thứ về phòng: tranh và tên trò, nút cuộn
+  giấy mở bảng **Luật**, mã phòng với **Mời bạn**, và các tuỳ chọn của trò. Chủ phòng đổi được
+  tuỳ chọn, người khác chỉ đọc. Bên phải là các ghế, mỗi ghế một thẻ xếp thành lưới: ảnh, tên,
+  và vai (Chủ phòng, Máy, Sẵn sàng); ghế trống chạm vào là sao chép link mời.
+- Góc dưới phải của phòng có đúng một nút lớn: **Bắt đầu** cho chủ phòng, **Sẵn sàng** cho người
+  khác. Chủ phòng chỉ bắt đầu được khi mọi người khác đã sẵn sàng; máy luôn sẵn sàng. Sau một
+  ván, **Chơi tiếp** không cần sẵn sàng lại.
+- Ghép nhanh (`room:quick`: vào phòng đang chờ, không ai tới thì máy ngồi ghế trống) vẫn có ở
+  màn chọn trò.
+- **Màn chờ** (đang kết nối, đang tải một trò) là băng chuyền tranh của các trò: mỗi tranh kèm
+  tên trò và vài dòng về gốc gác của trò đó, tự chuyển sau vài giây, chạm hoặc vuốt để chuyển
+  sớm. Khi tải một trò thì mở đầu bằng tranh của chính trò đó. Trạng thái nằm ở góc dưới phải.
+  Thêm trò mới thì thêm một dòng vào `SLIDES` trong `apps/client/hub/loading.gd`.
+- **Chuyển màn**: giữa hai màn luôn có một tấm màn xanh đậm viền vàng quét chéo từ trái sang, ghi
+  nơi sắp tới (Chọn trò, Chợ, Nhà…). Vào phòng thì tấm màn mang logo và tên trò. Bấm Bắt đầu thì
+  tới **màn riêng của trò**: tranh splash phủ kín, logo và tên trò ở giữa, vòng xoay "Đang tải";
+  màn này ở lại ít nhất gần hai giây rồi mờ dần sang bàn chơi.
 - Nút ← luôn về đúng một bước. Từ ván đấu về sảnh có hỏi xác nhận nếu đang giữa ván.
 - Chơi với bạn bè: phòng nào cũng có **mã phòng** ngắn. Gửi mã hoặc link mời; bạn bè nhập mã ở Bến
   hoặc mở link là vào thẳng phòng. Thoát ra thì về sảnh, với trò đó đang được chọn.
 
 ## Khung hình
 
-Giữ hệ khung của [ui-guide.md](ui-guide.md#khung-hình): thiết kế trên khung **cao 720 đơn vị**, lõi
-**960 × 720** luôn thấy được, màn rộng hơn chỉ thêm chỗ hai bên. Chỉ chơi màn hình ngang.
+Giữ hệ khung của [ui-guide.md](ui-guide.md#khung-hình): thiết kế trên khung **cố định 1280 × 720 đơn vị
+(16:9)**, lõi **960 × 720** nằm giữa. Chỉ chơi màn hình ngang.
 
-Trong Godot: kích thước gốc 960 × 720, `stretch/mode = canvas_items`, `stretch/aspect = expand`.
-Bầu trời / mặt biển lấp phần thừa, vẽ tràn dưới tai thỏ; HUD tránh vùng an toàn (safe area).
+Trong Godot: kích thước gốc 1280 × 720, `stretch/mode = canvas_items`, `stretch/aspect = keep`.
+Màn hình khác tỉ lệ 16:9 có viền đen ở phần thừa; HUD tránh vùng an toàn (safe area).
 
 Cỡ tối thiểu (vùng chạm 88, chữ nhỏ nhất 24…) theo bảng
 [Đơn vị và cỡ tối thiểu](ui-guide.md#đơn-vị-và-cỡ-tối-thiểu).
@@ -151,7 +166,8 @@ Cỡ tối thiểu (vùng chạm 88, chữ nhỏ nhất 24…) theo bảng
 > **dưới**; ảnh lại vẽ Minh ở trên.
 
 **Phần khung chỉ giữ một thứ: nút menu ☰** ở góc trên trái (88 × 88, sát mép). Menu mở một bảng
-chung: rời phòng, âm thanh, cài đặt (cỡ giao diện, lề, chất lượng hình), luật chơi, biểu cảm. Trò
+chung: cài đặt (tab Giao diện: cỡ giao diện, lề, chất lượng hình; tab Âm thanh: nhạc và hiệu ứng
+riêng), rời phòng, luật chơi, biểu cảm. Trò
 để trống ô vuông đó, còn lại cả màn hình là của trò.
 
 Trò chọn một trong hai bố cục mẫu, để các trò cùng loại trông giống nhau:
@@ -170,23 +186,32 @@ Trò chọn một trong hai bố cục mẫu, để các trò cùng loại trôn
 
 ![Màn chọn trò trên máy tính](concepts/game-select-desktop.webp)
 
-- Trên cùng giữ quay lại, **tab thể loại**, số xu và cài đặt. Tab có thể kéo ngang khi cỡ HUD lớn.
-- Giữa là ba **đảo trò**: đảo đang chọn lớn, có màu và nổi nhẹ; hai đảo cạnh nhỏ, đứng yên và
-  xám xanh. Chạm đảo cạnh, vuốt ngang hoặc dùng mũi tên để đổi trò. Băng chuyền đi vòng; thể
-  loại ít trò chỉ hiện những đảo có thật. Trò sắp có hiện ổ khóa và không tạo phòng được.
-- Nền toàn màn chuyển mờ sang **splash riêng của trò**. Bên trái là tên, mô tả ngắn, số chỗ,
-  trên lớp nâu đậm trong dần từ trên xuống. Dưới phải chỉ có **Tạo phòng** lớn và **Luật** với
-  biểu tượng cuộn giấy bên trái. Sự kiện dùng **Tham gia** và giữ các mốc thưởng.
-- Trò đang focus được nhớ ngay làm trò của nút CHƠI ở sảnh; gói `.pck` bắt đầu tải ngầm.
+Ảnh concept trên là bố cục cũ (ba đảo trò); bố cục hiện tại như mô tả dưới đây.
+
+- Trên cùng chỉ có quay lại, số xu và cài đặt.
+- Giữa là **dãy thẻ trò** của thể loại đang chọn, treo trên một thanh ngang. Mỗi thẻ là một tấm
+  ảnh viền giấy: tranh splash của trò phủ kín, **logo** phẳng của trò ở giữa, tên trò và một dòng
+  mô tả bên dưới, tối dần xuống đáy cho dễ đọc. Phía trên mỗi thẻ có nhãn số người treo vào thanh.
+  Không dùng đảo ở màn này.
+- Kéo ngang (hoặc lăn chuột) để trượt dãy thẻ; thả tay thì dãy trôi thêm một đoạn. Dãy ngắn hơn
+  màn hình thì nằm giữa và không trượt.
+- **Chạm một thẻ là chọn xong**: vào thẳng phòng của trò đó. Không có nút Tạo phòng. Trò sắp có
+  bị phủ mờ, có ổ khóa và không chạm được. Thẻ sự kiện mở **bảng sự kiện** với điểm, các mốc
+  thưởng và **Tham gia**.
+- **Thể loại** nằm ở góc dưới trái, xếp ngang. Mỗi thể loại là một **vật** đứng trên một tấm nền
+  có tên (quân xe cho Cờ, lá bài cho Bài, đèn lồng cho Sự kiện, quả bom cho Hành động): vật cao
+  hơn tấm nền nên nhô lên khỏi nó. Thể loại đang chọn có nền vàng và vật nhún nhẹ.
+- Logo trò và vật thể loại là SVG phẳng trong `apps/client/hub/select/logo/` (`<id>.svg`,
+  `genre-<id>.svg`). Trò mới cần thêm một logo; thể loại chưa có vật thì dùng viên xúc xắc.
 - **Luật** mở bảng gỗ lớn giữa màn, làm mờ/tối và chặn nền. Nội dung `RULES.md` được chia trang
   theo chiều cao thực tế; có Trước/Sau, số trang, vuốt ngang và phím mũi tên. Mỗi mục có thể có
   hình minh họa; hiện để ô **Ảnh minh họa**, chờ ảnh gameplay sau khi làm lại visual từng trò.
-  Đảo dừng nổi khi bảng mở. Chạm ngoài bảng hoặc đóng để trở về.
-- Vuốt theo ngón tay rồi khớp vào đảo; chạm ngắn, kéo dọc, ngón chạm thứ hai và hủy touch
-  không vô tình đổi trò. Nút, đổi focus, đổi trang, mở/đóng bảng có âm thanh và chuyển động.
+  Chạm ngoài bảng hoặc đóng để trở về. Bảng mở từ nút cuộn giấy trong phòng, hoặc từ ☰ trong ván.
 
-Màn tuỳ chỉnh khi tạo phòng (số người, luật phụ, bot) là một bảng gỗ do trò điền nội dung, dùng ô
-lựa chọn và nút chung.
+Tuỳ chọn của trò (số người, luật phụ, máy) nằm trên tấm giấy của phòng. Mỗi tuỳ chọn được vẽ theo
+kiểu hợp với nó, nên không hàng nào rộng hơn tấm giấy: cặp Tắt/Bật là **công tắc**; con số (số
+máy, số vòng, số giây) là **− giá trị +**; vài chữ ngắn chia đều hàng thành **các ô**; chữ dài thì
+là **‹ giá trị ›**, mỗi lần một lựa chọn.
 
 Danh sách phòng (từ **Bến**) là một bảng gỗ, mỗi dòng: tranh nhỏ của trò,
 tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến có thêm ô nhập mã phòng:
@@ -204,28 +229,38 @@ tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến c
   đếm lên. Có âm thanh xu rơi.
 - Hai nút: **Chơi tiếp** (ván mới, cùng phòng) và **Về sảnh**. Ảnh concept còn ghi "Về đảo".
 
-## Nhà: hồ sơ, túi đồ, thành tích, xếp hạng
+## Nhà: hồ sơ, túi đồ, thành tích, lịch sử
 
 ![Trong Nhà](concepts/home-profile.webp)
 
 - Mở từ ảnh đại diện ở góc trên trái, hoặc nút Nhà ở hàng dưới trái.
-- Thẻ hồ sơ bên trái: ảnh đại diện, tên, cấp và thanh tiến độ, vài con số tổng.
-- Bên phải là kệ gỗ, chia theo **thẻ đánh dấu** (bookmark) gỗ: Túi đồ, Thành tích, Xếp hạng.
-- Túi đồ là các ô trên kệ. Vật phẩm nào cũng có biểu tượng vuông, nền trong suốt, để đặt được vào ô.
+- Bốn trang, chọn bằng **chồng thẻ dọc ở mép trái**: Hồ sơ, Túi đồ, Thành tích, Lịch sử. Thẻ
+  đang chọn có nền vàng. Bên phải là một tấm giấy lớn hiện trang đang chọn. (Ảnh concept trên là
+  bố cục cũ.)
+- **Hồ sơ**: ảnh đại diện lớn trong khung đang dùng, tên, chip cấp với thanh tiến độ, ba ô số (số
+  ván, số thắng, tỉ lệ thắng), và khung, lưng bài đang dùng.
+- **Lịch sử** là danh sách các ván đã xong, mới nhất ở trên: kết quả (Thắng, Thua, Hoà), tên trò,
+  chơi với ai, cách đây bao lâu và ván kéo dài bao lâu. Chỉ Nhà của chính bạn có trang này. Xếp
+  hạng xem ở Đình.
+- **Túi đồ** là lưới các ô vuông bằng nhau, mỗi ô chỉ có hình vật phẩm; món đang dùng có dấu tích
+  xanh. Góc trên phải là hàng **loại**: Tất cả, Khung, Lưng bài. Chạm một ô thì một **ngăn kéo**
+  trượt ra từ bên phải, ghi hình lớn, tên và loại của món đó, cùng nút hành động hợp với nó: đồ
+  trang trí có **Dùng** (hoặc "Đang dùng"). Chạm lại ô đó hoặc nút ✕ để đóng. Ở Nhà người khác
+  ngăn kéo chỉ để xem. Vật phẩm nào cũng có biểu tượng vuông, nền trong suốt, để đặt được vào ô.
+- **Thành tích** là lưới ô, cuộn dọc khi nhiều.
 - Cấp tính từ kinh nghiệm: 10 cho mỗi ván, cộng kinh nghiệm của mỗi thành tích đã đạt. Cấp N bắt
   đầu ở 50 × N × (N − 1) (cấp 2 ở 100, cấp 3 ở 300). Thanh tiến độ dưới chip cấp cho biết còn bao
   xa tới cấp sau.
-- Thành tích là ô trên kệ: chiếc cúp (vàng khi đã đạt), tên, "Đã đạt" hoặc số đếm như "3/10", và
+- Thành tích là ô trong lưới: chiếc cúp (vàng khi đã đạt), tên, "Đã đạt" hoặc số đếm như "3/10", và
   phần thưởng. Ô đã đạt đứng trước.
-- Xếp hạng là ô cho mỗi bảng có tên người đó: Cả xóm (theo kinh nghiệm) và từng trò (theo số ván
-  thắng), mỗi ô ghi "Hạng N".
-- Nút **Tài khoản** nằm cạnh ← (chỉ ở Nhà của mình). Lần đầu vào, người chơi là khách. Bảng Tài
-  khoản của khách có hai lựa chọn:
+- **Ai cũng chơi bằng tài khoản, không có khách.** Chưa đăng nhập thì ứng dụng mở ra bảng **Vào
+  Xóm Đảo** trên nền màn chờ, không đóng được, với hai lựa chọn:
   - **Đăng nhập**: tên đăng nhập và mật khẩu.
   - **Tạo tài khoản**: thêm tên trong game.
-
-  Người đã đăng nhập thấy tên đăng nhập của mình và nút **Đăng xuất** (sau đó vào lại như khách
-  mới). Token đăng nhập của bản web cũ vẫn dùng được, nên người chơi cũ không phải đăng nhập lại.
+  Vào được rồi thì mới tới sảnh. Lần sau thiết bị nhớ đăng nhập. Người từng chơi như khách ở bản
+  cũ cũng phải tạo tài khoản; dữ liệu của tài khoản khách cũ không chuyển sang.
+- Nút **Tài khoản** nằm cạnh ← (chỉ ở Nhà của mình): hiện tên đăng nhập và nút **Đăng xuất**, bấm
+  xong thì quay lại bảng Vào Xóm Đảo.
 - Khi máy chủ đang ngủ (gói miễn phí), màn đầu ghi "Đang đánh thức máy chủ" và thử lại tới hai
   phút. Khi máy chủ đã lên bản protocol mới, màn đầu ghi "Đã có bản mới" kèm nút **Tải lại**.
 
@@ -288,8 +323,8 @@ Một trò hay sự kiện **phải**:
 - [ ] Dùng thành phần chung từ `xomdao_sdk`: nút, bảng, ô người chơi, ô lựa chọn, thông báo.
 - [ ] Theo một bố cục mẫu trong ván (**Bàn** hoặc **Hành động**); để trống ô của nút ☰.
 - [ ] Trả thứ hạng khi hết ván và để phần khung hiện kết quả, phần thưởng.
-- [ ] Vừa lõi 960 × 720 ở mọi tỉ lệ khung; vùng chạm ≥ 88, chữ ≥ 24.
-- [ ] Có ảnh chụp ở các khung (`npm run shots`) và kịch bản e2e.
+- [ ] Vừa khung 1280 × 720, bàn chơi trong lõi 960 × 720; vùng chạm ≥ 88, chữ ≥ 24.
+- [ ] Có ảnh chụp trên các máy (`npm run shots`) và kịch bản e2e.
 
 Một trò hay sự kiện **không được**:
 

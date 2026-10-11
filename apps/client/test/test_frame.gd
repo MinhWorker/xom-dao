@@ -1,10 +1,42 @@
 extends GutTest
 
 
-func test_core_is_centred_in_a_wide_frame() -> void:
-	var rect: Rect2 = XomDaoFrame.core_rect(Vector2(1600.0, 720.0))
-	assert_eq(rect.position, Vector2(320.0, 0.0))
+func test_core_is_centred_in_the_frame() -> void:
+	var rect: Rect2 = XomDaoFrame.core_rect(XomDaoFrame.SIZE)
+	assert_eq(rect.position, Vector2(160.0, 0.0))
 	assert_eq(rect.size, XomDaoFrame.CORE)
+
+
+func test_project_frame_is_locked_to_16_9() -> void:
+	var size := Vector2(
+		float(ProjectSettings.get_setting("display/window/size/viewport_width")),
+		float(ProjectSettings.get_setting("display/window/size/viewport_height"))
+	)
+	assert_eq(size, XomDaoFrame.SIZE)
+	assert_eq(ProjectSettings.get_setting("display/window/stretch/aspect"), "keep")
+
+
+func test_inset_is_scaled_to_frame_units_on_a_16_9_screen() -> void:
+	var inset: Vector2 = XomDaoFrame.inset_in_frame(
+		Vector2(32.0, 0.0), Vector2(640.0, 360.0), XomDaoFrame.SIZE
+	)
+	assert_eq(inset, Vector2(64.0, 0.0))
+
+
+func test_side_bars_absorb_a_notch_on_a_wide_phone() -> void:
+	# 800 x 360 shows the frame 640 wide: 80 px of bar on each side hides a 47 px notch.
+	var inset: Vector2 = XomDaoFrame.inset_in_frame(
+		Vector2(47.0, 21.0), Vector2(800.0, 360.0), XomDaoFrame.SIZE
+	)
+	assert_eq(inset, Vector2(0.0, 42.0))
+
+
+func test_top_bars_absorb_an_inset_on_a_tablet() -> void:
+	# 1024 x 768 shows the frame 576 tall: 96 px of bar above and below.
+	var inset: Vector2 = XomDaoFrame.inset_in_frame(
+		Vector2(0.0, 24.0), Vector2(1024.0, 768.0), XomDaoFrame.SIZE
+	)
+	assert_eq(inset, Vector2.ZERO)
 
 
 func test_autoloads_are_registered() -> void:

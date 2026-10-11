@@ -20,10 +20,10 @@ Godot bản khác sẽ ghi lại `project.godot` và các scene.
 
 | Đường dẫn | Có gì |
 | --- | --- |
-| `project.godot` | Khung gốc 960 × 720, `canvas_items` + `expand`, màn hình ngang ([ui-guide.md](../../docs/ui-guide.md)) |
+| `project.godot` | Khung cố định 1280 × 720 (16:9), `canvas_items` + `keep`, màn hình ngang ([ui-guide.md](../../docs/ui-guide.md)) |
 | `core/` | Autoload `Net` (kết nối), `Session` (token đăng nhập; đăng ký, đăng nhập, đăng xuất qua `/api/auth`), `Wallet`, `ContentLoader` (tải gói trò), `TestBridge` (cầu nối test, chỉ bản debug) |
 | `hub/` | Sảnh và màn của từng khối nền tảng; `hub/main.tscn` là màn đầu tiên |
-| `hub/select/` | Băng chuyền đảo trò, splash từng trò, panel chi tiết; `art/` là ảnh nhẹ của hub, xem được trước khi tải gói trò |
+| `hub/select/` | Dãy thẻ trò (splash, logo, tên) và hàng thể loại; `art/` (splash) và `logo/` (logo trò, vật thể loại) là ảnh nhẹ của hub, xem được trước khi tải gói trò |
 | `addons/xomdao_sdk/` | API duy nhất phần Godot của trò được dùng: `XomDaoFrame`, `XomDaoClient` (kết nối server) |
 | `addons/xomdao_sdk/ui/` | Bộ thành phần giao diện chung: theme, nút, bảng, hàng tiền, ô người chơi, thẻ trò, ô lựa chọn, thông báo nhanh, menu ☰, lá bài và chiếu cho trò bài, font, icon, âm thanh |
 | `hub/gallery/` | Màn gallery liệt kê mọi thành phần: mở bằng `?gallery=<trang>` (trang 1 tới 4) |
@@ -39,8 +39,8 @@ Phần Godot của một trò nằm ở `games/<id>/godot/` và chỉ được d
 Mọi màn và mọi trò dựng giao diện từ bộ thành phần trong `addons/xomdao_sdk/ui/`, làm theo
 [hướng nghệ thuật](../../docs/art-direction.md): nút có màu theo loại hành động, bảng gỗ ruột giấy,
 hàng tiền, ô người chơi (ảnh tròn trong vòng tre, cấp, vòng thời gian, 👑), thẻ trò, ô lựa chọn,
-thông báo nhanh, chấm đỏ và nút menu ☰ với bảng menu chung (rời phòng, âm thanh, cỡ giao diện, lề,
-chất lượng hình, luật, biểu cảm). Font Baloo 2 và Be Vietnam Pro, icon Phosphor (Fill), âm thanh
+thông báo nhanh, chấm đỏ và nút menu ☰ với bảng menu chung (cài đặt chia hai tab Giao diện và Âm
+thanh, rời phòng, luật, biểu cảm), thanh trượt âm lượng. Font Baloo 2 và Be Vietnam Pro, icon Phosphor (Fill), âm thanh
 chạm, mở bảng và xu đều nằm trong đó. Chất lượng hình mới được lưu lại, chưa đổi cách vẽ.
 
 Xem mọi thành phần ở màn gallery: `?gallery=1` tới `?gallery=4` trên bản web, hoặc
@@ -49,7 +49,7 @@ Xem mọi thành phần ở màn gallery: `?gallery=1` tới `?gallery=4` trên 
 ## Kết nối server
 
 `XomDaoClient` nói chuyện với server qua WebSocket thuần + JSON ở `/ws` (cùng cổng với API
-HTTP): đăng nhập khách hoặc tài khoản, tạo phòng, vào phòng bằng mã, gửi nước đi, nhận
+HTTP): đăng nhập bằng tài khoản (hub không cho chơi như khách), tạo phòng, vào phòng bằng mã, gửi nước đi, nhận
 `state_changed`. Mất kết nối thì tự nối lại và quay về phòng. Đầu file `client.gd` ghi cách dùng.
 
 Protocol chỉ viết một lần, bằng schema zod trong `packages/shared/src/protocol.ts`. Sửa schema
@@ -61,14 +61,16 @@ xong thì chạy `npm run gen:protocol` để sinh lại GDScript; `npm run chec
 Màn đầu tiên là sảnh: vòng đảo thể loại trên biển (Cờ, Bài, rồi thể loại phụ; đảo Sắp có khi chưa
 có thể loại phụ). Vuốt ngang hoặc chạm một đảo để xoay; chạm lại đảo đang chọn hoặc thẻ trò ở dưới
 phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ trên phải, banner (sự kiện đang mở, hoặc Chợ), hàng Nhà, Chợ,
-Đình, Bến dưới trái, thẻ trò đang chọn với **CHƠI** và **Tạo phòng**. Cạnh tên có chip cấp.
+Đình, Bến dưới trái, thẻ trò đang chọn với **CHƠI** (kèm số người của trò); Cạnh tên có chip cấp.
 
-- **CHƠI** là ghép nhanh: vào phòng đang chờ của trò đó, không ai tới thì sau vài giây máy ngồi ghế
-  trống và ván bắt đầu.
-- **Tạo phòng** mở bảng tuỳ chọn do trò điền (`room_setup()`), rồi tới phòng chờ có mã, người
-  chơi, "Mời bạn" (sao chép link `?room=<mã>`) và "Bắt đầu" cho chủ phòng.
-- **Chọn trò**: tab thể loại, ba đảo kéo ngang; chỉ đảo focus có màu và nổi nhẹ, hai đảo cạnh
-  xám xanh và tĩnh. Nền đổi theo splash của trò, chi tiết bên trái, Luật và Tạo phòng dưới phải.
+- **CHƠI** mở ngay một phòng của bạn cho trò đó. Phòng (`hub/room/waiting_room.gd`) có tấm giấy
+  bên trái (tranh và tên trò, nút cuộn giấy mở Luật, mã phòng, "Mời bạn", tuỳ chọn của trò mà chủ
+  phòng đổi được) và lưới thẻ người chơi bên phải (`seat_card.gd`). Góc dưới phải là "Bắt đầu" cho
+  chủ phòng, "Sẵn sàng" cho người khác; chủ phòng bắt đầu được khi mọi người đã sẵn sàng.
+- **Chọn trò**: dãy thẻ trò kéo ngang ở giữa (tranh splash phủ kín, logo và tên trò), hàng thể
+  loại ở góc dưới trái. Chạm một thẻ là vào thẳng phòng của trò đó; thẻ sự kiện mở bảng sự kiện.
+- Tuỳ chọn của trò (`room_setup()`) hiện trên tấm giấy của phòng (`hub/room/room_option.gd`):
+  công tắc, − giá trị +, các ô, hoặc ‹ giá trị › tuỳ loại tuỳ chọn.
   Focus lưu trò và tải ngầm `.pck`. Luật là bảng phân trang có vùng hình minh họa tùy chọn,
   chặn và làm mờ/tối nền. Trò chưa có bản Godot hiện khóa. Touch có ngưỡng phân biệt vuốt với
   chạm; `hub/touch_cancel.gd` xử lý DOM touchcancel của bản web.
@@ -87,7 +89,10 @@ phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ t
   điểm của bạn, dải mốc thưởng với **Nhận**, và **Tham gia** thay cho Chọn. Hết ván, kết quả ghi
   số điểm sự kiện vừa được và "Về sảnh" quay lại bảng sự kiện. Không có sự kiện thì đảo chìm
   trong sương và banner là Chợ.
-- **Chợ**: món bán theo tab Khung và Lưng bài, mỗi món có giá và "Mua", món đã mua hiện "Đã có".
+- **Chợ**: bố cục mở rộng được hai chiều. Hàng tab loại hàng ở trên (Khung, Lưng bài; thêm loại thì
+  thêm tab sang ngang), cột lọc bên trái (Tất cả, Chưa có, Đã có; thêm nhóm thì thêm ô xuống dưới),
+  còn lại là lưới thẻ món hàng cuộn dọc, số cột theo bề rộng. Mỗi thẻ có tên, hình, giá và "Mua";
+  món đã mua hiện "Đã có".
   Thiếu xu thì báo "Không đủ xu"; bấm hai lần chỉ trả tiền một lần.
 - **Bến**: gõ mã phòng rồi "Vào", hoặc chọn một phòng đang mở của trò đang chọn.
 - **Trong ván** chỉ có nút ☰ (rời phòng có hỏi lại khi đang giữa ván, luật, cài đặt, biểu cảm).
@@ -119,11 +124,10 @@ cần bấm hay đọc đều có tên, ví dụ ô Caro là `Cell_<x>_<y>`.
   chuột thật, tới bảng kết quả.
 - `npm run shots -- --path '/?play=tic-tac-toe'`: ảnh chụp trên các cỡ điện thoại.
 - `npm run shots -- --screen select` (hoặc `rules`): màn chọn trò và bảng luật trên các cỡ máy.
-- `npm run e2e -- --only godot-select`: vuốt chạm native, hủy touch, luật phân trang và tạo phòng.
+- `npm run e2e -- --only godot-select`: vuốt chạm native trên dãy thẻ, đổi thể loại, chạm thẻ vào phòng, luật phân trang.
 
-Artwork màn chọn dùng đảo sẵn có trong `games/<id>/assets/island.webp`. Nền riêng được ghi
-prompt trong `assets/prompts.json`; `node scripts/select-art.mjs` cắt các sheet và sao chép
-ảnh vào hub. Bảng tên chung được bake bằng Blender từ `assets/shared/render_select_label.py`.
+Tranh splash của màn chọn được ghi prompt trong `assets/prompts.json`; `node scripts/select-art.mjs`
+cắt các sheet vào `hub/select/art/`. Logo trò và vật thể loại là SVG vẽ tay trong `hub/select/logo/`.
 
 ## Xuất bản
 
