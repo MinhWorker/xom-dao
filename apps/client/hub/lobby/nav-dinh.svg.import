@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://fyhyh8tit2xa"
-path="res://.godot/imported/nav-ben.webp-dbd4da98f97d8e1f78661399ef80e41d.ctex"
+uid="uid://bamen2615airk"
+path="res://.godot/imported/nav-dinh.svg-64ae3f8e0d6d3abb9daca1b3c816c36e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://hub/lobby/nav-ben.webp"
-dest_files=["res://.godot/imported/nav-ben.webp-dbd4da98f97d8e1f78661399ef80e41d.ctex"]
+source_file="res://hub/lobby/nav-dinh.svg"
+dest_files=["res://.godot/imported/nav-dinh.svg-64ae3f8e0d6d3abb9daca1b3c816c36e.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
@@ -38,3 +38,6 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
+svg/scale=1.0
+editor/scale_with_editor_scale=false
+editor/convert_colors_with_editor_theme=false

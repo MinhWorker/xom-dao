@@ -11,7 +11,7 @@ extends Control
 ## - Right, lower: the selected game's card with CHƠI and Tạo phòng.
 ## Buttons and panels are raised (XomDaoPuff); CHƠI catches the light every few seconds.
 ## Art slots, all optional: `hub/lobby/backdrop.webp` (HubSky), `hub/genres/<island>.tscn|webp`
-## (HubIsland), `hub/lobby/nav-<name>.webp` (a dock picture), `hub/lobby/shortcut-<id>.webp` (a
+## (HubIsland), `hub/lobby/nav-<name>.svg` (a dock picture), `hub/lobby/shortcut-<id>.webp` (a
 ## shortcut's picture).
 ##
 ## The lobby only shows and reports: the hub (main.gd) acts on its signals.

@@ -146,8 +146,8 @@ cho nhân vật.
   CHƠI vàng `#FFD54A` chữ nâu đậm, Tạo phòng xanh dương `#2E8DE6`.
 - Đảo đang chọn quyết định danh sách trò ở thẻ "trò đang chọn" cạnh nút CHƠI.
 - Trang chủ, Chợ, Đình, Bến là nút ở cột trái của HUD, không phải công trình trên đảo. Mỗi nút là
-  một hình minh hoạ 3D hoạt hình (`nav-home`, `nav-cho`, `nav-dinh`, `nav-ben` trong
-  `assets/prompts.json`) trên khay xanh đậm bo tròn. Nút đang chọn nằm trên tấm vàng nổi và hình
+  một hình phẳng vẽ bằng SVG theo bảng màu, viền tối hơn mảng (`apps/client/hub/lobby/nav-*.svg`),
+  không dùng ảnh sinh ra thu nhỏ vì bị răng cưa. Các nút nằm trên khay xanh đậm bo tròn. Nút đang chọn nằm trên tấm vàng nổi và hình
   nhấp nhô nhẹ; nút khác nhấc lên khi rê chuột, nhún khi bấm; cả khay trượt vào từ trái khi mở sảnh.
 - Chỗ cho tranh (không bắt buộc): đảo `apps/client/hub/genres/<island>.tscn` (có chuyển động) hoặc
   `.webp`, khung vuông 512 × 512, luôn vẽ bản đủ màu; nền `apps/client/hub/lobby/backdrop.webp`;

@@ -1,6 +1,6 @@
 class_name HubNavButton
 extends Button
-## One place on the lobby's dock: its picture (`hub/lobby/nav-<art>.webp`, or a Phosphor icon
+## One place on the lobby's dock: its picture (`hub/lobby/nav-<art>.svg`, a flat picture in the palette, or a Phosphor icon
 ## until it has one) over its name. The place the player is in sits on a raised gold plate and
 ## its picture bobs; the others lift under the pointer and squash when pressed.
 ##
@@ -37,7 +37,7 @@ var _lift: float = 0.0:
 static func create(place_name: String, art: String, icon_name: String) -> HubNavButton:
 	var button := HubNavButton.new()
 	button.label = place_name
-	var path: String = DIR + art + ".webp"
+	var path: String = DIR + art + ".svg"
 	if ResourceLoader.exists(path):
 		button._picture = load(path)
 	else:
@@ -53,6 +53,8 @@ func _init() -> void:
 	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 		add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The pictures are drawn smaller than their file: mipmaps keep their edges smooth.
+	_art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_art.draw.connect(_draw_art)
 	add_child(_art)

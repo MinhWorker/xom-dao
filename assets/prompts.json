@@ -208,26 +208,6 @@
       "transparent": false,
       "maxSize": 1800,
       "prompt": "Original Xóm Đảo game background illustration. Friendly Vietnamese coastal toy world, clean stylized 2.5D cartoon, broad colour areas, rounded forms, restrained clean cel shading, minimal material texture, NO noise or heavy texture. Bright soft upper-left daylight. Fresh but moderately saturated palette: muted turquoise, sky blue, bamboo green, honey wood, warm ivory, terracotta. Calm readable spacious compositions with sky in upper third, gently hazy distance, focal props at the edges leaving the middle lower contrast for UI. NOT cinematic, photorealistic, neon, military tactical or fantasy card art. No text, no UI, no lettering, no logos, no watermark. Single landscape panoramic 16:9 illustration. A peaceful Vietnamese coastal fishing village for Mid-Autumn Festival, moon lanterns and orange paper lanterns, small pond and fishing rod in lower right, soft pastel twilight blue and warm light, simple rounded rooftops and calm water"
-    },
-    "nav-home": {
-      "transparent": true,
-      "maxSize": 192,
-      "prompt": "One small cute Vietnamese village house: chunky rounded cream plaster walls, a curved red clay tile roof, a little wooden door and one round window, a tiny green bush beside it. Thick dark-brown outline, glossy toy-like game UI icon, three-quarter front view, fills the frame."
-    },
-    "nav-cho": {
-      "transparent": true,
-      "maxSize": 192,
-      "prompt": "One cute market stall: a chunky honey-wood stall with a red and cream striped cloth awning and a counter holding a woven basket of colourful fruit. Thick dark-brown outline, glossy toy-like game UI icon, three-quarter front view, fills the frame."
-    },
-    "nav-dinh": {
-      "transparent": true,
-      "maxSize": 192,
-      "prompt": "One small Vietnamese village communal temple (dinh): a curved upturned double roof of red clay tiles with golden ridge tips, four red lacquer pillars and two stone steps. Thick dark-brown outline, glossy toy-like game UI icon, three-quarter front view, fills the frame."
-    },
-    "nav-ben": {
-      "transparent": true,
-      "maxSize": 192,
-      "prompt": "One cute round Vietnamese woven bamboo basket boat with a small wooden paddle and a little red pennant flag on a short pole, sitting on a small round splash of turquoise water. Thick dark-brown outline, glossy toy-like game UI icon, three-quarter front view, fills the frame."
     }
   }
 }
