@@ -162,3 +162,18 @@ func test_pagination_keeps_paragraphs_and_bullet_line_breaks() -> void:
 	var pages: Array[Dictionary] = HubRulesBoard.paginate(source, 520, 420, 26)
 	assert_eq(pages.size(), 1)
 	assert_eq(pages[0]["body"], body)
+
+
+func test_rules_reserve_space_for_wrapped_section_headings() -> void:
+	var title: String = "Công trình và cách tính tiền thuê đất phố"
+	var rules: HubRulesBoard = add_child_autofree(
+		HubRulesBoard.create("Luật", "## " + title + "\nNội dung luật không chồng tiêu đề.")
+	)
+	rules.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	rules.size = Vector2(1036, 720)
+	rules._layout()
+	var measured: Vector2 = XomDaoUi.display_font().get_multiline_string_size(
+		title, HORIZONTAL_ALIGNMENT_LEFT, rules._heading.size.x, 40
+	)
+	assert_gte(rules._heading.size.y, measured.y)
+	assert_gte(rules._text.position.y, rules._heading.size.y)

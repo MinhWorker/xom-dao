@@ -178,10 +178,16 @@ func _layout() -> void:
 	var content_width: float = width - 88.0
 	var content_height: float = height - 184.0
 	var column: float = (content_width - 32.0) * 0.5
+	var heading_height: float = 68.0
+	for section: Dictionary in _sections:
+		var measured: Vector2 = XomDaoUi.display_font().get_multiline_string_size(
+			str(section["title"]), HORIZONTAL_ALIGNMENT_LEFT, column, 40
+		)
+		heading_height = maxf(heading_height, measured.y + 8.0)
 	_heading.position = Vector2.ZERO
-	_heading.size = Vector2(column, 68)
-	_text.position = Vector2(0, 80)
-	_text.size = Vector2(column, content_height - 184)
+	_heading.size = Vector2(column, heading_height)
+	_text.position = Vector2(0, heading_height + 12)
+	_text.size = Vector2(column, content_height - _text.position.y - 104)
 	_text.add_theme_font_size_override("font_size", 26)
 	_placeholder.position = Vector2(column + 32.0, 0)
 	_placeholder.size = Vector2(column, content_height - 112)
