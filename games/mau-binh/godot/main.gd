@@ -6,16 +6,20 @@ extends Control
 ## src/game/model.ts: your hand and rows, who is done, the round results) and sends
 ## `submit {rows}` and `cancel`.
 ##
-## Tap a card, then another, to swap them; each row shows its hand, red where it breaks the
-## order (binh lủng). Xong on binh lủng asks once more ("Vẫn nộp"). With two seconds left your
-## rows go in as they are. When everyone is done: "Lật bài!", tới trắng, then chi 1, 2, 3 with
-## the points each seat won on that chi, sập 3 chi, and the round's totals.
+## Tap a card, then another, to swap them, or drag one onto another; each row shows its hand,
+## red where it breaks the order (binh lủng). Xong on binh lủng asks once more ("Vẫn nộp").
+## With two seconds left your rows go in as they are. When everyone is done: "Lật bài!", tới
+## trắng, then chi 1, 2, 3 with the points each seat won on that chi, sập 3 chi, the round's
+## totals, then the round's standings until the next deal. Luật and Kết quả (top right) open
+## the scoring rules and every finished round (boards.gd).
 ##
 ## Named nodes for tests: Mine_<position> (your cards: chi 1 = 0–4, chi 2 = 5–9, chi 3 = 10–12),
 ## Row_<chi>, Card_<seat>_<position>, Seat_<seat>, Tag_<seat>, Total_<seat>, Auto, Undo, Done,
-## Cancel, Round, Status, Info, Countdown, Word.
+## Cancel, Round, Status, Info, Countdown, Word; the boards' in boards.gd.
 
 const Rules := preload("res://content/mau-binh/rules.gd")
+const Boards := preload("res://content/mau-binh/boards.gd")
+const Drag := preload("res://content/mau-binh/drag.gd")
 
 ## Where each seat sits, from yours (bottom) round the table, by how many play.
 const SLOTS: Dictionary = {
@@ -65,6 +69,7 @@ var _auto: XomDaoButton = XomDaoButton.create("Tự xếp", XomDaoUi.Kind.SOCIAL
 var _done: XomDaoButton = XomDaoButton.create("Xong", XomDaoUi.Kind.PLAY)
 var _cancel: XomDaoButton = XomDaoButton.create("Xếp lại", XomDaoUi.Kind.BACK)
 var _fx := Control.new()
+var _boards: Control = Boards.new()
 var _sounds: Dictionary = {}
 
 ## One entry per seat: slot, 13 small cards, three row labels, tag, the round's total.
@@ -78,6 +83,7 @@ var _history: Array = []
 var _picked: int = -1
 var _hand_key: String = ""
 var _foul_warned_at: int = -1000000
+var _drag: Drag = Drag.new()
 
 ## What the last view showed, to tell what changed.
 var _round: int = -1
@@ -160,6 +166,10 @@ func _ready() -> void:
 	# Chi 3 first, so the nearer rows lie over the farther ones.
 	for k: int in [10, 11, 12, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4]:
 		add_child(_mine[k])
+	_drag.cards = _mine
+	_drag.lifted.connect(_on_lifted)
+	_drag.tapped.connect(_tap)
+	_drag.dropped.connect(_swap)
 	for row: int in 3:
 		var label := Label.new()
 		label.name = "Row_%d" % (row + 1)
@@ -187,6 +197,7 @@ func _ready() -> void:
 	_word.add_theme_constant_override("outline_size", 12)
 	_word.visible = false
 	add_child(_word)
+	add_child(_boards)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
 		var path: String = "res://content/mau-binh/sounds/%s.wav" % sound
@@ -248,10 +259,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 			_totals_shown = true
 	_round = round_number
 	_phase = phase
-	_show_seats()
-	_show_mine()
-	_show_hud()
-	_layout()
+	_refresh()
 	if fresh and live and phase == "deal":
 		_deal.call_deferred(round_number)
 	var ended: bool = snapshot.result != null
@@ -440,24 +448,22 @@ func _play_reveal(round_number: int) -> void:
 
 ## Draws everything again from the last view.
 func _refresh() -> void:
+	if _drag.dragged >= 0 and not _arranging():
+		_drag.cancel()
 	_show_seats()
 	_show_mine()
 	_show_hud()
+	var names: Array[String] = []
+	for i: int in _seats.size():
+		names.append(_seat_name(i))
+	_boards.call("show_view", _view, _snapshot, _me, names, _totals_shown)
 	_layout()
 
 
 ## What `seat` won or lost on chi `chi` this round, against everyone (chi duels only).
 static func _chi_points(result: Dictionary, seat: int, chi: int) -> int:
-	var sum: int = 0
-	for item: Variant in result["duels"]:
-		var duel: Dictionary = item
-		if str(duel["kind"]) != "chi":
-			continue
-		if int(duel["a"]) == seat:
-			sum += int((duel["chi"] as Array)[chi])
-		elif int(duel["b"]) == seat:
-			sum -= int((duel["chi"] as Array)[chi])
-	return sum
+	var won: Variant = Rules.chi_won(result, seat, chi)
+	return int(won) if won != null else 0
 
 
 # ── Seats ─────────────────────────────────────────────────────────────────────────────────
@@ -499,6 +505,7 @@ func _build_seats(count: int) -> void:
 		_hud(total, XomDaoUi.TEXT)
 		add_child(total)
 		_seats.append({"slot": slot, "cards": cards, "labels": labels, "tag": tag, "total": total})
+	move_child(_boards, -1)
 
 
 func _slot_of(seat: int) -> String:
@@ -661,7 +668,7 @@ func _show_mine() -> void:
 		if not dealt:
 			continue
 		_face(card, int(_order[k]))
-		card.picked = k == _picked
+		card.picked = k == _picked or k == _drag.hint
 		card.dim = false
 		card.mouse_default_cursor_shape = (
 			Control.CURSOR_POINTING_HAND if _arranging() else Control.CURSOR_ARROW
@@ -684,38 +691,49 @@ func _show_mine() -> void:
 				_mine[ROW_START[row] + k].dim = row != _chi_shown - 1
 
 
-## Tap a card to pick it, another to swap the two; the same card again puts it down.
+## Tap a card to pick it, another to swap the two (the same card again puts it down); or drag
+## one onto another (drag.gd).
 func _on_card_input(event: InputEvent, k: int) -> void:
-	var button := event as InputEventMouseButton
-	if button == null or button.button_index != 1 or not button.pressed:
-		return
-	if not _arranging():
-		return
-	accept_event()
+	if event is InputEventMouse and _arranging():
+		accept_event()
+		_drag.input(event as InputEventMouse, k)
+
+
+func _on_lifted() -> void:
+	_picked = -1
+	_refresh()
+
+
+func _tap(k: int) -> void:
 	if _picked < 0:
 		_picked = k
 		_sfx("place")
 	elif _picked == k:
 		_picked = -1
 	else:
-		_swap(_picked, k)
+		var other: int = _picked
 		_picked = -1
+		_swap(other, k)
+		return
 	_refresh()
 
 
+## Swaps two cards: each slides from where the other one is now to its place.
 func _swap(a: int, b: int) -> void:
 	_history.append(_order.duplicate())
+	var from: Array[Vector2] = [_mine[b].position, _mine[a].position]
 	var held: int = _order[a]
 	_order[a] = _order[b]
 	_order[b] = held
 	_sfx("swap")
+	_refresh()
 	if not is_inside_tree():
 		return
-	for pair: Array in [[a, b], [b, a]]:
-		var card: XomDaoCard = _mine[pair[0]]
+	for n: int in 2:
+		var card: XomDaoCard = _mine[[a, b][n]]
 		var home: Vector2 = card.position
-		card.position = _mine[pair[1]].position
-		card.create_tween().tween_property(card, "position", home, 0.18).set_trans(Tween.TRANS_QUAD)
+		card.position = from[n]
+		Drag.slide(card, home, 0.18)
 
 
 func _on_undo() -> void:
@@ -899,6 +917,7 @@ func _layout() -> void:
 	_cancel.position = Vector2(right - _cancel.size.x, bottom - _cancel.size.y)
 
 	# The middle: what is going on, your status and the seconds left.
+	_boards.call("place", Rect2(left, top, right - left, bottom - top))
 	var middle: float = size.y * 0.37
 	for label: Label in [_info, _status, _countdown]:
 		label.reset_size()
@@ -910,6 +929,10 @@ func _layout() -> void:
 	var mine: Vector2 = _block_size(MY_CARD)
 	var mine_at := Vector2((size.x - mine.x) / 2.0, bottom - mine.y)
 	_place_rows(_mine, mine_at, MY_CARD)
+	_drag.homes.clear()
+	for card: XomDaoCard in _mine:
+		_drag.homes.append(card.position)
+	_drag.place()
 	for row: int in 3:
 		var label: Label = _my_rows[row]
 		label.reset_size()
