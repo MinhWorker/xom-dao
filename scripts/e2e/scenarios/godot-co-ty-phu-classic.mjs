@@ -1,8 +1,9 @@
 // Cờ tỷ phú Classic in the Godot client (#122): the sandbox (?play=co-ty-phu-classic) plays three
 // computer players. You play a few real turns through the buttons (Gieo, then Mua, Xác nhận, Từ
-// bỏ, Trả nợ or Hết lượt as the turn asks; Trao đổi once), open the card of a square, then the Dev Console
-// leaves one computer player with 10 ₫ in front of your hotel and steps it until it goes
-// bankrupt and you win. Needs the debug web build (npm run godot:export -- --debug).
+// bỏ, Trả nợ or Hết lượt as the turn asks; Trao đổi once), then the Dev Console gives you two
+// deeds and you mortgage both at once on Tài sản's board. You open the card of a square, then the
+// Dev Console leaves one computer player with 10 ₫ in front of your hotel and steps it until it
+// goes bankrupt and you win. Needs the debug web build (npm run godot:export -- --debug).
 
 import { DESKTOP, godotText, launch, onScene, openGodot, room, tap } from '../godot.mjs';
 
@@ -98,6 +99,40 @@ export default async function run(t) {
   // Stage the end: two players out, the last one with 10 ₫ one step before your hotel.
   await cmd(page, 'bot pause; timer pause');
   await page.waitForTimeout(1500);
+
+  // Tài sản: two deeds of yours mortgaged together.
+  await cmd(
+    page,
+    [
+      ...[1, 6].flatMap((i) => [
+        `state set properties.${i}.owner ${me}`,
+        `state set properties.${i}.houses 0`,
+        `state set properties.${i}.mortgaged false`,
+      ]),
+      `state set turn ${me}`,
+      'state set phase "end"',
+      'state set specialEvent null',
+      'state set auction null',
+      'state set debt null',
+      'state set trade null',
+      'state set pending null',
+      'state set buildable null',
+    ].join('; '),
+  );
+  await tap(page, 'Assets');
+  await tap(page, 'MortgageRow_1');
+  await tap(page, 'MortgageRow_6');
+  await godotText(page, 'MortgageTotal', '2 tài sản · Nhận 240 ₫');
+  await page.screenshot({ path: t.shot('2-mortgage.png') });
+  await tap(page, 'MortgageConfirm');
+  await page.waitForFunction(
+    () => {
+      const { properties } = window.xomdao.state().room.view;
+      return properties[1].mortgaged && properties[6].mortgaged;
+    },
+    null,
+    { timeout: 10_000 },
+  );
   const other = [1, 2, 3].map((k) => (me + k) % 4);
   await cmd(
     page,
