@@ -1,9 +1,9 @@
 class_name HubIslandRing
 extends Control
 ## The lobby's ring of genre islands (docs/experience.md, "Sảnh: vòng đảo thể loại"): a tilted
-## circle on the sea seen from above, like a carousel. The island at the front centre is the
-## selected one; the others shrink and pale with distance. Swipe sideways or tap an island to
-## turn the ring; tapping the selected island again emits `opened`.
+## circle of islands floating in the sky, like a carousel. The island at the front centre is the
+## selected one; the others shrink and turn blue-grey with distance. Swipe sideways or tap an
+## island to turn the ring; tapping the selected island again emits `opened`.
 ##
 ## The ring fills its own rect, which the lobby keeps clear of the HUD.
 
@@ -13,7 +13,7 @@ signal opened(index: int)
 ## Size of the islands at the back of the ring, against the front one.
 const BACK_SCALE := 0.45
 ## The front island grows up to this times HubIsland.BASE when the sea has room.
-const FRONT_MAX := 1.3
+const FRONT_MAX := 2.0
 ## A drag this long (in units) is a swipe, not a tap.
 const TAP_SLOP := 16.0
 ## Units of drag per island turned.

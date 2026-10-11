@@ -1,5 +1,5 @@
 extends GutTest
-## The lobby's island ring with fake catalogs of 0, 1 and 6 secondary genres.
+## The lobby: its island ring with fake catalogs of 0, 1 and 6 secondary genres, and its HUD.
 
 const SIZES: Array[Vector2] = [Vector2(960, 720), Vector2(1560, 720), Vector2(1280, 720)]
 
@@ -164,3 +164,40 @@ func _move(at: Vector2) -> InputEventMouseMotion:
 	var event := InputEventMouseMotion.new()
 	event.position = at
 	return event
+
+
+func test_the_hud_parts_stay_on_screen_and_apart() -> void:
+	for scale: float in XomDaoSettings.SCALES:
+		for view: Vector2 in SIZES:
+			var settings: XomDaoSettings = _settings()
+			settings.ui_scale = scale
+			var lobby: HubLobby = add_child_autofree(HubLobby.new(settings))
+			lobby.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			lobby.size = view
+			var catalog: HubCatalog = _catalog(1)
+			lobby.show_catalog(catalog, "co")
+			lobby.show_game(catalog.card("tic-tac-toe"), true)
+			lobby.show_level(2, 140, 100, 250)
+			await wait_process_frames(2)
+			lobby._layout()
+			var parts: Array[Rect2] = lobby.hud_rects()
+			for i: int in parts.size():
+				assert_true(
+					Rect2(Vector2.ZERO, view).grow(0.5).encloses(parts[i]),
+					"%s ×%s: part %d %s on screen" % [view, scale, i, parts[i]]
+				)
+				for j: int in range(i + 1, parts.size()):
+					assert_false(
+						parts[i].intersects(parts[j]),
+						"%s ×%s: parts %d and %d overlap" % [view, scale, i, j]
+					)
+
+
+func test_the_exp_bar_shows_progress_in_this_level() -> void:
+	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
+	lobby.show_level(2, 140, 100, 250)
+	var bar: ProgressBar = lobby.find_child("LobbyExp", true, false)
+	assert_true(bar.visible)
+	assert_eq(bar.value, 40.0)
+	assert_eq(bar.max_value, 150.0)
+	assert_eq((lobby.find_child("LobbyExpText", true, false) as Label).text, "40/150")

@@ -1,220 +1,239 @@
 class_name HubIsland
 extends Control
-## One genre island on the lobby's ring: its art (`hub/genres/<island>.webp`) or, until that is
-## drawn, a toy island with the genre's sign on it (a board for Cờ, fanned cards for Bài). The
-## selected island has a gold halo on the water and its name on a wooden sign; a locked one
-## (Sắp có, or a genre with no ready game) sits in fog with a lock. The Sự kiện island glows and
-## flies a pennant with the days left while an event is open.
+## One genre island floating over the lobby (docs/experience.md, "Sảnh"). Its art comes from
+## `hub/genres/<island>.tscn` (animated: a Node2D whose art fills a 512 × 512 canvas, playing on
+## its own) or `hub/genres/<island>.webp` (still, same square canvas), else HubIslandArt draws a
+## stand-in. Art is always drawn in full colour; the island does the hierarchy itself:
+## - the selected (centre) island is in full colour with warm sunlight behind it and its name on
+##   a wooden sign;
+## - the others turn blue-grey with distance (`dim`);
+## - a locked one (Sắp có, or a genre with no ready game) sits in thick white fog with a lock;
+## - the Sự kiện island glows and flies a pennant with the days left while an event is open.
+## Every island bobs gently. A .tscn root may define `set_selected(on: bool)`.
 ##
 ## The ring sizes and places it (HubIslandRing); the island only draws.
 
-## Size at scale 1: the island and the band above it where the selected one's sign hangs.
-const BASE := Vector2(240.0, 200.0)
-const SIGN_BAND := 52.0
+## Size at scale 1: a square, like the art's canvas.
+const BASE := Vector2(240.0, 240.0)
+## The side of the art's canvas.
+const ART := 512.0
 const SOON := "sap-co"
+## How far the island bobs up and down (units at scale 1) and how fast (radians a second).
+const BOB := 5.0
+const BOB_SPEED := 1.4
+
+static var _dim_shader: Shader = preload("res://hub/lobby/island_dim.gdshader")
 
 var genre_id: String = ""
 var title: String = "":
 	set(value):
 		title = value
 		_sign.text = value
+		if _drawn != null:
+			_drawn.title = value
 
 var locked: bool = false:
 	set(value):
 		locked = value
-		queue_redraw()
+		_restyle()
 
 var selected: bool = false:
 	set(value):
 		selected = value
 		_sign.visible = value
-		_place_sign()
+		if _scene != null and _scene.has_method("set_selected"):
+			_scene.call("set_selected", value)
+		_restyle()
 
-## How near the front it is: 1 at the front, 0 at the back (paler and smaller).
+## How near the front it is: 1 at the front, 0 at the back (greyer).
 var depth: float = 1.0:
 	set(value):
 		depth = value
-		modulate = Color(1, 1, 1).lerp(Color(0.78, 0.9, 0.95), 1.0 - value)
-
-var art: Texture2D
+		_restyle()
 
 ## An event island with an event open: it glows and flies a pennant with the days left (-1: none).
 var days_left: int = -1:
 	set(value):
 		days_left = value
-		queue_redraw()
+		_restyle()
 
+## The body: the art (or its stand-in) under the grey-out material; it bobs.
+var _body := Control.new()
+## Fog, lock and pennant over the art, bobbing with it.
+var _overlay := Control.new()
 var _sign := Label.new()
+var _material := ShaderMaterial.new()
+var _drawn: HubIslandArt
+var _scene: Node2D
+var _picture: TextureRect
 var _lock: Texture2D = XomDaoUi.icon("lock-simple")
+var _time: float = 0.0
 
 
-## The island for a ring entry ({id, name, island, locked}).
+## The island for a ring entry ({id, name, island, locked, days?}).
 static func create(entry: Dictionary) -> HubIsland:
 	var island := HubIsland.new()
 	island.genre_id = str(entry.get("id", ""))
 	island.name = "Island_" + island.genre_id
+	var art: String = str(entry.get("island", ""))
+	if art == "" and island.genre_id == SOON:
+		art = SOON
+	island._load_art(art)
 	island.title = str(entry.get("name", ""))
 	island.locked = bool(entry.get("locked", false))
 	island.days_left = int(entry.get("days", -1))
-	var path: String = "res://hub/genres/%s.webp" % str(entry.get("island", ""))
-	if ResourceLoader.exists(path):
-		island.art = load(path)
 	return island
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	size = BASE
+	_material.shader = _dim_shader
+	_body.name = "Body"
+	_body.material = _material
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_body)
+	_overlay.name = "Overlay"
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.draw.connect(_draw_overlay)
+	add_child(_overlay)
+	_sign.name = "Sign"
 	_sign.visible = false
 	_sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_sign.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_sign.add_theme_font_override("font", XomDaoUi.display_font(800))
-	_sign.add_theme_font_size_override("font_size", 34)
+	_sign.add_theme_font_size_override("font_size", 30)
 	_sign.add_theme_color_override("font_color", XomDaoUi.CREAM)
 	_sign.add_theme_color_override("font_outline_color", XomDaoUi.HONEY_DARK)
 	_sign.add_theme_constant_override("outline_size", 8)
 	var plank: StyleBoxFlat = XomDaoUi.with_shadow(
 		XomDaoUi.box(XomDaoUi.HONEY, XomDaoUi.HONEY_DARK, XomDaoUi.BORDER, 14.0)
 	)
-	plank.content_margin_left = 22.0
-	plank.content_margin_right = 22.0
+	plank.content_margin_left = 20.0
+	plank.content_margin_right = 20.0
 	_sign.add_theme_stylebox_override("normal", plank)
 	add_child(_sign)
-	resized.connect(_place_sign)
-
-
-## Where the island itself is inside the control (below the sign band).
-func body_rect() -> Rect2:
-	var k: float = size.x / BASE.x
-	return Rect2(0.0, SIGN_BAND * k, size.x, size.y - SIGN_BAND * k)
-
-
-func _place_sign() -> void:
-	var k: float = size.x / BASE.x
-	_sign.scale = Vector2.ONE * k
-	_sign.size = _sign.get_combined_minimum_size()
-	_sign.position = Vector2((size.x - _sign.size.x * k) / 2.0, 0.0)
-	queue_redraw()
+	resized.connect(_place)
+	_time = randf() * TAU
 
 
 func _ready() -> void:
-	_place_sign.call_deferred()
+	_place.call_deferred()
 
 
-func _draw() -> void:
-	var body: Rect2 = body_rect()
+func _process(delta: float) -> void:
+	_time += delta * BOB_SPEED
+	var bob: float = sin(_time) * BOB * size.x / BASE.x
+	_body.position.y = bob
+	_overlay.position.y = bob
+
+
+## Where the island itself is inside the control: the tap target.
+func body_rect() -> Rect2:
+	return Rect2(size.x * 0.08, size.y * 0.12, size.x * 0.84, size.y * 0.76)
+
+
+## The art for this island: the animated scene, the still picture, or the drawn stand-in.
+func _load_art(art: String) -> void:
+	var scene_path: String = "res://hub/genres/%s.tscn" % art
+	var picture_path: String = "res://hub/genres/%s.webp" % art
+	if art != "" and ResourceLoader.exists(scene_path):
+		var packed: PackedScene = load(scene_path)
+		var root: Node = packed.instantiate()
+		if root is Node2D:
+			_scene = root
+			_share_material(_scene)
+			_body.add_child(_scene)
+			return
+		root.free()
+	if art != "" and ResourceLoader.exists(picture_path):
+		_picture = TextureRect.new()
+		_picture.texture = load(picture_path)
+		_picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_picture.use_parent_material = true
+		_body.add_child(_picture)
+		return
+	_drawn = HubIslandArt.new()
+	_drawn.genre_id = genre_id
+	_body.add_child(_drawn)
+
+
+## The grey-out reaches every drawing node of an art scene.
+func _share_material(node: Node) -> void:
+	if node is CanvasItem:
+		(node as CanvasItem).use_parent_material = true
+	for child: Node in node.get_children():
+		_share_material(child)
+
+
+func _place() -> void:
 	var k: float = size.x / BASE.x
-	var c := Vector2(body.get_center().x, body.position.y + body.size.y * 0.62)
-	var rx: float = body.size.x * 0.46
-	var ry: float = body.size.y * 0.3
+	_body.size = size
+	_overlay.size = size
+	for art: Control in [_drawn, _picture]:
+		if art != null:
+			art.size = size
+	if _scene != null:
+		_scene.scale = Vector2.ONE * size.x / ART
+	_sign.scale = Vector2.ONE * k
+	_sign.size = _sign.get_combined_minimum_size()
+	_sign.position = Vector2((size.x - _sign.size.x * k) / 2.0, size.y * 0.76)
+	queue_redraw()
+	_overlay.queue_redraw()
+
+
+## Grey with distance (none at the front), more so in fog.
+func _restyle() -> void:
+	var dim: float = clampf((1.0 - depth) * 6.0, 0.0, 0.85)
+	if locked:
+		dim = maxf(dim, 0.6)
+	_material.set_shader_parameter("dim", dim)
+	queue_redraw()
+	_overlay.queue_redraw()
+
+
+## Warm sunlight behind the selected island, and an event's lantern glow.
+func _draw() -> void:
+	var c := Vector2(size.x * 0.5, size.y * 0.45)
+	var r: float = size.x * 0.5
+	if selected and not locked:
+		for i: int in 6:
+			draw_circle(c, r * (1.0 - i * 0.12), Color(XomDaoUi.SUN, 0.06), true, -1.0, true)
 	if days_left >= 0 and not locked:
-		_ellipse(c, rx * 1.3, ry * 1.5, Color(XomDaoUi.LANTERN, 0.18), 0.0)
-		_ellipse(c, rx * 1.18, ry * 1.32, Color(XomDaoUi.GOLD, 0.22), 0.0)
-	if selected:
-		_ellipse(c + Vector2(0, ry * 0.25), rx * 1.12, ry * 1.25, Color(XomDaoUi.GOLD, 0.35), 0.0)
-		_ellipse(c + Vector2(0, ry * 0.25), rx * 1.12, ry * 1.25, XomDaoUi.GOLD, 4.0 * k)
-	# Foam on the water, the rocky foot, then the sand and the grass on top.
-	_ellipse(c + Vector2(0, ry * 0.18), rx * 1.04, ry * 1.06, Color(1, 1, 1, 0.55), 0.0)
-	_ellipse(c + Vector2(0, ry * 0.12), rx, ry, Color("#8C7B6B"), 0.0)
-	_ellipse(c, rx * 0.97, ry * 0.92, XomDaoUi.SAND, 0.0)
-	_ellipse(c - Vector2(0, ry * 0.18), rx * 0.72, ry * 0.62, XomDaoUi.BAMBOO, 0.0)
-	_ellipse(
-		c - Vector2(rx * 0.1, ry * 0.28), rx * 0.48, ry * 0.38, XomDaoUi.BAMBOO.lightened(0.15), 0.0
+		for i: int in 4:
+			draw_circle(c, r * (0.9 - i * 0.15), Color(XomDaoUi.LANTERN, 0.07), true, -1.0, true)
+
+
+func _draw_overlay() -> void:
+	var k: float = size.x / BASE.x
+	var c := Vector2(size.x * 0.5, size.y * 0.42)
+	if locked:
+		_draw_fog(c, size.x * 0.4, k)
+	elif days_left >= 0:
+		_draw_pennant(c + Vector2(-size.x * 0.26, -size.y * 0.02), k)
+
+
+func _draw_fog(c: Vector2, rx: float, k: float) -> void:
+	var puffs: Array[Vector2] = [
+		Vector2(-0.8, 0.1),
+		Vector2(-0.45, -0.25),
+		Vector2(0.0, -0.35),
+		Vector2(0.45, -0.22),
+		Vector2(0.8, 0.12),
+		Vector2(-0.4, 0.35),
+		Vector2(0.35, 0.4),
+		Vector2(0.0, 0.15),
+	]
+	for puff: Vector2 in puffs:
+		_overlay.draw_circle(c + puff * rx, rx * 0.42, Color(1, 1, 1, 0.62), true, -1.0, true)
+	var side: float = 56.0 * k
+	var plate := Rect2(c - Vector2(side, side) * 0.7, Vector2(side, side) * 1.4)
+	_overlay.draw_style_box(XomDaoUi.box(XomDaoUi.NAVY_HUD, Color.TRANSPARENT, 0, 18.0 * k), plate)
+	_overlay.draw_texture_rect(
+		_lock, Rect2(c - Vector2(side, side) / 2.0, Vector2(side, side)), false, XomDaoUi.CREAM
 	)
-	if art != null:
-		var w: float = body.size.x
-		var h: float = w * art.get_height() / art.get_width()
-		draw_texture_rect(art, Rect2(body.position.x, body.end.y - h, w, h), false)
-	elif locked:
-		_draw_fog(c, rx, ry, k)
-	else:
-		_draw_palm(c + Vector2(rx * 0.62, -ry * 0.2), k)
-		_draw_mark(c - Vector2(0, ry * 0.35), k)
-	if days_left >= 0 and not locked:
-		_draw_pennant(c + Vector2(-rx * 0.62, -ry * 0.1), k)
-
-
-## The genre's sign on its island until it has art: a little board, or fanned cards.
-func _draw_mark(at: Vector2, k: float) -> void:
-	match genre_id:
-		"co":
-			var side: float = 70.0 * k
-			var board := Rect2(at - Vector2(side, side * 0.6) / 2.0, Vector2(side, side * 0.6))
-			draw_rect(board, XomDaoUi.PAPER_DARK)
-			for i: int in range(1, 5):
-				var x: float = board.position.x + board.size.x * i / 5.0
-				draw_line(
-					Vector2(x, board.position.y),
-					Vector2(x, board.end.y),
-					XomDaoUi.HONEY_DARK,
-					1.5 * k
-				)
-			for i: int in range(1, 3):
-				var y: float = board.position.y + board.size.y * i / 3.0
-				draw_line(
-					Vector2(board.position.x, y),
-					Vector2(board.end.x, y),
-					XomDaoUi.HONEY_DARK,
-					1.5 * k
-				)
-			_piece(
-				board.position + Vector2(board.size.x * 0.3, board.size.y * 0.35),
-				12.0 * k,
-				XomDaoUi.LACQUER
-			)
-			_piece(
-				board.position + Vector2(board.size.x * 0.7, board.size.y * 0.7),
-				12.0 * k,
-				XomDaoUi.INK
-			)
-		"bai":
-			for i: int in 3:
-				var angle: float = (i - 1) * 0.3
-				var card := Rect2(Vector2(-16, -46) * k, Vector2(32, 46) * k)
-				draw_set_transform(at + Vector2((i - 1) * 16.0 * k, 4.0 * k), angle)
-				draw_rect(card, XomDaoUi.CREAM)
-				draw_rect(card, XomDaoUi.INK, false, 1.5 * k)
-				var pip: Color = XomDaoUi.LACQUER if i != 1 else XomDaoUi.INK
-				draw_circle(card.get_center(), 6.0 * k, pip)
-			draw_set_transform(Vector2.ZERO)
-		"su-kien":
-			# A lantern on a stick.
-			draw_line(at + Vector2(0, -40) * k, at + Vector2(0, -26) * k, XomDaoUi.INK, 2.0 * k)
-			_ellipse(at, 26.0 * k, 22.0 * k, XomDaoUi.LANTERN, 0.0)
-			_ellipse(at, 12.0 * k, 22.0 * k, XomDaoUi.LACQUER_DARK, 2.0 * k)
-			draw_rect(Rect2(at + Vector2(-10, -26) * k, Vector2(20, 6) * k), XomDaoUi.GOLD)
-			draw_rect(Rect2(at + Vector2(-10, 20) * k, Vector2(20, 6) * k), XomDaoUi.GOLD)
-		"hanh-dong":
-			# A round bomb with a lit fuse.
-			var bomb: Vector2 = at + Vector2(0, 4) * k
-			draw_circle(bomb + Vector2(2, 3) * k, 24.0 * k, XomDaoUi.SHADOW)
-			draw_circle(bomb, 24.0 * k, XomDaoUi.INK)
-			draw_circle(bomb - Vector2(8, 8) * k, 7.0 * k, Color(1, 1, 1, 0.35))
-			draw_rect(Rect2(bomb + Vector2(-7, -31) * k, Vector2(14, 9) * k), XomDaoUi.HONEY_DARK)
-			var fuse: Vector2 = bomb + Vector2(12, -42) * k
-			draw_line(bomb + Vector2(0, -30) * k, fuse, XomDaoUi.HONEY, 3.0 * k, true)
-			draw_circle(fuse, 7.0 * k, XomDaoUi.GOLD)
-			draw_circle(fuse, 3.5 * k, XomDaoUi.LANTERN)
-		_:
-			var font: Font = XomDaoUi.display_font(800)
-			var letter: String = title.left(1)
-			var font_size: int = int(48 * k)
-			var w: float = font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-			draw_string(
-				font,
-				at + Vector2(-w / 2.0, font_size * 0.35),
-				letter,
-				HORIZONTAL_ALIGNMENT_LEFT,
-				-1,
-				font_size,
-				XomDaoUi.INK
-			)
-
-
-func _piece(at: Vector2, r: float, color: Color) -> void:
-	draw_circle(at + Vector2(1, 2), r, XomDaoUi.SHADOW)
-	draw_circle(at, r, XomDaoUi.CREAM)
-	draw_circle(at, r * 0.75, color, false, 2.0)
 
 
 ## A red pennant on a pole with the event's days left.
@@ -224,7 +243,7 @@ func _draw_pennant(at: Vector2, k: float) -> void:
 	var text: String = "Còn %d ngày" % days_left
 	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 30.0 * k
 	var top: Vector2 = at + Vector2(0, -96) * k
-	draw_line(at, top, XomDaoUi.HONEY_DARK, 4.0 * k, true)
+	_overlay.draw_line(at, top, XomDaoUi.HONEY_DARK, 4.0 * k, true)
 	var flag := PackedVector2Array(
 		[
 			top,
@@ -234,8 +253,8 @@ func _draw_pennant(at: Vector2, k: float) -> void:
 			top + Vector2(0, 40) * k,
 		]
 	)
-	draw_colored_polygon(flag, XomDaoUi.LACQUER)
-	draw_string(
+	_overlay.draw_colored_polygon(flag, XomDaoUi.LACQUER)
+	_overlay.draw_string(
 		font,
 		top + Vector2(8, 27) * k,
 		text,
@@ -244,33 +263,3 @@ func _draw_pennant(at: Vector2, k: float) -> void:
 		font_size,
 		XomDaoUi.CREAM
 	)
-
-
-func _draw_palm(at: Vector2, k: float) -> void:
-	var top: Vector2 = at + Vector2(-6, -58) * k
-	draw_line(at, top, XomDaoUi.HONEY_DARK, 6.0 * k, true)
-	for i: int in 5:
-		var angle: float = PI + i * PI / 4.0
-		var tip: Vector2 = top + Vector2(cos(angle), sin(angle) * 0.6 + 0.35) * 34.0 * k
-		draw_line(top, tip, XomDaoUi.BAMBOO_DARK, 7.0 * k, true)
-
-
-func _draw_fog(c: Vector2, rx: float, ry: float, k: float) -> void:
-	for i: int in 5:
-		var at: Vector2 = c + Vector2((i - 2) * rx * 0.36, -ry * (0.4 + 0.25 * (i % 2)))
-		draw_circle(at, rx * 0.34, Color(1, 1, 1, 0.75), true, -1.0, true)
-	var side: float = 56.0 * k
-	draw_texture_rect(
-		_lock, Rect2(c - Vector2(side / 2.0, side * 0.95), Vector2(side, side)), false, XomDaoUi.HUD
-	)
-
-
-func _ellipse(c: Vector2, rx: float, ry: float, color: Color, width: float) -> void:
-	var points := PackedVector2Array()
-	for i: int in 49:
-		var a: float = i * TAU / 48.0
-		points.append(c + Vector2(cos(a) * rx, sin(a) * ry))
-	if width > 0.0:
-		draw_polyline(points, color, width, true)
-	else:
-		draw_colored_polygon(points, color)

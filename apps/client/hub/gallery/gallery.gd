@@ -83,6 +83,8 @@ func _buttons_page() -> Control:
 		["Bỏ lượt", XomDaoUi.Kind.BACK],
 		["Luật", XomDaoUi.Kind.INFO],
 		["Đầu hàng", XomDaoUi.Kind.DANGER],
+		["CHƠI", XomDaoUi.Kind.HOME_PLAY],
+		["Tạo phòng", XomDaoUi.Kind.HOME_SOCIAL],
 	]
 	for pair: Array in labels:
 		kinds.add_child(XomDaoButton.create(pair[0], pair[1]))

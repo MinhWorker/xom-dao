@@ -39,16 +39,18 @@ Thế giới có ba tầng, giống "chế độ chơi" và "bản đồ" của 
 
 | Tầng | Giống trong game mobile | Ở Xóm Đảo |
 | --- | --- | --- |
-| **Sảnh** | Sảnh chờ, chọn chế độ ngay trên đó | Biển có **vòng đảo thể loại**, xoay được |
+| **Sảnh** | Sảnh chờ, chọn chế độ ngay trên đó | Bầu trời có **vòng đảo thể loại** bay lơ lửng, xoay được |
 | **Thể loại** | Chế độ chơi (Cổ điển, Giải trí…) | Một **đảo thể loại** trên vòng: Cờ, Bài, rồi các thể loại phụ |
 | **Trò** | Bản đồ trong một chế độ | Một **thẻ trò** trong danh sách kéo ngang của thể loại |
 
-Sảnh không có đảo trung tâm hay nhân vật. Các đảo thể loại cùng cỡ, xếp đều trên một vòng tròn nằm
-nghiêng trên biển, nhìn chéo từ trên như một băng chuyền:
+Sảnh không có đảo trung tâm cố định hay nhân vật. Các đảo thể loại là đảo bay, cùng cỡ, xếp đều trên
+một vòng tròn nằm nghiêng giữa trời, nhìn chéo từ trên như một băng chuyền. Nền là núi đá vôi kiểu
+Việt Nam, mặt nước, chùa xa và mây nhẹ, nhạt màu để không tranh với HUD:
 
 - Vuốt ngang hoặc chạm một đảo để **xoay vòng**. Đảo ở chính giữa phía trước là **đảo đang chọn**:
-  to nhất, sáng nhất, có quầng vàng trên mặt nước và bảng tên. Các đảo khác nhỏ và nhạt dần theo
-  độ xa, không có bảng tên.
+  to nhất, đủ màu (cây xanh, mái đỏ, nắng vàng phía sau) và có bảng tên. Các đảo khác nhỏ dần và
+  ngả xám xanh theo độ xa, không có bảng tên. Đảo bị khoá chìm trong sương trắng dày, có ổ khoá.
+  Đảo nào cũng bồng bềnh nhẹ.
 - Đảo đang chọn quyết định thẻ "trò đang chọn" ở dưới phải. Chạm lại đảo đang chọn, hoặc chạm thẻ,
   thì mở màn chọn trò của thể loại đó.
 - **Cờ** và **Bài** là hai thể loại chính: luôn đứng đầu vòng theo thứ tự. Các thể loại phụ nối
@@ -77,22 +79,29 @@ Quy tắc dữ liệu:
 
 Bố cục HUD ở sảnh:
 
+Sảnh theo bố cục ba cột của client game PC (League of Legends), vẽ hoạt hình phẳng:
+
 | Vùng | Chứa |
 | --- | --- |
-| Trên trái | Ảnh đại diện, tên, chip cấp → **Nhà** |
-| Trên phải | Một hàng icon nhỏ: xu, ngọc, hộp thư, ⚙ |
-| Cột trái | Sự kiện, Nhiệm vụ, Bạn bè (icon tròn nhỏ, có chấm đỏ) |
-| Cột phải | **Banner có tranh**: sự kiện đang mở, Chợ, Túi đồ; nhãn nhỏ "Mới", "Miễn phí" |
-| Dưới trái | Hàng nút icon vuông có chữ dưới: Nhà, Chợ, Đình, Bến |
-| Dưới phải | Thẻ trò đang chọn (đầu: tên; thân: tranh; chân: số người, thời lượng, số đang chơi) + nút **CHƠI** thật to + **Tạo phòng** |
-| Giữa | Vòng đảo thể loại |
+| Cột trái | Thanh dọc sát mép trái: **Trang chủ** (đang chọn), Chợ, Đình, Bến; icon phẳng có chữ dưới |
+| Trên trái | Ảnh đại diện, tên, chip cấp và thanh kinh nghiệm → **Nhà** |
+| Trên phải | Xu, hộp thư, quà, ⚙ |
+| Phải, trên | Lối tắt: **Chợ** (có tranh), **Sự kiện** (chấm đỏ và số ngày còn lại khi có sự kiện), **Nhiệm vụ** |
+| Phải, dưới | Thẻ trò đang chọn: đầu (tên, số đang chơi), thân (tranh), chân (số người, thời lượng), rồi **CHƠI** (vàng) và **Tạo phòng** (xanh) |
+| Giữa | Vòng đảo thể loại, phần lớn màn hình |
+
+Mắt đi theo thứ tự: đảo giữa → thẻ trò đang chọn → **CHƠI**.
+
+HUD sảnh: nền xanh navy đậm trong mờ, chữ và icon màu kem; mục đang chọn là bảng vàng có viền sáng
+và quầng nhẹ; nút chính vàng, nút phụ xanh dương sáng. Thẻ và lối tắt bo góc, viền mảnh, bóng nhẹ.
+Hộp thư, quà và Nhiệm vụ chưa có: chạm vào hiện "Sắp có".
 
 Các màn khác ngoài sảnh và ván đấu (chọn trò, Nhà, Chợ, Bến, kết quả) chỉ có ← ở trên trái và hàng
 icon tiền + ⚙ ở trên phải.
 
 Các nơi chốn giữ tên làng: **Nhà** (hồ sơ, túi đồ), **Chợ** (cửa hàng), **Đình** (tin tức, xếp
-hạng chung), **Bến** (phòng đang mở, bạn bè online, lời mời). Chúng là nút ở hàng dưới trái của
-HUD.
+hạng chung), **Bến** (phòng đang mở, bạn bè online, lời mời). Chợ, Đình, Bến là nút ở cột trái
+của sảnh; Nhà mở bằng cách chạm ảnh đại diện.
 
 ## Đường đi của người chơi
 
