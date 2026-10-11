@@ -135,12 +135,17 @@ cho nhân vật.
 
 ## Sảnh: vòng đảo
 
-- Không có đảo Xóm và nhân vật ở giữa. Các **đảo thể loại xếp trên một vòng tròn** nằm nghiêng trên
-  biển, nhìn chéo từ trên.
+- Không có đảo Xóm và nhân vật ở giữa. Các **đảo thể loại** là đảo bay, xếp trên một vòng tròn
+  nằm nghiêng giữa trời, nhìn chéo từ trên. Nền: núi đá vôi, mặt nước, chùa xa, mây nhẹ, nhạt màu.
 - Vuốt ngang hoặc chạm một đảo để **xoay vòng**; đảo ở chính giữa phía trước là **đảo đang chọn**:
-  to nhất, sáng nhất, có bảng tên. Các đảo khác nhỏ và nhạt dần theo độ xa.
+  to nhất, đủ màu, có bảng tên. Các đảo khác nhỏ dần và ngả xám xanh; đảo khoá chìm trong sương.
+- HUD riêng của sảnh: nền navy `#16233F` trong mờ, viền `#3B5683`; mục đang chọn vàng đồng có quầng;
+  CHƠI vàng `#FFD54A` chữ nâu đậm, Tạo phòng xanh dương `#2E8DE6`.
 - Đảo đang chọn quyết định danh sách trò ở thẻ "trò đang chọn" cạnh nút CHƠI.
-- Nhà, Chợ, Đình, Bến là nút ở HUD (hàng dưới trái), không phải công trình trên đảo.
+- Trang chủ, Chợ, Đình, Bến là nút ở cột trái của HUD, không phải công trình trên đảo.
+- Chỗ cho tranh (không bắt buộc): đảo `apps/client/hub/genres/<island>.tscn` (có chuyển động) hoặc
+  `.webp`, khung vuông 512 × 512, luôn vẽ bản đủ màu; nền `apps/client/hub/lobby/backdrop.webp`;
+  tranh lối tắt `apps/client/hub/lobby/shortcut-<id>.webp`.
 
 ## Tranh thẻ trò và đảo
 

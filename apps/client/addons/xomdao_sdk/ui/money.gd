@@ -20,6 +20,14 @@ var text: String:
 	get:
 		return _label.text
 
+## The pill's colour (the lobby's navy HUD sets its own).
+var background: Color = XomDaoUi.HUD:
+	set(value):
+		background = value
+		_pill.add_theme_stylebox_override(
+			"panel", XomDaoUi.box(value, Color.TRANSPARENT, 0, HEIGHT / 2.0)
+		)
+
 var _pill := Panel.new()
 var _label := Label.new()
 var _icon := XomDaoResourceIcon.new()
@@ -38,9 +46,7 @@ static func create(
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = Vector2(220.0, HEIGHT + 8.0)
-	_pill.add_theme_stylebox_override(
-		"panel", XomDaoUi.box(XomDaoUi.HUD, Color.TRANSPARENT, 0, HEIGHT / 2.0)
-	)
+	background = XomDaoUi.HUD
 	_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_pill)
 	_label.add_theme_font_override("font", XomDaoUi.display_font(800))
