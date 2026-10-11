@@ -44,6 +44,13 @@ export async function godotText(page, name, text, timeout = 30_000) {
   return handle.jsonValue();
 }
 
+/** From the lobby: opens the game select on the selected game and its Tạo phòng board. */
+export async function createRoom(page) {
+  await tap(page, 'SelectedGame');
+  await onScene(page, 'select');
+  await tap(page, 'SelectCreate');
+}
+
 /** Taps a visible node by name with the mouse, once it is there and enabled. */
 export async function tap(page, name, timeout = 30_000) {
   const box = await (

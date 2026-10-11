@@ -6,6 +6,7 @@
 
 import {
   caroTap,
+  createRoom,
   DESKTOP,
   godotText,
   launch,
@@ -34,7 +35,7 @@ export default async function run(t) {
   await tap(host, 'Back');
   await onScene(host, 'lobby');
   await godotText(host, 'SelectedName', 'Caro');
-  await tap(host, 'CreateRoom');
+  await createRoom(host);
   await host.screenshot({ path: t.shot('1-create.png') });
   await tap(host, 'ConfirmCreate');
   await onScene(host, 'room');

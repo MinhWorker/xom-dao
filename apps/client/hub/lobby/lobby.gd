@@ -6,10 +6,10 @@ extends Control
 ##   Bến), each a picture over its name (HubNavButton).
 ## - Top: the profile (avatar, name, level, EXP bar; it opens Nhà) on the left; the balance,
 ##   mail, gifts and ⚙ on the right.
-## - Right, upper: shortcuts to Chợ, Sự kiện (red dot and days left while an event is open) and
-##   Nhiệm vụ.
-## - Right, lower: the selected game's card (HubGameCard): its art under frosted glass, with
-##   CHƠI and Tạo phòng.
+## - Right, under the top row: shortcuts to Chợ, Sự kiện (red dot and days left while an event
+##   is open) and Nhiệm vụ.
+## - Bottom right: the selected game's card (HubGameCard): its art, its name, and CHƠI as a
+##   gold slab along its bottom. A room is made from the game select.
 ## Buttons and panels are raised (XomDaoPuff); CHƠI catches the light every few seconds.
 ## Art slots, all optional: `hub/lobby/backdrop.webp` (HubSky), `hub/genres/<island>.tscn|webp`
 ## (HubIsland), `hub/lobby/nav-<name>.svg` (a dock picture), `hub/lobby/shortcut-<id>.webp` (a
@@ -18,7 +18,6 @@ extends Control
 ## The lobby only shows and reports: the hub (main.gd) acts on its signals.
 
 signal play_pressed(game_id: String)
-signal create_pressed(game_id: String)
 ## The selected island was tapped again, or the card: open the game select on this genre.
 signal select_opened(genre_id: String)
 ## Nhà (the profile), Chợ, Đình or Bến ("nha", "cho", "dinh", "ben").
@@ -51,8 +50,7 @@ const GAP := 12.0
 var ring := HubIslandRing.new()
 var money := HubMoneyRow.new()
 var avatar := XomDaoAvatar.new()
-var play: XomDaoButton = XomDaoButton.create("CHƠI", XomDaoUi.Kind.HOME_PLAY)
-var create: XomDaoButton = XomDaoButton.create("Tạo phòng", XomDaoUi.Kind.HOME_SOCIAL)
+var play: HubPlayButton
 var mail: XomDaoIconButton = XomDaoIconButton.create("envelope-simple")
 var gifts: XomDaoIconButton = XomDaoIconButton.create("gift")
 
@@ -106,7 +104,7 @@ func _ready() -> void:
 ## CHƠI catches the light, while there is something to play.
 func _glint() -> void:
 	if not play.disabled and is_visible_in_tree():
-		play.body.sweep()
+		play.sweep()
 
 
 ## Fills the ring from the catalog, `genre_id`'s island at the front.
@@ -164,23 +162,11 @@ func show_game(card: XomDaoGameCard, can_play: bool) -> void:
 	_game_id = card.id if card != null else ""
 	_card.title.text = card.name if card != null else "Sắp có"
 	_card.show_art(HubGameArt.splash(card.id) if card != null else null, not can_play)
-	_card.online.visible = card != null
-	_card.online.text = str(card.playing) if card != null else "0"
-	# Out of the row at once: a chip waiting to be freed would still widen the card.
-	for child: Node in _card.info.get_children():
-		_card.info.remove_child(child)
-		child.queue_free()
-	if card != null:
-		var players: XomDaoChip = _card.chip(
-			XomDaoGameTile.players_label(card.min_players, card.max_players), "users"
-		)
-		players.name = "SelectedPlayers"
-		_card.info.add_child(players)
-		var length: XomDaoChip = _card.chip(XomDaoGameTile.duration_label(card.duration), "clock")
-		length.name = "SelectedDuration"
-		_card.info.add_child(length)
+	_card.show_online(card.playing if card != null else 0, card != null)
+	play.seats = (
+		XomDaoGameTile.players_label(card.min_players, card.max_players) if card != null else ""
+	)
 	play.disabled = not can_play
-	create.disabled = not can_play
 	_layout.call_deferred()
 
 
@@ -424,8 +410,9 @@ func _banner(picture: Texture2D, plate: Vector2) -> ColorRect:
 	material.set_shader_parameter("art", picture)
 	material.set_shader_parameter("has_art", true)
 	material.set_shader_parameter("box", box)
-	material.set_shader_parameter("radius", 17.0)
-	material.set_shader_parameter("shade", 0.5)
+	material.set_shader_parameter("radii", Vector4(17.0, 17.0, 17.0, 17.0))
+	material.set_shader_parameter("shade_top", 0.2)
+	material.set_shader_parameter("shade_bottom", 0.55)
 	material.set_shader_parameter("uv_origin", (Vector2.ONE - span) / 2.0)
 	material.set_shader_parameter("uv_span", span)
 	rect.material = material
@@ -448,22 +435,10 @@ func _on_shortcut(id: String) -> void:
 ## The selected game: name and players online, its picture, players and length, CHƠI and
 ## Tạo phòng.
 func _build_card() -> void:
+	play = _card.play
 	_card.gui_input.connect(_on_card_input)
 	add_child(_card)
-	var buttons: HBoxContainer = _card.buttons
-	play.name = "Play"
-	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	play.size_flags_stretch_ratio = 1.1
 	play.pressed.connect(func() -> void: play_pressed.emit(_game_id))
-	buttons.add_child(play)
-	create.name = "CreateRoom"
-	create.icon = XomDaoUi.icon("user-plus")
-	create.add_theme_font_size_override("font_size", 28)
-	create.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	create.pressed.connect(func() -> void: create_pressed.emit(_game_id))
-	buttons.add_child(create)
-	play.pad = 12.0
-	create.pad = 12.0
 
 
 func _on_profile_input(event: InputEvent) -> void:
@@ -510,16 +485,15 @@ func _layout() -> void:
 	_profile.position = Vector2(left, top + (88.0 - _profile.size.y) / 2.0 * k_top)
 	money.position = Vector2(right - money.size.x * k_top, top)
 	var hud_bottom: float = top + 88.0 * k_top
-	# The right column: shortcuts over the card, shrunk to fit the height.
+	# The right column, shrunk to fit the height: the shortcuts hang under the top row and the
+	# card sits in the bottom corner.
 	var column_h: float = _shortcuts.size.y + GAP + _card.size.y
 	var k_right: float = minf(k, (bottom - hud_bottom - GAP) / column_h)
 	k_right = minf(k_right, (right - left) * 0.45 / _card.size.x)
 	_shortcuts.scale = Vector2.ONE * k_right
 	_card.scale = Vector2.ONE * k_right
 	_card.position = Vector2(right - _card.size.x * k_right, bottom - _card.size.y * k_right)
-	_shortcuts.position = Vector2(
-		right - _shortcuts.size.x * k_right, _card.position.y - (_shortcuts.size.y + GAP) * k_right
-	)
+	_shortcuts.position = Vector2(right - _shortcuts.size.x * k_right, hud_bottom + GAP)
 	var ring_top: float = hud_bottom + 8.0
 	var ring_right: float = minf(_card.position.x, _shortcuts.position.x) - GAP
 	ring.position = Vector2(left, ring_top)

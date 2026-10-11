@@ -6,6 +6,7 @@
 import {
   caroPlayToEnd,
   coins,
+  createRoom,
   DESKTOP,
   godotText,
   launch,
@@ -62,7 +63,7 @@ export default async function run(t) {
   await onScene(host, 'lobby');
   await godotText(host, 'SelectedName', 'Caro');
   await godotText(host, 'Coins', coins(after));
-  await tap(host, 'CreateRoom');
+  await createRoom(host);
   await tap(host, 'ConfirmCreate');
   await onScene(host, 'room');
   const code = await godotText(host, 'RoomCode', /^[A-Z0-9]{4}$/);

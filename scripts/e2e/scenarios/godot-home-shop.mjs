@@ -4,6 +4,7 @@
 // build (npm run godot:export -- --debug) and a dev server (XOMDAO_DEV=1).
 
 import {
+  createRoom,
   DESKTOP,
   godotText,
   launch,
@@ -53,7 +54,7 @@ export default async function run(t) {
 
   await tap(lan, 'Back');
   await onScene(lan, 'lobby');
-  await tap(lan, 'CreateRoom');
+  await createRoom(lan);
   await tap(lan, 'ConfirmCreate');
   await onScene(lan, 'room');
   const code = await godotText(lan, 'RoomCode', /^[A-Z0-9]{4}$/);

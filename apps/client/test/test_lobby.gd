@@ -150,7 +150,7 @@ func test_picking_a_game_again_keeps_the_hud_where_it_was() -> void:
 	var before: Array[Rect2] = lobby.hud_rects()
 	lobby.show_game(catalog.card("tic-tac-toe"), true)
 	await wait_process_frames(2)
-	assert_eq(lobby._card.info.get_child_count(), 2)
+	assert_eq(lobby.play.seats, "2 người")
 	var after: Array[Rect2] = lobby.hud_rects()
 	for i: int in before.size():
 		assert_almost_eq(after[i].position, before[i].position, Vector2.ONE * 0.01)

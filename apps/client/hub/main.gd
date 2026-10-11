@@ -263,7 +263,6 @@ func _show_lobby() -> void:
 	lobby.show_game(_catalog.card(_game_id), _catalog.can_play(_game_id))
 	lobby.genre_changed.connect(_on_genre_changed.bind(lobby))
 	lobby.play_pressed.connect(_quick_match)
-	lobby.create_pressed.connect(_open_setup)
 	lobby.select_opened.connect(_show_select)
 	lobby.place_pressed.connect(_on_place)
 	lobby.event_pressed.connect(

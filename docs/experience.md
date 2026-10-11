@@ -86,8 +86,8 @@ Sảnh theo bố cục ba cột của client game PC (League of Legends), vẽ h
 | Cột trái | Khay nổi bo tròn ở mép trái: **Trang chủ** (đang chọn, trên tấm vàng nổi, hình nhấp nhô), Chợ, Đình, Bến; mỗi nút một hình minh hoạ có chữ dưới |
 | Trên trái | Ảnh đại diện (hình của tài khoản, trong khung đang dùng) đè lên đầu một tấm xanh đậm; trên tấm là tên, dưới tên là một thanh bắt đầu bằng chip cấp rồi tới kinh nghiệm → **Nhà** |
 | Trên phải | Xu, hộp thư, quà, ⚙ |
-| Phải, trên | Lối tắt, tấm phẳng xanh đậm viền mảnh: **Chợ** (tranh phủ kín tấm), **Sự kiện** (hình hộp quà; chấm đỏ và số ngày còn lại khi có sự kiện), **Nhiệm vụ** (hình bảng kẹp) |
-| Phải, dưới | Thẻ trò đang chọn: tranh của trò phủ kín thẻ, hơi tối ở trên và dưới; tên và số đang chơi nằm trên một tấm kính mờ ở trên, số người, thời lượng, **CHƠI** (vàng) và **Tạo phòng** (xanh) trên một tấm kính mờ ở dưới |
+| Phải, dưới thanh trên | Lối tắt, tấm phẳng xanh đậm viền mảnh: **Chợ** (tranh phủ kín tấm), **Sự kiện** (hình hộp quà; chấm đỏ và số ngày còn lại khi có sự kiện), **Nhiệm vụ** (hình bảng kẹp) |
+| Góc dưới phải | Thẻ trò đang chọn, hai góc bo lớn và hai góc bo nhỏ: tranh của trò phủ kín thẻ, tối ở phía trên; tên trò viết thẳng lên tranh ở góc trên trái, số đang chơi ở góc trên phải, không có nền. **CHƠI** là một tấm vàng lớn chiếm trọn đáy thẻ, vát góc trên trái, ghi kèm số người của trò (`2–4 người`). Không ghi thời lượng, không có nút Tạo phòng ở sảnh |
 | Giữa | Vòng đảo thể loại, phần lớn màn hình |
 
 Mắt đi theo thứ tự: đảo giữa → thẻ trò đang chọn → **CHƠI**.
@@ -121,7 +121,6 @@ Mở game ─► Sảnh (vòng đảo)
   │
   ├─ Bến ─► Nhập mã phòng / danh sách phòng / bạn bè đang online / lời mời
   │
-  ├─ Tạo phòng (ở Sảnh) ─► tuỳ chỉnh phòng của trò đang chọn
   └─ Nhà / Chợ / Bến / Sự kiện …  ─► màn nơi chốn ─► ← về Sảnh
 ```
 

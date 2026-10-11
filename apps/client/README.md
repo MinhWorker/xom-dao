@@ -61,7 +61,7 @@ xong thì chạy `npm run gen:protocol` để sinh lại GDScript; `npm run chec
 Màn đầu tiên là sảnh: vòng đảo thể loại trên biển (Cờ, Bài, rồi thể loại phụ; đảo Sắp có khi chưa
 có thể loại phụ). Vuốt ngang hoặc chạm một đảo để xoay; chạm lại đảo đang chọn hoặc thẻ trò ở dưới
 phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ trên phải, banner (sự kiện đang mở, hoặc Chợ), hàng Nhà, Chợ,
-Đình, Bến dưới trái, thẻ trò đang chọn với **CHƠI** và **Tạo phòng**. Cạnh tên có chip cấp.
+Đình, Bến dưới trái, thẻ trò đang chọn với **CHƠI** (kèm số người của trò); **Tạo phòng** nằm ở màn chọn trò. Cạnh tên có chip cấp.
 
 - **CHƠI** là ghép nhanh: vào phòng đang chờ của trò đó, không ai tới thì sau vài giây máy ngồi ghế
   trống và ván bắt đầu.
