@@ -23,6 +23,7 @@ Godot bản khác sẽ ghi lại `project.godot` và các scene.
 | `project.godot` | Khung gốc 960 × 720, `canvas_items` + `expand`, màn hình ngang ([ui-guide.md](../../docs/ui-guide.md)) |
 | `core/` | Autoload `Net` (kết nối), `Session` (token đăng nhập; đăng ký, đăng nhập, đăng xuất qua `/api/auth`), `Wallet`, `ContentLoader` (tải gói trò), `TestBridge` (cầu nối test, chỉ bản debug) |
 | `hub/` | Sảnh và màn của từng khối nền tảng; `hub/main.tscn` là màn đầu tiên |
+| `hub/select/` | Băng chuyền đảo trò, splash từng trò, panel chi tiết; `art/` là ảnh nhẹ của hub, xem được trước khi tải gói trò |
 | `addons/xomdao_sdk/` | API duy nhất phần Godot của trò được dùng: `XomDaoFrame`, `XomDaoClient` (kết nối server) |
 | `addons/xomdao_sdk/ui/` | Bộ thành phần giao diện chung: theme, nút, bảng, hàng tiền, ô người chơi, thẻ trò, ô lựa chọn, thông báo nhanh, menu ☰, lá bài và chiếu cho trò bài, font, icon, âm thanh |
 | `hub/gallery/` | Màn gallery liệt kê mọi thành phần: mở bằng `?gallery=<trang>` (trang 1 tới 4) |
@@ -66,9 +67,13 @@ phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ t
   trống và ván bắt đầu.
 - **Tạo phòng** mở bảng tuỳ chọn do trò điền (`room_setup()`), rồi tới phòng chờ có mã, người
   chơi, "Mời bạn" (sao chép link `?room=<mã>`) và "Bắt đầu" cho chủ phòng.
-- **Chọn trò**: tab thể loại, thẻ trò kéo ngang, bảng chi tiết với Chọn, Luật, Tạo phòng, Danh
-  sách phòng. Chọn thẻ là gói `.pck` của trò bắt đầu tải ngầm. Trò chưa có bản Godot hiện mờ, có
-  ổ khoá.
+- **Chọn trò**: tab thể loại, ba đảo kéo ngang; chỉ đảo focus có màu và nổi nhẹ, hai đảo cạnh
+  xám xanh và tĩnh. Nền đổi theo splash của trò, chi tiết bên trái, Luật và Tạo phòng dưới phải.
+  Focus lưu trò và tải ngầm `.pck`. Luật là bảng phân trang có vùng hình minh họa tùy chọn,
+  chặn và làm mờ/tối nền. Trò chưa có bản Godot hiện khóa. Touch có ngưỡng phân biệt vuốt với
+  chạm; `hub/touch_cancel.gd` xử lý DOM touchcancel của bản web.
+  Khung web đọc `env(safe-area-inset-*)` và đổi từ CSS pixel sang đơn vị khung để tránh tai thỏ,
+  thanh home ở mọi mật độ màn hình.
 - **Nhà**: thẻ hồ sơ (ảnh đại diện với khung đang dùng, cấp và thanh kinh nghiệm, số ván và số ván
   thắng, lưng bài) và kệ có tab Túi đồ, Thành tích, Xếp hạng. Túi đồ có món đã mua trước, rồi món
   ai cũng có; "Dùng" để đeo. Thành tích đã đạt đứng trước; Xếp hạng có một ô "Hạng N" cho mỗi
@@ -113,6 +118,12 @@ cần bấm hay đọc đều có tên, ví dụ ô Caro là `Cell_<x>_<y>`.
 - `npm run e2e -- --only godot-tien-len`: ba vòng Tiến Lên với ba máy trong sandbox, chọn bài bằng
   chuột thật, tới bảng kết quả.
 - `npm run shots -- --path '/?play=tic-tac-toe'`: ảnh chụp trên các cỡ điện thoại.
+- `npm run shots -- --screen select` (hoặc `rules`): màn chọn trò và bảng luật trên các cỡ máy.
+- `npm run e2e -- --only godot-select`: vuốt chạm native, hủy touch, luật phân trang và tạo phòng.
+
+Artwork màn chọn dùng đảo sẵn có trong `games/<id>/assets/island.webp`. Nền riêng được ghi
+prompt trong `assets/prompts.json`; `node scripts/select-art.mjs` cắt các sheet và sao chép
+ảnh vào hub. Bảng tên chung được bake bằng Blender từ `assets/shared/render_select_label.py`.
 
 ## Xuất bản
 

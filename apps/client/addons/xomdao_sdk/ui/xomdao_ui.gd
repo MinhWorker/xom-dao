@@ -217,6 +217,13 @@ static func play(from: Node, sound: String) -> void:
 ## The "bounce" every pressed thing does: down to 94% in 80 ms, back in 120 ms.
 static func bounce(node: Control) -> void:
 	node.pivot_offset = node.size / 2.0
+	var base: Vector2 = node.get_meta("bounce_base", node.scale)
+	var previous: Tween = node.get_meta("bounce_tween") if node.has_meta("bounce_tween") else null
+	if previous != null and previous.is_valid():
+		previous.kill()
 	var tween: Tween = node.create_tween()
-	tween.tween_property(node, "scale", Vector2.ONE * 0.94, 0.08)
-	tween.tween_property(node, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK)
+	node.set_meta("bounce_base", base)
+	node.set_meta("bounce_tween", tween)
+	tween.tween_property(node, "scale", base * 0.94, 0.08)
+	tween.tween_property(node, "scale", base, 0.12).set_trans(Tween.TRANS_BACK)
+	tween.tween_callback(func() -> void: node.remove_meta("bounce_base"))

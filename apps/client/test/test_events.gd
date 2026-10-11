@@ -89,11 +89,15 @@ func test_without_an_event_the_shortcut_is_quiet_and_the_island_is_fogged() -> v
 
 func test_the_event_board_shows_tiers_and_claims() -> void:
 	var select: HubGameSelect = add_child_autofree(HubGameSelect.new())
+	select.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	select.size = Vector2(1036, 720)
 	watch_signals(select)
-	select.show_genre(_catalog(true), "su-kien", "trung-thu")
+	var catalog: HubCatalog = _catalog(true)
+	catalog.card("trung-thu").tagline = "Thả câu dưới trăng rằm, gom điểm nhận quà."
+	select.show_genre(catalog, "su-kien", "trung-thu")
 	assert_signal_emitted_with_parameters(select, "progress_needed", ["trung-thu"])
 	assert_true((select.find_child("JoinEvent", true, false) as Control).visible)
-	assert_false((select.find_child("Choose", true, false) as Control).visible)
+	assert_false((select.find_child("SelectCreate", true, false) as Control).visible)
 	select.show_progress(
 		XomDaoEventProgress.from_dict({"eventId": "trung-thu", "points": 12, "claimed": []})
 	)
@@ -109,11 +113,15 @@ func test_the_event_board_shows_tiers_and_claims() -> void:
 	)
 	await wait_process_frames(1)
 	assert_not_null(select.find_child("Claimed_0", true, false))
+	select._layout()
+	assert_lte(select._tiers.get_combined_minimum_size().x, select._event_scroll.size.x)
+	var pending: Control = select.find_child("Claim_1", true, false)
+	assert_lte(select._points.size.y + 8 + pending.size.y / 2, select._event_scroll.size.y)
 
 
 func test_a_table_game_keeps_its_buttons() -> void:
 	var select: HubGameSelect = add_child_autofree(HubGameSelect.new())
 	select.show_genre(_catalog(true), "co", "tic-tac-toe")
-	assert_true((select.find_child("Choose", true, false) as Control).visible)
+	assert_true((select.find_child("SelectCreate", true, false) as Control).visible)
 	assert_false((select.find_child("JoinEvent", true, false) as Control).visible)
-	assert_false((select.find_child("EventTiers", true, false) as Control).visible)
+	assert_false((select.find_child("EventTiers", true, false) as Control).is_visible_in_tree())

@@ -95,6 +95,14 @@ try {
   run(['--import'], join(project, '.godot'));
   const index = join(dist, 'index.html');
   run([mode, 'Web', index], index);
+  // Fullscreen phones expose their notch/home-bar env() values with viewport-fit=cover.
+  writeFileSync(
+    index,
+    readFileSync(index, 'utf8').replace(
+      /(<meta name="viewport" content=")([^"]*)"/,
+      '$1$2, viewport-fit=cover"',
+    ),
+  );
   console.log(`✓ web ${debug ? 'debug' : 'release'} build`);
   for (const id of games) {
     const temp = join(dist, 'content', `${id}.pck`);
