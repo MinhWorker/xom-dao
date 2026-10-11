@@ -50,6 +50,8 @@ export const PlayerInfo = z.object({
   connected: z.boolean(),
   /** A seat the computer plays (never a host, always connected). */
   bot: z.boolean().optional(),
+  /** In `players`: said Sẵn sàng in the waiting room (`room:ready`). */
+  ready: z.boolean().optional(),
   /** The account's picture (`Avatar`) and the ring around it (`Frame`); bots have none. */
   avatar: z.string().optional(),
   frame: z.string().optional(),
@@ -469,6 +471,11 @@ export const requests = {
    * next game starts with them. Can't change how many seats the computer has.
    */
   'room:options': { req: z.object({ options: z.unknown() }), res: Empty },
+  /**
+   * A seated player other than the host says they are ready (or takes it back), before a game.
+   * In a waiting room the host can only start once every other person seated is ready.
+   */
+  'room:ready': { req: z.object({ ready: z.boolean() }), res: Empty },
   'game:start': { req: Empty, res: Empty },
   /** `move` is `{ event, payload }`: one of the game's events. */
   'game:move': { req: z.object({ move: z.unknown() }), res: Empty },

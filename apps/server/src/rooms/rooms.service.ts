@@ -26,6 +26,8 @@ interface Member {
   connected: boolean;
   /** Played by the computer (`game.bot`). Bots don't keep a room alive and are never host. */
   bot?: boolean;
+  /** Said Sẵn sàng in the waiting room (`room:ready`); cleared when a game starts. */
+  ready?: boolean;
   avatar?: string;
   frame?: string;
   cardBack?: string;
@@ -359,6 +361,26 @@ export class RoomsService {
     return room;
   }
 
+  /** A seated player says they are ready for the host to start, or takes it back. */
+  setReady(code: string, playerId: PlayerId, ready: boolean) {
+    const room = this.get(code);
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) throw new RoomError('Bạn đang xem, chưa có ghế');
+    if (room.status === 'playing') throw new RoomError('Ván đã bắt đầu');
+    player.ready = ready;
+    return room;
+  }
+
+  /**
+   * Who the host of a waiting room still waits for: the other people seated who have not said
+   * Sẵn sàng. Empty once a game was played here: Chơi tiếp needs no second yes.
+   */
+  unready(code: string) {
+    const room = this.get(code);
+    if (room.status !== 'lobby') return [];
+    return room.players.filter((p) => !p.bot && p.id !== room.hostId && !p.ready);
+  }
+
   start(code: string, playerId: PlayerId) {
     const room = this.get(code);
     if (room.hostId !== playerId) throw new RoomError('Chỉ chủ phòng mới bắt đầu được');
@@ -379,6 +401,7 @@ export class RoomsService {
     );
     room.status = 'playing';
     room.quick = false;
+    for (const player of room.players) player.ready = false;
     room.result = null;
     room.startedAt = Date.now();
     room.endedAt = null;
@@ -539,11 +562,12 @@ export class RoomsService {
   /** What `memberId` is allowed to see. Never send `room.state` directly. */
   snapshotFor(room: Room, memberId: PlayerId): RoomSnapshot {
     const isPlayer = room.players.some((p) => p.id === memberId);
-    const info = ({ id, name, connected, bot, avatar, frame, cardBack }: Member) => ({
+    const info = ({ id, name, connected, bot, ready, avatar, frame, cardBack }: Member) => ({
       id,
       name,
       connected,
       ...(bot && { bot }),
+      ...(ready && { ready }),
       ...(avatar && { avatar }),
       ...(frame && { frame }),
       ...(cardBack && { cardBack }),

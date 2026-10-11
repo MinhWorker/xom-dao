@@ -87,6 +87,11 @@ describe('WebSocket transport', () => {
       role: 'player',
     });
     expect(joined).toMatchObject({ ok: true, roomCode: code });
+    expect(await lan.request('game:start')).toEqual({
+      ok: false,
+      error: 'Chờ mọi người sẵn sàng đã',
+    });
+    expect(await minh.request('room:ready', { ready: true })).toEqual({ ok: true });
     expect(await lan.request('game:start')).toEqual({ ok: true });
 
     const place = (x: number, y: number) => ({ move: { event: 'place', payload: { x, y } } });

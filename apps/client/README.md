@@ -63,8 +63,10 @@ có thể loại phụ). Vuốt ngang hoặc chạm một đảo để xoay; ch�
 phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ trên phải, banner (sự kiện đang mở, hoặc Chợ), hàng Nhà, Chợ,
 Đình, Bến dưới trái, thẻ trò đang chọn với **CHƠI** (kèm số người của trò); **Tạo phòng** nằm ở màn chọn trò. Cạnh tên có chip cấp.
 
-- **CHƠI** là ghép nhanh: vào phòng đang chờ của trò đó, không ai tới thì sau vài giây máy ngồi ghế
-  trống và ván bắt đầu.
+- **CHƠI** mở ngay một phòng của bạn cho trò đó. Phòng (`hub/room/waiting_room.gd`) có tấm giấy
+  bên trái (tranh và tên trò, nút cuộn giấy mở Luật, mã phòng, "Mời bạn", tuỳ chọn của trò mà chủ
+  phòng đổi được) và lưới thẻ người chơi bên phải (`seat_card.gd`). Góc dưới phải là "Bắt đầu" cho
+  chủ phòng, "Sẵn sàng" cho người khác; chủ phòng bắt đầu được khi mọi người đã sẵn sàng.
 - **Tạo phòng** mở bảng tuỳ chọn do trò điền (`room_setup()`), rồi tới phòng chờ có mã, người
   chơi, "Mời bạn" (sao chép link `?room=<mã>`) và "Bắt đầu" cho chủ phòng.
 - **Chọn trò**: tab thể loại, ba đảo kéo ngang; chỉ đảo focus có màu và nổi nhẹ, hai đảo cạnh

@@ -38,6 +38,8 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - Rooms keep a score.
 - Room options are checked with the game's zod schema and kept for the room's life. The host may
   replace them between games (`room:options`); bots then join or leave to match.
+- In a waiting room (`lobby`) the other seated people say `room:ready`; the gateway refuses
+  `game:start` until they all have. Quick match and Chơi tiếp need no ready.
 - Bots never host or keep a room alive.
 
 ## Accounts and connection

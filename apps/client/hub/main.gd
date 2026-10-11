@@ -262,7 +262,7 @@ func _show_lobby() -> void:
 	lobby.show_catalog(_catalog, _genre)
 	lobby.show_game(_catalog.card(_game_id), _catalog.can_play(_game_id))
 	lobby.genre_changed.connect(_on_genre_changed.bind(lobby))
-	lobby.play_pressed.connect(_quick_match)
+	lobby.play_pressed.connect(_play)
 	lobby.select_opened.connect(_show_select)
 	lobby.place_pressed.connect(_on_place)
 	lobby.event_pressed.connect(
@@ -514,6 +514,13 @@ func _back_to_lobby() -> void:
 	_show_lobby()
 
 
+## CHƠI: a room of your own for this game, with its usual options. The room's screen is where
+## they change, friends come in and the host starts.
+func _play(game_id: String) -> void:
+	_choose_game(game_id)
+	await _client.create_room(game_id)
+
+
 func _quick_match(game_id: String) -> void:
 	_choose_game(game_id)
 	_quick = true
@@ -602,16 +609,65 @@ func _show_waiting_room(snapshot: XomDaoRoomSnapshot) -> void:
 		room.invite_pressed.connect(_invite)
 		room.start_pressed.connect(_client.start_game)
 		room.player_pressed.connect(_show_profile_of)
+		room.options_changed.connect(_set_options)
+		room.ready_pressed.connect(_set_ready)
+		room.rules_pressed.connect(_toggle_room_rules)
 	if snapshot == null:
 		return
-	var card: XomDaoGameCard = _catalog.card(snapshot.game_id)
-	room.show_room(snapshot, _client.player_id, card.max_players if card != null else 2, _quick)
+	room.show_room(snapshot, _client.player_id, _catalog.card(snapshot.game_id), _quick)
 	if snapshot.game_id != _game_id:
 		_choose_game(snapshot.game_id)
-	ContentLoader.preload_game(snapshot.game_id)
+	if room.setup_game != snapshot.game_id:
+		_load_setup(room, snapshot.game_id)
+
+
+## Fills the room's plate with the game's own options, once its pack is loaded.
+func _load_setup(room: HubWaitingRoom, game_id: String) -> void:
+	if room.loading_game == game_id:
+		return
+	room.loading_game = game_id
+	var scene: PackedScene = await ContentLoader.load_game(game_id)
+	# Gone, or in another game's room by now.
+	if not is_instance_valid(room) or room.loading_game != game_id:
+		return
+	if scene == null:
+		room.loading_game = ""
+		return
+	var probe: Node = scene.instantiate()
+	var spec: Array = probe.call("room_setup") if probe.has_method("room_setup") else []
+	probe.free()
+	room.show_setup(game_id, spec)
+
+
+func _set_ready(ready: bool) -> void:
+	var ack: Dictionary = await _client.request(XomDaoProtocol.ROOM_READY, {"ready": ready})
+	if not ack.get("ok", false):
+		_say(str(ack.get("error", "Không đổi được")))
+
+
+## The scroll in the room: the game's Luật board, or away with it when it is up.
+func _toggle_room_rules() -> void:
+	var board: Node = get_node_or_null("RulesBoard")
+	if board != null:
+		board.queue_free()
+	elif _client.snapshot != null:
+		_show_rules(_client.snapshot.game_id)
+
+
+## The host picked another option in the room. A refusal puts the choices back.
+func _set_options(options: Dictionary) -> void:
+	var ack: Dictionary = await _client.request(XomDaoProtocol.ROOM_OPTIONS, {"options": options})
+	if not ack.get("ok", false):
+		_say(str(ack.get("error", "Không đổi được")))
+	if _shown == "room":
+		_refresh()
 
 
 func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
+	# The rules opened in the waiting room do not follow the players to the table.
+	var rules: Node = get_node_or_null("RulesBoard")
+	if rules != null and _shown == "room":
+		rules.queue_free()
 	if _game_id_shown != snapshot.game_id:
 		_drop_game()
 		_game_id_shown = snapshot.game_id

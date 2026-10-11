@@ -6,6 +6,7 @@ var id: String = ""
 var name: String = ""
 var connected: bool = false
 var bot: bool = false
+var ready: bool = false
 var avatar: String = ""
 var frame: String = ""
 var card_back: String = ""
@@ -18,6 +19,7 @@ static func from_dict(d: Dictionary) -> XomDaoPlayerInfo:
 	o.name = str(d.get("name", ""))
 	o.connected = bool(d.get("connected", false))
 	o.bot = bool(d.get("bot", false))
+	o.ready = bool(d.get("ready", false))
 	o.avatar = str(d.get("avatar", ""))
 	o.frame = str(d.get("frame", ""))
 	o.card_back = str(d.get("cardBack", ""))
@@ -32,6 +34,8 @@ func to_dict() -> Dictionary:
 	d["connected"] = connected
 	if bot != false:
 		d["bot"] = bot
+	if ready != false:
+		d["ready"] = ready
 	if avatar != "":
 		d["avatar"] = avatar
 	if frame != "":

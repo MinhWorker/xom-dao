@@ -13,6 +13,7 @@ import {
   onScene,
   openGodot,
   PHONE,
+  ready,
   tap,
   tapCard,
   typeInto,
@@ -88,6 +89,7 @@ export default async function run(t) {
   await tap(guest, 'Join');
   await onScene(guest, 'room');
   await host.waitForFunction(() => window.xomdao.state().room?.players.length === 2);
+  await ready(host, guest);
   await tap(host, 'Start');
   await onScene(host, 'checkers');
   await onScene(guest, 'checkers');

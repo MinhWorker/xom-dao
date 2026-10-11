@@ -22,6 +22,15 @@ export async function onScene(page, scene, timeout = 30_000) {
   await page.waitForFunction((s) => window.xomdao.scene() === s, scene, { timeout });
 }
 
+/** The guest says Sẵn sàng in the waiting room, and the host waits to see it. */
+export async function ready(host, guest) {
+  await tap(guest, 'Ready');
+  await host.waitForFunction(() => {
+    const room = window.xomdao.state().room;
+    return room?.players.every((p) => p.bot || p.ready || p.id === room.hostId);
+  });
+}
+
 /** Waits until a node's text is `text` (or matches it, for a RegExp; any text when left out).
  * Returns the text. */
 export async function godotText(page, name, text, timeout = 30_000) {

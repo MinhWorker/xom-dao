@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+  <title>Chợ</title>
   <rect x="22" y="50" width="9" height="62" rx="3" fill="#D9963F" stroke="#9C5F2A"/>
   <rect x="97" y="50" width="9" height="62" rx="3" fill="#D9963F" stroke="#9C5F2A"/>
   <circle cx="48" cy="72" r="9" fill="#E7B53C" stroke="#B9822A" stroke-width="4"/>

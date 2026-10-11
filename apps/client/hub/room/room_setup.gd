@@ -16,6 +16,35 @@ var _shade := ColorRect.new()
 var _board: XomDaoBoard = XomDaoBoard.create("Tạo phòng", true)
 
 
+## The picked value of each option of `spec`, from its choice in `picked` (key → XomDaoChoice).
+static func values(spec: Array, picked: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for option: Variant in spec:
+		if option is not Dictionary:
+			continue
+		var key: String = str(option.get("key", ""))
+		var pairs: Array = option.get("options", [])
+		var choice: XomDaoChoice = picked.get(key)
+		if choice != null and choice.selected < pairs.size():
+			out[key] = pairs[choice.selected][1]
+	return out
+
+
+## Which of an option's choices holds `value` (numbers from the server come back as floats);
+## its "default" (else the first) when none does.
+static func index_of(option: Dictionary, value: Variant) -> int:
+	var pairs: Array = option.get("options", [])
+	var number: bool = value is int or value is float
+	for i: int in pairs.size():
+		var own: Variant = pairs[i][1]
+		if number and (own is int or own is float):
+			if is_equal_approx(float(own), float(value)):
+				return i
+		elif typeof(own) == typeof(value) and own == value:
+			return i
+	return clampi(int(option.get("default", 0)), 0, maxi(0, pairs.size() - 1))
+
+
 func _init() -> void:
 	name = "RoomSetup"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -78,16 +107,7 @@ func show_setup(game_name: String, spec: Array) -> void:
 
 ## The picked value of each option.
 func options() -> Dictionary:
-	var out: Dictionary = {}
-	for option: Variant in _spec:
-		if option is not Dictionary:
-			continue
-		var key: String = str(option.get("key", ""))
-		var values: Array = option.get("options", [])
-		var choice: XomDaoChoice = choices.get(key)
-		if choice != null and choice.selected < values.size():
-			out[key] = values[choice.selected][1]
-	return out
+	return values(_spec, choices)
 
 
 func _layout() -> void:

@@ -53,7 +53,8 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   XomDaoClient)` once in the tree, draws `client.snapshot` and follows `state_changed`. It may
   define `sandbox_options() -> Dictionary`, the room options for `?play=<id>` (debug builds: a
   real room with the computer in the seats, started at once), and `room_setup() -> Array`, the
-  Tạo phòng board's rows (`{key, label, options: [[label, value], …], default?}`: the first
+  rows of options on the Tạo phòng board and on the waiting room's plate
+  (`{key, label, options: [[label, value], …], default?}`: the first
   option is picked, or the one at index `default`), and `result_detail() -> Dictionary`, what
   the result board adds under its title: `{reason: String, rows: [[label, value], …]}` after the
   hub's own Thời gian row.

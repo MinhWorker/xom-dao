@@ -13,6 +13,7 @@ import {
   onScene,
   openGodot,
   PHONE,
+  ready,
   room,
   tap,
   tapCard,
@@ -49,6 +50,7 @@ export default async function run(t) {
   await onScene(guest, 'room');
   await host.waitForFunction(() => window.xomdao.state().room?.players.length === 2);
   await host.screenshot({ path: t.shot('2-room.png') });
+  await ready(host, guest);
   await tap(host, 'Start');
 
   // The pack came over the network: the web build has no game inside it.

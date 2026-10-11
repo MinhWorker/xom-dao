@@ -108,8 +108,8 @@ của sảnh; Nhà mở bằng cách chạm ảnh đại diện.
 ```
 Mở game ─► Sảnh (vòng đảo)
   │
-  ├─ CHƠI ──────────────────────────► Ghép phòng ─► Ván đấu ─► Kết quả ─┬─► Chơi tiếp
-  │   (trò đang chọn)                                                     └─► về Sảnh
+  ├─ CHƠI ──────────────────────────► Phòng ─► Ván đấu ─► Kết quả ─┬─► Chơi tiếp
+  │   (trò đang chọn)                                               └─► về Sảnh
   │
   ├─ xoay vòng ─► đảo đang chọn đổi, thẻ dưới phải đổi theo
   ├─ chạm đảo đang chọn / thẻ trò đang chọn
@@ -124,8 +124,17 @@ Mở game ─► Sảnh (vòng đảo)
   └─ Nhà / Chợ / Bến / Sự kiện …  ─► màn nơi chốn ─► ← về Sảnh
 ```
 
-- **CHƠI** = ghép nhanh: vào phòng còn chỗ của trò đang chọn, không có thì mở phòng mới, chờ một
-  lúc rồi cho máy ngồi ghế trống.
+- **CHƠI** mở ngay một phòng của bạn cho trò đang chọn, với tuỳ chọn mặc định của trò. Mọi việc
+  còn lại làm trong phòng: đổi tuỳ chọn (kể cả cho máy ngồi), mời bạn, bắt đầu.
+- **Phòng** chia hai bên. Bên trái là tấm giấy ghi mọi thứ về phòng: tranh và tên trò, nút cuộn
+  giấy mở bảng **Luật**, mã phòng với **Mời bạn**, và các tuỳ chọn của trò. Chủ phòng đổi được
+  tuỳ chọn, người khác chỉ đọc. Bên phải là các ghế, mỗi ghế một thẻ xếp thành lưới: ảnh, tên,
+  và vai (Chủ phòng, Máy, Sẵn sàng); ghế trống chạm vào là sao chép link mời.
+- Góc dưới phải của phòng có đúng một nút lớn: **Bắt đầu** cho chủ phòng, **Sẵn sàng** cho người
+  khác. Chủ phòng chỉ bắt đầu được khi mọi người khác đã sẵn sàng; máy luôn sẵn sàng. Sau một
+  ván, **Chơi tiếp** không cần sẵn sàng lại.
+- Ghép nhanh (`room:quick`: vào phòng đang chờ, không ai tới thì máy ngồi ghế trống) vẫn có ở
+  màn chọn trò.
 - Nút ← luôn về đúng một bước. Từ ván đấu về sảnh có hỏi xác nhận nếu đang giữa ván.
 - Chơi với bạn bè: phòng nào cũng có **mã phòng** ngắn. Gửi mã hoặc link mời; bạn bè nhập mã ở Bến
   hoặc mở link là vào thẳng phòng. Thoát ra thì về sảnh, với trò đó đang được chọn.

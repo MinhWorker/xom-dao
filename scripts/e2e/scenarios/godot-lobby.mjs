@@ -44,19 +44,30 @@ export default async function run(t) {
   await onScene(host, 'lobby');
   await godotText(host, 'SelectedName', 'Caro');
 
-  // CHƠI: nobody else is looking, so the computer takes the other seat and the game starts.
+  // CHƠI opens a room of your own; its plate seats the computer, then the host starts.
   await tap(host, 'Play');
   await onScene(host, 'room');
-  await godotText(host, 'RoomStatus', 'Đang tìm người chơi');
+  await godotText(host, 'RoomCount', '1/2');
+  await godotText(host, 'RoomGame', 'Caro');
+  const option = await host.waitForFunction(() => window.xomdao.rect('Option_opponent'));
+  const box = await option.jsonValue();
+  await host.mouse.click(box.x + box.width * 0.75, box.y + box.height / 2); // Máy
+  await godotText(host, 'RoomCount', '2/2');
+  const mine = await room(host);
+  if (!mine.players.some((p) => p.bot)) throw new Error('The room seated no computer');
+  await host.screenshot({ path: t.shot('4-room.png') });
+  // The scroll shows the rules; again and they are gone.
+  await tap(host, 'RoomRules');
+  await godotText(host, 'RulesText', /./);
+  await host.mouse.click(10, 400);
+  await tap(host, 'Start');
   await onScene(host, 'tic-tac-toe', 30_000);
-  const quick = await room(host);
-  if (!quick.players.some((p) => p.bot)) throw new Error('Quick match seated no computer');
   await caroPlayToEnd(host);
   await godotText(host, 'ResultTitle', 'Bạn thắng!');
   // 20 for the win, then 20 + 20 for the first game's achievements (Ván đầu tiên, Trận thắng đầu).
   const after = before + 20 + 40;
   await godotText(host, 'Coins', coins(after));
-  await host.screenshot({ path: t.shot('4-result.png') });
+  await host.screenshot({ path: t.shot('5-result.png') });
 
   // Back in the lobby with Caro still on CHƠI; Tạo phòng, then a friend opens the link.
   await tap(host, 'Home');
@@ -71,6 +82,6 @@ export default async function run(t) {
   await onScene(friend, 'room');
   await host.waitForFunction(() => window.xomdao.state().room?.players.length === 2);
   await godotText(friend, 'RoomStatus', 'Chờ chủ phòng bắt đầu');
-  await host.screenshot({ path: t.shot('5-room-desktop.png') });
-  await friend.screenshot({ path: t.shot('6-room-phone.png') });
+  await host.screenshot({ path: t.shot('6-room-desktop.png') });
+  await friend.screenshot({ path: t.shot('7-room-phone.png') });
 }
