@@ -47,6 +47,8 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   or of another game. `godot:check` enforces it.
 - A game's tests are `test_*.gd` anywhere in its folder; its `test/` folder is left out of its pack.
 - The main scene prints `xomdao:ready`; `godot:smoke` waits for it.
+- Web safe areas come from CSS env(safe-area-inset-*) through XomDaoFrame.safe_inset,
+  converted from CSS pixels to frame units. The exporter adds viewport-fit=cover to the shell.
 - A game's Godot entry is `res://content/<id>/main.tscn`. Its root gets `bind(client:
   XomDaoClient)` once in the tree, draws `client.snapshot` and follows `state_changed`. It may
   define `sandbox_options() -> Dictionary`, the room options for `?play=<id>` (debug builds: a

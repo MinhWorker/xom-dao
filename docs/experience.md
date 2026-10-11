@@ -106,11 +106,11 @@ Mở game ─► Sảnh (vòng đảo)
   ├─ chạm đảo đang chọn / thẻ trò đang chọn
   │      ▼
   │   Chọn trò: tab thể loại + băng chuyền đảo trò
-  │      ├─ Chọn ──────► về Sảnh, thẻ dưới phải đổi thành trò mới
+  │      ├─ Đổi focus ─► nhớ trò và tải ngầm gói trò
   │      ├─ Tạo phòng ─► tuỳ chỉnh phòng ─► phòng chờ (có mã phòng) ─► Ván đấu
-  │      └─ Danh sách phòng ─► vào phòng
+  │      └─ Luật ──────► bảng phân trang, hình minh họa tùy chọn
   │
-  ├─ Bến ─► Nhập mã phòng / bạn bè đang online / lời mời
+  ├─ Bến ─► Nhập mã phòng / danh sách phòng / bạn bè đang online / lời mời
   │
   ├─ Tạo phòng (ở Sảnh) ─► tuỳ chỉnh phòng của trò đang chọn
   └─ Nhà / Chợ / Bến / Sự kiện …  ─► màn nơi chốn ─► ← về Sảnh
@@ -159,7 +159,7 @@ Trò chọn một trong hai bố cục mẫu, để các trò cùng loại trôn
 
 ## Chọn trò
 
-![Màn chọn trò trên tablet](concepts/game-select-tablet.webp)
+![Màn chọn trò trên máy tính](concepts/game-select-desktop.webp)
 
 - Trên cùng giữ quay lại, **tab thể loại**, số xu và cài đặt. Tab có thể kéo ngang khi cỡ HUD lớn.
 - Giữa là ba **đảo trò**: đảo đang chọn lớn, có màu và nổi nhẹ; hai đảo cạnh nhỏ, đứng yên và

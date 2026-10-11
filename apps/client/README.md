@@ -72,6 +72,8 @@ phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ t
   Focus lưu trò và tải ngầm `.pck`. Luật là bảng phân trang có vùng hình minh họa tùy chọn,
   chặn và làm mờ/tối nền. Trò chưa có bản Godot hiện khóa. Touch có ngưỡng phân biệt vuốt với
   chạm; `hub/touch_cancel.gd` xử lý DOM touchcancel của bản web.
+  Khung web đọc `env(safe-area-inset-*)` và đổi từ CSS pixel sang đơn vị khung để tránh tai thỏ,
+  thanh home ở mọi mật độ màn hình.
 - **Nhà**: thẻ hồ sơ (ảnh đại diện với khung đang dùng, cấp và thanh kinh nghiệm, số ván và số ván
   thắng, lưng bài) và kệ có tab Túi đồ, Thành tích, Xếp hạng. Túi đồ có món đã mua trước, rồi món
   ai cũng có; "Dùng" để đeo. Thành tích đã đạt đứng trước; Xếp hạng có một ô "Hạng N" cho mỗi

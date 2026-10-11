@@ -2,7 +2,9 @@
 
 Trạng thái: đã triển khai theo yêu cầu. Chỉ tham khảo tổ chức giao diện của Arknights; hình ảnh theo Xóm Đảo.
 
-![Bản chạy trên tablet](game-select-tablet.webp)
+![Bản chạy trên máy tính](game-select-desktop.webp)
+
+![Bản chạy trên điện thoại](game-select-phone.webp)
 
 ## Hướng hình ảnh
 
@@ -48,15 +50,16 @@ Chỉ tham khảo cách tổ chức giao diện của Arknights: game focus ở 
 
 ## Popup luật
 
+![Bảng luật trên điện thoại](game-select-rules.webp)
+
 - Khung lớn giữa màn, bo mềm, gỗ mật ong, góc buộc dây thừng và ruột giấy dó; chữ nâu đậm trên giấy. Đồng bộ với bộ UI Xóm Đảo.
 - Lớp phủ vừa làm mờ vừa làm tối toàn bộ nền, chặn tương tác với màn phía sau.
 - Có tên game, nút đóng, tiêu đề trang, nội dung ngắn, Trước/Sau và số trang.
 - Mỗi trang hỗ trợ một vùng art tùy chọn. Hiện để placeholder Ảnh minh họa; sau khi làm lại visual game sẽ thay bằng ảnh chụp gameplay thực tế.
 - Placeholder không phải ảnh gameplay giả và không thay đổi luật chơi.
 - Nội dung dựa trên `games/<id>/RULES.md`; chia thành trang ngắn, giữ đủ nội dung, có thể tách mục dài thành nhiều trang.
-- Bắn Tàu minh họa trang Xếp tàu ở ảnh review; số trang 2 / 3 chỉ là bố cục concept, tổng trang thực tế phụ thuộc lượng nội dung.
 - Không cuộn dọc trong popup. Trang đầu/cuối vô hiệu hóa hướng không còn trang.
-- Bố cục mặc định hai cột: nội dung bên trái, hình bên phải; khung hẹp điều chỉnh tỷ lệ hoặc chuyển art lên trên để vẫn đọc được chữ.
+- Bố cục hai cột: nội dung bên trái, hình bên phải; đo chiều cao chữ và tiêu đề để chia trang theo khung thực tế.
 
 ## Kiểm tra
 
@@ -66,6 +69,8 @@ Chỉ tham khảo cách tổ chức giao diện của Arknights: game focus ở 
 4. Kiểm tra trường hợp game Sắp có, thể loại ít game và sự kiện.
 5. Chụp khổ ngang điện thoại, tablet, desktop, tránh tai thỏ; chữ/vùng chạm theo quy chuẩn UI repo.
 6. Chạy godot:check, export/smoke và kiểm tra luồng phòng/luật theo quy định repo.
+
+![Vùng an toàn trên điện thoại có tai thỏ](game-select-notch.webp)
 
 ## Nguồn triển khai
 

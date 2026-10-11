@@ -4,8 +4,8 @@ import { godotText, launch, onScene, openGodot, PHONE, tap } from '../godot.mjs'
 export const always = true;
 export { launch };
 
-async function swipe(page, cdp, box, dx, cancel = false) {
-  const start = { x: box.x + box.width / 2, y: box.y + box.height * 0.4 };
+async function swipe(page, cdp, box, dx, cancel = false, anchor = 0.5) {
+  const start = { x: box.x + box.width * anchor, y: box.y + box.height * 0.4 };
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
     touchPoints: [{ ...start, id: 1 }],
@@ -25,12 +25,25 @@ async function swipe(page, cdp, box, dx, cancel = false) {
 }
 
 export default async function run(t) {
-  const page = await openGodot(t, await t.page(PHONE));
+  const page = await t.page(PHONE);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setSafeAreaInsetsOverride', {
+    insets: { left: 59, right: 59, bottom: 21 },
+  });
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  await openGodot(t, page);
   await onScene(page, 'lobby');
   await tap(page, 'SelectedGame');
   await onScene(page, 'select');
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  const bounds = await page.evaluate(() => ({
+    back: window.xomdao.rect('Back'),
+    settings: window.xomdao.rect('Settings'),
+    create: window.xomdao.rect('SelectCreate'),
+  }));
+  if (bounds.back.x < 59 || bounds.settings.x + bounds.settings.width > PHONE.width - 59)
+    throw new Error('Top controls overlap the phone notch');
+  if (bounds.create.y + bounds.create.height > PHONE.height - 21)
+    throw new Error('Create room overlaps the home bar');
   const stage = await page.evaluate(() => window.xomdao.rect('Cards'));
   const first = await godotText(page, 'FocusName');
   await page.screenshot({ path: t.shot('1-phone-select.png') });
@@ -66,10 +79,12 @@ export default async function run(t) {
   if (await page.evaluate(() => window.xomdao.rect('ConfirmCreate')))
     throw new Error('Room setup stacked with rules');
   // Underlying stage receives no gesture while the rules modal is open.
-  await swipe(page, cdp, stage, -stage.width * 0.3);
+  const rules = await page.evaluate(() => window.xomdao.rect('RulesPanel'));
+  const count = Number((await godotText(page, 'RulesPage')).split('/')[1]);
+  await swipe(page, cdp, rules, -rules.width * 0.25);
+  await godotText(page, 'RulesPage', `${Math.min(2, count)} / ${count}`);
   if ((await godotText(page, 'FocusName')) !== second)
     throw new Error('Modal leaked a drag to carousel');
-  const count = Number((await godotText(page, 'RulesPage')).split('/')[1]);
   for (let i = 0; i < count + 2; i++) {
     const enabled = await page.evaluate(() => window.xomdao.click('RulesNext'));
     await page.waitForTimeout(80);
@@ -96,13 +111,14 @@ export default async function run(t) {
   await page.mouse.click(5, 180);
   await page.waitForTimeout(350);
   const tabs = await page.evaluate(() => window.xomdao.rect('GenreTabs'));
-  await swipe(page, cdp, tabs, -tabs.width * 0.6);
+  await swipe(page, cdp, tabs, -tabs.width * 0.65, false, 0.8);
   await godotText(page, 'FocusName', first);
   await tap(page, 'Tab_hanh-dong');
   await godotText(page, 'FocusName', 'Bom Nguyên Tố');
-  await swipe(page, cdp, tabs, tabs.width * 0.6);
+  await swipe(page, cdp, tabs, tabs.width * 0.65, false, 0.2);
   await tap(page, 'Tab_co');
   await godotText(page, 'FocusName', first);
+  await page.waitForTimeout(450);
   await page.screenshot({ path: t.shot('4-phone-large-hud.png') });
   await tap(page, 'SelectCreate');
   await godotText(page, 'ConfirmCreate', 'Tạo');

@@ -72,6 +72,7 @@ func _init(settings: XomDaoSettings = null) -> void:
 	_tabs.add_theme_constant_override("separation", 10)
 	_tab_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_tab_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_tab_surface.mouse_filter = Control.MOUSE_FILTER_PASS
 	_tab_surface.add_child(_tabs)
 	_tab_scroll.add_child(_tab_surface)
 	_tab_scroll.scroll_started.connect(func() -> void: XomDaoUi.play(self, XomDaoUi.SOUND_TAP))
@@ -238,6 +239,7 @@ func _build_tabs() -> void:
 			genre.name, XomDaoUi.Kind.GO if genre.id == _genre else XomDaoUi.Kind.BACK
 		)
 		tab.name = "Tab_" + genre.id
+		tab.mouse_filter = Control.MOUSE_FILTER_PASS
 		tab.custom_minimum_size = Vector2(140, 88)
 		tab.pressed.connect(func() -> void: show_genre(_catalog, genre.id))
 		_tabs.add_child(tab)
