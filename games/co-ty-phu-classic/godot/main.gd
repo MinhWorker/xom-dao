@@ -17,7 +17,10 @@ extends Control
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
 const Texts := preload("res://content/co-ty-phu-classic/texts.gd")
 ## The sounds in sounds/ (.wav), besides win.mp3.
-const SOUNDS := "auction bankrupt build buy card-flip coin dice jail plane release rent step turn"
+const SOUNDS := (
+	"auction.wav bankrupt.wav build.wav buy.wav card-flip.wav coin.wav dice.wav jail.wav plane.wav"
+	+ " release.wav rent.wav step.wav turn.wav win.mp3 item-receive.mp3 trade-request.mp3"
+)
 const INKS: Array[Color] = [Color("#DF6554"), Color("#5793D3"), Color("#60AF72"), Color("#E6BE52")]
 const PAWNS: Array[String] = ["red", "blue", "green", "yellow"]
 const DECKS: Dictionary = {"chance": "Cơ hội", "chest": "Khí vận"}
@@ -219,14 +222,10 @@ func _ready() -> void:
 	add_child(_fx)
 	for sound: String in SOUNDS.split(" "):
 		var player := AudioStreamPlayer.new()
-		player.stream = load("res://content/co-ty-phu-classic/sounds/%s.wav" % sound)
+		player.stream = load("res://content/co-ty-phu-classic/sounds/%s" % sound)
 		player.max_polyphony = 3
 		add_child(player)
-		_sounds[sound] = player
-	var win := AudioStreamPlayer.new()
-	win.stream = load("res://content/co-ty-phu-classic/sounds/win.mp3")
-	add_child(win)
-	_sounds["win"] = win
+		_sounds[sound.get_basename()] = player
 	resized.connect(_layout)
 	_layout.call_deferred()
 
@@ -374,6 +373,8 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 		var to: int = int(now["position"])
 		if bool(now["bankrupt"]) and not bool(was["bankrupt"]):
 			_enqueue(_sfx_job.bind("bankrupt"))
+		if (now["freeCards"] as Array).size() > (was["freeCards"] as Array).size():
+			_enqueue(_sfx_job.bind("item-receive"))
 		if to == int(was["position"]) and bool(now["jailed"]) == bool(was["jailed"]):
 			continue
 		var steps: int = posmod(to - int(was["position"]), 40)
@@ -392,6 +393,8 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 			_enqueue(_money.bind(transfers.duplicate(true)))
 	if view.get("specialEvent") is Dictionary and before.get("specialEvent") is not Dictionary:
 		_enqueue(_sfx_job.bind("card-flip"))
+	if view["phase"] == "trade" and before["phase"] != "trade" and Rules.decision_seat(view) == _me:
+		_enqueue(_sfx_job.bind("trade-request"))
 	if str(view["phase"]) == "auction" and str(before["phase"]) != "auction":
 		_enqueue(_sfx_job.bind("auction"))
 	var houses_before: int = 0

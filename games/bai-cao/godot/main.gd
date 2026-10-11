@@ -694,7 +694,7 @@ func _show_hud() -> void:
 	else:
 		status = "Ván sau"
 	if over:
-		info = "Kết thúc"
+		info = "Hoà cả bàn" if _snapshot.result.winners.is_empty() else "Kết thúc"
 		status = ""
 	elif phase == "showdown" and _view["results"] == null:
 		info = "Nhà cái rời bàn, huỷ ván"
