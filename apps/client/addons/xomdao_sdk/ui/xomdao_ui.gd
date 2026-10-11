@@ -216,16 +216,30 @@ static func play(from: Node, sound: String) -> void:
 		player.ready.connect(player.play.bind(0.0), CONNECT_ONE_SHOT)
 
 
-## The "bounce" every pressed thing does: down to 94% in 80 ms, back in 120 ms.
+## The "bounce" every pressed thing does: down to 94% in 80 ms, back in 120 ms, about its
+## centre. It leaves the node's pivot alone, so a node its screen placed and scaled stays put.
 static func bounce(node: Control) -> void:
-	node.pivot_offset = node.size / 2.0
 	var base: Vector2 = node.get_meta("bounce_base", node.scale)
 	var previous: Tween = node.get_meta("bounce_tween") if node.has_meta("bounce_tween") else null
 	if previous != null and previous.is_valid():
 		previous.kill()
+	var arm: Vector2 = (node.size / 2.0 - node.pivot_offset) * base
+	var step: Callable = _bounce_step.bind(node, base, arm)
 	var tween: Tween = node.create_tween()
 	node.set_meta("bounce_base", base)
 	node.set_meta("bounce_tween", tween)
-	tween.tween_property(node, "scale", base * 0.94, 0.08)
-	tween.tween_property(node, "scale", base, 0.12).set_trans(Tween.TRANS_BACK)
-	tween.tween_callback(func() -> void: node.remove_meta("bounce_base"))
+	tween.tween_method(step, 1.0, 0.94, 0.08)
+	tween.tween_method(step, 0.94, 1.0, 0.12).set_trans(Tween.TRANS_BACK)
+	tween.tween_callback(
+		func() -> void:
+			node.remove_meta("bounce_base")
+			node.remove_meta("bounce_offset")
+	)
+
+
+## Scales `node` to `factor` of its size and moves it so its centre stays where it was.
+static func _bounce_step(factor: float, node: Control, base: Vector2, arm: Vector2) -> void:
+	var offset: Vector2 = arm * (1.0 - factor)
+	node.position += offset - node.get_meta("bounce_offset", Vector2.ZERO)
+	node.set_meta("bounce_offset", offset)
+	node.scale = base * factor

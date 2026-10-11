@@ -213,6 +213,23 @@ func test_menu_shows_one_settings_tab_at_a_time() -> void:
 	assert_eq(interface.custom_minimum_size, audio.custom_minimum_size, "the board keeps its size")
 
 
+func test_a_bounce_leaves_a_scaled_button_where_it_was() -> void:
+	var button: XomDaoIconButton = add_child_autofree(XomDaoIconButton.create("arrow-left"))
+	button.scale = Vector2.ONE * 0.7
+	button.position = Vector2(24.0, 24.0)
+	button.size = Vector2(88.0, 88.0)
+	XomDaoUi.bounce(button)
+	await wait_seconds(0.04)
+	assert_lt(button.scale.x, 0.7, "it shrinks")
+	var centre: Vector2 = button.position + button.size * button.scale / 2.0
+	assert_almost_eq(centre, Vector2(24.0, 24.0) + Vector2.ONE * 88.0 * 0.35, Vector2.ONE * 0.01)
+	XomDaoUi.bounce(button)
+	await wait_seconds(0.35)
+	assert_almost_eq(button.position, Vector2(24.0, 24.0), Vector2.ONE * 0.01)
+	assert_almost_eq(button.scale, Vector2.ONE * 0.7, Vector2.ONE * 0.001)
+	assert_eq(button.pivot_offset, Vector2.ZERO)
+
+
 func test_choice_reports_only_changes() -> void:
 	var choice: XomDaoChoice = add_child_autofree(XomDaoChoice.create(["2", "3", "4"], 1))
 	watch_signals(choice)

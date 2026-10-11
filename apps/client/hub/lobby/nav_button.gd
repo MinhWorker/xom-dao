@@ -1,8 +1,8 @@
 class_name HubNavButton
 extends Button
-## One place on the lobby's dock: its picture (`hub/lobby/nav-<art>.svg`, a flat picture in the palette, or a Phosphor icon
-## until it has one) over its name. The place the player is in sits on a raised gold plate and
-## its picture bobs; the others lift under the pointer and squash when pressed.
+## One place on the lobby's dock: its picture (`hub/lobby/nav-<art>.svg`, flat, in the palette;
+## a Phosphor icon until it has one) over its name. The place the player is in sits on a raised
+## gold plate and its picture bobs; the others lift under the pointer and squash when pressed.
 ##
 ##   var cho := HubNavButton.create("Chợ", "nav-cho", "storefront")
 ##   cho.selected = true
