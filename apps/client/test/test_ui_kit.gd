@@ -85,7 +85,7 @@ func test_settings_keep_to_their_choices() -> void:
 	var settings: XomDaoSettings = _settings()
 	watch_signals(settings)
 	settings.set_value("ui_scale", 1.2)
-	assert_eq(settings.ui_scale, 1.15, "the nearest offered scale")
+	assert_eq(settings.ui_scale, 0.85, "the nearest offered scale")
 	settings.set_value("margin", 7)
 	assert_eq(settings.margin, 24, "an unknown margin is ignored")
 	settings.set_value("margin", 40)
@@ -99,12 +99,12 @@ func test_settings_are_saved_and_loaded() -> void:
 	var path: String = "user://test_settings.cfg"
 	var settings: XomDaoSettings = _settings()
 	settings.path = path
-	settings.set_value("ui_scale", 1.3)
+	settings.set_value("ui_scale", 0.85)
 	settings.set_value("quality", "medium")
 	var again: XomDaoSettings = _settings()
 	again.path = path
 	again.load_file()
-	assert_eq(again.ui_scale, 1.3)
+	assert_eq(again.ui_scale, 0.85)
 	assert_eq(again.quality, "medium")
 	DirAccess.remove_absolute(path)
 
@@ -185,9 +185,9 @@ func test_menu_opens_and_reports_choices() -> void:
 func test_menu_changes_the_settings() -> void:
 	var settings: XomDaoSettings = _settings()
 	var menu: XomDaoMenu = add_child_autofree(XomDaoMenu.new(settings))
-	menu.ui_scale.choose(2)
-	assert_eq(settings.ui_scale, XomDaoSettings.SCALES[2])
-	assert_eq(menu.button.scale, Vector2.ONE * XomDaoSettings.SCALES[2])
+	menu.ui_scale.choose(1)
+	assert_eq(settings.ui_scale, XomDaoSettings.SCALES[1])
+	assert_eq(menu.button.scale, Vector2.ONE * XomDaoSettings.SCALES[1])
 	menu.margin.choose(2)
 	assert_eq(settings.margin, XomDaoSettings.MARGINS[2])
 	menu.sfx_switch.pressed.emit()

@@ -51,7 +51,7 @@ tài liệu này). Cỡ chữ và nút nhân với nó; kích thước bàn chơ
   **Hành động**) ở [experience.md](experience.md#hud-trong-ván); trò để trống ô của nút ☰.
 - Không ghi tên game hay tên phòng trong ván: người chơi biết mình đang ở đâu, chỗ đó dành cho bàn.
   Chủ phòng có 👑 trong ô người chơi.
-- Người chơi chỉnh được **cỡ giao diện** (85–130%, chữ và nút) và **lề màn hình** (12, 24 hoặc 40
+- Người chơi chỉnh được **cỡ giao diện** (Vừa 70% hoặc Lớn 85%, chữ và nút; mặc định Vừa) và **lề màn hình** (12, 24 hoặc 40
   đơn vị) trong bảng cài đặt, lưu theo từng máy (`XomDaoSettings`, `user://settings.cfg`).
 - Bảng cài đặt có hai tab. **Giao diện**: cỡ giao diện, lề, chất lượng hình. **Âm thanh**: **nhạc**
   và **hiệu ứng** tách riêng, mỗi thứ có nút bật/tắt và thanh âm lượng (0–100). Mỗi dòng là nhãn

@@ -12,7 +12,7 @@ extends RefCounted
 signal changed
 
 ## Choices offered in the menu (Cài đặt).
-const SCALES: Array[float] = [0.85, 1.0, 1.15, 1.3]
+const SCALES: Array[float] = [0.7, 0.85]
 const MARGINS: Array[int] = [12, 24, 40]
 const QUALITIES: Array[String] = ["low", "medium", "high"]
 const PATH := "user://settings.cfg"
@@ -27,8 +27,8 @@ var music_volume: float = 0.8
 ## Sound effects: the UI's and every game's.
 var sfx: bool = true
 var sfx_volume: float = 1.0
-## How big the player's HUD is drawn (1.0 = the sizes in docs/ui-guide.md).
-var ui_scale: float = 1.0
+## How big the player's HUD is drawn, against the sizes in docs/ui-guide.md: Vừa or Lớn.
+var ui_scale: float = 0.7
 ## Distance in units from the screen edge (or the notch) to the corner buttons.
 var margin: int = 24
 var quality: String = "high"

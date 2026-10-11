@@ -19,7 +19,7 @@ signal emote_chosen(emote: String)
 const EMOTES: Array[String] = [
 	"smiley", "smiley-wink", "smiley-sad", "smiley-angry", "thumbs-up", "hands-clapping"
 ]
-const SCALE_LABELS: Array[String] = ["Nhỏ", "Vừa", "Lớn", "To"]
+const SCALE_LABELS: Array[String] = ["Vừa", "Lớn"]
 const MARGIN_LABELS: Array[String] = ["Hẹp", "Vừa", "Rộng"]
 const QUALITY_LABELS: Array[String] = ["Thấp", "Vừa", "Cao"]
 const TAB_LABELS: Array[String] = ["Giao diện", "Âm thanh"]
