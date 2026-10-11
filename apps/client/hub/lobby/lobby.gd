@@ -2,7 +2,7 @@ class_name HubLobby
 extends Control
 ## The lobby (docs/experience.md, "Sảnh"): the ring of genre islands floating over the sky, and a
 ## navy HUD around it.
-## - Left: a floating dock of places (Trang chủ, the lobby itself, on a gold plate; Chợ, Đình,
+## - Left: a floating dock of places (Nhà, the lobby itself, on a gold plate; Chợ, Đình,
 ##   Bến), each a picture over its name (HubNavButton).
 ## - Top: the profile (avatar, name, level, EXP bar; it opens Nhà) on the left; the balance,
 ##   mail, gifts and ⚙ on the right.
@@ -29,7 +29,7 @@ signal event_pressed(game_id: String)
 
 ## The dock: id, label, icon, picture. "lobby" is this screen.
 const PLACES: Array = [
-	["lobby", "Trang chủ", "house", "nav-home"],
+	["lobby", "Nhà", "house", "nav-home"],
 	["cho", "Chợ", "storefront", "nav-cho"],
 	["dinh", "Đình", "bank", "nav-dinh"],
 	["ben", "Bến", "anchor", "nav-ben"],

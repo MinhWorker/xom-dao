@@ -87,7 +87,10 @@ phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ t
   điểm của bạn, dải mốc thưởng với **Nhận**, và **Tham gia** thay cho Chọn. Hết ván, kết quả ghi
   số điểm sự kiện vừa được và "Về sảnh" quay lại bảng sự kiện. Không có sự kiện thì đảo chìm
   trong sương và banner là Chợ.
-- **Chợ**: món bán theo tab Khung và Lưng bài, mỗi món có giá và "Mua", món đã mua hiện "Đã có".
+- **Chợ**: bố cục mở rộng được hai chiều. Hàng tab loại hàng ở trên (Khung, Lưng bài; thêm loại thì
+  thêm tab sang ngang), cột lọc bên trái (Tất cả, Chưa có, Đã có; thêm nhóm thì thêm ô xuống dưới),
+  còn lại là lưới thẻ món hàng cuộn dọc, số cột theo bề rộng. Mỗi thẻ có tên, hình, giá và "Mua";
+  món đã mua hiện "Đã có".
   Thiếu xu thì báo "Không đủ xu"; bấm hai lần chỉ trả tiền một lần.
 - **Bến**: gõ mã phòng rồi "Vào", hoặc chọn một phòng đang mở của trò đang chọn.
 - **Trong ván** chỉ có nút ☰ (rời phòng có hỏi lại khi đang giữa ván, luật, cài đặt, biểu cảm).

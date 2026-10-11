@@ -21,6 +21,9 @@ const SOON := "sap-co"
 ## How far the island bobs up and down (units at scale 1) and how fast (radians a second).
 const BOB := 5.0
 const BOB_SPEED := 1.4
+## The face of the name plank, and its picture (plank and ropes) around that face.
+const SIGN := Vector2(166.0, 44.0)
+const SIGN_ART := Rect2(-7.0, -37.0, 180.0, 86.5)
 
 static var _dim_shader: Shader = preload("res://hub/lobby/island_dim.gdshader")
 
@@ -41,6 +44,7 @@ var selected: bool = false:
 	set(value):
 		selected = value
 		_sign.visible = value
+		_plank.visible = value
 		if _scene != null and _scene.has_method("set_selected"):
 			_scene.call("set_selected", value)
 		_restyle()
@@ -61,7 +65,10 @@ var days_left: int = -1:
 var _body := Control.new()
 ## Fog, lock and pennant over the art, bobbing with it.
 var _overlay := Control.new()
+## The name, written on the face of the plank (SIGN); the plank's picture with its ropes is
+## drawn around it (SIGN_ART, relative to the name).
 var _sign := Label.new()
+var _plank := TextureRect.new()
 var _material := ShaderMaterial.new()
 var _drawn: HubIslandArt
 var _scene: Node2D
@@ -102,16 +109,23 @@ func _init() -> void:
 	_sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_sign.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_sign.add_theme_font_override("font", XomDaoUi.display_font(800))
-	_sign.add_theme_font_size_override("font_size", 30)
+	_sign.add_theme_font_size_override("font_size", 28)
 	_sign.add_theme_color_override("font_color", XomDaoUi.CREAM)
 	_sign.add_theme_color_override("font_outline_color", XomDaoUi.HONEY_DARK)
 	_sign.add_theme_constant_override("outline_size", 8)
-	var plank: StyleBoxFlat = XomDaoUi.with_shadow(
-		XomDaoUi.box(XomDaoUi.HONEY, XomDaoUi.HONEY_DARK, XomDaoUi.BORDER, 14.0)
-	)
-	plank.content_margin_left = 20.0
-	plank.content_margin_right = 20.0
-	_sign.add_theme_stylebox_override("normal", plank)
+	_sign.clip_text = true
+	_sign.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_sign.size = SIGN
+	# The plank hangs from the island on two ropes: one picture, the same length for every name.
+	_plank.name = "Plank"
+	_plank.texture = preload("res://hub/lobby/sign.webp")
+	_plank.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_plank.stretch_mode = TextureRect.STRETCH_SCALE
+	_plank.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_plank.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_plank.size = SIGN_ART.size
+	_plank.visible = false
+	add_child(_plank)
 	add_child(_sign)
 	resized.connect(_place)
 	_time = randf() * TAU
@@ -178,8 +192,10 @@ func _place() -> void:
 	if _scene != null:
 		_scene.scale = Vector2.ONE * size.x / ART
 	_sign.scale = Vector2.ONE * k
-	_sign.size = _sign.get_combined_minimum_size()
+	_sign.size = SIGN
 	_sign.position = Vector2((size.x - _sign.size.x * k) / 2.0, size.y * 0.76)
+	_plank.scale = _sign.scale
+	_plank.position = _sign.position + SIGN_ART.position * k
 	queue_redraw()
 	_overlay.queue_redraw()
 

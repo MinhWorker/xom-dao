@@ -57,11 +57,26 @@ func test_shop_offers_what_you_lack() -> void:
 	watch_signals(shop)
 	buy.pressed.emit()
 	assert_signal_emitted_with_parameters(shop, "buy_requested", ["core:frame-jade"])
-	(shop.find_child("Tab_card-back", true, false) as XomDaoButton).pressed.emit()
+	(shop.find_child("Tab_card-back", true, false) as Button).pressed.emit()
 	await wait_process_frames(1)
 	assert_not_null(shop.find_child("Buy_card-back-lotus", true, false))
 	shop.show_items(_items(owned + ["core:card-back-lotus"]), 0)
 	assert_not_null(shop.find_child("Owned_card-back-lotus", true, false))
+	(shop.find_child("Filter_new", true, false) as Button).pressed.emit()
+	assert_null(shop.find_child("Item_card-back-lotus", true, false), "owned: not under Chưa có")
+	(shop.find_child("Filter_owned", true, false) as Button).pressed.emit()
+	assert_not_null(shop.find_child("Item_card-back-lotus", true, false))
+
+
+func test_shop_grid_takes_as_many_columns_as_fit() -> void:
+	var shop: HubShop = add_child_autofree(HubShop.new())
+	shop.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	shop.size = Vector2(1280.0, 720.0)
+	shop.show_items(_items([]), 0)
+	assert_eq(shop._grid.columns, 4)
+	shop.size = Vector2(900.0, 720.0)
+	shop._layout()
+	assert_lt(shop._grid.columns, 4)
 
 
 func test_home_wears_owned_items() -> void:

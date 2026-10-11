@@ -145,8 +145,9 @@ cho nhân vật.
   to nhất, đủ màu, có bảng tên. Các đảo khác nhỏ dần và ngả xám xanh; đảo khoá chìm trong sương.
 - HUD riêng của sảnh: nền navy `#16233F` trong mờ, viền `#3B5683`; mục đang chọn vàng đồng có quầng;
   CHƠI vàng `#FFD54A` chữ nâu đậm, là tấm lớn vát góc ở đáy thẻ trò.
+- Tên đảo đang chọn viết trên một tấm bảng gỗ treo hai dây thừng dưới đảo, dài như nhau với mọi tên.
 - Đảo đang chọn quyết định danh sách trò ở thẻ "trò đang chọn" cạnh nút CHƠI.
-- Trang chủ, Chợ, Đình, Bến là nút ở cột trái của HUD, không phải công trình trên đảo. Mỗi nút là
+- Nhà (màn sảnh), Chợ, Đình, Bến là nút ở cột trái của HUD, không phải công trình trên đảo. Mỗi nút là
   một hình phẳng vẽ bằng SVG theo bảng màu, viền tối hơn mảng (`apps/client/hub/lobby/nav-*.svg`),
   không dùng ảnh sinh ra thu nhỏ vì bị răng cưa. Các nút nằm trên khay xanh đậm bo tròn. Nút đang chọn nằm trên tấm vàng nổi và hình
   nhấp nhô nhẹ; nút khác nhấc lên khi rê chuột, nhún khi bấm; cả khay trượt vào từ trái khi mở sảnh.
