@@ -506,6 +506,11 @@ canvas. Trục X sang phải, Y lên trên, Z
 hướng người xem. Mặt phẳng nhìn thẳng phải đọc gần `(128,128,255)`. Xuất pass emission
 camera-space bằng **Raw**, không dùng Standard vì vẫn chuyển sang sRGB; tắt dither và lưu
 WebP **lossless**. Không đưa normal map qua bước cắt viền, chỉnh màu hay nén mất dữ liệu.
+Bàn Godot dùng normal map qua `XomDaoLit` (`addons/xomdao_sdk/lit.gd`): chép
+`godot/art/<name>.normal.webp` cắt cùng khung với `<name>.webp` (lossless), rồi
+`piece.texture = XomDaoLit.texture(diffuse, normal)` và `piece.material = XomDaoLit.material()`
+(một material dùng chung cho cả bàn). Đó là một shader nhỏ, không dùng Light2D, nên chạy như nhau
+trên renderer Compatibility của bản web và rẻ trên điện thoại; Cờ Vua và Cờ Tướng là ví dụ.
 Kiểm tra bằng `python tools/blender/test_bake.py` hoặc
 `blender -b --python tools/blender/test_bake.py`.
 

@@ -29,7 +29,8 @@ hub/                main.gd routes the screens: lobby (island ring + HUD), selec
   home/ shop/       Nhà (HubHome: profile + shelf, someone else's read-only) and Chợ (HubShop);
                     shelf.gd (HubShelf) is the tabbed shelf of item tiles both use
   gallery/          Every UI kit component on 4 pages: ?gallery=<page> or `-- --gallery=<page>`
-addons/xomdao_sdk/  The only API a game's Godot code uses: XomDaoFrame, XomDaoClient (client.gd)
+addons/xomdao_sdk/  The only API a game's Godot code uses: XomDaoFrame, XomDaoClient (client.gd),
+                    XomDaoLit (lit.gd: normal-mapped piece lighting, a canvas shader, no Light2D)
   ui/               The shared UI kit (theme, widgets, fonts, Phosphor icons, UI sounds)
   generated/        XomDao<Type> classes + XomDaoProtocol from npm run gen:protocol (never edit)
 content/<id>        Symlinks to games/<id>/godot, made by npm run godot:link (ignored)
@@ -88,6 +89,10 @@ export_presets.cfg  The Web preset: single-threaded, PWA
     quality is saved but does not change the rendering yet.
   Each script's header shows its use. Add a new component to the gallery
   (`hub/gallery/gallery.gd`) and check it there.
+- Baked pieces with a normal map are lit by `XomDaoLit` (chess, xiangqi): a shared unshaded
+  canvas shader reading the CanvasTexture's normal, ambient + an upper-left warm key like the old
+  Phaser boards. Not Light2D: in the Compatibility renderer (4.7.2) a DirectionalLight2D ignores
+  `range_item_cull_mask` and lights the whole canvas, HUD included.
 - Look at a gallery page without a browser:
   `xvfb-run -a npm run godot -- --rendering-driver opengl3 --resolution 1280x720 -- --gallery=2 --save=/tmp/g2.png`.
   For real phone sizes, serve `dist/` after `godot:export` and run

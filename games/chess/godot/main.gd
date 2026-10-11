@@ -70,6 +70,8 @@ var _slots: Array[XomDaoPlayerSlot] = []
 var _icons: Array[TextureRect] = []
 var _sounds: Dictionary = {}
 var _textures: Dictionary = {}
+## Lights the pieces by their normal maps (XomDaoLit).
+var _lit: ShaderMaterial = XomDaoLit.material(0.85, 0.4)
 
 ## Pieces on screen: square → TextureRect, and the letter each shows.
 var _pieces: Dictionary = {}
@@ -320,9 +322,21 @@ func _piece_rect(sq: int) -> Rect2:
 	return Rect2(_center_of(sq) - ANCHOR * side, Vector2(side, side))
 
 
-func _texture_of(letter: String) -> Texture2D:
+func _piece_name(letter: String) -> String:
 	var side: String = "white" if letter == letter.to_upper() else "black"
-	return _art("piece-%s-%s" % [side, ART[letter.to_lower()]])
+	return "piece-%s-%s" % [side, ART[letter.to_lower()]]
+
+
+func _texture_of(letter: String) -> Texture2D:
+	return _art(_piece_name(letter))
+
+
+## A piece with its normal map, drawn with `_lit` (on the board and in the cut-in).
+func _lit_of(letter: String) -> Texture2D:
+	var name_of: String = _piece_name(letter)
+	if not _textures.has(name_of + ".lit"):
+		_textures[name_of + ".lit"] = XomDaoLit.texture(_art(name_of), _art(name_of + ".normal"))
+	return _textures[name_of + ".lit"]
 
 
 func _art(name_of: String) -> Texture2D:
@@ -362,6 +376,7 @@ func _sync_pieces() -> void:
 		var piece := TextureRect.new()
 		piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		piece.material = _lit
 		_pieces_layer.add_child(piece)
 		_pieces[sq] = piece
 		_letters[sq] = board[sq]
@@ -376,7 +391,7 @@ func _place_pieces() -> void:
 		var piece: TextureRect = _pieces[sq]
 		var rect: Rect2 = _piece_rect(sq)
 		piece.name = "Piece_%d" % sq
-		piece.texture = _texture_of(_letters[sq])
+		piece.texture = _lit_of(_letters[sq])
 		piece.position = rect.position
 		piece.size = rect.size
 		piece.modulate.a = 1.0
@@ -503,7 +518,8 @@ func _cut_in(last: Dictionary) -> void:
 	var piece := TextureRect.new()
 	var board: Array[String] = _board_letters()
 	var to: int = int(last["to"])
-	piece.texture = _texture_of(board[to] if board[to] != "" else "Q")
+	piece.texture = _lit_of(board[to] if board[to] != "" else "Q")
+	piece.material = _lit
 	piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	piece.custom_minimum_size = Vector2(72.0, 72.0)
 	row.add_child(piece)

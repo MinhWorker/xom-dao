@@ -29,7 +29,9 @@ http://localhost:5033/?play=xiangqi (chơi với máy trên server thật). Ki�
 
 Bàn có cảnh đình, bàn, đường kẻ, chữ 楚河 漢界, quân và bóng, vòng chiếu tướng nhấp nháy, cột
 thống kê và các nút. Quân bị ăn bị đánh văng, xoay rồi tan; thông báo chiếu là một cuộn giấy mở ra
-rồi cuộn lại. Quân là từng ảnh cắt từ atlas `assets/pieces.webp`, chưa có đèn normal map. Nước đi
+rồi cuộn lại. Quân là từng ảnh cắt từ atlas `assets/pieces.webp`, kèm normal map cắt cùng khung
+từ `assets/pieces.normal.webp` (`godot/art/<quân>.normal.webp`); bàn chiếu sáng quân bằng
+`XomDaoLit` của SDK (ánh sáng nền cộng một đèn ấm từ phía trên bên trái). Nước đi
 hợp lệ lấy từ `moves` trong view của server (chỉ có khi tới lượt mình), nên luật chỉ nằm ở
 TypeScript.
 

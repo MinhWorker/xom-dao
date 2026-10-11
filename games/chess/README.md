@@ -82,5 +82,8 @@ http://localhost:5033/?play=chess. Kiểm tra bằng `npm run check`, `npm run g
 Test logic có perft khai cuộc, Kiwipete, tàn cuộc và phong cấp; chiếu hết, hết nước, lặp thế,
 50 nước, xin hoà và máy chơi; test GUT ở `godot/test/`.
 
-Quân là từng ảnh cắt từ atlas `assets/pieces.webp`, chưa có đèn normal map. Nước đi hợp lệ lấy
+Quân là từng ảnh cắt từ atlas `assets/pieces.webp`, kèm normal map cắt cùng khung từ
+`assets/pieces.normal.webp` (`godot/art/<quân>.normal.webp`). Bàn chiếu sáng quân bằng
+`XomDaoLit` của SDK: ánh sáng nền cộng một đèn ấm từ phía trên bên trái, nền hơi cao (0.85) để
+thân quân không tối đi. Nước đi hợp lệ lấy
 từ `moves` trong view của server (chỉ có khi tới lượt mình), nên luật chỉ nằm ở TypeScript.

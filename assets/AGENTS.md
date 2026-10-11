@@ -67,6 +67,8 @@ Notes on the options and on Codex:
   the flat normal; edges blend toward it (`opaque_normals` in xomdao_bake). Camera-space +X right, +Y up, +Z toward the viewer;
   flat normals are (128,128,255). Bake with Raw (Standard applies sRGB), disable dithering and
   save normals losslessly. Never run them through image cropping, grading or lossy compression.
+  A Godot table copies them as `godot/art/<name>.normal.webp`, cut losslessly at the same frames
+  as the diffuse copies, and draws them with `XomDaoLit` (`apps/client/AGENTS.md`).
 - Pack many pieces into one aligned atlas pair (chess's `pieces`) rather than one file each.
 - Cloth is a seamless 256×256 POT tile; the table tiles it (`TextureRect.STRETCH_TILE`) to cover
   the whole screen.
