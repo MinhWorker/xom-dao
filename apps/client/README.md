@@ -49,7 +49,7 @@ Xem mọi thành phần ở màn gallery: `?gallery=1` tới `?gallery=4` trên 
 ## Kết nối server
 
 `XomDaoClient` nói chuyện với server qua WebSocket thuần + JSON ở `/ws` (cùng cổng với API
-HTTP): đăng nhập khách hoặc tài khoản, tạo phòng, vào phòng bằng mã, gửi nước đi, nhận
+HTTP): đăng nhập bằng tài khoản (hub không cho chơi như khách), tạo phòng, vào phòng bằng mã, gửi nước đi, nhận
 `state_changed`. Mất kết nối thì tự nối lại và quay về phòng. Đầu file `client.gd` ghi cách dùng.
 
 Protocol chỉ viết một lần, bằng schema zod trong `packages/shared/src/protocol.ts`. Sửa schema

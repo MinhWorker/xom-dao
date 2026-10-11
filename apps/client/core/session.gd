@@ -20,21 +20,21 @@ func save_token(token: String) -> void:
 	config.save(FILE)
 
 
-## Logs in with the saved token, or as a new guest; keeps the token for next time.
+## Logs in with the saved token. False when there is none, the server no longer knows it, or
+## it belongs to a guest of the days before accounts were needed: the hub then asks the player
+## to log in or make an account (HubAccount.gate).
 func log_in(client: XomDaoClient) -> bool:
 	var token: String = saved_token()
-	if token != "" and await client.login_token(token):
-		save_token(token)
-		return true
-	if client.refused():
+	if token == "" or not await client.login_token(token):
 		return false
-	if not await client.login_guest("Khách %d" % randi_range(100, 999)):
+	if is_guest(client.user):
 		return false
-	save_token(client.token)
+	save_token(token)
 	return true
 
 
-## A guest account (made by `auth:guest`): no username or password of its own.
+## An account made by `auth:guest`, from before accounts were needed: no username or password
+## of its own.
 static func is_guest(user: XomDaoUser) -> bool:
 	return user == null or user.username.begins_with("khach")
 
@@ -52,7 +52,7 @@ func register(username: String, password: String, display_name: String) -> Dicti
 	return await _post("register", body)
 
 
-## Ends this login token on the server (the next visit starts as a new guest).
+## Ends this login token on the server (the next visit asks to log in).
 func log_out(token: String) -> void:
 	await _post("logout", {}, token)
 	save_token("")

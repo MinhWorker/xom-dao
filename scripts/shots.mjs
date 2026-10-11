@@ -19,6 +19,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { chromium } from 'playwright';
 import sharp from 'sharp';
+import { signIn } from './e2e/godot.mjs';
 
 /**
  * Landscape screens in CSS px with their pixel density, notch/home-bar insets (the app runs full
@@ -84,6 +85,7 @@ for (const name of names) {
     const cdp = await context.newCDPSession(page);
     await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: d.inset });
   }
+  await signIn(page, base);
   await page.goto(new URL(args.path, base).href);
   // The release build has no test bridge: then only the wait.
   await page

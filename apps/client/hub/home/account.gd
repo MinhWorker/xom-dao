@@ -1,8 +1,9 @@
 class_name HubAccount
 extends Control
-## Tài khoản, over Nhà: a guest logs in (username, password) or makes an account (plus the name
-## shown in game); someone logged in sees their username and Đăng xuất. The hub acts on the
-## signals: it keeps the new token and starts again as that player.
+## Tài khoản. Everyone plays with an account, so the app opens on this board (`gate`) until the
+## player logs in (username, password) or makes an account (plus the name shown in game); it cannot
+## be closed. Over Nhà (`create`), someone logged in sees their username and Đăng xuất. The hub
+## acts on the signals: it keeps the new token and starts again as that player.
 
 ## Logged in, or made an account: the new login token.
 signal signed_in(token: String)
@@ -22,6 +23,19 @@ var _show: XomDaoChoice = XomDaoChoice.create(["Ẩn", "Hiện"])
 var _error := Label.new()
 var _submit: XomDaoButton = XomDaoButton.create("Vào chơi", XomDaoUi.Kind.GO)
 var _busy: bool = false
+## False for the gate: the board stays until the player is in.
+var _closable: bool = true
+
+
+## The form the app opens on: no way round it.
+static func gate() -> HubAccount:
+	var account := HubAccount.new()
+	account._closable = false
+	account._board.title = "Vào Xóm Đảo"
+	account._board.set_closable(false)
+	account._shade.color = Color(XomDaoUi.NAVY, 0.35)
+	account._build_form("")
+	return account
 
 
 ## The board for `user`: the login form for a guest, Đăng xuất otherwise.
@@ -186,7 +200,7 @@ func _say(message: String) -> void:
 
 
 func _on_shade_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and not _busy:
+	if event is InputEventMouseButton and event.pressed and not _busy and _closable:
 		queue_free()
 
 

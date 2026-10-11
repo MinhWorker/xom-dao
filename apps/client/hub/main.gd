@@ -92,7 +92,7 @@ func _start() -> void:
 		if _client.refused():
 			_show_update()
 		else:
-			_show_status("Không đăng nhập được")
+			_show_gate()
 		return
 	_client.error.connect(_say)
 	_coins = _balance()
@@ -149,6 +149,14 @@ func _reload_page() -> void:
 		get_tree().reload_current_scene()
 
 
+## Nobody is logged in: the login board over the loading screen's pictures, until they are.
+func _show_gate() -> void:
+	_show_status("")
+	var gate: HubAccount = HubAccount.gate()
+	gate.signed_in.connect(_switch_account)
+	add_child(gate)
+
+
 ## Tài khoản over your Nhà.
 func _show_account() -> void:
 	var account := HubAccount.create(_client.user)
@@ -161,7 +169,7 @@ func _show_account() -> void:
 	add_child(account)
 
 
-## Starts again as another player: `token` ("" = a new guest).
+## Starts again as another player: `token` ("" = nobody, back to the login board).
 func _switch_account(token: String) -> void:
 	Session.save_token(token)
 	await _client.reset()

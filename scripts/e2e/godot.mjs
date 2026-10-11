@@ -10,8 +10,42 @@ export const PHONE = { width: 844, height: 390 };
 /** Chromium flags: Godot needs WebGL 2, which headless Chromium gives through SwiftShader. */
 export const launch = { args: ['--use-gl=angle', '--use-angle=swiftshader'] };
 
-/** Opens the Godot client (with a query such as `?room=K7M2`) and waits for its first screen. */
-export async function openGodot(t, page, query = '') {
+const signedIn = new WeakSet();
+
+/**
+ * Everyone plays with an account: makes one over HTTP and leaves its token where the client
+ * looks for a login kept by the browser (localStorage), so the page opens logged in. Once per
+ * page; a token already there is kept.
+ */
+export async function signIn(page, base) {
+  if (signedIn.has(page)) return;
+  signedIn.add(page);
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  const reply = await fetch(new URL('/api/auth/register', base), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: `e2e${id}`.slice(0, 20),
+      password: 'mat-khau-e2e',
+      name: `Khách ${100 + Math.floor(Math.random() * 900)}`,
+      avatar: 'boy',
+    }),
+  });
+  const { token } = await reply.json();
+  if (!token) throw new Error(`No account for the page: ${reply.status}`);
+  await page.addInitScript((value) => {
+    try {
+      if (!localStorage.getItem('xomdao:token')) localStorage.setItem('xomdao:token', value);
+    } catch {}
+  }, token);
+}
+
+/**
+ * Opens the Godot client (with a query such as `?room=K7M2`) and waits for its first screen,
+ * logged in as a new account unless `account` is false (the login board then shows).
+ */
+export async function openGodot(t, page, query = '', { account = true } = {}) {
+  if (account) await signIn(page, t.url);
   await page.goto(new URL(`/${query}`, t.url).href);
   await page.waitForFunction(() => window.xomdao, null, { timeout: 60_000 });
   return page;

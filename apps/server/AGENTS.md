@@ -48,6 +48,8 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - The client speaks plain WebSocket + JSON on `/ws` (same port as `/api`): `{ id, event, data }`
   requests, `{ id, ack }` replies, `{ event, data }` pushes. It logs in first with `auth:token`,
   `auth:login` or `auth:guest` (a new account with only a name), each carrying `protocol`.
+  The Godot hub no longer uses `auth:guest`: it asks everyone to log in or register first
+  (`HubAccount.gate`); only `npm run smoke`, tests and the client SDK's `login_guest` still do.
   `WsGateway` then runs the matching `RoomsGateway` handler (`handlerFor`);
   `RoomsGateway.clients()` lists every connected client for broadcasts.
 - Room codes are 4 characters without 0/O/1/I; `room:join` takes them in any case.
