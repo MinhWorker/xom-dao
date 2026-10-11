@@ -7,6 +7,8 @@ const TRACK_LENGTH := 52
 ## Colours by index (red, blue, yellow, green): their names and ink.
 const COLOR_NAMES: Array[String] = ["Đỏ", "Xanh dương", "Vàng", "Xanh lá"]
 const INKS: Array[Color] = [Color("#E95853"), Color("#52A5EE"), Color("#F7C94F"), Color("#54BB86")]
+## Their lighter tints, for names on dark wood.
+const TINTS: Array[Color] = [Color("#FFB5A4"), Color("#A8D9FF"), Color("#FFE5A0"), Color("#A8EBC7")]
 ## One quarter of the track on the 15 × 15 grid; the others turn round the middle.
 const SEGMENT: Array = [
 	[0, 6],

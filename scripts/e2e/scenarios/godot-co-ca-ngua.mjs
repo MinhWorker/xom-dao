@@ -1,8 +1,9 @@
 // Cờ Cá Ngựa in the Godot client (#122): the sandbox (?play=co-ca-ngua) plays three computer
-// players. You tap the dice and then a horse that can go for a few turns; then the Dev Console
-// stages each of your horses at its home gate with the roll it needs (6, 5, 4, 3) and you tap
-// them home one by one until you win and the hub's result comes. Needs the debug web build at
-// (npm run godot:export -- --debug).
+// players. You open Luật on the table and turn its illustrated pages; then you tap the dice and
+// a horse that can go for a few turns; then the Dev Console stages each of your horses at its
+// home gate with the roll it needs (6, 5, 4, 3) and you tap them home one by one until you win
+// and the hub's result comes; Xem bàn shows the plaque (CHIẾN THẮNG!, HẠNG 1) over the board.
+// Needs the debug web build (npm run godot:export -- --debug).
 
 import { DESKTOP, godotText, launch, onScene, openGodot, room, tap } from '../godot.mjs';
 
@@ -35,6 +36,16 @@ export default async function run(t) {
     const { room, playerId } = window.xomdao.state();
     return room.seats.findIndex((s) => s.id === playerId);
   });
+  // The illustrated rules: open, turn to the home-entry picture, close.
+  await tap(page, 'RulesButton');
+  await godotText(page, 'RulesPage', '1 / 10');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: t.shot('0-rules.png') });
+  for (let i = 0; i < 5; i++) await tap(page, 'RulesNext');
+  await godotText(page, 'RulesPage', '6 / 10');
+  await page.screenshot({ path: t.shot('0-rules-entry.png') });
+  await tap(page, 'RulesClose');
+  await page.waitForFunction(() => !window.xomdao.rect('RulesPage'));
   let turns = 0;
   for (let i = 0; i < 1200 && turns < 3; i++) {
     const v = (await room(page)).view;
@@ -78,8 +89,12 @@ export default async function run(t) {
     if (horse === 2) await page.screenshot({ path: t.shot('3-home.png') });
   }
   await godotText(page, 'Status', 'Bạn thắng!');
-  await page.waitForTimeout(1500);
+  // The hub's result comes at once; Xem bàn shows the plaque and the dance under it.
+  await godotText(page, 'BadgeRank', 'HẠNG 1');
+  await tap(page, 'ViewBoard');
+  await page.waitForTimeout(400);
   await page.screenshot({ path: t.shot('4-won.png') });
+  await tap(page, 'ShowResult');
   await godotText(page, 'ResultTitle', /thắng/, 30_000);
   await page.screenshot({ path: t.shot('5-result.png') });
 }

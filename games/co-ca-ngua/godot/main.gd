@@ -5,11 +5,16 @@ extends Control
 ## horse, the colours, the turn, the dice) and sends `roll` and `move {horse}`.
 ##
 ## Tap the dice to roll; the horses that can go get a gold ring, tap one to move it. Horses hop
-## square by square, a kicked horse slides back to its paddock, and a team home dances.
+## square by square, a kicked horse slides back to its paddock, and a team home dances under
+## fireworks with its plaque ("CHIẾN THẮNG!" or "VỀ ĐÍCH!", "HẠNG n"; celebration.gd). The Luật
+## button in the top right corner opens the illustrated rules (rules_panel.gd).
 ##
-## Named nodes for tests: Board, Dice, Horse_<seat>_<horse>, Seat_<seat>, Status, Notice.
+## Named nodes for tests: Board, Dice, Horse_<seat>_<horse>, Seat_<seat>, Status, Notice,
+## RulesButton, RulesPanel (and its own), Celebration (and its own).
 
 const Rules := preload("res://content/co-ca-ngua/rules.gd")
+const RulesPanel := preload("res://content/co-ca-ngua/rules_panel.gd")
+const Celebration := preload("res://content/co-ca-ngua/celebration.gd")
 const SOUNDS: Array[String] = [
 	"dice-roll",
 	"dice-six",
@@ -48,6 +53,8 @@ var _slots: Array[XomDaoPlayerSlot] = []
 ## horses[seat][horse]: each a sprite with its number.
 var _horses: Array = []
 var _fx := Control.new()
+var _rules_button: XomDaoButton = XomDaoButton.create("Luật", XomDaoUi.Kind.INFO)
+var _rules := RulesPanel.new()
 var _sounds: Dictionary = {}
 var _faces: Array[Texture2D] = []
 var _frames: Array[Texture2D] = []
@@ -60,6 +67,8 @@ var _ended: bool = false
 var _jobs: Array[Callable] = []
 var _running: bool = false
 var _rolling: bool = false
+## Seats whose team home has been celebrated this game (or is queued to be).
+var _celebrated: Dictionary = {}
 
 
 ## Options for a sandbox room (`?play=co-ca-ngua` in a debug build): three computer players.
@@ -146,6 +155,10 @@ func _ready() -> void:
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_fx)
+	_rules_button.name = "RulesButton"
+	_rules_button.pressed.connect(_rules.open)
+	add_child(_rules_button)
+	add_child(_rules)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
 		player.stream = load("res://content/co-ca-ngua/sounds/%s.wav" % sound)
@@ -173,6 +186,10 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		return
 	var view: Dictionary = snapshot.view
 	var live: bool = not _view.is_empty()
+	var moves: int = int(view["moves"])
+	if not live or moves < _moves:
+		_celebrated.clear()
+		_rules.close()
 	_me = -1
 	for i: int in snapshot.seats.size():
 		if snapshot.seats[i].id == _client.player_id:
@@ -181,13 +198,17 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	if count != _slots.size():
 		_build(count, view)
 	var phase: String = str(view["phase"])
-	var moves: int = int(view["moves"])
 	if not live:
 		_sfx("game-start")
 	elif _phase == "roll" and phase != "roll" and view.get("lastRoll") != null:
 		_enqueue(_animate_roll.bind(int((view["lastRoll"] as Dictionary)["value"]), phase))
 	if live and moves > _moves and view.get("lastMove") != null:
-		_enqueue(_animate_move.bind((view["lastMove"] as Dictionary).duplicate(true), view))
+		var move: Dictionary = (view["lastMove"] as Dictionary).duplicate(true)
+		_enqueue(_animate_move.bind(move, view))
+		var mover: int = int(move["seat"])
+		if _team_home(view, mover) and not _celebrated.has(mover):
+			_celebrated[mover] = true
+			_enqueue(_celebrate.bind(mover))
 	_view = view
 	_phase = phase
 	_moves = moves
@@ -196,10 +217,33 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		_dice.texture = _faces[_dice_value() - 1]
 	_show_hud()
 	var ended: bool = view.get("winner") != null
-	if ended and not _ended and live:
-		_enqueue(_celebrate.bind(int(view["winner"])))
+	var winner: int = int(view["winner"]) if ended else -1
+	if ended and not _ended and live and not _celebrated.has(winner):
+		_celebrated[winner] = true
+		_enqueue(_celebrate.bind(winner))
 	_ended = ended
 	_layout()
+
+
+## Whether all four horses of a seat are home.
+static func _team_home(view: Dictionary, seat: int) -> bool:
+	var all: Array = view["horses"]
+	if seat < 0 or seat >= all.size():
+		return false
+	for horse: Variant in all[seat]:
+		if not bool((horse as Dictionary)["finished"]):
+			return false
+	return true
+
+
+## A seat's place: its index in the rankings plus one (the winner is first even when the game
+## ended before anyone was ranked), or 0 when it has none.
+static func rank_of(view: Dictionary, seat: int) -> int:
+	var rankings: Array = view["rankings"]
+	for place: int in rankings.size():
+		if int(rankings[place]) == seat:
+			return place + 1
+	return 1 if view.get("winner") != null and int(view["winner"]) == seat else 0
 
 
 func _dice_value() -> int:
@@ -419,12 +463,24 @@ func _animate_move(move: Dictionary, view: Dictionary) -> void:
 		_sfx("token-safe")
 
 
-## A team home: its four horses hop on their squares.
+## A team home: fireworks and its plaque over the board while its four horses hop on their
+## squares.
 func _celebrate(seat: int) -> void:
 	if seat < 0 or seat >= _horses.size():
 		return
 	_place_horses()
 	_sfx("win")
+	var color: int = int(_view["colors"][seat]) % 4
+	var party := Celebration.new()
+	party.setup(
+		Rect2(_board.position, _board.size),
+		Rules.INKS[color],
+		Rules.TINTS[color],
+		_seat_name(seat),
+		maxi(1, rank_of(_view, seat))
+	)
+	_fx.add_child(party)
+	party.play()
 	for round: int in 6:
 		var tween: Tween = create_tween().set_parallel()
 		for sprite: Control in _horses[seat]:
@@ -524,6 +580,8 @@ func _layout() -> void:
 	_board.size = Vector2.ONE * side
 	_board.position = Vector2((size.x - side) / 2.0, (size.y - side) / 2.0)
 	_rings.size = size
+	_rules_button.reset_size()
+	_rules_button.position = Vector2(right - _rules_button.size.x, edge)
 	if _view.is_empty():
 		return
 	# Each slot in the corner by its colour: red top left (under ☰), blue top right, yellow
