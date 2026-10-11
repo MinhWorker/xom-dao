@@ -1,10 +1,11 @@
 class_name HubShopCard
 extends PanelContainer
-## One item on Chợ's grid: a dark head with its name, its picture on paper, and a foot with the
-## screen's own Mua button or "Đã có" chip. Named `Item_<slot>-<look>` ("Item_frame-jade").
+## One item on Chợ's grid: a dark head with its whole name (on two lines when long), its picture
+## on paper, and a foot with the screen's own Mua button or "Đã có" chip. Named
+## `Item_<slot>-<look>` ("Item_frame-jade").
 
-const SIZE := Vector2(212.0, 252.0)
-const HEAD_H := 46.0
+const SIZE := Vector2(212.0, 270.0)
+const HEAD_H := 64.0
 
 ## Where the screen puts its button or chip.
 var foot := HBoxContainer.new()
@@ -39,16 +40,16 @@ func _build(item: XomDaoShopItem) -> void:
 	wood.corner_radius_top_right = 16
 	wood.corner_detail = 12
 	wood.anti_aliasing = true
-	wood.content_margin_left = 12.0
-	wood.content_margin_right = 12.0
+	wood.content_margin_left = 8.0
+	wood.content_margin_right = 8.0
 	head.add_theme_stylebox_override("panel", wood)
 	column.add_child(head)
 	var title := Label.new()
 	title.text = item.name
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.clip_text = true
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_constant_override("line_spacing", -6)
 	title.add_theme_font_override("font", XomDaoUi.display_font(700))
 	title.add_theme_font_size_override("font_size", XomDaoUi.TEXT_MIN)
 	title.add_theme_color_override("font_color", XomDaoUi.CREAM)

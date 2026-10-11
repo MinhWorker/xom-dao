@@ -157,6 +157,15 @@ func test_picking_a_game_again_keeps_the_hud_where_it_was() -> void:
 		assert_almost_eq(after[i].size, before[i].size, Vector2.ONE * 0.01)
 
 
+func test_a_long_name_is_written_smaller_not_cut() -> void:
+	var card: HubGameCard = add_child_autofree(HubGameCard.new())
+	card.show_title("Cờ")
+	assert_eq(card.title.get_theme_font_size("font_size"), HubGameCard.TITLE_SIZE)
+	card.show_title("Cờ tỷ phú Classic phiên bản đặc biệt")
+	assert_lt(card.title.get_theme_font_size("font_size"), HubGameCard.TITLE_SIZE)
+	assert_eq(card.title.text_overrun_behavior, TextServer.OVERRUN_NO_TRIMMING)
+
+
 func test_the_card_follows_what_can_be_played() -> void:
 	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
 	var catalog: HubCatalog = _catalog(0)

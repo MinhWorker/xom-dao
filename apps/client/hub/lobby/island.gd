@@ -21,9 +21,10 @@ const SOON := "sap-co"
 ## How far the island bobs up and down (units at scale 1) and how fast (radians a second).
 const BOB := 5.0
 const BOB_SPEED := 1.4
-## The face of the name plank, and its picture (plank and ropes) around that face.
-const SIGN := Vector2(166.0, 44.0)
-const SIGN_ART := Rect2(-7.0, -37.0, 180.0, 86.5)
+## The speech bubble with the name, over the island: this size for every name that fits, wider
+## for a longer one (a name is never cut). Its tail hangs TAIL below it.
+const SIGN := Vector2(170.0, 54.0)
+const TAIL := 16.0
 
 static var _dim_shader: Shader = preload("res://hub/lobby/island_dim.gdshader")
 
@@ -32,6 +33,7 @@ var title: String = "":
 	set(value):
 		title = value
 		_sign.text = value
+		_fit_bubble()
 		if _drawn != null:
 			_drawn.title = value
 
@@ -43,8 +45,9 @@ var locked: bool = false:
 var selected: bool = false:
 	set(value):
 		selected = value
-		_sign.visible = value
-		_plank.visible = value
+		if value and not _bubble.visible:
+			_pop()
+		_bubble.visible = value
 		if _scene != null and _scene.has_method("set_selected"):
 			_scene.call("set_selected", value)
 		_restyle()
@@ -65,10 +68,14 @@ var days_left: int = -1:
 var _body := Control.new()
 ## Fog, lock and pennant over the art, bobbing with it.
 var _overlay := Control.new()
-## The name, written on the face of the plank (SIGN); the plank's picture with its ropes is
-## drawn around it (SIGN_ART, relative to the name).
+## The name, in a speech bubble (`_bubble`, drawn in code) over the selected island.
 var _sign := Label.new()
-var _plank := TextureRect.new()
+var _bubble := Control.new()
+## How far below its place the bubble is, in units, while it pops up.
+var _drop: float = 0.0:
+	set(value):
+		_drop = value
+		_place_bubble()
 var _material := ShaderMaterial.new()
 var _drawn: HubIslandArt
 var _scene: Node2D
@@ -104,29 +111,21 @@ func _init() -> void:
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay.draw.connect(_draw_overlay)
 	add_child(_overlay)
+	_bubble.name = "Bubble"
+	_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bubble.size = SIGN
+	_bubble.visible = false
+	_bubble.draw.connect(_draw_bubble)
+	add_child(_bubble)
 	_sign.name = "Sign"
-	_sign.visible = false
 	_sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_sign.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_sign.add_theme_font_override("font", XomDaoUi.display_font(800))
-	_sign.add_theme_font_size_override("font_size", 28)
-	_sign.add_theme_color_override("font_color", XomDaoUi.CREAM)
-	_sign.add_theme_color_override("font_outline_color", XomDaoUi.HONEY_DARK)
-	_sign.add_theme_constant_override("outline_size", 8)
-	_sign.clip_text = true
-	_sign.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_sign.size = SIGN
-	# The plank hangs from the island on two ropes: one picture, the same length for every name.
-	_plank.name = "Plank"
-	_plank.texture = preload("res://hub/lobby/sign.webp")
-	_plank.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_plank.stretch_mode = TextureRect.STRETCH_SCALE
-	_plank.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	_plank.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_plank.size = SIGN_ART.size
-	_plank.visible = false
-	add_child(_plank)
-	add_child(_sign)
+	_sign.add_theme_font_size_override("font_size", 30)
+	_sign.add_theme_color_override("font_color", XomDaoUi.INK)
+	_sign.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bubble.add_child(_sign)
+	_fit_bubble()
 	resized.connect(_place)
 	_time = randf() * TAU
 
@@ -191,13 +190,65 @@ func _place() -> void:
 			art.size = size
 	if _scene != null:
 		_scene.scale = Vector2.ONE * size.x / ART
-	_sign.scale = Vector2.ONE * k
-	_sign.size = SIGN
-	_sign.position = Vector2((size.x - _sign.size.x * k) / 2.0, size.y * 0.76)
-	_plank.scale = _sign.scale
-	_plank.position = _sign.position + SIGN_ART.position * k
+	_place_bubble()
 	queue_redraw()
 	_overlay.queue_redraw()
+
+
+## The bubble pops up when its island comes to the front.
+func _pop() -> void:
+	_bubble.modulate.a = 0.0
+	_drop = 14.0
+	var tween: Tween = create_tween().set_parallel()
+	tween.tween_property(_bubble, "modulate:a", 1.0, 0.12)
+	tween.tween_property(self, "_drop", 0.0, 0.28).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+
+
+## The bubble is as wide as its name needs, never narrower than SIGN.
+func _fit_bubble() -> void:
+	var font: Font = XomDaoUi.display_font(800)
+	var needed: float = font.get_string_size(_sign.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x + 48.0
+	_bubble.size = Vector2(maxf(SIGN.x, needed), SIGN.y)
+	_sign.position = Vector2.ZERO
+	_sign.size = _bubble.size - Vector2(0.0, 2.0)
+	_bubble.queue_redraw()
+	_place_bubble()
+
+
+## The bubble's tail points at the top of the island.
+func _place_bubble() -> void:
+	var k: float = size.x / BASE.x
+	_bubble.scale = Vector2.ONE * k
+	_bubble.position = Vector2(
+		(size.x - _bubble.size.x * k) / 2.0, size.y * 0.1 - (SIGN.y + TAIL - _drop) * k
+	)
+
+
+## A sheet of paper with round ends and a small tail under its middle, outlined in ink.
+func _draw_bubble() -> void:
+	var paper: StyleBoxFlat = XomDaoUi.box(
+		XomDaoUi.PAPER, XomDaoUi.INK, XomDaoUi.BORDER, SIGN.y / 2.0
+	)
+	paper.shadow_color = XomDaoPuff.SHADE
+	paper.shadow_size = 3
+	paper.shadow_offset = Vector2(0.0, 4.0)
+	_bubble.draw_style_box(paper, Rect2(Vector2.ZERO, _bubble.size))
+	var mid: float = _bubble.size.x / 2.0
+	var base: float = SIGN.y - XomDaoUi.BORDER - 0.5
+	var tail := PackedVector2Array(
+		[Vector2(mid - 13.0, base), Vector2(mid + 13.0, base), Vector2(mid, SIGN.y + TAIL)]
+	)
+	_bubble.draw_colored_polygon(tail, XomDaoUi.PAPER)
+	var edge := PackedVector2Array(
+		[
+			Vector2(mid - 13.0, SIGN.y - 1.5),
+			Vector2(mid, SIGN.y + TAIL),
+			Vector2(mid + 13.0, SIGN.y - 1.5)
+		]
+	)
+	_bubble.draw_polyline(edge, XomDaoUi.INK, XomDaoUi.BORDER, true)
 
 
 ## Grey with distance (none at the front), more so in fog.

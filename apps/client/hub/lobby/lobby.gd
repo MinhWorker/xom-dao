@@ -160,7 +160,7 @@ func show_level(level: int, xp: int = 0, level_xp: int = 0, next_xp: int = 0) ->
 ## The card at the bottom right: the selected game, or "Sắp có" when there is none to play.
 func show_game(card: XomDaoGameCard, can_play: bool) -> void:
 	_game_id = card.id if card != null else ""
-	_card.title.text = card.name if card != null else "Sắp có"
+	_card.show_title(card.name if card != null else "Sắp có")
 	_card.show_art(HubGameArt.splash(card.id) if card != null else null, not can_play)
 	_card.show_online(card.playing if card != null else 0, card != null)
 	play.seats = (

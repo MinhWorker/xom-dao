@@ -12,6 +12,7 @@ const SIZE := Vector2(460.0, 340.0)
 ## Top left and bottom right, then top right and bottom left.
 const ROUND := 44.0
 const SMALL := 14.0
+const TITLE_SIZE := 38
 const FOG := Color(0.78, 0.83, 0.88, 0.6)
 
 var title := Label.new()
@@ -57,11 +58,10 @@ func _init() -> void:
 	_cover(frame)
 	title.name = "SelectedName"
 	title.theme_type_variation = "HudLabel"
-	title.add_theme_font_size_override("font_size", 38)
+	title.add_theme_font_size_override("font_size", TITLE_SIZE)
 	title.add_theme_color_override("font_outline_color", Color(XomDaoUi.NAVY, 0.75))
 	title.add_theme_constant_override("outline_size", 6)
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
 	_online_row.name = "SelectedOnlineRow"
@@ -100,6 +100,20 @@ func show_art(picture: Texture2D, locked: bool) -> void:
 	if picture != null:
 		art.set_shader_parameter("art", picture)
 	_layout()
+
+
+## The game's name, whole: a long one is written smaller, never cut.
+func show_title(text: String) -> void:
+	title.text = text
+	var font: Font = XomDaoUi.display_font(800)
+	var room: float = SIZE.x - 26.0 - 110.0
+	var font_size: int = TITLE_SIZE
+	while (
+		font_size > XomDaoUi.TEXT_MIN
+		and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > room
+	):
+		font_size -= 2
+	title.add_theme_font_size_override("font_size", font_size)
 
 
 ## Shows or hides the players online.
