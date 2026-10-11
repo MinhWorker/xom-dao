@@ -166,6 +166,24 @@ func test_seats_fill_rows_by_how_many_there_are() -> void:
 	assert_eq(HubWaitingRoom.columns_for(8), 4)
 
 
+func test_loading_tells_a_game_story_and_turns_its_slides() -> void:
+	var loading: HubLoading = add_child_autofree(HubLoading.new("tien-len"))
+	loading.status = "Đang tải"
+	assert_eq(loading.find_child("Status", true, false).text, "Đang tải")
+	var title: Label = loading.find_child("LoadingName", true, false)
+	var story: Label = loading.find_child("LoadingStory", true, false)
+	assert_eq(title.text, "Tiến Lên", "it opens on the game being loaded")
+	assert_string_contains(story.text, "Thirteen")
+	var first: int = loading.slide
+	loading.turn(1)
+	assert_ne(loading.slide, first, "the next slide")
+	assert_ne(title.text, "Tiến Lên")
+	loading.turn(-1)
+	assert_eq(loading.slide, first, "and back")
+	for entry: Array in HubLoading.SLIDES:
+		assert_not_null(HubGameArt.splash(str(entry[0])), "%s has art" % entry[0])
+
+
 func test_result_ranks_and_rewards() -> void:
 	var won: XomDaoRoomSnapshot = _snapshot(
 		["minh"], [{"player": "minh", "resource": "core:coin", "amount": 20}]

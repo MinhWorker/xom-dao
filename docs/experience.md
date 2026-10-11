@@ -135,6 +135,10 @@ Mở game ─► Sảnh (vòng đảo)
   ván, **Chơi tiếp** không cần sẵn sàng lại.
 - Ghép nhanh (`room:quick`: vào phòng đang chờ, không ai tới thì máy ngồi ghế trống) vẫn có ở
   màn chọn trò.
+- **Màn chờ** (đang kết nối, đang tải một trò) là băng chuyền tranh của các trò: mỗi tranh kèm
+  tên trò và vài dòng về gốc gác của trò đó, tự chuyển sau vài giây, chạm hoặc vuốt để chuyển
+  sớm. Khi tải một trò thì mở đầu bằng tranh của chính trò đó. Trạng thái nằm ở góc dưới phải.
+  Thêm trò mới thì thêm một dòng vào `SLIDES` trong `apps/client/hub/loading.gd`.
 - Nút ← luôn về đúng một bước. Từ ván đấu về sảnh có hỏi xác nhận nếu đang giữa ván.
 - Chơi với bạn bè: phòng nào cũng có **mã phòng** ngắn. Gửi mã hoặc link mời; bạn bè nhập mã ở Bến
   hoặc mở link là vào thẳng phòng. Thoát ra thì về sảnh, với trò đó đang được chọn.

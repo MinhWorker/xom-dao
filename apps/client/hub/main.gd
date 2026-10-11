@@ -171,7 +171,7 @@ func _switch_account(token: String) -> void:
 
 ## Debug builds: a real room for this game, the computer in the seats it can take, started.
 func _sandbox(id: String) -> void:
-	_show_status("Đang tải")
+	_show_status("Đang tải", id)
 	var scene: PackedScene = await ContentLoader.load_game(id)
 	if scene == null:
 		_show_status("Không tải được %s" % id)
@@ -677,7 +677,7 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 		if _loading:
 			return
 		_loading = true
-		_show_status("Đang tải")
+		_show_status("Đang tải", snapshot.game_id)
 		var scene: PackedScene = await ContentLoader.load_game(snapshot.game_id)
 		_loading = false
 		if scene == null:
@@ -798,15 +798,14 @@ func _invite() -> void:
 # ── Screens ───────────────────────────────────────────────────────────────────────────────
 
 
-func _show_status(text: String) -> void:
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var label := Label.new()
-	label.name = "Status"
-	label.text = text
-	label.theme_type_variation = "HudLabel"
-	center.add_child(label)
-	_set_screen("status", center)
+## The loading screen (HubLoading) with `text` in its corner; it opens on `game_id`'s slide. One
+## already up keeps turning its slides and only changes its text.
+func _show_status(text: String, game_id: String = "") -> void:
+	var loading: HubLoading = _current as HubLoading if _shown == "status" else null
+	if loading == null:
+		loading = HubLoading.new(game_id)
+		_set_screen("status", loading)
+	loading.status = text
 
 
 ## Puts `screen` on, freeing the one before (the game stays: it lives across rounds).
