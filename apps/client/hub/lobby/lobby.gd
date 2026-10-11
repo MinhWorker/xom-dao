@@ -142,6 +142,7 @@ func show_event(card: XomDaoGameCard) -> void:
 func show_user(user: XomDaoUser) -> void:
 	_name.text = user.name if user != null else ""
 	avatar.initial = _name.text
+	avatar.picture = XomDaoLooks.avatar(user.avatar) if user != null else null
 	avatar.frame = user.frame if user != null else ""
 
 
@@ -225,52 +226,62 @@ func _build_sidebar() -> void:
 		_places.add_child(button)
 
 
+## The avatar overlaps the left end of a navy plate: the name on it, and under the name one bar
+## that starts with the level and fills with EXP.
 func _build_profile() -> void:
 	_profile.name = "Profile"
-	_profile.add_theme_constant_override("separation", 10)
+	_profile.add_theme_constant_override("separation", -26)
 	add_child(_profile)
 	avatar.name = "Avatar"
-	avatar.custom_minimum_size = Vector2(88.0, 88.0)
+	avatar.custom_minimum_size = Vector2(100.0, 100.0)
 	avatar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	avatar.z_index = 1
 	_profile.add_child(avatar)
+	var plate := PanelContainer.new()
+	plate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style: StyleBoxFlat = XomDaoUi.box(Color(XomDaoUi.NAVY, 0.9), XomDaoUi.NAVY_LINE, 2, 24.0)
+	style.shadow_color = XomDaoPuff.SHADE
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(0.0, 4.0)
+	style.content_margin_left = 38.0
+	style.content_margin_right = 14.0
+	style.content_margin_top = 4.0
+	style.content_margin_bottom = 10.0
+	plate.add_theme_stylebox_override("panel", style)
+	_profile.add_child(plate)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 4)
-	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 2)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_profile.add_child(column)
-	var pill := PanelContainer.new()
-	pill.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	var style: StyleBoxFlat = XomDaoUi.box(XomDaoUi.NAVY_HUD, Color.TRANSPARENT, 0, 22.0)
-	style.content_margin_left = 16.0
-	style.content_margin_right = 18.0
-	pill.add_theme_stylebox_override("panel", style)
-	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(pill)
+	plate.add_child(column)
 	_name.name = "PlayerName"
 	_name.theme_type_variation = "HudLabel"
 	_name.add_theme_font_size_override("font_size", 30)
-	_name.custom_minimum_size = Vector2(170.0, 40.0)
+	_name.custom_minimum_size = Vector2(230.0, 38.0)
 	_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	pill.add_child(_name)
+	column.add_child(_name)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", -14)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(row)
 	_level.name = "LobbyLevel"
 	_level.compact()
+	_level.custom_minimum_size.y = 34.0
+	_level.z_index = 1
 	_level.visible = false
 	row.add_child(_level)
 	_exp.name = "LobbyExp"
-	_exp.custom_minimum_size = Vector2(124.0, 36.0)
+	_exp.custom_minimum_size = Vector2(130.0, 28.0)
+	_exp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_exp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_exp.show_percentage = false
 	_exp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_exp.add_theme_stylebox_override(
-		"background", XomDaoUi.box(XomDaoUi.NAVY_HUD, XomDaoUi.NAVY_LINE, 2, 18.0)
+		"background", XomDaoUi.box(Color(0.0, 0.0, 0.0, 0.35), XomDaoUi.NAVY_LINE, 2, 14.0)
 	)
 	_exp.add_theme_stylebox_override(
-		"fill", XomDaoUi.box(XomDaoUi.GOLD, Color.TRANSPARENT, 0, 18.0)
+		"fill", XomDaoUi.box(XomDaoUi.SUN, XomDaoUi.GOLD_DARK, 2, 14.0)
 	)
 	_exp.visible = false
 	row.add_child(_exp)
@@ -280,6 +291,7 @@ func _build_profile() -> void:
 	_exp_text.add_theme_color_override("font_outline_color", XomDaoUi.NAVY)
 	_exp_text.add_theme_constant_override("outline_size", 6)
 	_exp_text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_exp_text.offset_left = 14.0
 	_exp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_exp_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_exp.add_child(_exp_text)

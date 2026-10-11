@@ -1,12 +1,19 @@
 class_name XomDaoLooks
 extends RefCounted
 ## How players show, as the items they wear from Túi đồ (`ITEMS` in packages/shared/src/items.ts):
-## the frame round their avatar (`XomDaoPlayerInfo.frame`) and the back of their cards
+## their avatar's picture (`XomDaoUser.avatar`, an id of `AVATARS` in account.ts), the frame round
+## it (`XomDaoPlayerInfo.frame`) and the back of their cards
 ## (`card_back`). Each look is a picture in `ui/looks/`; games draw card backs with `card_back`.
 
 const DEFAULT_FRAME := "gold"
 const DEFAULT_CARD_BACK := "lattice"
 const _DIR := "res://addons/xomdao_sdk/ui/looks/"
+
+
+## The round picture of an avatar id ("cat"), or null for an unknown or empty one.
+static func avatar(id: String) -> Texture2D:
+	var path: String = _DIR + "avatar-%s.webp" % id
+	return load(path) if id != "" and ResourceLoader.exists(path) else null
 
 
 ## The ring for a frame id ("jade"), or null for none or an unknown one.

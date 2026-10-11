@@ -170,8 +170,7 @@ func _init() -> void:
 	add_child(_shade)
 	_board.closed.connect(close)
 	add_child(_board)
-	for button: XomDaoIconButton in _board.find_children("", "XomDaoIconButton", true, false):
-		button.name = "RulesClose"
+	_board.close_button.name = "RulesClose"
 	_text.name = "RulesText"
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.custom_minimum_size = Vector2(WIDTH, TEXT_HEIGHT)

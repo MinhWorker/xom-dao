@@ -78,8 +78,8 @@ dây thừng chỉ cho thứ quan trọng.
 | --- | --- | --- |
 | Nút CHƠI | Sơn mài đỏ, viền vàng đồng 4, chữ kem 48, nổi khối | cao 120 |
 | Nút hành động | Nền tối theo loại hành động (bảng dưới), viền tông tối hơn 3, chữ kem 30–36, nổi khối | cao 80–96 |
-| Nút biểu tượng | Tròn, nâu đậm `#3A2416` @ 85%, icon kem, phẳng (không nổi khối) | 88 × 88 |
-| Bảng lớn | Khung mật ong viền 3, hai nút dây thừng ở góc trên, ruột giấy dó, lề trong 32, bo 24 | |
+| Nút biểu tượng | Tròn, nâu đậm `#3A2416` @ 85%, icon kem; mặt phẳng không bóng sáng, đứng trên một mép tối dày 4 | 88 × 88 |
+| Bảng lớn | Khung mật ong viền 3, hai nút dây thừng ở góc trên, ruột giấy dó, lề trong 32, bo 24; dấu đóng là một đôi đũa sơn mài bắt chéo, không có nền | |
 | Hàng tiền | Viên thuốc nền HUD, icon xu hoặc ngọc tràn ra mép trái, số kem; mỗi tiền một viên riêng | cao 64 |
 | Ô người chơi | Ảnh đại diện trong vòng tre, tên trên nền HUD, cấp và số lá là chip riêng, vòng thời gian vàng đồng | ảnh 96 (gọn 72) |
 | Thẻ trò | Khung gỗ tối bo 24; đầu: tên; thân: tranh; chân: chip số người, thời lượng, số đang chơi; thẻ đang chọn viền vàng đồng | 280 × 420 |
@@ -98,7 +98,8 @@ từ màu trước khi đọc chữ.
 | Thông tin | Luật, ?, Danh sách phòng | Gỗ tối `#9C5F2A` | `#6E4220` |
 | Nguy hiểm | Đầu hàng, Rời phòng | Nâu đen `#3A2416` | Đỏ đèn lồng `#E0352B` |
 
-**Nút nổi khối** (`XomDaoPuff`, chỉ cho nút chữ; nút biểu tượng và các tấm lối tắt giữ phẳng): mặt nút đứng trên một mép tối hơn dày 7 đơn vị; nửa trên mặt nút
+**Nút nổi khối** (`XomDaoPuff`; nút chữ có đủ bóng sáng, nút biểu tượng chỉ có mép và bóng đổ, các
+tấm lối tắt giữ phẳng): mặt nút đứng trên một mép tối hơn dày 7 đơn vị; nửa trên mặt nút
 sáng hơn, có một vệt sáng mảnh sát mép trên, phần ba dưới tối đi; bóng đổ gọn và đậm ngay dưới
 nút (lệch xuống 5, nhoè 3, `#2A180C` @ 42%). Chỉ nút CHƠI ở sảnh được to và có vệt sáng lướt qua
 vài giây một lần.

@@ -43,6 +43,8 @@ var _frame: Texture2D
 
 func _init() -> void:
 	custom_minimum_size = Vector2(96.0, 96.0)
+	# Pictures and frames are drawn far smaller than their files: mipmaps keep them smooth.
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 

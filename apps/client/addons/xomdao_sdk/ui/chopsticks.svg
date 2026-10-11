@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 128 128" stroke-linejoin="round" stroke-linecap="round">
+  <!-- A pair of crossed chopsticks: the close mark of a board. -->
+  <g transform="rotate(45 64 64)">
+    <path d="M56.5 6 h15 l-3.5 116 h-8 Z" fill="#B8262A" stroke="#5E0F12" stroke-width="5"/>
+    <path d="M57.3 18 h13.4 l-0.4 12 h-12.6 Z" fill="#E7B53C"/>
+    <path d="M60.6 100 h6.8 l-0.6 18 h-5.6 Z" fill="#FFF6E3"/>
+  </g>
+  <g transform="rotate(-45 64 64)">
+    <path d="M56.5 6 h15 l-3.5 116 h-8 Z" fill="#B8262A" stroke="#5E0F12" stroke-width="5"/>
+    <path d="M57.3 18 h13.4 l-0.4 12 h-12.6 Z" fill="#E7B53C"/>
+    <path d="M60.6 100 h6.8 l-0.6 18 h-5.6 Z" fill="#FFF6E3"/>
+  </g>
+</svg>

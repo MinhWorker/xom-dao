@@ -3,7 +3,7 @@ extends PanelContainer
 ## The big board of every dialog: a honey wood frame with a title, rope knots on the top corners
 ## and a paper inside (inner margin 32, corners 24). Put its content in `content`.
 ##
-##   var board := XomDaoBoard.create("Cài đặt", true)   # true: a close button
+##   var board := XomDaoBoard.create("Cài đặt", true)   # true: a close mark (crossed chopsticks)
 ##   board.content.add_child(...)
 ##   board.closed.connect(...)
 ## open() sways it in with the paper sound; the close button hides it and emits `closed`.
@@ -19,8 +19,10 @@ var title: String = "":
 ## Where the board's content goes (a VBoxContainer on the paper).
 var content := VBoxContainer.new()
 
+## The close mark, a pair of crossed chopsticks ("Close"; shown by set_closable).
+var close_button := Button.new()
+
 var _title := Label.new()
-var _close: XomDaoIconButton
 
 
 static func create(heading: String, closable: bool = false) -> XomDaoBoard:
@@ -53,15 +55,29 @@ func _init() -> void:
 	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	head.add_child(_title)
-	_close = XomDaoIconButton.create("x")
-	_close.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
-	_close.offset_left = -XomDaoIconButton.SIZE - 20.0
-	_close.offset_right = -20.0
-	_close.offset_top = -XomDaoIconButton.SIZE / 2.0
-	_close.offset_bottom = XomDaoIconButton.SIZE / 2.0
-	_close.visible = false
-	_close.pressed.connect(close)
-	head.add_child(_close)
+	# The close mark: a pair of crossed chopsticks, nothing behind them.
+	close_button.name = "Close"
+	close_button.icon = preload("res://addons/xomdao_sdk/ui/chopsticks.svg")
+	close_button.expand_icon = true
+	close_button.focus_mode = Control.FOCUS_NONE
+	close_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	close_button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var clear := StyleBoxEmpty.new()
+	clear.set_content_margin_all(10.0)
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		close_button.add_theme_stylebox_override(state, clear)
+	close_button.add_theme_color_override("icon_hover_color", Color(1.15, 1.15, 1.15))
+	close_button.add_theme_color_override("icon_pressed_color", Color(0.85, 0.85, 0.85))
+	close_button.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	close_button.offset_left = -XomDaoUi.TOUCH - 8.0
+	close_button.offset_right = -8.0
+	close_button.offset_top = -XomDaoUi.TOUCH / 2.0
+	close_button.offset_bottom = XomDaoUi.TOUCH / 2.0
+	close_button.visible = false
+	close_button.button_down.connect(XomDaoUi.bounce.bind(close_button))
+	close_button.button_down.connect(XomDaoUi.play.bind(close_button, XomDaoUi.SOUND_TAP))
+	close_button.pressed.connect(close)
+	head.add_child(close_button)
 	var paper := PanelContainer.new()
 	var inside: StyleBoxFlat = XomDaoUi.box(
 		XomDaoUi.PAPER, XomDaoUi.PAPER_DARK, XomDaoUi.BORDER, XomDaoUi.RADIUS - 8.0
@@ -75,7 +91,7 @@ func _init() -> void:
 
 
 func set_closable(closable: bool) -> void:
-	_close.visible = closable
+	close_button.visible = closable
 
 
 ## Shows the board with a slight sway (±2°, 300 ms) and the paper sound.

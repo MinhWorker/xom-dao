@@ -39,6 +39,12 @@ var border: int = XomDaoUi.BORDER:
 		border = value
 		queue_redraw()
 
+## Whether the face catches the light (gloss, rim, shade). Off: a plain face on its lip.
+var lit: bool = true:
+	set(value):
+		lit = value
+		queue_redraw()
+
 ## 0 to 1: a band of light crossing the face from left to right (1 = gone past).
 var shine: float = 1.0:
 	set(value):
@@ -85,7 +91,9 @@ func _draw() -> void:
 	if off:
 		fill = _grey(fill)
 		line = _grey(line)
-	XomDaoPuff.paint(self, Rect2(Vector2.ZERO, size), fill, line, radius, depth, down, border, off)
+	XomDaoPuff.paint(
+		self, Rect2(Vector2.ZERO, size), fill, line, radius, depth, down, border, off, lit
+	)
 	if shine < 1.0 and not down and not off:
 		_draw_shine()
 
@@ -119,7 +127,8 @@ func _grey(color: Color) -> Color:
 	return Color(color.lerp(Color(grey, grey, grey), 0.6), color.a * 0.6)
 
 
-## Draws a raised body in `rect` on `canvas`. `flat` leaves out the shadow and the light.
+## Draws a raised body in `rect` on `canvas`. `flat` leaves out the shadow and the light;
+## `light` false keeps the shadow and the lip but leaves the face plain.
 static func paint(
 	canvas: CanvasItem,
 	rect: Rect2,
@@ -129,7 +138,8 @@ static func paint(
 	lift: float = DEPTH,
 	down: bool = false,
 	line_width: int = XomDaoUi.BORDER,
-	flat: bool = false
+	flat: bool = false,
+	light: bool = true
 ) -> void:
 	var sunk: float = lift - 2.0 if down else 0.0
 	# The lip: the whole rect, a darker shade of the border, with the shadow under it.
@@ -146,7 +156,7 @@ static func paint(
 	var top: StyleBoxFlat = XomDaoUi.box(fill, line, line_width, corner)
 	var face_rect := Rect2(rect.position + Vector2(0.0, sunk), rect.size - Vector2(0.0, lift))
 	canvas.draw_style_box(top, face_rect)
-	if flat:
+	if flat or not light:
 		return
 	var inner: Rect2 = face_rect.grow(-float(line_width) - 2.0)
 	if inner.size.x <= 4.0 or inner.size.y <= 4.0:
