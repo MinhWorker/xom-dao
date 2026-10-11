@@ -85,17 +85,29 @@ func test_home_wears_owned_items() -> void:
 	home.show_profile(_profile("jade", owned), _items(owned))
 	assert_null(home.find_child("Item_frame-jade", true, false), "Hồ sơ comes first")
 	home.select("tui-do")
+	assert_null(home.find_child("Equip_frame-jade", true, false), "the drawer is shut")
+	var jade: HubBagCell = home.find_child("Item_frame-jade", true, false)
+	var gold: HubBagCell = home.find_child("Item_frame-gold", true, false)
+	assert_eq(jade.custom_minimum_size, gold.custom_minimum_size, "every cell the same size")
+	assert_true(jade.worn, "the frame you wear is ticked")
+	jade.pressed.emit()
 	var worn: XomDaoButton = home.find_child("Equip_frame-jade", true, false)
 	assert_true(worn.disabled, "the frame you wear")
 	assert_eq(worn.text, "Đang dùng")
+	assert_eq((home.find_child("ItemName", true, false) as Label).text, jade.item.name)
+	assert_eq((home.find_child("ItemKind", true, false) as Label).text, "Khung")
 	assert_null(home.find_child("Item_card-back-lotus", true, false), "not owned")
-	var jade: Node = home.find_child("Item_frame-jade", true, false)
-	var gold: Node = home.find_child("Item_frame-gold", true, false)
 	assert_lt(jade.get_index(), gold.get_index(), "what was bought comes first")
+	gold.pressed.emit()
+	assert_null(home.find_child("Equip_frame-jade", true, false), "one item in the drawer")
 	watch_signals(home)
 	(home.find_child("Equip_frame-gold", true, false) as XomDaoButton).pressed.emit()
 	assert_signal_emitted_with_parameters(home, "equip_requested", ["core:frame-gold"])
 	assert_eq((home.find_child("HomeAvatar", true, false) as XomDaoAvatar).frame, "jade")
+	# The kinds in the top right corner keep one slot's items.
+	(home.find_child("BagKinds", true, false) as XomDaoChoice).choose(2)
+	assert_null(home.find_child("Item_frame-jade", true, false), "frames are filtered out")
+	assert_not_null(home.find_child("Item_card-back-lattice", true, false))
 
 
 func test_home_stacks_its_tabs_left_of_the_page() -> void:
@@ -121,8 +133,10 @@ func test_someone_elses_home_is_read_only() -> void:
 	var owned: Array = ["core:frame-gold", "core:card-back-lattice"]
 	home.show_profile(_profile("gold", owned), _items(owned))
 	home.select("tui-do")
-	assert_not_null(home.find_child("Item_frame-gold", true, false))
-	assert_null(home.find_child("Equip_frame-gold", true, false))
+	var cell: HubBagCell = home.find_child("Item_frame-gold", true, false)
+	cell.pressed.emit()
+	assert_eq((home.find_child("ItemName", true, false) as Label).text, cell.item.name)
+	assert_null(home.find_child("Equip_frame-gold", true, false), "nothing to do with it")
 
 
 func test_looks_have_pictures() -> void:

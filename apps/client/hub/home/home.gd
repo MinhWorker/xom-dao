@@ -3,13 +3,16 @@ extends Control
 ## Nhà (docs/experience.md): a player's four pages, picked from a stack of tabs down the left side
 ## (HubHomeTab): Hồ sơ, Túi đồ, Thành tích and Lịch sử (your own Nhà only). The page fills a paper
 ## plate on the right. Hồ sơ shows their avatar in the frame they wear, their name, level and its
-## progress, games played and won, and what they wear; Túi đồ and Thành tích are grids of tiles and
-## Lịch sử a list of finished games, all scrolling down. In your own Nhà each item in Túi đồ has
-## Dùng; someone else's is read-only.
+## progress, games played and won, and what they wear. Túi đồ is a grid of same-size cells
+## (HubBagCell) under a row of kinds in the top right corner (Tất cả, Khung, Lưng bài); a tap on a
+## cell slides a drawer in from the right with the item's picture, name and kind and, in your own
+## Nhà, what you can do with it (Dùng for something to wear). Thành tích is a grid of tiles and
+## Lịch sử a list of finished games; all scroll down.
 ##
 ## Named nodes for tests: Tab_<id> (ho-so, tui-do, thanh-tich, lich-su), Match_<i>, HomePlate,
 ## HomeName, HomeAvatar, HomeLevel, HomeXp, HomePlayed, HomeWon, HomeRate, HomeCardBack, HomeFrame,
-## Shelf, ShelfEmpty, AccountButton.
+## Shelf, ShelfEmpty, BagKinds, Item_<key>, ItemDrawer, ItemName, ItemKind, Equip_<key>,
+## DrawerClose, AccountButton.
 
 signal back_pressed
 ## Dùng on an item of Túi đồ (your own Nhà only).
@@ -29,6 +32,9 @@ const GAP := 20.0
 const ROUND := 28.0
 const PAD := 24.0
 const AVATAR := 208.0
+## The kinds of Túi đồ, left to right: [slot ("" for every item), label].
+const KINDS: Array[Array] = [["", "Tất cả"], ["frame", "Khung"], ["card-back", "Lưng bài"]]
+const DRAWER_W := 300.0
 
 var top: HubTopBar
 var editable: bool = true
@@ -64,6 +70,19 @@ var _heading := Label.new()
 var _scroll := ScrollContainer.new()
 var _grid := HFlowContainer.new()
 var _empty := Label.new()
+var _kinds: XomDaoChoice
+## The item whose drawer is open ("" for none).
+var _picked: String = ""
+var _drawer := Control.new()
+var _drawer_picture := TextureRect.new()
+var _drawer_name := Label.new()
+var _drawer_kind := Label.new()
+var _drawer_foot := VBoxContainer.new()
+## 0 (shut) to 1 (open): how far the drawer is out.
+var _drawer_out: float = 0.0:
+	set(value):
+		_drawer_out = value
+		_layout()
 ## Tài khoản, next to ← (your own Nhà only).
 var _account: XomDaoIconButton = XomDaoIconButton.create("user-plus")
 
@@ -96,6 +115,7 @@ func _init(settings: XomDaoSettings = null, own: bool = true) -> void:
 	add_child(_plate)
 	_build_profile()
 	_build_grid()
+	_build_drawer()
 	resized.connect(_layout)
 	_settings.changed.connect(_layout)
 	select(tab)
@@ -113,6 +133,9 @@ func select(id: String) -> void:
 		if button.selected:
 			_heading.text = button.label
 	_page.visible = id == "ho-so"
+	_kinds.visible = id == "tui-do"
+	if id != "tui-do":
+		_pick("")
 	_heading.visible = id != "ho-so"
 	if id != "ho-so":
 		_show_tab_page()
@@ -259,15 +282,21 @@ func _show_tab_page() -> void:
 	elif tab == "lich-su":
 		_show_history()
 	elif _profile != null:
-		var tiles: Array[HubItemTile] = []
+		var slot: String = str(KINDS[_kinds.selected][0])
+		var cells: Array[Control] = []
 		# What was bought first, then what everyone has.
 		for bought: bool in [true, false]:
 			for item: XomDaoShopItem in _items:
-				if _profile.owned.has(item.id) and (item.price > 0) == bought:
-					tiles.append(_tile(item))
-		var nodes: Array[Control] = []
-		nodes.assign(tiles)
-		_show_tiles(nodes, "Túi đồ trống")
+				if not _profile.owned.has(item.id) or (item.price > 0) != bought:
+					continue
+				if slot != "" and item.slot != slot:
+					continue
+				var cell: HubBagCell = HubBagCell.create(item, _wears(item))
+				cell.picked = item.id == _picked
+				cell.pressed.connect(_pick.bind(item.id))
+				cells.append(cell)
+		_show_tiles(cells, "Túi đồ trống")
+		_fill_drawer()
 
 
 ## Reached first, then the rest in their order (the hub's own, then each game's).
@@ -297,26 +326,112 @@ func _show_history() -> void:
 	_layout()
 
 
-func _tile(item: XomDaoShopItem) -> HubItemTile:
-	var tile := HubItemTile.create(item.id, item.slot, item.look, item.name)
-	var worn: bool = (
+func _wears(item: XomDaoShopItem) -> bool:
+	return (
 		(item.slot == "frame" and item.look == _profile.frame)
 		or (item.slot == "card-back" and item.look == _profile.card_back)
 	)
-	if editable:
+
+
+## Opens the drawer on an item of Túi đồ; the same item again, or "", shuts it.
+func _pick(item_id: String) -> void:
+	_picked = "" if item_id == _picked else item_id
+	for child: Node in _grid.get_children():
+		if child is HubBagCell:
+			child.picked = child.item.id == _picked
+	_fill_drawer()
+	var out: float = 1.0 if _picked != "" else 0.0
+	if is_inside_tree() and not is_equal_approx(out, _drawer_out):
+		(
+			create_tween()
+			. tween_property(self, "_drawer_out", out, 0.2)
+			. set_trans(Tween.TRANS_CUBIC)
+			. set_ease(Tween.EASE_OUT)
+		)
+	else:
+		_drawer_out = out
+
+
+## The drawer's words and what can be done with the item: something to wear has Dùng (your own
+## Nhà), or says it is worn; other kinds of item have no action yet.
+func _fill_drawer() -> void:
+	for child: Node in _drawer_foot.get_children():
+		_drawer_foot.remove_child(child)
+		child.queue_free()
+	var item: XomDaoShopItem = null
+	for candidate: XomDaoShopItem in _items:
+		if candidate.id == _picked:
+			item = candidate
+	if item == null or _profile == null:
+		return
+	_drawer_picture.texture = XomDaoLooks.preview(item.slot, item.look)
+	_drawer_name.text = item.name
+	var kind: String = "Vật phẩm"
+	for entry: Array in KINDS:
+		if str(entry[0]) == item.slot:
+			kind = str(entry[1])
+	_drawer_kind.text = kind
+	var wearable: bool = item.slot == "frame" or item.slot == "card-back"
+	var worn: bool = _wears(item)
+	if wearable and editable:
 		var button: XomDaoButton = XomDaoButton.create(
 			"Đang dùng" if worn else "Dùng", XomDaoUi.Kind.CONFIRM if worn else XomDaoUi.Kind.GO
 		)
 		button.name = "Equip_" + HubItemTile.key_of(item.id)
-		button.custom_minimum_size = Vector2(150.0, 64.0)
+		button.custom_minimum_size = Vector2(0.0, 72.0)
 		button.disabled = worn
 		button.pressed.connect(func() -> void: equip_requested.emit(item.id))
-		tile.foot.add_child(button)
+		_drawer_foot.add_child(button)
 	elif worn:
-		var chip := XomDaoChip.create("Đang dùng", "check-circle")
-		chip.compact()
-		tile.foot.add_child(chip)
-	return tile
+		var chip := XomDaoChip.create("Đang dùng", "check-circle", XomDaoUi.BAMBOO_DARK)
+		chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_drawer_foot.add_child(chip)
+
+
+## The drawer: a darker sheet of paper on the plate's right side, the item big on it.
+func _build_drawer() -> void:
+	_kinds = XomDaoChoice.create(["Tất cả", "Khung", "Lưng bài"])
+	_kinds.name = "BagKinds"
+	_kinds.compact = true
+	_kinds.changed.connect(func(_index: int) -> void: _show_tab_page())
+	_plate.add_child(_kinds)
+	_drawer.name = "ItemDrawer"
+	_drawer.clip_contents = true
+	_drawer.draw.connect(
+		func() -> void:
+			var sheet: StyleBoxFlat = XomDaoUi.box(XomDaoUi.SAND, XomDaoUi.PAPER_DARK, 2, 20.0)
+			_drawer.draw_style_box(sheet, Rect2(Vector2.ZERO, Vector2(DRAWER_W, _drawer.size.y)))
+	)
+	_plate.add_child(_drawer)
+	var close: XomDaoIconButton = XomDaoIconButton.create("x")
+	close.name = "DrawerClose"
+	close.scale = Vector2.ONE * 0.6
+	close.position = Vector2(DRAWER_W - XomDaoIconButton.SIZE * 0.6 - 10.0, 10.0)
+	close.pressed.connect(_pick.bind(""))
+	_drawer.add_child(close)
+	_drawer_picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_drawer_picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_drawer_picture.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_drawer_picture.position = Vector2(50.0, 56.0)
+	_drawer_picture.size = Vector2(DRAWER_W - 100.0, 180.0)
+	_drawer.add_child(_drawer_picture)
+	_drawer_name.name = "ItemName"
+	_drawer_name.theme_type_variation = "TitleLabel"
+	_drawer_name.add_theme_font_size_override("font_size", 32)
+	_drawer_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_drawer_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_drawer_name.position = Vector2(16.0, 250.0)
+	_drawer_name.size = Vector2(DRAWER_W - 32.0, 84.0)
+	_drawer.add_child(_drawer_name)
+	_drawer_kind.name = "ItemKind"
+	_drawer_kind.theme_type_variation = "SmallLabel"
+	_drawer_kind.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.7))
+	_drawer_kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_drawer_kind.position = Vector2(16.0, 336.0)
+	_drawer_kind.size = Vector2(DRAWER_W - 32.0, 32.0)
+	_drawer.add_child(_drawer_kind)
+	_drawer_foot.alignment = BoxContainer.ALIGNMENT_END
+	_drawer.add_child(_drawer_foot)
 
 
 func _draw_plate() -> void:
@@ -359,8 +474,17 @@ func _layout() -> void:
 	_layout_profile(inner.size)
 	_heading.position = inner.position
 	_heading.size = Vector2(inner.size.x, 48.0)
-	_scroll.position = inner.position + Vector2(0.0, 60.0)
-	_scroll.size = inner.size - Vector2(0.0, 60.0)
+	_kinds.reset_size()
+	_kinds.position = Vector2(inner.end.x - _kinds.size.x, inner.position.y - 6.0)
+	# The drawer comes out of the right edge and the grid makes room for it.
+	var out: float = (DRAWER_W + 16.0) * _drawer_out
+	_scroll.position = inner.position + Vector2(0.0, 72.0)
+	_scroll.size = inner.size - Vector2(out, 72.0)
+	_drawer.visible = _drawer_out > 0.0
+	_drawer.position = Vector2(inner.end.x - DRAWER_W * _drawer_out, _scroll.position.y)
+	_drawer.size = Vector2(DRAWER_W * _drawer_out, _scroll.size.y)
+	_drawer_foot.position = Vector2(20.0, _drawer.size.y - 20.0 - 80.0)
+	_drawer_foot.size = Vector2(DRAWER_W - 40.0, 80.0)
 	# A row of Lịch sử is as wide as the page.
 	for child: Node in _grid.get_children():
 		if child is HubMatchRow:

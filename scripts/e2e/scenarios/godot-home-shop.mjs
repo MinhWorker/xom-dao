@@ -48,6 +48,7 @@ export default async function run(t) {
   await tap(lan, 'Profile');
   await onScene(lan, 'nha');
   await tap(lan, 'Tab_tui-do');
+  await tap(lan, 'Item_frame-jade');
   await tap(lan, 'Equip_frame-jade');
   await lan.waitForFunction(() => window.xomdao.state().user.frame === 'jade');
   await godotText(lan, 'Equip_frame-jade', 'Đang dùng');

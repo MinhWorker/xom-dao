@@ -238,15 +238,17 @@ tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến c
 - **Lịch sử** là danh sách các ván đã xong, mới nhất ở trên: kết quả (Thắng, Thua, Hoà), tên trò,
   chơi với ai, cách đây bao lâu và ván kéo dài bao lâu. Chỉ Nhà của chính bạn có trang này. Xếp
   hạng xem ở Đình.
-- **Túi đồ**, **Thành tích** là lưới ô, cuộn dọc khi nhiều. Vật phẩm nào cũng có biểu
-  tượng vuông, nền trong suốt, để đặt được vào ô.
+- **Túi đồ** là lưới các ô vuông bằng nhau, mỗi ô chỉ có hình vật phẩm; món đang dùng có dấu tích
+  xanh. Góc trên phải là hàng **loại**: Tất cả, Khung, Lưng bài. Chạm một ô thì một **ngăn kéo**
+  trượt ra từ bên phải, ghi hình lớn, tên và loại của món đó, cùng nút hành động hợp với nó: đồ
+  trang trí có **Dùng** (hoặc "Đang dùng"). Chạm lại ô đó hoặc nút ✕ để đóng. Ở Nhà người khác
+  ngăn kéo chỉ để xem. Vật phẩm nào cũng có biểu tượng vuông, nền trong suốt, để đặt được vào ô.
+- **Thành tích** là lưới ô, cuộn dọc khi nhiều.
 - Cấp tính từ kinh nghiệm: 10 cho mỗi ván, cộng kinh nghiệm của mỗi thành tích đã đạt. Cấp N bắt
   đầu ở 50 × N × (N − 1) (cấp 2 ở 100, cấp 3 ở 300). Thanh tiến độ dưới chip cấp cho biết còn bao
   xa tới cấp sau.
 - Thành tích là ô trong lưới: chiếc cúp (vàng khi đã đạt), tên, "Đã đạt" hoặc số đếm như "3/10", và
   phần thưởng. Ô đã đạt đứng trước.
-- Xếp hạng là ô cho mỗi bảng có tên người đó: Cả xóm (theo kinh nghiệm) và từng trò (theo số ván
-  thắng), mỗi ô ghi "Hạng N".
 - **Ai cũng chơi bằng tài khoản, không có khách.** Chưa đăng nhập thì ứng dụng mở ra bảng **Vào
   Xóm Đảo** trên nền màn chờ, không đóng được, với hai lựa chọn:
   - **Đăng nhập**: tên đăng nhập và mật khẩu.
