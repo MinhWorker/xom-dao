@@ -133,11 +133,11 @@ Mở game ─► Sảnh (vòng đảo)
 
 ## Khung hình
 
-Giữ hệ khung của [ui-guide.md](ui-guide.md#khung-hình): thiết kế trên khung **cao 720 đơn vị**, lõi
-**960 × 720** luôn thấy được, màn rộng hơn chỉ thêm chỗ hai bên. Chỉ chơi màn hình ngang.
+Giữ hệ khung của [ui-guide.md](ui-guide.md#khung-hình): thiết kế trên khung **cố định 1280 × 720 đơn vị
+(16:9)**, lõi **960 × 720** nằm giữa. Chỉ chơi màn hình ngang.
 
-Trong Godot: kích thước gốc 960 × 720, `stretch/mode = canvas_items`, `stretch/aspect = expand`.
-Bầu trời / mặt biển lấp phần thừa, vẽ tràn dưới tai thỏ; HUD tránh vùng an toàn (safe area).
+Trong Godot: kích thước gốc 1280 × 720, `stretch/mode = canvas_items`, `stretch/aspect = keep`.
+Màn hình khác tỉ lệ 16:9 có viền đen ở phần thừa; HUD tránh vùng an toàn (safe area).
 
 Cỡ tối thiểu (vùng chạm 88, chữ nhỏ nhất 24…) theo bảng
 [Đơn vị và cỡ tối thiểu](ui-guide.md#đơn-vị-và-cỡ-tối-thiểu).
@@ -288,8 +288,8 @@ Một trò hay sự kiện **phải**:
 - [ ] Dùng thành phần chung từ `xomdao_sdk`: nút, bảng, ô người chơi, ô lựa chọn, thông báo.
 - [ ] Theo một bố cục mẫu trong ván (**Bàn** hoặc **Hành động**); để trống ô của nút ☰.
 - [ ] Trả thứ hạng khi hết ván và để phần khung hiện kết quả, phần thưởng.
-- [ ] Vừa lõi 960 × 720 ở mọi tỉ lệ khung; vùng chạm ≥ 88, chữ ≥ 24.
-- [ ] Có ảnh chụp ở các khung (`npm run shots`) và kịch bản e2e.
+- [ ] Vừa khung 1280 × 720, bàn chơi trong lõi 960 × 720; vùng chạm ≥ 88, chữ ≥ 24.
+- [ ] Có ảnh chụp trên các máy (`npm run shots`) và kịch bản e2e.
 
 Một trò hay sự kiện **không được**:
 

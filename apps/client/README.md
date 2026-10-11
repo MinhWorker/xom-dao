@@ -20,7 +20,7 @@ Godot bản khác sẽ ghi lại `project.godot` và các scene.
 
 | Đường dẫn | Có gì |
 | --- | --- |
-| `project.godot` | Khung gốc 960 × 720, `canvas_items` + `expand`, màn hình ngang ([ui-guide.md](../../docs/ui-guide.md)) |
+| `project.godot` | Khung cố định 1280 × 720 (16:9), `canvas_items` + `keep`, màn hình ngang ([ui-guide.md](../../docs/ui-guide.md)) |
 | `core/` | Autoload `Net` (kết nối), `Session` (token đăng nhập; đăng ký, đăng nhập, đăng xuất qua `/api/auth`), `Wallet`, `ContentLoader` (tải gói trò), `TestBridge` (cầu nối test, chỉ bản debug) |
 | `hub/` | Sảnh và màn của từng khối nền tảng; `hub/main.tscn` là màn đầu tiên |
 | `hub/select/` | Băng chuyền đảo trò, splash từng trò, panel chi tiết; `art/` là ảnh nhẹ của hub, xem được trước khi tải gói trò |

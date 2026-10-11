@@ -137,8 +137,8 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
   người chơi quanh bàn, của mình ở dưới, nút hành động dưới phải) hoặc **Hành động** (cảnh chơi,
   mục tiêu trên trái dưới ☰, bộ đếm trên phải, điều khiển dưới trái, nút hành động dưới phải).
 - Dựng giao diện bằng bộ UI chung (`XomDaoButton`, `XomDaoPlayerSlot`, `XomDaoChip`, màu và font
-  trong `XomDaoUi`), không tự làm nút hay font riêng. Toạ độ là đơn vị thiết kế trên khung cao
-  720, rộng 960 đến 1600; đặt vị trí trong `_layout()` theo `XomDaoFrame.safe_inset(self)` và lề
+  trong `XomDaoUi`), không tự làm nút hay font riêng. Toạ độ là đơn vị thiết kế trên khung cố
+  định 1280 × 720; đặt vị trí trong `_layout()` theo `XomDaoFrame.safe_inset(self)` và lề
   `XomDaoSettings.current().margin`.
 - Script của game chỉ dùng thư mục của nó (`res://content/<id>/`) và `res://addons/xomdao_sdk/`;
   `npm run godot:check` kiểm tra điều này, định dạng, lint và chạy test GUT.

@@ -19,7 +19,7 @@ the server; this project only shows state and sends moves. Folder guide (Vietnam
 ## Layout
 
 ```
-project.godot       960 × 720 base, canvas_items + expand, landscape, Compatibility renderer
+project.godot       1280 × 720 frame locked to 16:9 (canvas_items + keep, black bars), landscape, Compatibility renderer
 core/               Autoloads: Net (the app's XomDaoClient, server_url()), Session (saved token, /api/auth register/login/logout),
                     Wallet, ContentLoader (game packs), TestBridge (window.xomdao, debug web only)
 hub/                main.gd routes the screens: lobby (island ring + HUD), select (game select),
@@ -48,7 +48,7 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 - A game's tests are `test_*.gd` anywhere in its folder; its `test/` folder is left out of its pack.
 - The main scene prints `xomdao:ready`; `godot:smoke` waits for it.
 - Web safe areas come from CSS env(safe-area-inset-*) through XomDaoFrame.safe_inset,
-  converted from CSS pixels to frame units. The exporter adds viewport-fit=cover to the shell.
+  converted from CSS pixels to frame units, less what the black bars already cover. The exporter adds viewport-fit=cover to the shell.
 - A game's Godot entry is `res://content/<id>/main.tscn`. Its root gets `bind(client:
   XomDaoClient)` once in the tree, draws `client.snapshot` and follows `state_changed`. It may
   define `sandbox_options() -> Dictionary`, the room options for `?play=<id>` (debug builds: a

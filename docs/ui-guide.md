@@ -6,27 +6,26 @@ hình. Game mới và mọi thay đổi giao diện bám theo đây.
 
 ## Khung hình
 
-Mọi thứ được thiết kế trên một **khung cao 720 đơn vị** (`XomDaoFrame` trong
-`apps/client/addons/xomdao_sdk/frame.gd`). Trong `project.godot`: kích thước gốc 960 × 720,
-`stretch/mode = canvas_items`, `stretch/aspect = expand`. Chiều rộng theo màn hình; các tỉ lệ thường
-gặp:
+Mọi thứ được thiết kế trên một **khung cố định 1280 × 720 đơn vị, tỉ lệ 16:9** (`XomDaoFrame`
+trong `apps/client/addons/xomdao_sdk/frame.gd`). Trong `project.godot`: kích thước gốc 1280 × 720,
+`stretch/mode = canvas_items`, `stretch/aspect = keep`. Mọi máy thấy cùng một khung; màn hình khác
+tỉ lệ thì có viền đen:
 
-| Tỉ lệ | Khung | Máy thường gặp |
+| Tỉ lệ màn hình | Viền đen | Máy thường gặp |
 | --- | --- | --- |
-| 4:3 | 960 × 720 | iPad, máy tính bảng |
-| 16:10 | 1152 × 720 | laptop, máy tính bảng Android |
-| 16:9 | 1280 × 720 | laptop, màn hình máy tính, iPhone (trừ tai thỏ) |
-| 2:1 | 1440 × 720 | điện thoại 18:9 |
-| 20:9 | 1600 × 720 | phần lớn điện thoại Android bây giờ |
+| 4:3, 16:10 | trên và dưới | iPad, máy tính bảng, một số laptop |
+| 16:9 | không có | laptop, màn hình máy tính, iPhone đời cũ |
+| 2:1, 20:9 | hai bên | phần lớn điện thoại bây giờ |
 
 ![Khung hình](images/ui-frame.svg)
 
-- Khung được phóng cho vừa màn hình. Phần thêm hai bên là **bầu trời / mặt biển**, vẽ tràn cả
-  dưới tai thỏ; không có viền đen. HUD tránh vùng an toàn (`XomDaoFrame.safe_inset`).
-- **Lõi 960 × 720** ở giữa luôn nằm trên màn hình (`XomDaoFrame.core_rect`). Thứ bắt buộc phải
-  thấy (bàn cờ, bài trên tay, nút đánh) đặt trong lõi. Màn rộng hơn chỉ thêm chỗ ở hai bên: danh
-  sách người chơi, nút phụ, trang trí.
-- Chỉ chơi màn hình ngang. Cửa sổ máy tính hẹp hơn 4:3 thì khung cao thêm, lõi nằm giữa.
+- Khung được phóng to hết cỡ mà vẫn giữ tỉ lệ 16:9, nằm giữa màn hình. Phần thừa là **viền đen**.
+  HUD tránh vùng an toàn (`XomDaoFrame.safe_inset`); tai thỏ đã nằm trong viền đen thì không tính
+  nữa.
+- **Lõi 960 × 720** nằm giữa khung (`XomDaoFrame.core_rect`). Thứ bắt buộc phải thấy (bàn cờ, bài
+  trên tay, nút đánh) đặt trong lõi. Hai dải 160 đơn vị ở hai bên dành cho danh sách người chơi,
+  nút phụ, trang trí.
+- Chỉ chơi màn hình ngang.
 
 ## Đơn vị và cỡ tối thiểu
 
@@ -108,4 +107,5 @@ hay khung trang trí ăn chỗ.
 
 - `npm run shots -- --path '/?play=<id>'` chụp một màn trên nhiều máy thật (xoay ngang, đúng mật độ
   điểm ảnh). Dòng in ra so mật độ canvas với màn hình; soi độ nét ở các file `-crop.png`.
-- Thử cả khung hẹp nhất (iPad, 4:3) và rộng nhất (điện thoại 20:9).
+- Thử cả màn hình hẹp nhất (iPad, 4:3) và rộng nhất (điện thoại 20:9): khung phải nằm giữa, viền
+  đen đều hai phía.
