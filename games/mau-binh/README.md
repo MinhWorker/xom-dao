@@ -13,7 +13,7 @@ Mậu Binh cho 2–4 người: xếp 13 lá thành ba chi, so bài và cộng đ
 | Xếp bài tự động | `src/game/arrange.ts` |
 | Chia, nộp, lật bài và đồng hồ | `src/game/MauBinhGame.ts` |
 | Xếp hạng và tuỳ chọn | `src/game/match.ts`, `model.ts` |
-| Bàn chơi | `godot/main.gd` (bàn, ghế, xếp bài, lật chi), `rules.gd` (bộ, binh lủng và Tự xếp, chép từ `cards.ts`, `scoring.ts`, `arrange.ts`); test: `godot/test/` |
+| Bàn chơi | `godot/main.gd` (bàn, ghế, xếp bài, lật chi), `drag.gd` (kéo lá đổi chỗ), `boards.gd` (bảng Luật tính điểm, Kết quả vòng, Kết quả các vòng), `rules.gd` (bộ, binh lủng, điểm và Tự xếp, chép từ `cards.ts`, `scoring.ts`, `arrange.ts`); test: `godot/test/` |
 
 `src/index.ts` đăng ký game phía server. `assets/` chứa hình và âm thanh cỡ đầy đủ (bàn chép bản
 cần dùng vào `godot/`), `sources/` chứa nguồn và prompt.
@@ -22,8 +22,11 @@ Test nằm cạnh phần logic với đuôi `.test.ts`.
 ## Phát triển
 
 Chạy `npm run godot:export -- --debug` và `npm run dev` ở gốc repo rồi mở
-`http://localhost:5033/?play=mau-binh` (ba máy, ba vòng, trên server thật). Chạm hai lá để đổi
-chỗ; lá bài và chiếu là `XomDaoCard`, `XomDaoMat` của SDK.
+`http://localhost:5033/?play=mau-binh` (ba máy, ba vòng, trên server thật). Chạm hai lá, hoặc kéo
+một lá thả lên lá khác, để đổi chỗ. Nút **Luật** ở góc trên phải mở bảng điểm của phòng, nút
+**Kết quả** mở bài và điểm từng người qua các vòng đã xong; giữa hai vòng, bảng Kết quả vòng xếp
+hạng điểm của vòng vừa xong. Lá bài, chiếu và các bảng dùng `XomDaoCard`, `XomDaoMat`,
+`XomDaoBoard` của SDK.
 Kiểm tra bằng `npm run check` và `npm run godot:check`. Hướng dẫn SDK và Dev Console:
 [tạo game](../../docs/making-a-game.md).
 

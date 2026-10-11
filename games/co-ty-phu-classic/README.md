@@ -12,7 +12,9 @@ src/
   game/                        Luật thuần, dữ liệu bàn, thẻ, máy và đồng hồ
 godot/
   main.tscn, main.gd           Bàn chơi: bố cục, hoạt ảnh, nút và gửi thao tác
-  marks.gd, trade.gd, texts.gd Dấu trên bàn, bảng trao đổi, chữ trên thẻ
+  marks.gd, trade.gd, texts.gd Dấu, tên và giá trên bàn, bảng trao đổi, chữ trên thẻ
+  mortgage.gd, actions.gd      Bảng thế chấp nhiều ô; nút của lượt và của từng ô đất
+  dice.gd, gate.gd, victory.gd Gieo xúc xắc, cửa tù, màn chiến thắng
   rules.gd                     Dữ liệu ô và toạ độ ô trên ảnh bàn (chép từ luật TypeScript)
   art/, sounds/, music/        Hình, âm thanh và nhạc bàn dùng
 assets/                        Ảnh và âm thanh cỡ đầy đủ
@@ -26,8 +28,11 @@ sources/                       Script kết xuất và nguồn ảnh
 | Thuế, di chuyển, tiền thuê và hiệu lực thẻ | `src/game/rules.ts` |
 | Nội dung thẻ | `src/game/cards.ts` |
 | Bố cục, hoạt ảnh, nút và gửi thao tác | `godot/main.gd` |
-| Dải màu chủ đất, nhà/khách sạn, đất thế chấp, góp bến xe, ô đang chọn | `godot/marks.gd` |
+| Nút nào hiện trong lượt và trên thẻ ô đất | `godot/actions.gd` |
+| Dải màu chủ đất, nhà/khách sạn, đất thế chấp, góp bến xe, ô đang chọn, tên và giá in trên ô | `godot/marks.gd` |
 | Bảng đề nghị trao đổi | `godot/trade.gd` |
+| Bảng thế chấp nhiều ô | `godot/mortgage.gd` |
+| Đường bay của xúc xắc, cửa tù, màn chiến thắng | `godot/dice.gd`, `godot/gate.gd`, `godot/victory.gd` |
 | Chữ trên thẻ ô, đề nghị trao đổi và dòng trạng thái | `godot/texts.gd` |
 | Dữ liệu 40 ô, toạ độ ô trên ảnh bàn, tiền thuê và thế chấp | `godot/rules.gd` (chép từ `model.ts`, `rules.ts` và toạ độ của `sources/render_board_25d.py`) |
 
@@ -43,11 +48,17 @@ Dùng thẻ khi ở tù, Mua / Bỏ qua, Góp / Từ bỏ ở bến xe, Trả / 
 nợ / Phá sản. Thẻ nổi trên ô giữa hiện lá Cơ hội, Khí vận, thuế (Xác nhận), đề nghị trao đổi
 (Đồng ý / Từ chối) hoặc ô vừa chạm: giá, tiền thuê, chủ, và với đất của bạn Thế chấp, Chuộc, Bán
 nhà, Đấu giá. Nút Trao đổi ở góc trên phải mở bảng đề nghị: chọn người, mỗi bên một ô đất (hoặc
-vé ra tù, bán riêng giá 200) và tiền. Quân đi từng ô, bay khi ra sân bay hay vào tù, tiền nổi lên
-trên ô người chơi.
+vé ra tù, bán riêng giá 200) và tiền. Nút Tài sản cạnh đó (trong lượt của bạn hoặc khi bạn đang
+nợ) mở bảng Thế chấp tài sản: các ô đất chưa thế chấp, mỗi trang năm ô với số tiền nhận được;
+chọn nhiều ô rồi Xác nhận để thế chấp cùng lúc. Thế chấp trên thẻ ô cũng mở bảng này với ô đó đã
+chọn. Chuộc vẫn làm từng ô.
 
-Giá in trên từng ô đất. Chưa có: tên in trên từng ô (chạm ô để xem), bảng thế chấp nhiều ô một
-lần (thế chấp từng ô).
+Mỗi ô in tên (đất đã bán in tên bằng màu chủ) và, với ô đất, giá. Xúc xắc bay theo một trong bốn
+đường, xoay và đổi mặt rồi dừng ở mặt server gieo, ô xanh hiện tổng (3 + 4 = 7). Quân đi từng ô,
+bay khi ra sân bay hay vào tù, tiền nổi lên trên ô người chơi. Khi bạn vào tù, hai cánh cửa thép
+đóng sập trên bàn; khi bạn ra tù, cửa mở. Khi có người thắng, bàn tối lại, quân người thắng lớn
+lên và nhảy, pháo hoa nổ và tổng tài sản đếm lên, rồi mờ đi để xem bàn; bảng kết quả ghi Số vòng
+và Tổng tài sản của người thắng.
 
 ## Phát triển
 

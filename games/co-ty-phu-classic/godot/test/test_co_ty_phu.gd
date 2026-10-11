@@ -211,3 +211,102 @@ func test_an_offer_steps_through_your_deeds_and_cash() -> void:
 	assert_signal_emitted_with_parameters(
 		trade, "offered", [{"to": 1, "give": 1, "take": 6, "giveCash": 0, "takeCash": 50}]
 	)
+
+
+func test_names_fit_on_their_squares() -> void:
+	var marks: GDScript = load("res://content/co-ty-phu-classic/marks.gd")
+	var font: Font = XomDaoUi.display_font(800)
+	var short: Dictionary = marks.call("fit_name", "Huế", font, Vector2(200.0, 40.0), 18)
+	assert_eq(short["lines"], ["Huế"])
+	assert_eq(int(short["size"]), 18)
+	var long: Dictionary = marks.call("fit_name", "Thuế thu nhập", font, Vector2(60.0, 40.0), 18)
+	assert_eq((long["lines"] as Array).size(), 2)
+	assert_lte(int(long["size"]), 18)
+	var widest: float = 0.0
+	for line: String in long["lines"]:
+		widest = maxf(widest, font.get_string_size(line, 0, -1, int(long["size"])).x)
+	assert_lte(widest, 60.0)
+
+
+func test_assets_and_what_mortgaging_brings() -> void:
+	var rules: GDScript = load("res://content/co-ty-phu-classic/rules.gd")
+	var view := _view()
+	view["properties"][1]["owner"] = 0
+	view["properties"][1]["houses"] = 2
+	view["properties"][5]["owner"] = 0
+	view["properties"][9]["owner"] = 0
+	view["properties"][9]["mortgaged"] = true
+	view["players"][0]["freeCards"] = ["chance"]
+	assert_eq(rules.call("mortgage_squares", view["properties"], 0), [1, 5] as Array[int])
+	# 1000 cash + 200 ticket + (200 + 2 × 100) + 200 + 350 − ceil(175 × 1.1)
+	assert_eq(rules.call("asset_value", view, 0), 1000 + 200 + 400 + 200 + 350 - 193)
+
+
+func test_the_mortgage_board_takes_several_deeds() -> void:
+	var view := _view()
+	for i: int in [1, 3, 5, 9]:
+		view["properties"][i]["owner"] = 0
+	view["properties"][9]["mortgaged"] = true
+	var table := _table(view)
+	assert_true(_node(table, "Assets").visible)
+	(_node(table, "Assets") as Button).pressed.emit()
+	var board: Control = _node(table, "MortgageBoard")
+	assert_true(board.visible)
+	assert_false(_node(table, "Roll").visible)
+	assert_not_null(_node(table, "MortgageRow_5"))
+	assert_null(_node(table, "MortgageRow_9"))
+	assert_false(_node(table, "MortgageNext").visible)
+	assert_true((_node(table, "MortgageConfirm") as Button).disabled)
+	(_node(table, "MortgageRow_1") as Button).pressed.emit()
+	(_node(table, "MortgageRow_5") as Button).pressed.emit()
+	assert_eq(_text(table, "MortgageTotal"), "2 tài sản · Nhận 200 ₫")
+	assert_eq(_text(table, "MortgageConfirm"), "Xác nhận +200 ₫")
+	(_node(table, "MortgageRow_5") as Button).pressed.emit()
+	(_node(table, "MortgageRow_3") as Button).pressed.emit()
+	watch_signals(board)
+	(_node(table, "MortgageConfirm") as Button).pressed.emit()
+	assert_signal_emitted_with_parameters(board, "chosen", [[1, 3] as Array[int]])
+	assert_false(board.visible)
+
+
+func test_a_deeds_mortgage_opens_the_board_with_it_picked() -> void:
+	var view := _view({"phase": "end"})
+	for i: int in [1, 3, 6, 8, 9, 11, 13]:
+		view["properties"][i]["owner"] = 0
+	var table := _table(view)
+	_tap(_node(table, "Square_13"))
+	(_node(table, "Mortgage") as Button).pressed.emit()
+	var board: Control = _node(table, "MortgageBoard")
+	assert_true(board.visible)
+	assert_eq(board.call("picked"), [13] as Array[int])
+	assert_eq(_text(table, "MortgagePage"), "2 / 2")
+	assert_true(_node(table, "MortgagePrevious").visible)
+	(_node(table, "MortgagePrevious") as Button).pressed.emit()
+	assert_not_null(_node(table, "MortgageRow_1"))
+	assert_null(_node(table, "MortgageRow_13"))
+	# Not your turn: no Tài sản.
+	var others := _view({"turn": 1})
+	others["properties"][1]["owner"] = 0
+	table = _table(others)
+	assert_false(_node(table, "Assets").visible)
+
+
+func test_the_dice_paths_end_still() -> void:
+	var dice: GDScript = load("res://content/co-ty-phu-classic/dice.gd")
+	for motion: String in ["tumble", "arc", "skipping", "spiral"]:
+		for k: int in 2:
+			var start: Dictionary = dice.call("pose", motion, k, 0.0)
+			var end: Dictionary = dice.call("pose", motion, k, 1.0)
+			assert_gt(float(start["spin"]), TAU * 2.0, motion)
+			assert_eq([end["x"], end["lift"], end["spin"]], [0.0, 0.0, 0.0], motion)
+	assert_eq(dice.call("sum_text", [3, 4]), "3 + 4 = 7")
+	var victory: GDScript = load("res://content/co-ty-phu-classic/victory.gd")
+	assert_eq(victory.call("assets_text", 2450), "Tổng tài sản\n2.450 ₫")
+
+
+func test_the_result_counts_the_winners_assets() -> void:
+	var view := _view({"winner": 0})
+	view["properties"][1]["owner"] = 0
+	var table := _table(view)
+	var detail: Dictionary = table.call("result_detail")
+	assert_eq(detail["rows"][1], ["Tổng tài sản", "1.200 ₫"])
