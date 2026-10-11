@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c4rff0l5iadvh"
-path="res://.godot/imported/hanh-dong.webp-a1ef7cb578ddb158f935c3aac173d1ae.ctex"
+uid="uid://dgpfm1uhak28t"
+path="res://.godot/imported/su-kien-loop.webp-e7e1ef94d54a04ed09c90928524e5342.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://hub/genres/hanh-dong.webp"
-dest_files=["res://.godot/imported/hanh-dong.webp-a1ef7cb578ddb158f935c3aac173d1ae.ctex"]
+source_file="res://hub/genres/su-kien-loop.webp"
+dest_files=["res://.godot/imported/su-kien-loop.webp-e7e1ef94d54a04ed09c90928524e5342.ctex"]
 
 [params]
 

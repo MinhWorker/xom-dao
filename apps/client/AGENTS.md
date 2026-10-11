@@ -24,8 +24,7 @@ core/               Autoloads: Net (the app's XomDaoClient, server_url()), Sessi
                     Wallet, ContentLoader (game packs), TestBridge (window.xomdao, debug web only)
 hub/                main.gd routes the screens: lobby (island ring + HUD), select (game select),
                     ben (Bến), room (waiting room), the game with ☰, the result over it
-  lobby/            HubLobby, HubIslandRing (ring layout, swipe/tap), HubIsland (baked island loop,
-                    grey when not selected, fog + lock when locked; drawn fallback without art)
+  lobby/            HubLobby, HubIslandRing (ring layout, swipe/tap), HubIsland (drawn islands)
   select/ ben/ room/  Game select; Bến; waiting room, Tạo phòng board, result, Luật board
   home/ shop/       Nhà (HubHome: profile + shelf, someone else's read-only) and Chợ (HubShop);
                     shelf.gd (HubShelf) is the tabbed shelf of item tiles both use

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bpr5q10nks7uy"
-path="res://.godot/imported/bai.webp-1baca63f71d6f95ed02cb7c97089dae3.ctex"
+uid="uid://cybkq1jnoywqv"
+path="res://.godot/imported/sap-co-loop.webp-beb7d5c69958f4fd9ca9e85d2f8850a5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://hub/genres/bai.webp"
-dest_files=["res://.godot/imported/bai.webp-1baca63f71d6f95ed02cb7c97089dae3.ctex"]
+source_file="res://hub/genres/sap-co-loop.webp"
+dest_files=["res://.godot/imported/sap-co-loop.webp-beb7d5c69958f4fd9ca9e85d2f8850a5.ctex"]
 
 [params]
 

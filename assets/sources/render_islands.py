@@ -2,9 +2,10 @@
 
 Every island is a toy diorama on a floating rock: a grass cap, a cliff, a waterfall and the props
 that name its genre. Each is baked as FRAMES frames of one idle loop (waterfall, banner, trees,
-lanterns, the bomb's spark) and packed into apps/client/hub/genres/<island>.webp, a COLUMNS-wide
-grid of SIZE x SIZE cells that HubIsland plays. The client tints the islands that are not selected
-and draws the fog and lock of a locked one, so every island is baked in full colour.
+lanterns, the bomb's spark) and packed into apps/client/hub/genres/<island>-loop.webp, a
+COLUMNS-wide grid of SIZE x SIZE cells, next to <island>.tscn: the island slot HubIsland loads, a
+Node2D whose AnimatedSprite2D plays the loop on its own. The client tints the islands that are not
+selected and draws the fog and lock of a locked one, so every island is baked in full colour.
 
     npm run blender -- app [co bai su-kien hanh-dong sap-co]
 """
@@ -24,6 +25,7 @@ FONT = ROOT / 'apps' / 'client' / 'addons' / 'xomdao_sdk' / 'ui' / 'fonts' / 'Ba
 
 SIZE = 512
 FRAMES = 8
+FPS = 7
 COLUMNS = 4
 SAMPLES = 48
 
@@ -749,7 +751,6 @@ def bake(name):
     out = OUT / name
     out.mkdir(parents=True, exist_ok=True)
     scene = bpy.context.scene
-    frames = []
     for f in range(FRAMES):
         t = f / FRAMES
         for move in moves:
@@ -757,17 +758,42 @@ def bake(name):
         bpy.context.view_layer.update()
         scene.render.filepath = str(out / f'{f}.png')
         bpy.ops.render.render(write_still=True)
-        frames.append(scene.render.filepath)
+    pack(name)
+
+
+def pack(name):
+    """The baked frames of `name` as its loop sheet and its island scene."""
+    frames = [OUT / name / f'{f}.png' for f in range(FRAMES)]
     sheet = Image.new('RGBA', (SIZE * COLUMNS, SIZE * math.ceil(FRAMES / COLUMNS)))
     for f, path in enumerate(frames):
         with Image.open(path) as image:
             sheet.paste(image, ((f % COLUMNS) * SIZE, (f // COLUMNS) * SIZE))
     ASSETS.mkdir(parents=True, exist_ok=True)
-    sheet.save(ASSETS / f'{name}.webp', quality=88, method=6)
-    print(f'island {name}: {ASSETS / (name + ".webp")}')
+    sheet.save(ASSETS / f'{name}-loop.webp', quality=88, method=6)
+    atlases = '\n'.join(
+        f'[sub_resource type="AtlasTexture" id="frame_{f}"]\natlas = ExtResource("sheet")\n'
+        f'region = Rect2({(f % COLUMNS) * SIZE}, {(f // COLUMNS) * SIZE}, {SIZE}, {SIZE})\n'
+        for f in range(FRAMES))
+    frames_list = ', '.join(
+        f'{{\n"duration": 1.0,\n"texture": SubResource("frame_{f}")\n}}' for f in range(FRAMES))
+    (ASSETS / f'{name}.tscn').write_text(
+        f'[gd_scene load_steps={FRAMES + 3} format=3]\n\n'
+        f'[ext_resource type="Texture2D" path="res://hub/genres/{name}-loop.webp" id="sheet"]\n\n'
+        f'{atlases}\n'
+        '[sub_resource type="SpriteFrames" id="loop"]\n'
+        f'animations = [{{\n"frames": [{frames_list}],\n"loop": true,\n"name": &"default",\n'
+        f'"speed": {FPS}.0\n}}]\n\n'
+        f'[node name="Island" type="Node2D"]\n\n'
+        '[node name="Loop" type="AnimatedSprite2D" parent="."]\n'
+        'sprite_frames = SubResource("loop")\nautoplay = "default"\ncentered = false\n')
+    print(f'island {name}: {ASSETS / (name + ".tscn")}')
 
 
 if __name__ == '__main__':
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
-    for island in argv or list(ISLANDS):
-        bake(island)
+    if argv[:1] == ['--pack']:
+        for island in argv[1:] or list(ISLANDS):
+            pack(island)
+    else:
+        for island in argv or list(ISLANDS):
+            bake(island)
