@@ -19,6 +19,10 @@ Máy tính, bốn người:
 - `godot/main.gd`: bàn chơi trong client Godot (bố cục **Bàn**): bàn vuông ở giữa, ô người chơi ở
   góc cạnh chuồng màu của họ, xúc xắc ở cột của người đang tới lượt; hiệu ứng và âm thanh.
 - `godot/rules.gd`: đặt ngựa trên lưới 15 × 15 và tìm nước đi (chép từ `model.ts`).
+- `godot/rules_panel.gd`: bảng `Luật` trên bàn (nút ở góc trên phải): mười trang luật chữ lớn, có
+  hình mặt xúc xắc và ô chuồng 1–6; hai nút ‹ › chuyển trang.
+- `godot/celebration.gd`: khi một đội về đủ bốn ngựa: pháo hoa trên bàn và bảng vinh danh vẽ bằng
+  vector, ghi "CHIẾN THẮNG!" (hạng nhất) hoặc "VỀ ĐÍCH!", tên người chơi theo màu và "HẠNG n".
 - `godot/art/`, `godot/sounds/`, `godot/music/`: hình, âm thanh và nhạc bàn dùng; test ở
   `godot/test/`.
 - `sources/render_assets.py`: dựng bàn gỗ, atlas ngựa và normals, sáu mặt xúc xắc, nút và nền nỉ bằng [Blender helper chung](../../tools/blender/xomdao_bake/__init__.py).
@@ -37,7 +41,8 @@ npm run shots -- --path '/?play=co-ca-ngua'
 
 Chơi thử tại `http://localhost:5033/?play=co-ca-ngua` (ba máy, trên server thật). Chạm xúc xắc
 để tung; ngựa đi được có vòng vàng, chạm ngựa để đi. Ngựa nhảy từng ô, ngựa bị đá trượt về chuồng,
-đội về đủ bốn ngựa nhảy múa. Bảng Tạo phòng chọn bạn bè hoặc số người máy, chế độ Thường hoặc
+đội về đủ bốn ngựa nhảy múa trong pháo hoa dưới bảng "CHIẾN THẮNG!"/"VỀ ĐÍCH!" kèm "HẠNG n".
+Nút `Luật` ở góc trên phải mở luật có hình minh họa. Bảng Tạo phòng chọn bạn bè hoặc số người máy, chế độ Thường hoặc
 Phân hạng; chế độ Phân hạng tiếp tục sau khi có người hoàn thành.
 
 Dev Console trong phòng server hỗ trợ `set-horse <seat> <horse> <position>` và `roll-dice <value>` để thử nước đi. Ghế và ngựa đánh số từ 0; vị trí `-1` là chuồng, `0–51` là đường đua theo màu mình, `52–57` là ô chuồng 1–6. `roll-dice` chỉ hoạt động khi đang chờ tung. Đây là lệnh phát triển qua SDK, không phải sự kiện người chơi gửi được trên production.
