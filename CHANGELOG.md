@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.24.0](https://github.com/MinhWorker/xom-dao/compare/v0.23.0...v0.24.0) (2026-10-11)
+
+
+### Features
+
+* **client:** add mobile island game selector and paged rules ([#165](https://github.com/MinhWorker/xom-dao/issues/165)) ([dacd57b](https://github.com/MinhWorker/xom-dao/commit/dacd57b65f0a2f3ea605a227fddf3baed2899a44))
+* **client:** floating Blender islands with idle loops on the lobby ring ([#164](https://github.com/MinhWorker/xom-dao/issues/164)) ([62746c7](https://github.com/MinhWorker/xom-dao/commit/62746c7c02b9a683be3157a641d1cf82ab27d155))
+* **client:** three-column home screen with floating islands ([#163](https://github.com/MinhWorker/xom-dao/issues/163)) ([2e6d45a](https://github.com/MinhWorker/xom-dao/commit/2e6d45aeaf0f3bc3872321ea4ff72569d1e01c2a))
+* lock the frame to 16:9 and redesign the hub screens ([#167](https://github.com/MinhWorker/xom-dao/issues/167)) ([0934a0d](https://github.com/MinhWorker/xom-dao/commit/0934a0db777c86c0f1622975b4b80959dcfe9ea3))
+
 ## [0.23.0](https://github.com/MinhWorker/xom-dao/compare/v0.22.0...v0.23.0) (2026-10-11)
 
 
