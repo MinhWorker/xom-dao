@@ -307,6 +307,11 @@ func _layout() -> void:
 	var text_width: float = detail_width - 48.0
 	var title_font: int = 44 if available < 440 else 52
 	var body_font: int = 26 if available < 420 else 28
+	var spacing: float = 24.0
+	if _event_scroll.visible:
+		title_font = 40
+		body_font = 24
+		spacing = 12.0
 	_title.add_theme_font_size_override("font_size", title_font)
 	_tagline.add_theme_font_size_override("font_size", body_font)
 	var title_height: float = (
@@ -333,9 +338,9 @@ func _layout() -> void:
 	)
 	_title.position = Vector2(24, 16)
 	_title.size = Vector2(text_width, title_height)
-	_tagline.position = Vector2(24, 16 + title_height + 24)
+	_tagline.position = Vector2(24, 16 + title_height + spacing)
 	_tagline.size = Vector2(text_width, body_height)
-	var seats_y: float = _tagline.position.y + body_height + 18
+	var seats_y: float = _tagline.position.y + body_height + spacing
 	_people.position = Vector2(24, seats_y + 10)
 	_people.size = Vector2(32, 32)
 	_players.position = Vector2(68, seats_y)

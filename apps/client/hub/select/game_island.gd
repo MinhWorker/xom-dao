@@ -25,7 +25,7 @@ func _init() -> void:
 	_picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_picture)
 	_plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_plate.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_plate.stretch_mode = TextureRect.STRETCH_SCALE
 	_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_plate)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
