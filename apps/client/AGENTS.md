@@ -84,7 +84,8 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   (docs/art-direction.md made into code), never their own buttons, fonts or HUD colours:
   - `XomDaoUi`: palette, fonts, icons (`XomDaoUi.icon("gear")`, Phosphor Fill), `theme()`,
     `money()` / `delta()`, `play()` for the shared sounds, `bounce()`;
-  - widgets: `XomDaoButton` (colour by `XomDaoUi.Kind`), `XomDaoIconButton`, `XomDaoBoard`,
+  - widgets: `XomDaoButton` (colour by `XomDaoUi.Kind`), `XomDaoIconButton`, `XomDaoPuff` (the raised
+    body both draw: `XomDaoPuff.behind(button)` or `XomDaoPuff.paint(...)`), `XomDaoBoard`,
     `XomDaoMoney`, `XomDaoDelta`, `XomDaoChip`, `XomDaoAvatar`, `XomDaoPlayerSlot`,
     `XomDaoGameTile`, `XomDaoChoice`, `XomDaoSlider`, `XomDaoToast`, `XomDaoDot`, `XomDaoDivider`, `XomDaoMenu`;
   - card games: `XomDaoCard` (a playing card, face or back) and `XomDaoMat` (the straw mat);

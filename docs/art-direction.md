@@ -76,9 +76,9 @@ dây thừng chỉ cho thứ quan trọng.
 
 | Thành phần | Vật liệu | Cỡ (đơn vị) |
 | --- | --- | --- |
-| Nút CHƠI | Sơn mài đỏ, viền vàng đồng 4, chữ kem 48, bóng trong nhẹ phía trên | cao 120 |
-| Nút hành động | Nền tối theo loại hành động (bảng dưới), viền tông tối hơn 3, chữ kem 30–36 | cao 80–96 |
-| Nút biểu tượng | Tròn, nâu đậm `#3A2416` @ 85%, icon kem | 88 × 88 |
+| Nút CHƠI | Sơn mài đỏ, viền vàng đồng 4, chữ kem 48, nổi khối | cao 120 |
+| Nút hành động | Nền tối theo loại hành động (bảng dưới), viền tông tối hơn 3, chữ kem 30–36, nổi khối | cao 80–96 |
+| Nút biểu tượng | Tròn, nâu đậm `#3A2416` @ 85%, icon kem, nổi khối (mép 5) | 88 × 88 |
 | Bảng lớn | Khung mật ong viền 3, hai nút dây thừng ở góc trên, ruột giấy dó, lề trong 32, bo 24 | |
 | Hàng tiền | Viên thuốc nền HUD, icon xu hoặc ngọc tràn ra mép trái, số kem; mỗi tiền một viên riêng | cao 64 |
 | Ô người chơi | Ảnh đại diện trong vòng tre, tên trên nền HUD, cấp và số lá là chip riêng, vòng thời gian vàng đồng | ảnh 96 (gọn 72) |
@@ -98,11 +98,14 @@ từ màu trước khi đọc chữ.
 | Thông tin | Luật, ?, Danh sách phòng | Gỗ tối `#9C5F2A` | `#6E4220` |
 | Nguy hiểm | Đầu hàng, Rời phòng | Nâu đen `#3A2416` | Đỏ đèn lồng `#E0352B` |
 
-Chỉ nút CHƠI ở sảnh được to, bóng và phát sáng; các nút đỏ khác phẳng.
+**Nút nổi khối** (`XomDaoPuff`): mặt nút đứng trên một mép tối hơn dày 7 đơn vị; nửa trên mặt nút
+sáng hơn, có một vệt sáng mảnh sát mép trên, phần ba dưới tối đi; bóng đổ gọn và đậm ngay dưới
+nút (lệch xuống 5, nhoè 3, `#2A180C` @ 42%). Chỉ nút CHƠI ở sảnh được to và có vệt sáng lướt qua
+vài giây một lần.
 
 - Nền nút và bảng là 9-slice: ghi độ dày viền (`slice`) cạnh mỗi file.
-- Mỗi nút có bốn trạng thái: thường, sáng (rê chuột, +10% sáng), lún (dịch xuống 4, mất bóng), tắt
-  (xám hoá 60%, mờ 60%).
+- Mỗi nút có bốn trạng thái: thường, sáng (rê chuột, +8% sáng), lún (mặt nút lún xuống mép, bóng
+  thu lại), tắt (xám hoá 60%, mờ 60%).
 - Không vẽ thanh tab kiểu app, viên thuốc phẳng kiểu Material, hay thanh ngang tràn màn hình.
 
 ## Chữ trong thẻ và bảng
@@ -142,7 +145,10 @@ cho nhân vật.
 - HUD riêng của sảnh: nền navy `#16233F` trong mờ, viền `#3B5683`; mục đang chọn vàng đồng có quầng;
   CHƠI vàng `#FFD54A` chữ nâu đậm, Tạo phòng xanh dương `#2E8DE6`.
 - Đảo đang chọn quyết định danh sách trò ở thẻ "trò đang chọn" cạnh nút CHƠI.
-- Trang chủ, Chợ, Đình, Bến là nút ở cột trái của HUD, không phải công trình trên đảo.
+- Trang chủ, Chợ, Đình, Bến là nút ở cột trái của HUD, không phải công trình trên đảo. Mỗi nút là
+  một hình minh hoạ 3D hoạt hình (`nav-home`, `nav-cho`, `nav-dinh`, `nav-ben` trong
+  `assets/prompts.json`) trên khay xanh đậm bo tròn. Nút đang chọn nằm trên tấm vàng nổi và hình
+  nhấp nhô nhẹ; nút khác nhấc lên khi rê chuột, nhún khi bấm; cả khay trượt vào từ trái khi mở sảnh.
 - Chỗ cho tranh (không bắt buộc): đảo `apps/client/hub/genres/<island>.tscn` (có chuyển động) hoặc
   `.webp`, khung vuông 512 × 512, luôn vẽ bản đủ màu; nền `apps/client/hub/lobby/backdrop.webp`;
   tranh lối tắt `apps/client/hub/lobby/shortcut-<id>.webp`.

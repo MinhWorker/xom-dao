@@ -1,12 +1,13 @@
 class_name XomDaoIconButton
 extends Button
-## A round HUD button with one icon: dark see-through disc, cream icon, 88 × 88.
+## A round HUD button with one icon: a raised dark disc (XomDaoPuff), cream icon, 88 × 88.
 ##
 ##   var menu := XomDaoIconButton.create("list")   # a Phosphor Fill icon name
 ##   menu.dot = true                               # the red dot of something new
 
 const SIZE := 88.0
 const ICON := 48
+const DEPTH := 5.0
 
 ## Shows the red dot on the button.
 var dot: bool = false:
@@ -28,6 +29,8 @@ var icon_name: String = "":
 		icon_name = value
 		icon = XomDaoUi.icon(value) if value != "" else null
 
+var _body: XomDaoPuff
+
 
 static func create(name_of_icon: String) -> XomDaoIconButton:
 	var button := XomDaoIconButton.new()
@@ -42,6 +45,7 @@ func _init() -> void:
 	expand_icon = true
 	icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	_body = XomDaoPuff.behind(self)
 	background = XomDaoUi.HUD
 	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
@@ -50,21 +54,25 @@ func _init() -> void:
 
 
 func _restyle() -> void:
+	if _body == null:
+		return
+	_body.face = background
+	_body.edge = Color(background.darkened(0.3), background.a)
+	_body.border = 2
+	_body.radius = SIZE / 2.0
+	_body.depth = DEPTH
 	var pad: float = (SIZE - ICON) / 2.0
-	var normal: StyleBoxFlat = XomDaoUi.box(background, Color.TRANSPARENT, 0, SIZE / 2.0)
-	var hover: StyleBoxFlat = XomDaoUi.box(
-		background.lightened(0.1), Color.TRANSPARENT, 0, SIZE / 2.0
-	)
-	var pressed: StyleBoxFlat = XomDaoUi.box(
-		background.darkened(0.2), Color.TRANSPARENT, 0, SIZE / 2.0
-	)
-	for style: StyleBoxFlat in [normal, hover, pressed]:
-		style.set_content_margin_all(pad)
-	add_theme_stylebox_override("normal", normal)
-	add_theme_stylebox_override("hover", hover)
+	var normal := StyleBoxEmpty.new()
+	normal.set_content_margin_all(pad)
+	normal.content_margin_top = pad - DEPTH / 2.0
+	normal.content_margin_bottom = pad + DEPTH / 2.0
+	var pressed: StyleBoxEmpty = normal.duplicate()
+	pressed.content_margin_top = pad
+	pressed.content_margin_bottom = pad
+	for state: String in ["normal", "hover", "disabled"]:
+		add_theme_stylebox_override(state, normal)
 	add_theme_stylebox_override("pressed", pressed)
 	add_theme_stylebox_override("hover_pressed", pressed)
-	add_theme_stylebox_override("disabled", normal)
 
 
 func _ready() -> void:

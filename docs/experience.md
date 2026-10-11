@@ -83,7 +83,7 @@ Sảnh theo bố cục ba cột của client game PC (League of Legends), vẽ h
 
 | Vùng | Chứa |
 | --- | --- |
-| Cột trái | Thanh dọc sát mép trái: **Trang chủ** (đang chọn), Chợ, Đình, Bến; icon phẳng có chữ dưới |
+| Cột trái | Khay nổi bo tròn ở mép trái: **Trang chủ** (đang chọn, trên tấm vàng nổi, hình nhấp nhô), Chợ, Đình, Bến; mỗi nút một hình minh hoạ có chữ dưới |
 | Trên trái | Ảnh đại diện, tên, chip cấp và thanh kinh nghiệm → **Nhà** |
 | Trên phải | Xu, hộp thư, quà, ⚙ |
 | Phải, trên | Lối tắt: **Chợ** (có tranh), **Sự kiện** (chấm đỏ và số ngày còn lại khi có sự kiện), **Nhiệm vụ** |
