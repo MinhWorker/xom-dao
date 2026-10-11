@@ -153,7 +153,9 @@ func show_game(card: XomDaoGameCard, can_play: bool) -> void:
 	_card_art.locked = not can_play
 	_card_online.visible = card != null
 	_card_online.text = str(card.playing) if card != null else "0"
+	# Out of the row at once: a chip waiting to be freed would still widen the card.
 	for child: Node in _card_info.get_children():
+		_card_info.remove_child(child)
 		child.queue_free()
 	if card != null:
 		var players := XomDaoChip.create(

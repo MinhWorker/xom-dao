@@ -139,6 +139,21 @@ func test_no_island_overlaps_the_hud() -> void:
 						)
 
 
+func test_picking_a_game_again_keeps_the_hud_where_it_was() -> void:
+	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
+	lobby.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	lobby.size = Vector2(1280, 720)
+	var catalog: HubCatalog = _catalog(1)
+	lobby.show_catalog(catalog, "co")
+	lobby.show_game(catalog.card("tic-tac-toe"), true)
+	await wait_process_frames(2)
+	var before: Array[Rect2] = lobby.hud_rects()
+	lobby.show_game(catalog.card("tic-tac-toe"), true)
+	await wait_process_frames(2)
+	assert_eq(lobby._card_info.get_child_count(), 2)
+	assert_eq(lobby.hud_rects(), before)
+
+
 func test_the_card_follows_what_can_be_played() -> void:
 	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
 	var catalog: HubCatalog = _catalog(0)
