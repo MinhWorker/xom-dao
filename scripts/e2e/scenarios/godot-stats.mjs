@@ -20,7 +20,7 @@ export default async function run(t) {
   await tap(lan, 'Home');
   await onScene(lan, 'lobby');
   await godotText(lan, 'LobbyLevel', 'Cấp 1');
-  await tap(lan, 'Place_nha');
+  await tap(lan, 'Profile');
   await onScene(lan, 'nha');
   await godotText(lan, 'HomePlayed', '1 ván');
   await tap(lan, 'Tab_thanh-tich');

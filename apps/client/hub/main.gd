@@ -344,11 +344,12 @@ func _fill_home(home: HubHome, user_id: String) -> bool:
 	return true
 
 
-## The level chip by your name in the lobby.
+## The level chip and EXP bar by your name in the lobby.
 func _fill_level(lobby: HubLobby) -> void:
 	var reply: Dictionary = await _client.request(XomDaoProtocol.STATS_GET)
 	if reply.get("ok") == true and is_instance_valid(lobby):
-		lobby.show_level(XomDaoPlayerStats.from_dict(reply).level)
+		var stats: XomDaoPlayerStats = XomDaoPlayerStats.from_dict(reply)
+		lobby.show_level(stats.level, stats.xp, stats.level_xp, stats.next_xp)
 
 
 ## Đình: the rankings, Cả xóm first.

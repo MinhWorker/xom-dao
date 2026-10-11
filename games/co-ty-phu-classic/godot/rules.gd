@@ -593,6 +593,31 @@ static func redeem_amount(properties: Array, i: int) -> int:
 	return ceili(principal * 11 / 10.0)
 
 
+## The deeds `seat` may mortgage now: its own, not mortgaged yet (`mortgageSquares`).
+static func mortgage_squares(properties: Array, seat: int) -> Array[int]:
+	var out: Array[int] = []
+	for i: int in properties.size():
+		if is_deed(i) and _owner(properties, i) == seat and not bool(properties[i]["mortgaged"]):
+			out.append(i)
+	return out
+
+
+## What a player is worth: cash, jail tickets at 200, deeds and buildings less what redeeming the
+## mortgaged ones costs (`assetValue`).
+static func asset_value(view: Dictionary, seat: int) -> int:
+	var properties: Array = view["properties"]
+	var player: Dictionary = view["players"][seat]
+	var total: int = int(player["cash"]) + (player["freeCards"] as Array).size() * 200
+	for i: int in properties.size():
+		if _owner(properties, i) != seat:
+			continue
+		var deed: Dictionary = properties[i]
+		total += price(i) + int(deed["houses"]) * int(SQUARES[i].get("houseCost", 0))
+		if bool(deed["mortgaged"]):
+			total -= redeem_amount(properties, i)
+	return total
+
+
 static func bank_houses(properties: Array) -> int:
 	var used: int = 0
 	for deed: Variant in properties:

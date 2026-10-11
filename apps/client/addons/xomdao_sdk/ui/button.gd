@@ -1,7 +1,8 @@
 class_name XomDaoButton
 extends Button
 ## A text button coloured by what it does (XomDaoUi.Kind): dark background, cream label.
-## PLAY is the one big lacquer button of the lobby; everything else is flat.
+## PLAY is the one big lacquer button; HOME_PLAY the lobby's gold CHƠI (ink label, a soft glow);
+## everything else is flat.
 ##
 ##   var play := XomDaoButton.create("CHƠI", XomDaoUi.Kind.PLAY)
 ##   var leave := XomDaoButton.create("Rời phòng", XomDaoUi.Kind.DANGER)
@@ -40,6 +41,8 @@ func _on_down() -> void:
 
 func _restyle() -> void:
 	var play: bool = kind == XomDaoUi.Kind.PLAY
+	var home_play: bool = kind == XomDaoUi.Kind.HOME_PLAY
+	var text: Color = XomDaoUi.kind_text(kind)
 	var colors: Array[Color] = XomDaoUi.kind_colors(kind)
 	var border: int = 4 if play else XomDaoUi.BORDER
 	var radius: float = 36.0 if play else 22.0
@@ -51,6 +54,10 @@ func _restyle() -> void:
 		normal.shadow_color = Color(XomDaoUi.GOLD, 0.45)
 		normal.shadow_size = 14
 		normal.shadow_offset = Vector2(0.0, 4.0)
+	elif home_play:
+		normal.shadow_color = Color(XomDaoUi.SUN, 0.4)
+		normal.shadow_size = 10
+		normal.shadow_offset = Vector2(0.0, 3.0)
 	var hover: StyleBoxFlat = normal.duplicate()
 	hover.bg_color = colors[0].lightened(0.1)
 	var pressed: StyleBoxFlat = normal.duplicate()
@@ -77,15 +84,15 @@ func _restyle() -> void:
 	add_theme_stylebox_override("disabled", disabled)
 	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	add_theme_font_override("font", XomDaoUi.display_font(800))
-	add_theme_font_size_override("font_size", 48 if play else 32)
+	add_theme_font_size_override("font_size", 48 if play else (40 if home_play else 32))
 	for state: String in ["font_color", "font_hover_color", "font_pressed_color"]:
-		add_theme_color_override(state, XomDaoUi.CREAM)
-	add_theme_color_override("font_disabled_color", Color(XomDaoUi.CREAM, 0.6))
+		add_theme_color_override(state, text)
+	add_theme_color_override("font_disabled_color", Color(text, 0.6))
 	add_theme_constant_override("h_separation", 12)
 	add_theme_constant_override("icon_max_width", 40)
-	add_theme_color_override("icon_normal_color", XomDaoUi.CREAM)
-	add_theme_color_override("icon_hover_color", XomDaoUi.CREAM)
-	add_theme_color_override("icon_pressed_color", XomDaoUi.CREAM)
+	add_theme_color_override("icon_normal_color", text)
+	add_theme_color_override("icon_hover_color", text)
+	add_theme_color_override("icon_pressed_color", text)
 	custom_minimum_size.y = PLAY_HEIGHT if play else HEIGHT
 	if play and size.x < 280.0:
 		custom_minimum_size.x = 280.0

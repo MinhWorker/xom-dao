@@ -31,11 +31,10 @@ export default async function run(t) {
     if (!(await ask(page, 'dev:clock', { at: OPEN })).ok) throw new Error('dev:clock refused');
     page = await openGodot(t, page);
     await onScene(page, 'lobby');
-    await godotText(page, 'BannerTitle', 'Sự kiện');
-    await godotText(page, 'BannerTag', 'Còn 9 ngày');
+    await godotText(page, 'EventTag', 'Còn 9 ngày');
     await page.screenshot({ path: t.shot('1-lobby.png') });
 
-    await tap(page, 'Banner');
+    await tap(page, 'Shortcut_su-kien');
     await onScene(page, 'select');
     let points = await pointsOf(page);
     await page.screenshot({ path: t.shot('2-board.png') });
@@ -79,7 +78,8 @@ export default async function run(t) {
     if (!(await ask(page, 'dev:clock', { at: CLOSED })).ok) throw new Error('dev:clock refused');
     page = await openGodot(t, page);
     await onScene(page, 'lobby');
-    await godotText(page, 'BannerTitle', 'Chợ');
+    // No event open: the Sự kiện shortcut loses its days left.
+    await page.waitForFunction(() => window.xomdao.text('EventTag') === null);
     const quick = await ask(page, 'room:quick', { gameId: 'trung-thu' });
     if (quick.ok || quick.error !== 'Sự kiện chưa mở hoặc đã kết thúc')
       throw new Error(`A closed event's room: ${JSON.stringify(quick)}`);

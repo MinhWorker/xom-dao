@@ -102,7 +102,8 @@ Nếu tốc độ tải hoặc Safari iOS không đạt, dừng lại và xem l�
       khai báo `kind` (`table`, `event`), thể loại, tranh thẻ trò, thời gian mở, phần thưởng tối đa
 - [x] Sảnh: vòng đảo thể loại xoay được (Cờ, Bài, rồi thể loại phụ; đảo Sắp có khi chưa có thể
       loại phụ) + HUD sảnh; màn chọn trò với danh sách thẻ kéo ngang; chọn thẻ thì tải ngầm
-      `.pck` của trò. Đảo còn vẽ tạm bằng code, chờ ảnh `hub/genres/<island>.webp`
+      `.pck` của trò. Đảo là mô hình Blender bay lơ lửng (`hub/genres/<island>.tscn`), có vòng
+      chuyển động riêng; đảo không chọn nhạt màu xanh xám, đảo khoá chìm trong sương có ổ khoá
 - [x] CHƠI ghép nhanh (`room:quick`, máy ngồi ghế trống sau một lúc), Bến (mã phòng, phòng mở),
       tạo/vào phòng, kết quả có xu bay vào số dư
 - [x] Đăng nhập: Nhà › Tài khoản (đăng nhập, tạo tài khoản, đăng xuất)

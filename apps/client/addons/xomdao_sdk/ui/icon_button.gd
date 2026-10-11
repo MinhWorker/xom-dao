@@ -17,6 +17,12 @@ var dot: bool = false:
 		elif has_node("Dot"):
 			get_node("Dot").queue_free()
 
+## The disc's colour (the lobby's navy HUD sets its own).
+var background: Color = XomDaoUi.HUD:
+	set(value):
+		background = value
+		_restyle()
+
 var icon_name: String = "":
 	set(value):
 		icon_name = value
@@ -36,13 +42,21 @@ func _init() -> void:
 	expand_icon = true
 	icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	background = XomDaoUi.HUD
+	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
+		add_theme_color_override(state, XomDaoUi.CREAM)
+	add_theme_color_override("icon_disabled_color", Color(XomDaoUi.CREAM, 0.4))
+
+
+func _restyle() -> void:
 	var pad: float = (SIZE - ICON) / 2.0
-	var normal: StyleBoxFlat = XomDaoUi.box(XomDaoUi.HUD, Color.TRANSPARENT, 0, SIZE / 2.0)
+	var normal: StyleBoxFlat = XomDaoUi.box(background, Color.TRANSPARENT, 0, SIZE / 2.0)
 	var hover: StyleBoxFlat = XomDaoUi.box(
-		XomDaoUi.HUD.lightened(0.1), Color.TRANSPARENT, 0, SIZE / 2.0
+		background.lightened(0.1), Color.TRANSPARENT, 0, SIZE / 2.0
 	)
 	var pressed: StyleBoxFlat = XomDaoUi.box(
-		XomDaoUi.HUD.darkened(0.2), Color.TRANSPARENT, 0, SIZE / 2.0
+		background.darkened(0.2), Color.TRANSPARENT, 0, SIZE / 2.0
 	)
 	for style: StyleBoxFlat in [normal, hover, pressed]:
 		style.set_content_margin_all(pad)
@@ -51,10 +65,6 @@ func _init() -> void:
 	add_theme_stylebox_override("pressed", pressed)
 	add_theme_stylebox_override("hover_pressed", pressed)
 	add_theme_stylebox_override("disabled", normal)
-	add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
-		add_theme_color_override(state, XomDaoUi.CREAM)
-	add_theme_color_override("icon_disabled_color", Color(XomDaoUi.CREAM, 0.4))
 
 
 func _ready() -> void:

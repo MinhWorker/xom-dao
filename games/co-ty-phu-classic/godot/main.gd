@@ -8,23 +8,27 @@ extends Control
 ## Gieo, Nộp 50 / Dùng thẻ in jail, Mua / Bỏ qua, Góp / Từ bỏ at a bus station, Trả / Bỏ in an
 ## auction, Xây / Hết lượt, Trả nợ / Phá sản. A card over the field shows a drawn card or tax
 ## (Xác nhận), a trade offer (Đồng ý / Từ chối) or a tapped square: its price, rent and owner,
-## and for your own deeds Thế chấp, Chuộc, Bán nhà, Đấu giá. Trao đổi (top right) opens trade.gd.
+## and for your own deeds Thế chấp, Chuộc, Bán nhà, Đấu giá. Trao đổi (top right) opens trade.gd;
+## Tài sản and a deed's Thế chấp open mortgage.gd. Effects: dice.gd, gate.gd, victory.gd.
 ## Named nodes for tests: Board, Square_<i>, Pawn_<seat>, Die_0, Die_1, Seat_<seat>, Notice,
 ## Status, Card, CardTitle, CardText, and the buttons Roll, Bail, UseCard, Buy, Skip, Bid,
 ## Pass, Build, EndTurn, PayDebt, Bankrupt, Confirm, Accept, Decline, Mortgage, Redeem,
-## SellHouse, Auction, Offer.
+## SellHouse, Auction, Offer, Assets.
 
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
 const Texts := preload("res://content/co-ty-phu-classic/texts.gd")
+const Actions := preload("res://content/co-ty-phu-classic/actions.gd")
 ## The sounds in sounds/ (.wav), besides win.mp3.
-const SOUNDS := "auction bankrupt build buy card-flip coin dice jail plane release rent step turn"
+const SOUNDS := (
+	"auction.wav bankrupt.wav build.wav buy.wav card-flip.wav coin.wav dice.wav jail.wav plane.wav"
+	+ " release.wav rent.wav step.wav turn.wav win.mp3 item-receive.mp3 trade-request.mp3"
+)
 const INKS: Array[Color] = [Color("#DF6554"), Color("#5793D3"), Color("#60AF72"), Color("#E6BE52")]
 const PAWNS: Array[String] = ["red", "blue", "green", "yellow"]
 const DECKS: Dictionary = {"chance": "Cơ hội", "chest": "Khí vận"}
 ## The part of board.webp that is drawn (fractions of its width and height).
 const SEEN := Rect2(0.07, 0.048, 0.86, 0.822)
 const COLUMN := 210.0
-const ROLL_SECONDS := 0.7
 const STEP_SECONDS := 0.14
 const FLY_SECONDS := 0.7
 const GOLD := Color("#FFE2A0")
@@ -80,6 +84,11 @@ var _card_row := HBoxContainer.new()
 var _slots: Array[XomDaoPlayerSlot] = []
 var _trade: PanelContainer = preload("res://content/co-ty-phu-classic/trade.gd").new()
 var _offer_trade: XomDaoButton = XomDaoButton.create("Trao đổi", XomDaoUi.Kind.SOCIAL)
+var _mortgage: PanelContainer = preload("res://content/co-ty-phu-classic/mortgage.gd").new()
+var _assets: XomDaoButton = XomDaoButton.create("Tài sản", XomDaoUi.Kind.SOCIAL)
+var _throw: Control = preload("res://content/co-ty-phu-classic/dice.gd").new()
+var _gate: Control = preload("res://content/co-ty-phu-classic/gate.gd").new()
+var _victory: Control = preload("res://content/co-ty-phu-classic/victory.gd").new()
 var _fx := Control.new()
 var _sounds: Dictionary = {}
 var _textures: Array[Texture2D] = []
@@ -129,7 +138,7 @@ func result_detail() -> Dictionary:
 	var winner: int = int(_view["winner"])
 	var rows: Array = [
 		["Số vòng", str(int(_view["round"]) + 1)],
-		["Tiền của người thắng", XomDaoUi.money(int(_view["players"][winner]["cash"])) + " ₫"],
+		["Tổng tài sản", XomDaoUi.money(Rules.asset_value(_view, winner)) + " ₫"],
 	]
 	return {"reason": "Các đối thủ đã phá sản", "rows": rows}
 
@@ -165,6 +174,8 @@ func _ready() -> void:
 		_squares.append(square)
 	for face: int in 6:
 		_faces.append(load("res://content/co-ty-phu-classic/art/dice-%d.webp" % (face + 1)))
+	add_child(_throw)
+	_throw.set("faces", _faces)
 	for k: int in 2:
 		var die := TextureRect.new()
 		die.name = "Die_%d" % k
@@ -174,6 +185,7 @@ func _ready() -> void:
 		die.gui_input.connect(_on_dice_input)
 		add_child(die)
 		_dice.append(die)
+	_throw.set("dice", _dice)
 	for color: String in PAWNS:
 		_textures.append(load("res://content/co-ty-phu-classic/art/pawn-%s.webp" % color))
 	_turn_pawn.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -214,19 +226,24 @@ func _ready() -> void:
 	_trade.connect("offered", _on_offer)
 	_trade.visibility_changed.connect(_refresh)
 	add_child(_trade)
+	_assets.name = "Assets"
+	_assets.visible = false
+	_assets.pressed.connect(_open_mortgage)
+	add_child(_assets)
+	_mortgage.connect("chosen", _on_mortgage)
+	_mortgage.visibility_changed.connect(_refresh)
+	add_child(_mortgage)
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_fx)
+	add_child(_victory)
+	add_child(_gate)
 	for sound: String in SOUNDS.split(" "):
 		var player := AudioStreamPlayer.new()
-		player.stream = load("res://content/co-ty-phu-classic/sounds/%s.wav" % sound)
+		player.stream = load("res://content/co-ty-phu-classic/sounds/%s" % sound)
 		player.max_polyphony = 3
 		add_child(player)
-		_sounds[sound] = player
-	var win := AudioStreamPlayer.new()
-	win.stream = load("res://content/co-ty-phu-classic/sounds/win.mp3")
-	add_child(win)
-	_sounds["win"] = win
+		_sounds[sound.get_basename()] = player
 	resized.connect(_layout)
 	_layout.call_deferred()
 
@@ -365,8 +382,15 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 			or int(view["players"][turn]["jailRolls"]) != int(before["players"][turn]["jailRolls"])
 		)
 	)
+	var freed: bool = (
+		_me >= 0
+		and bool(before["players"][_me]["jailed"])
+		and not bool(view["players"][_me]["jailed"])
+	)
+	if freed:
+		_enqueue(_gate_job.bind(false))
 	if rolled:
-		_enqueue(_roll.bind((dice as Array).duplicate()))
+		_enqueue(_roll.bind((dice as Array).duplicate(), turn))
 	var players: Array = view["players"]
 	for seat: int in players.size():
 		var was: Dictionary = before["players"][seat]
@@ -374,13 +398,17 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 		var to: int = int(now["position"])
 		if bool(now["bankrupt"]) and not bool(was["bankrupt"]):
 			_enqueue(_sfx_job.bind("bankrupt"))
+		if (now["freeCards"] as Array).size() > (was["freeCards"] as Array).size():
+			_enqueue(_sfx_job.bind("item-receive"))
 		if to == int(was["position"]) and bool(now["jailed"]) == bool(was["jailed"]):
 			continue
 		var steps: int = posmod(to - int(was["position"]), 40)
 		var jailing: bool = bool(now["jailed"]) and not bool(was["jailed"])
 		if jailing:
+			if seat == _me:
+				_enqueue(_gate_job.bind(true))
 			_enqueue(_fly.bind(seat, to, "jail"))
-		elif bool(was["jailed"]) and not bool(now["jailed"]) and steps == 0:
+		elif bool(was["jailed"]) and not bool(now["jailed"]) and steps == 0 and seat != _me:
 			_enqueue(_sfx_job.bind("release"))
 		elif steps > 0 and steps <= 12 and int(was["position"]) != 20:
 			_enqueue(_walk.bind(seat, int(was["position"]), steps))
@@ -392,6 +420,8 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 			_enqueue(_money.bind(transfers.duplicate(true)))
 	if view.get("specialEvent") is Dictionary and before.get("specialEvent") is not Dictionary:
 		_enqueue(_sfx_job.bind("card-flip"))
+	if view["phase"] == "trade" and before["phase"] != "trade" and Rules.decision_seat(view) == _me:
+		_enqueue(_sfx_job.bind("trade-request"))
 	if str(view["phase"]) == "auction" and str(before["phase"]) != "auction":
 		_enqueue(_sfx_job.bind("auction"))
 	var houses_before: int = 0
@@ -402,7 +432,7 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 	if houses_now > houses_before:
 		_enqueue(_sfx_job.bind("build"))
 	if view.get("winner") != null and before.get("winner") == null:
-		_enqueue(_sfx_job.bind("win"))
+		_enqueue(_win)
 	elif int(view["turn"]) != turn and int(view["turn"]) == _me:
 		_enqueue(_sfx_job.bind("turn"))
 
@@ -431,21 +461,27 @@ func _sfx_job(sound: String) -> void:
 	await get_tree().process_frame
 
 
-func _roll(values: Array) -> void:
+func _roll(values: Array, seat: int) -> void:
 	_sfx("dice")
-	var start: int = Time.get_ticks_msec()
-	while Time.get_ticks_msec() - start < ROLL_SECONDS * 1000.0:
-		for die: TextureRect in _dice:
-			die.texture = _faces[randi() % 6]
-			die.rotation = randf_range(-0.5, 0.5)
-		await get_tree().create_timer(0.07).timeout
-		if not is_inside_tree():
-			return
-	for k: int in 2:
-		_dice[k].texture = _faces[clampi(int(values[k]), 1, 6) - 1]
-		_dice[k].rotation = 0.0
-		XomDaoUi.bounce(_dice[k])
-	await get_tree().create_timer(0.2).timeout
+	await _throw.call("roll", values, _notice, _seat_name(seat))
+
+
+## The jail doors: shut as you are sent in (the pawn flies meanwhile), apart as you walk out.
+func _gate_job(shut: bool) -> void:
+	if shut:
+		_gate.call("slam")
+		await get_tree().process_frame
+	else:
+		_sfx("release")
+		await _gate.call("open")
+
+
+func _win() -> void:
+	_sfx("win")
+	var seat: int = int(_view["winner"])
+	var title: String = "%s chiến thắng!" % _seat_name(seat)
+	_victory.call("play", _textures[seat % 4], title, Rules.asset_value(_view, seat))
+	await get_tree().process_frame
 
 
 func _walk(seat: int, from: int, steps: int) -> void:
@@ -544,13 +580,16 @@ func _on_dice_input(event: InputEvent) -> void:
 func _on_action(button: String, event: String) -> void:
 	if _client == null or _sent:
 		return
+	if button == "Mortgage":
+		_open_mortgage(_focus)
+		return
 	var payload: Dictionary = {}
 	match button:
 		"Bid":
 			payload = {"amount": Rules.bid_amount(_view)}
 		"Build":
 			payload = {"square": int(_view["buildable"])}
-		"Mortgage", "Redeem", "SellHouse", "Auction":
+		"Redeem", "SellHouse", "Auction":
 			payload = {"square": _focus}
 	_sent = true
 	_refresh()
@@ -559,6 +598,20 @@ func _on_action(button: String, event: String) -> void:
 		_sent = false
 		if is_inside_tree():
 			_refresh()
+
+
+## Thế chấp tài sản, with `square` picked.
+func _open_mortgage(square: int = -1) -> void:
+	_trade.hide()
+	_focus = -1
+	_mortgage.call("open", _view, _me, square)
+
+
+func _on_mortgage(squares: Array[int]) -> void:
+	if _client != null and not _sent:
+		_sent = true
+		if not await _client.send("mortgage", {"squares": squares}):
+			_sent = false
 
 
 func _on_offer(payload: Dictionary) -> void:
@@ -659,37 +712,18 @@ func _show_actions() -> void:
 		and int(_view["turn"]) == _me
 		and phase in ["roll", "buy", "end"]
 	)
-	_offer_trade.visible = trading and not _trade.visible
+	_offer_trade.visible = trading and not _trade.visible and not _mortgage.visible
 	if not trading:
 		_trade.hide()
 	_trade.call("update", _view)
-	if _running or _sent or _me < 0 or _view.get("winner") != null or _trade.visible:
-		return
-	if Rules.decision_seat(_view) != _me:
-		return
-	var me: Dictionary = _player(_me)
-	var cash: int = int(me["cash"])
-	match phase:
-		"roll":
-			_offer("Roll")
-			if bool(me["jailed"]):
-				_offer("Bail", "Nộp %d" % Rules.BAIL, cash >= Rules.BAIL)
-				if not (me["freeCards"] as Array).is_empty():
-					_offer("UseCard")
-		"buy":
-			var price: int = Rules.price(int(_view["pending"]))
-			_offer("Buy", "Mua %s" % XomDaoUi.money(price), cash >= price)
-			_offer("Skip")
-		"auction":
-			_offer_auction(cash)
-		"end":
-			_offer_build(cash)
-			_offer("EndTurn")
-		"debt":
-			var amount: int = int(_view["debt"]["amount"])
-			_offer("PayDebt", "Trả %s" % XomDaoUi.money(amount), cash >= amount)
-			if cash < amount:
-				_offer("Bankrupt")
+	var managing: bool = Actions.may_mortgage(_view, _me)
+	_assets.visible = managing and not _running and not _sent and not _trade.visible
+	_assets.visible = _assets.visible and not _mortgage.visible
+	if not managing:
+		_mortgage.hide()
+	_mortgage.call("update", _view)
+	if not (_running or _sent or _trade.visible or _mortgage.visible):
+		_offer_all(Actions.phase_actions(_view, _me))
 
 
 func _offer(button: String, label: String = "", enabled: bool = true) -> void:
@@ -700,32 +734,9 @@ func _offer(button: String, label: String = "", enabled: bool = true) -> void:
 	node.visible = true
 
 
-func _offer_auction(cash: int) -> void:
-	var auction: Dictionary = _view["auction"]
-	var amount: int = Rules.bid_amount(_view)
-	var leading: bool = auction.get("leader") != null and int(auction["leader"]) == _me
-	if auction.get("seller") == null:
-		_offer("Bid", "Góp %s" % XomDaoUi.money(Rules.STATION_STEP), not leading and cash >= amount)
-		_offer("Pass", "Từ bỏ")
-	else:
-		_offer("Bid", "Trả %s" % XomDaoUi.money(amount), cash >= amount)
-		_offer("Pass", "Bỏ", not leading)
-
-
-func _offer_build(cash: int) -> void:
-	var square: Variant = _view.get("buildable")
-	if square == null or int(_player(_me)["position"]) != int(square):
-		return
-	var i: int = int(square)
-	var deed: Dictionary = _deed(i)
-	var houses: int = int(deed["houses"])
-	if houses >= 5 or bool(deed["mortgaged"]) or _owner(i) != _me:
-		return
-	var properties: Array = _view["properties"]
-	var bank: int = Rules.bank_hotels(properties) if houses == 4 else Rules.bank_houses(properties)
-	var cost: int = int(Rules.SQUARES[i]["houseCost"])
-	var what: String = "khách sạn" if houses == 4 else "nhà"
-	_offer("Build", "Xây %s %s" % [what, XomDaoUi.money(cost)], bank > 0 and cash >= cost)
+func _offer_all(actions: Array) -> void:
+	for action: Array in actions:
+		_offer(str(action[0]), str(action[1]), bool(action[2]))
 
 
 ## The card over the field: the drawn card or tax, a trade offer, or the tapped square.
@@ -778,8 +789,8 @@ func _show_trade(trade: Dictionary) -> void:
 func _show_square(i: int) -> void:
 	_card_title.text = str(Rules.SQUARES[i]["name"])
 	_card_text.text = Texts.square(_view, i, _names())
-	if Rules.is_deed(i) and _owner(i) == _me:
-		_offer_deed(i)
+	if not (_sent or _running):
+		_offer_all(Actions.deed_actions(_view, _me, i))
 
 
 func _names() -> Array[String]:
@@ -787,33 +798,6 @@ func _names() -> Array[String]:
 	for seat: int in _slots.size():
 		out.append(_seat_name(seat))
 	return out
-
-
-## Thế chấp, Chuộc, Bán nhà and Đấu giá for your own deed, when the rules allow them now.
-func _offer_deed(i: int) -> void:
-	var phase: String = _view["phase"]
-	if _sent or _running or _view.get("winner") != null or phase in ["event", "trade", "auction"]:
-		return
-	var deed: Dictionary = _deed(i)
-	var cash: int = int(_player(_me)["cash"])
-	var houses: int = int(deed["houses"])
-	var properties: Array = _view["properties"]
-	if houses > 0 and not bool(deed["mortgaged"]):
-		var back: int = int(Rules.SQUARES[i]["houseCost"] / 2)
-		_offer(
-			"SellHouse",
-			"Bán nhà +%s" % XomDaoUi.money(back),
-			houses < 5 or Rules.bank_houses(properties) >= 4
-		)
-	if Rules.decision_seat(_view) != _me:
-		return
-	if bool(deed["mortgaged"]):
-		var cost: int = Rules.redeem_amount(properties, i)
-		_offer("Redeem", "Chuộc %s" % XomDaoUi.money(cost), cash >= cost)
-	else:
-		_offer("Mortgage", "Thế chấp +%s" % XomDaoUi.money(Rules.mortgage_amount(properties, i)))
-		if houses == 0:
-			_offer("Auction")
 
 
 # ── Board ────────────────────────────────────────────────────────────────────────────────
@@ -869,7 +853,6 @@ func _place_pawns() -> void:
 		move_child(_pawns[seat], _dice[0].get_index() - 1)
 
 
-## The inner edge of square `i` (towards the field): its two corners.
 # ── Layout ────────────────────────────────────────────────────────────────────────────────
 
 
@@ -971,17 +954,23 @@ func _layout() -> void:
 		clampf(_field.get_center().y - _card.size.y / 2.0, top, bottom - _card.size.y)
 	)
 
-	# Trao đổi: top right; its board over the middle of the table.
+	# Trao đổi and Tài sản: top right; their boards over the middle of the table.
 	_offer_trade.reset_size()
 	_offer_trade.position = Vector2(right - _offer_trade.size.x, top)
+	_assets.reset_size()
+	var beside: float = _offer_trade.position.x - 12.0 if _offer_trade.visible else right
+	_assets.position = Vector2(beside - _assets.size.x, top)
 	_trade.custom_minimum_size.x = 560.0
-	_trade.size = Vector2.ZERO
-	_trade.reset_size()
+	_mortgage.custom_minimum_size.x = minf(680.0, right - left)
 	var middle: Vector2 = _board.position + _board.size * Vector2(0.5, 0.46)
-	_trade.position = Vector2(
-		clampf(middle.x - _trade.size.x / 2.0, left, right - _trade.size.x),
-		clampf(middle.y - _trade.size.y / 2.0, top, bottom - _trade.size.y)
-	)
+	for board: Control in [_trade, _mortgage]:
+		board.size = Vector2.ZERO
+		board.reset_size()
+		board.position = Vector2(
+			clampf(middle.x - board.size.x / 2.0, left, right - board.size.x),
+			clampf(middle.y - board.size.y / 2.0, top, bottom - board.size.y)
+		)
+	_throw.queue_redraw()
 
 	# The slots: a column on the right, yours at the bottom, the others above in turn order.
 	var count: int = _slots.size()

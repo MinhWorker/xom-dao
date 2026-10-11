@@ -1,6 +1,7 @@
 // Bake a game's Python sources with Blender or the bpy module, without LFS intermediates.
 // Runs every games/<id>/sources/render*.py in name order; each script bakes only the names it
-// owns from the list after `--` (all of them when the list is empty).
+// owns from the list after `--` (all of them when the list is empty). The id `app` runs the
+// app's own scripts in assets/sources/ (the lobby's islands).
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,7 +12,7 @@ if (!id || !/^[a-z0-9-]+$/.test(id)) {
   console.error('Usage: npm run blender -- <id> [names…]');
   process.exit(1);
 }
-const sources = join(root, 'games', id, 'sources');
+const sources = id === 'app' ? join(root, 'assets', 'sources') : join(root, 'games', id, 'sources');
 const scripts = existsSync(sources)
   ? readdirSync(sources)
       .filter((file) => /^render.*\.py$/.test(file))

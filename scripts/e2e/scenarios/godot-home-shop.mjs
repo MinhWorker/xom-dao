@@ -44,7 +44,7 @@ export default async function run(t) {
 
   await tap(lan, 'Back');
   await onScene(lan, 'lobby');
-  await tap(lan, 'Place_nha');
+  await tap(lan, 'Profile');
   await onScene(lan, 'nha');
   await tap(lan, 'Equip_frame-jade');
   await lan.waitForFunction(() => window.xomdao.state().user.frame === 'jade');

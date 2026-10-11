@@ -17,7 +17,11 @@ const STRAIGHT_FLUSH := 8
 const HAND_NAMES: Array[String] = [
 	"Mậu thầu", "Đôi", "Thú", "Sám cô", "Sảnh", "Thùng", "Cù lũ", "Tứ quý", "Thùng phá sảnh"
 ]
-## Tới trắng by kind (SPECIALS in scoring.ts).
+## Points (scoring.ts): a chi won, sập 3 chi on top, binh lủng against each opponent.
+const CHI_POINT := 1
+const SCOOP_BONUS := 3
+const FOUL_POINTS := 6
+## Tới trắng by kind, weakest first (SPECIALS in scoring.ts), and what each wins.
 const SPECIAL_NAMES: Dictionary = {
 	"three-straights": "Ba sảnh",
 	"three-flushes": "Ba thùng",
@@ -26,14 +30,22 @@ const SPECIAL_NAMES: Dictionary = {
 	"dragon": "Sảnh rồng",
 	"dragon-flush": "Sảnh rồng đồng chất",
 }
-## Chi won with these is worth more than 1: [chi, category, points] (CHI_BONUSES).
+const SPECIAL_POINTS: Dictionary = {
+	"three-straights": 3,
+	"three-flushes": 3,
+	"six-pairs": 3,
+	"five-pairs-trips": 6,
+	"dragon": 13,
+	"dragon-flush": 26,
+}
+## Chi won with these is worth more than 1: [chi, category, points, name] (CHI_BONUSES).
 const CHI_BONUSES: Array = [
-	[2, TRIPS, 3],
-	[1, FULL_HOUSE, 2],
-	[0, QUADS, 4],
-	[1, QUADS, 8],
-	[0, STRAIGHT_FLUSH, 5],
-	[1, STRAIGHT_FLUSH, 10]
+	[2, TRIPS, 3, "Sám cô chi 3"],
+	[1, FULL_HOUSE, 2, "Cù lũ chi 2"],
+	[0, QUADS, 4, "Tứ quý chi 1"],
+	[1, QUADS, 8, "Tứ quý chi 2"],
+	[0, STRAIGHT_FLUSH, 5, "Thùng phá sảnh chi 1"],
+	[1, STRAIGHT_FLUSH, 10, "Thùng phá sảnh chi 2"],
 ]
 ## About how often a chi of each category wins (arrange.ts).
 const WIN_CHANCE: Array = [
@@ -130,7 +142,25 @@ static func chi_points(chi: int, cards: Array) -> int:
 	for bonus: Array in CHI_BONUSES:
 		if bonus[0] == chi and bonus[1] == category:
 			return bonus[2]
-	return 1
+	return CHI_POINT
+
+
+## What `seat` won or lost on chi `chi` of a round's result (RoundResult in model.ts): against
+## seat `against`, or against everyone when it is -1. Null when no chi were compared (binh lủng,
+## tới trắng, not dealt in).
+static func chi_won(result: Dictionary, seat: int, chi: int, against: int = -1) -> Variant:
+	var sum: Variant = null
+	for item: Variant in result["duels"]:
+		var duel: Dictionary = item
+		var a: int = int(duel["a"])
+		var b: int = int(duel["b"])
+		if str(duel["kind"]) != "chi" or (a != seat and b != seat):
+			continue
+		if against >= 0 and a != against and b != against:
+			continue
+		var points: int = int((duel["chi"] as Array)[chi])
+		sum = int(sum if sum != null else 0) + (points if a == seat else -points)
+	return sum
 
 
 static func _worth(chi: int, cards: Array) -> float:

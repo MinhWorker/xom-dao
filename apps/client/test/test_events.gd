@@ -58,28 +58,32 @@ func _catalog(with_event: bool) -> HubCatalog:
 	return HubCatalog.create(catalog, ["tic-tac-toe", "trung-thu"])
 
 
-func test_an_open_event_takes_the_banner_and_lights_its_island() -> void:
+func test_an_open_event_lights_its_shortcut_and_its_island() -> void:
 	var lobby: HubLobby = add_child_autofree(HubLobby.new())
 	lobby.show_catalog(_catalog(true), "co")
-	assert_eq((lobby.find_child("BannerTitle", true, false) as Label).text, "Sự kiện")
-	assert_eq((lobby.find_child("BannerTag", true, false) as XomDaoChip).text, "Còn 3 ngày")
-	assert_not_null(lobby.find_child("Dot", true, false), "the red dot")
+	var tag: XomDaoChip = lobby.find_child("EventTag", true, false)
+	assert_true(tag.visible)
+	assert_eq(tag.text, "Còn 3 ngày")
+	var shortcut: Button = lobby.find_child("Shortcut_su-kien", true, false)
+	assert_not_null(shortcut.get_node_or_null("Dot"), "the red dot")
 	var island: HubIsland = lobby.find_child("Island_su-kien", true, false)
 	assert_eq(island.days_left, 3)
 	assert_false(island.locked)
 	watch_signals(lobby)
-	(lobby.find_child("Banner", true, false) as Button).pressed.emit()
+	shortcut.pressed.emit()
 	assert_signal_emitted_with_parameters(lobby, "event_pressed", ["trung-thu"])
 
 
-func test_without_an_event_the_banner_is_cho_and_the_island_is_fogged() -> void:
+func test_without_an_event_the_shortcut_is_quiet_and_the_island_is_fogged() -> void:
 	var lobby: HubLobby = add_child_autofree(HubLobby.new())
 	lobby.show_catalog(_catalog(false), "co")
-	assert_eq((lobby.find_child("BannerTitle", true, false) as Label).text, "Chợ")
+	assert_false((lobby.find_child("EventTag", true, false) as Control).visible)
 	var island: HubIsland = lobby.find_child("Island_su-kien", true, false)
 	assert_true(island.locked)
 	watch_signals(lobby)
-	(lobby.find_child("Banner", true, false) as Button).pressed.emit()
+	(lobby.find_child("Shortcut_su-kien", true, false) as Button).pressed.emit()
+	assert_signal_not_emitted(lobby, "event_pressed")
+	(lobby.find_child("Shortcut_cho", true, false) as Button).pressed.emit()
 	assert_signal_emitted_with_parameters(lobby, "place_pressed", ["cho"])
 
 

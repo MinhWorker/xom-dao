@@ -362,6 +362,19 @@ func _burst(sea: Control, cell: int, hit: bool, sunk: bool) -> void:
 	if sunk:
 		await get_tree().create_timer(0.45).timeout
 		_sfx("sunk")
+		_shake(sea)
+
+
+## A sinking ship shakes its sea.
+func _shake(sea: Control) -> void:
+	if not is_inside_tree():
+		return
+	var home: Vector2 = sea.position
+	var tween: Tween = sea.create_tween()
+	for i: int in 6:
+		var push := Vector2(randf_range(-8.0, 8.0), randf_range(-5.0, 5.0))
+		tween.tween_property(sea, "position", home + push, 0.04)
+	tween.tween_property(sea, "position", home, 0.05)
 
 
 # ── Arranging and firing ──────────────────────────────────────────────────────────────────

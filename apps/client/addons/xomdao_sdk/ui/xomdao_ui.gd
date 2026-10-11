@@ -8,7 +8,8 @@ extends RefCounted
 ##   XomDaoUi.money(2450)                     # "2.450"
 
 ## What a button does, which picks its colours (art-direction.md, "Màu nút theo loại hành động").
-enum Kind { PLAY, GO, SOCIAL, CONFIRM, BACK, INFO, DANGER }
+## HOME_PLAY and HOME_SOCIAL are the lobby's own pair (gold CHƠI, blue Tạo phòng) on its navy HUD.
+enum Kind { PLAY, GO, SOCIAL, CONFIRM, BACK, INFO, DANGER, HOME_PLAY, HOME_SOCIAL }
 
 const SKY := Color("#8FD3F4")
 const SEA := Color("#3EC1C9")
@@ -33,6 +34,14 @@ const INK := Color("#4A2E1C")
 const CREAM := Color("#FFF6E3")
 const HUD := Color(0.227, 0.141, 0.086, 0.85)
 const SHADOW := Color(0.227, 0.141, 0.086, 0.25)
+## The lobby's HUD (docs/experience.md, "Sảnh"): dark navy panels, gold when selected, bright
+## blue for the second action.
+const NAVY := Color("#16233F")
+const NAVY_HUD := Color(0.086, 0.137, 0.247, 0.82)
+const NAVY_LINE := Color("#3B5683")
+const BLUE := Color("#2E8DE6")
+const BLUE_DARK := Color("#1A5DA8")
+const SUN := Color("#FFD54A")
 ## Numbers that went up or down, on a dark background and on paper.
 const UP := Color("#3FBF7F")
 const DOWN := Color("#E0352B")
@@ -62,6 +71,8 @@ const _KIND_COLORS: Dictionary = {
 	Kind.BACK: [Color("#4E5D6C"), Color("#36414C")],
 	Kind.INFO: [Color("#9C5F2A"), Color("#6E4220")],
 	Kind.DANGER: [Color("#3A2416"), LANTERN],
+	Kind.HOME_PLAY: [SUN, GOLD_DARK],
+	Kind.HOME_SOCIAL: [BLUE, BLUE_DARK],
 }
 
 static var _theme: Theme
@@ -100,6 +111,11 @@ static func icon(name: String) -> Texture2D:
 static func kind_colors(kind: Kind) -> Array[Color]:
 	var pair: Array = _KIND_COLORS[kind]
 	return [pair[0], pair[1]]
+
+
+## The label colour on a button of this kind: ink on the gold CHƠI, cream on every other.
+static func kind_text(kind: Kind) -> Color:
+	return INK if kind == Kind.HOME_PLAY else CREAM
 
 
 ## A rounded box: the base of buttons, chips, pills and panels.
