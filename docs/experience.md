@@ -41,7 +41,7 @@ Thế giới có ba tầng, giống "chế độ chơi" và "bản đồ" của 
 | --- | --- | --- |
 | **Sảnh** | Sảnh chờ, chọn chế độ ngay trên đó | Biển có **vòng đảo thể loại**, xoay được |
 | **Thể loại** | Chế độ chơi (Cổ điển, Giải trí…) | Một **đảo thể loại** trên vòng: Cờ, Bài, rồi các thể loại phụ |
-| **Trò** | Bản đồ trong một chế độ | Một **thẻ trò** trong danh sách kéo ngang của thể loại |
+| **Trò** | Bản đồ trong một chế độ | Một **đảo trò** trong băng chuyền của thể loại |
 
 Sảnh không có đảo trung tâm hay nhân vật. Các đảo thể loại cùng cỡ, xếp đều trên một vòng tròn nằm
 nghiêng trên biển, nhìn chéo từ trên như một băng chuyền:
@@ -105,7 +105,7 @@ Mở game ─► Sảnh (vòng đảo)
   ├─ xoay vòng ─► đảo đang chọn đổi, thẻ dưới phải đổi theo
   ├─ chạm đảo đang chọn / thẻ trò đang chọn
   │      ▼
-  │   Chọn trò: tab thể loại + danh sách thẻ kéo ngang
+  │   Chọn trò: tab thể loại + băng chuyền đảo trò
   │      ├─ Chọn ──────► về Sảnh, thẻ dưới phải đổi thành trò mới
   │      ├─ Tạo phòng ─► tuỳ chỉnh phòng ─► phòng chờ (có mã phòng) ─► Ván đấu
   │      └─ Danh sách phòng ─► vào phòng
@@ -159,25 +159,27 @@ Trò chọn một trong hai bố cục mẫu, để các trò cùng loại trôn
 
 ## Chọn trò
 
-![Chọn trò trong thể loại Bài](concepts/genre-select.webp)
+![Màn chọn trò trên tablet](concepts/game-select-tablet.webp)
 
-- Trên cùng là **tab thể loại** hình biển đảo nhỏ, để đổi thể loại mà không quay ra sảnh: Cờ, Bài,
-  rồi các thể loại phụ.
-- Giữa là **danh sách thẻ dọc kéo ngang**. Mỗi thẻ: tranh minh hoạ, tên, số người, thời lượng một
-  ván ("5–10 phút"), số người đang chơi, nút **?** mở bảng giới thiệu ngắn có hình. Thẻ đang chọn
-  to hơn, viền vàng. Trò sắp có là thẻ mờ có ổ khoá ở cuối danh sách.
-- Bên phải là **bảng chi tiết** của thẻ đang chọn, cùng một bố cục cho mọi trò:
-  - tên, một câu giới thiệu, số người, số phòng đang mở;
-  - **Chọn** (đặt làm trò của nút CHƠI);
-  - **Tạo phòng** (mở màn tuỳ chỉnh của trò nếu có);
-  - **Danh sách phòng**;
-  - **Luật** (mở `RULES.md` của trò dưới dạng cuộn giấy).
-- Gói `.pck` của trò được tải ngầm ngay khi thẻ được chọn, để lúc bấm CHƠI là vào luôn.
+- Trên cùng giữ quay lại, **tab thể loại**, số xu và cài đặt. Tab có thể kéo ngang khi cỡ HUD lớn.
+- Giữa là ba **đảo trò**: đảo đang chọn lớn, có màu và nổi nhẹ; hai đảo cạnh nhỏ, đứng yên và
+  xám xanh. Chạm đảo cạnh, vuốt ngang hoặc dùng mũi tên để đổi trò. Băng chuyền đi vòng; thể
+  loại ít trò chỉ hiện những đảo có thật. Trò sắp có hiện ổ khóa và không tạo phòng được.
+- Nền toàn màn chuyển mờ sang **splash riêng của trò**. Bên trái là tên, mô tả ngắn, số chỗ,
+  trên lớp nâu đậm trong dần từ trên xuống. Dưới phải chỉ có **Tạo phòng** lớn và **Luật** với
+  biểu tượng cuộn giấy bên trái. Sự kiện dùng **Tham gia** và giữ các mốc thưởng.
+- Trò đang focus được nhớ ngay làm trò của nút CHƠI ở sảnh; gói `.pck` bắt đầu tải ngầm.
+- **Luật** mở bảng gỗ lớn giữa màn, làm mờ/tối và chặn nền. Nội dung `RULES.md` được chia trang
+  theo chiều cao thực tế; có Trước/Sau, số trang, vuốt ngang và phím mũi tên. Mỗi mục có thể có
+  hình minh họa; hiện để ô **Ảnh minh họa**, chờ ảnh gameplay sau khi làm lại visual từng trò.
+  Đảo dừng nổi khi bảng mở. Chạm ngoài bảng hoặc đóng để trở về.
+- Vuốt theo ngón tay rồi khớp vào đảo; chạm ngắn, kéo dọc, ngón chạm thứ hai và hủy touch
+  không vô tình đổi trò. Nút, đổi focus, đổi trang, mở/đóng bảng có âm thanh và chuyển động.
 
 Màn tuỳ chỉnh khi tạo phòng (số người, luật phụ, bot) là một bảng gỗ do trò điền nội dung, dùng ô
 lựa chọn và nút chung.
 
-Danh sách phòng (từ bảng chi tiết hoặc từ **Bến**) là một bảng gỗ, mỗi dòng: tranh nhỏ của trò,
+Danh sách phòng (từ **Bến**) là một bảng gỗ, mỗi dòng: tranh nhỏ của trò,
 tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến có thêm ô nhập mã phòng:
 
 ![Bến: nhập mã phòng và danh sách phòng đang mở](concepts/room-list.webp)

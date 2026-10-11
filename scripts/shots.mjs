@@ -6,6 +6,7 @@
 //   npm run shots -- --path '/?play=xiangqi'  a game's sandbox against the computer (debug build:
 //                                             npm run godot:export -- --debug)
 //   npm run shots -- --devices iphone-15,ipad some devices (comma separated)
+//   npm run shots -- --screen select         the game selector (rules for its modal)
 //   npm run shots -- --tab                    in a browser tab (minus its bars), not the app
 //   --wait MS    wait after the client's first screen past loading (default 2500)
 //   --crop X,Y,W,H  the 1:1 detail crop, in CSS px (default: the middle of the screen)
@@ -45,6 +46,7 @@ const { values: args, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     path: { type: 'string', default: '/' },
+    screen: { type: 'string' },
     devices: { type: 'string' },
     tab: { type: 'boolean', default: false },
     wait: { type: 'string', default: '2500' },
@@ -91,6 +93,19 @@ for (const name of names) {
       { timeout: 60_000 },
     )
     .catch(() => console.log(`  ${name}: no test bridge (release build?), shot after the wait`));
+  if (args.screen) {
+    if (!['select', 'rules'].includes(args.screen))
+      throw new Error('screen must be select or rules');
+    const card = await (
+      await page.waitForFunction(() => window.xomdao?.rect('SelectedGame'))
+    ).jsonValue();
+    await page.mouse.click(card.x + card.width / 2, card.y + card.height / 2);
+    await page.waitForFunction(() => window.xomdao.scene() === 'select');
+    if (args.screen === 'rules') {
+      await page.waitForFunction(() => window.xomdao.click('GameRules'));
+      await page.waitForFunction(() => window.xomdao.rect('RulesPanel'));
+    }
+  }
   await page.waitForTimeout(Number(args.wait));
 
   const file = join(out, `${name}.png`);

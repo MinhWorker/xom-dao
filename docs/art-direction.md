@@ -144,6 +144,10 @@ cho nhân vật.
 
 ## Tranh thẻ trò và đảo
 
+- **Màn chọn trò** dùng đảo riêng từng trò và splash ngang phủ nền. Chỉ tham khảo cách tổ chức
+  của Arknights; khối mềm, gỗ/giấy, font và bảng màu vẫn theo Xóm Đảo. Giữ bề mặt sạch, ít vân
+  texture, màu tươi vừa phải; nền giảm bão hòa/độ nổi để chữ và đảo dễ đọc. Đảo cạnh nhuộm xám
+  xanh, chỉ đảo giữa có animation. Bảng tên dùng chung một asset bake Blender.
 - **Tranh thẻ trò**: dọc 2:3, ảnh 640 × 960; một vật thể chính của trò (quạt bài, bàn cờ, ngựa Cá
   Ngựa) giữa khung, nền là một góc đảo của thể loại, nắng trên trái. Không chữ trong tranh (tên nằm
   ở bảng giấy của khung).

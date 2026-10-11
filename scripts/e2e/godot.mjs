@@ -59,24 +59,19 @@ export async function tap(page, name, timeout = 30_000) {
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 }
 
-/**
- * Taps a game's card on the Chọn trò screen. The row scrolls sideways and a card past its right
- * edge still has a rect (under the detail board), so the wheel first brings it fully into view.
- */
+/** Brings a catalog island into view using the carousel's actual navigation controls. */
 export async function tapCard(page, id) {
-  const row = await (await page.waitForFunction(() => window.xomdao.rect('Cards'))).jsonValue();
-  await page.mouse.move(row.x + row.width / 2, row.y + row.height / 2);
-  const inside = () =>
-    page.evaluate((name) => {
-      const cards = window.xomdao.rect('Cards');
-      const card = window.xomdao.rect(name);
-      return card && card.x >= cards.x && card.x + card.width <= cards.x + cards.width;
-    }, `Card_${id}`);
-  for (let i = 0; i < 30 && !(await inside()); i++) {
-    await page.mouse.wheel(0, 60);
-    await page.waitForTimeout(150);
+  for (let i = 0; i < 30; i++) {
+    const visible = await page.evaluate((name) => window.xomdao.rect(name), `Card_${id}`);
+    if (visible) {
+      await tap(page, `Card_${id}`);
+      await page.waitForTimeout(400);
+      return;
+    }
+    await tap(page, 'NextGame');
+    await page.waitForTimeout(400);
   }
-  await tap(page, `Card_${id}`);
+  throw new Error(`Catalog island ${id} did not become visible`);
 }
 
 /**

@@ -29,6 +29,9 @@ Giấy phép này áp dụng cho hình và âm thanh trong `assets/`, `apps/clie
   [Phosphor Icons](https://phosphoricons.com) kiểu Fill theo giấy phép MIT (Copyright (c) 2023
   Phosphor Icons, kèm trong `icons/`). Ba âm thanh giao diện trong `sounds/` được tổng hợp bằng
   code (`scripts/ui-sounds.mjs`) và theo giấy phép chung ở trên.
+  Icon cuộn giấy `icons/scroll.svg` và `hub/room/image_placeholder.svg` do dự án tự vẽ, theo
+  giấy phép chung CC BY-NC 4.0. Splash màn chọn trò được tạo từ prompt trong
+  `assets/prompts.json`; bảng tên chung được dựng/bake bằng Blender, không lấy từ Arknights.
 - **Ảnh của Long** (`assets/shared/images/Long-look-at-u.jpg` và avatar làm từ nó,
   `assets/app/images/avatar-long.webp`), là ảnh người thật: không được dùng lại bên
   ngoài game này.

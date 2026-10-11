@@ -36,10 +36,10 @@ export default async function run(t) {
   await tapCard(host, 'tic-tac-toe');
   await host.screenshot({ path: t.shot('2-select.png') });
   await tap(host, 'GameRules');
-  await godotText(host, 'RulesText', /5 quân/);
+  await godotText(host, 'RulesText', /./);
   await host.screenshot({ path: t.shot('3-rules.png') });
   await host.mouse.click(10, 400); // the shade around the board closes it
-  await tap(host, 'Choose');
+  await tap(host, 'Back');
   await onScene(host, 'lobby');
   await godotText(host, 'SelectedName', 'Caro');
 

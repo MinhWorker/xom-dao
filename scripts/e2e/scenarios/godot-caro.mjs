@@ -31,7 +31,7 @@ export default async function run(t) {
   await tap(host, 'Island_co');
   await onScene(host, 'select');
   await tapCard(host, 'tic-tac-toe');
-  await tap(host, 'Choose');
+  await tap(host, 'Back');
   await onScene(host, 'lobby');
   await godotText(host, 'SelectedName', 'Caro');
   await tap(host, 'CreateRoom');
