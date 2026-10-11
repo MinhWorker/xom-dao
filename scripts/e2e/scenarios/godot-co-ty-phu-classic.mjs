@@ -45,9 +45,10 @@ function buttonFor(v, me) {
   return null;
 }
 
-/** Waits for a button to show (the pawns may still be walking), then taps it. */
+/** Waits for a button to show (the computer players' throws and walks may still be playing
+ * out, a dozen seconds a round or more on a slow machine), then taps it. */
 async function press(page, name) {
-  await page.waitForFunction((name) => window.xomdao.rect(name), name, { timeout: 20_000 });
+  await page.waitForFunction((name) => window.xomdao.rect(name), name, { timeout: 60_000 });
   const before = (await room(page)).view.moneySequence;
   await tap(page, name);
   await page
@@ -78,7 +79,7 @@ export default async function run(t) {
     if (button === 'Roll' && !seen.has('trade')) {
       // Trao đổi opens the offer board; close it again.
       seen.add('trade');
-      await page.waitForFunction(() => window.xomdao.rect('Offer'), null, { timeout: 20_000 });
+      await page.waitForFunction(() => window.xomdao.rect('Offer'), null, { timeout: 60_000 });
       await tap(page, 'Offer');
       await tap(page, 'TakeCash');
       await page.screenshot({ path: t.shot('1-trade.png') });
@@ -119,8 +120,18 @@ export default async function run(t) {
       'state set buildable null',
     ].join('; '),
   );
+  // The rows are laid out again on every pick, so each tap waits for the total it makes.
+  await page.waitForFunction(
+    (seat) => window.xomdao.state().room.view.properties[1].owner === seat,
+    me,
+    { timeout: 10_000 },
+  );
   await tap(page, 'Assets');
+  await godotText(page, 'MortgageTotal', '0 tài sản · Nhận 0 ₫');
+  await page.waitForTimeout(400);
   await tap(page, 'MortgageRow_1');
+  await godotText(page, 'MortgageTotal', '1 tài sản · Nhận 100 ₫');
+  await page.waitForTimeout(400);
   await tap(page, 'MortgageRow_6');
   await godotText(page, 'MortgageTotal', '2 tài sản · Nhận 240 ₫');
   await page.screenshot({ path: t.shot('2-mortgage.png') });
@@ -145,6 +156,9 @@ export default async function run(t) {
       `state set players.${other[2]}.position 1`,
       `state set players.${other[2]}.cash 10`,
       `state set players.${other[2]}.jailed false`,
+      // An owner in jail collects no rent: you may have been jailed in the turns above.
+      `state set players.${me}.jailed false`,
+      `state set players.${me}.jailRolls 0`,
       `state set turn ${other[2]}`,
       'state set phase "roll"',
       'state set specialEvent null',
