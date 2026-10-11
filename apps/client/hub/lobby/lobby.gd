@@ -8,7 +8,8 @@ extends Control
 ##   mail, gifts and ⚙ on the right.
 ## - Right, upper: shortcuts to Chợ, Sự kiện (red dot and days left while an event is open) and
 ##   Nhiệm vụ.
-## - Right, lower: the selected game's card with CHƠI and Tạo phòng.
+## - Right, lower: the selected game's card (HubGameCard): its art under frosted glass, with
+##   CHƠI and Tạo phòng.
 ## Buttons and panels are raised (XomDaoPuff); CHƠI catches the light every few seconds.
 ## Art slots, all optional: `hub/lobby/backdrop.webp` (HubSky), `hub/genres/<island>.tscn|webp`
 ## (HubIsland), `hub/lobby/nav-<name>.svg` (a dock picture), `hub/lobby/shortcut-<id>.webp` (a
@@ -34,18 +35,17 @@ const PLACES: Array = [
 	["dinh", "Đình", "bank", "nav-dinh"],
 	["ben", "Bến", "anchor", "nav-ben"],
 ]
-## The shortcuts on the right: id, label, icon, height, the badge's colour and its edge.
+## The shortcuts on the right: id, label, icon, height, and whether its picture
+## (`hub/lobby/shortcut-<id>.webp`) is a banner filling the plate or an object beside the label.
 const SHORTCUTS: Array = [
-	["cho", "Chợ", "storefront", 104.0, XomDaoUi.HONEY, XomDaoUi.HONEY_DARK],
-	["su-kien", "Sự kiện", "gift", 80.0, XomDaoUi.LANTERN, XomDaoUi.LACQUER_DARK],
-	["nhiem-vu", "Nhiệm vụ", "clipboard-text", 80.0, XomDaoUi.BAMBOO, XomDaoUi.BAMBOO_DARK],
+	["cho", "Chợ", "storefront", 150.0, true],
+	["su-kien", "Sự kiện", "gift", 96.0, false],
+	["nhiem-vu", "Nhiệm vụ", "clipboard-text", 96.0, false],
 ]
 const DOCK_PAD := 8.0
 ## Seconds between two glints on CHƠI.
 const GLINT_EVERY := 3.6
-const SHORTCUT_W := 300.0
-const CARD_W := 380.0
-const ART_H := 120.0
+const SHORTCUT_W := 340.0
 const GAP := 12.0
 
 var ring := HubIslandRing.new()
@@ -68,11 +68,7 @@ var _shortcuts := VBoxContainer.new()
 var _event_tag: XomDaoChip
 ## The open event on the Sự kiện shortcut ("" = none).
 var _event_id: String = ""
-var _card := PanelContainer.new()
-var _card_name := Label.new()
-var _card_online: XomDaoChip = XomDaoChip.create("0", "users", XomDaoUi.NAVY)
-var _card_art := HubCardArt.new()
-var _card_info := HBoxContainer.new()
+var _card := HubGameCard.new()
 var _settings: XomDaoSettings
 
 
@@ -165,29 +161,23 @@ func show_level(level: int, xp: int = 0, level_xp: int = 0, next_xp: int = 0) ->
 ## The card at the bottom right: the selected game, or "Sắp có" when there is none to play.
 func show_game(card: XomDaoGameCard, can_play: bool) -> void:
 	_game_id = card.id if card != null else ""
-	_card_name.text = card.name if card != null else "Sắp có"
-	_card_art.title = _card_name.text
-	_card_art.picture = HubGameArt.splash(card.id) if card != null else null
-	_card_art.locked = not can_play
-	_card_online.visible = card != null
-	_card_online.text = str(card.playing) if card != null else "0"
+	_card.title.text = card.name if card != null else "Sắp có"
+	_card.show_art(HubGameArt.splash(card.id) if card != null else null, not can_play)
+	_card.online.visible = card != null
+	_card.online.text = str(card.playing) if card != null else "0"
 	# Out of the row at once: a chip waiting to be freed would still widen the card.
-	for child: Node in _card_info.get_children():
-		_card_info.remove_child(child)
+	for child: Node in _card.info.get_children():
+		_card.info.remove_child(child)
 		child.queue_free()
 	if card != null:
-		var players := XomDaoChip.create(
-			XomDaoGameTile.players_label(card.min_players, card.max_players), "users", XomDaoUi.NAVY
+		var players: XomDaoChip = _card.chip(
+			XomDaoGameTile.players_label(card.min_players, card.max_players), "users"
 		)
 		players.name = "SelectedPlayers"
-		players.compact()
-		_card_info.add_child(players)
-		var length := XomDaoChip.create(
-			XomDaoGameTile.duration_label(card.duration), "clock", XomDaoUi.NAVY
-		)
+		_card.info.add_child(players)
+		var length: XomDaoChip = _card.chip(XomDaoGameTile.duration_label(card.duration), "clock")
 		length.name = "SelectedDuration"
-		length.compact()
-		_card_info.add_child(length)
+		_card.info.add_child(length)
 	play.disabled = not can_play
 	create.disabled = not can_play
 	_layout.call_deferred()
@@ -210,17 +200,6 @@ func _open_genre() -> void:
 
 func _soon() -> void:
 	XomDaoToast.show_on(self, "Sắp có", "lock-simple")
-
-
-## A navy HUD panel (see-through) with a thin lighter rim.
-func _navy(radius: float, line: bool = true) -> StyleBoxFlat:
-	var style: StyleBoxFlat = XomDaoUi.box(
-		XomDaoUi.NAVY_HUD,
-		XomDaoUi.NAVY_LINE if line else Color.TRANSPARENT,
-		2 if line else 0,
-		radius
-	)
-	return XomDaoUi.with_shadow(style)
 
 
 func _build_sidebar() -> void:
@@ -336,57 +315,71 @@ func _build_shortcuts() -> void:
 	show_event(null)
 
 
-## A shortcut: a raised navy plate with its picture (`hub/lobby/shortcut-<id>.webp`) or its
-## icon on a coloured badge, the label and ›.
+## A shortcut: a flat navy plate with a thin rim, its label and ›. Its picture is a banner that
+## fills the plate (darker at the bottom, under the label) or an object beside the label; without
+## one it shows its icon.
 func _shortcut(entry: Array) -> Button:
 	var id: String = str(entry[0])
-	var label: String = str(entry[1])
 	var height: float = float(entry[3])
+	var banner: bool = entry[4]
 	var button := Button.new()
 	button.name = "Shortcut_" + id
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.custom_minimum_size = Vector2(SHORTCUT_W, height)
 	button.clip_contents = false
-	for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
-		button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
-	var body: XomDaoPuff = XomDaoPuff.behind(button)
-	body.face = Color(XomDaoUi.NAVY, 0.94)
-	body.edge = XomDaoUi.NAVY_LINE
-	body.border = 2
-	body.radius = 20.0
+	var style: StyleBoxFlat = XomDaoUi.box(Color(XomDaoUi.NAVY, 0.94), XomDaoUi.NAVY_LINE, 2, 20.0)
+	style.shadow_color = XomDaoPuff.SHADE
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(0.0, 5.0)
+	var down: StyleBoxFlat = style.duplicate()
+	down.bg_color = XomDaoUi.NAVY.darkened(0.2)
+	var hover: StyleBoxFlat = style.duplicate()
+	hover.border_color = XomDaoUi.SUN
+	button.add_theme_stylebox_override("normal", style)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", down)
+	button.add_theme_stylebox_override("hover_pressed", down)
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.button_down.connect(XomDaoUi.bounce.bind(button))
 	button.button_down.connect(XomDaoUi.play.bind(button, XomDaoUi.SOUND_TAP))
 	button.pressed.connect(_on_shortcut.bind(id))
 	var picture_path: String = "res://hub/lobby/shortcut-%s.webp" % id
-	if ResourceLoader.exists(picture_path):
-		var picture := TextureRect.new()
-		picture.texture = load(picture_path)
-		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		picture.set_anchors_and_offsets_preset(
-			Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 4
-		)
-		picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		button.add_child(picture)
+	var picture: Texture2D = load(picture_path) if ResourceLoader.exists(picture_path) else null
+	if banner and picture != null:
+		button.add_child(_banner(picture, Vector2(SHORTCUT_W, height)))
 	var row := HBoxContainer.new()
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12)
-	row.offset_bottom = -12.0 - XomDaoPuff.DEPTH
+	row.offset_left = 16.0
 	row.add_theme_constant_override("separation", 14)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(row)
-	row.add_child(_badge(str(entry[2]), entry[4], entry[5]))
+	if not banner or picture == null:
+		var icon := TextureRect.new()
+		icon.texture = picture if picture != null else XomDaoUi.icon(str(entry[2]))
+		icon.custom_minimum_size = Vector2.ONE * (76.0 if picture != null else 52.0)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		# A picture is drawn smaller than its file: mipmaps keep its edges smooth.
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		icon.modulate = Color.WHITE if picture != null else XomDaoUi.SUN
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(icon)
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	# On a banner the label sits at the bottom, where the picture is darker.
+	column.alignment = BoxContainer.ALIGNMENT_END if banner else BoxContainer.ALIGNMENT_CENTER
 	column.add_theme_constant_override("separation", 0)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(column)
 	var title := Label.new()
 	title.name = "ShortcutTitle_" + id
-	title.text = label
+	title.text = str(entry[1])
 	title.theme_type_variation = "HudLabel"
-	title.add_theme_font_size_override("font_size", 32)
+	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_color_override("font_outline_color", Color(XomDaoUi.NAVY, 0.7))
+	title.add_theme_constant_override("outline_size", 5)
 	column.add_child(title)
 	if id == "su-kien":
 		_event_tag = XomDaoChip.create("", "", XomDaoUi.LACQUER)
@@ -399,26 +392,32 @@ func _shortcut(entry: Array) -> Button:
 	caret.custom_minimum_size = Vector2(28.0, 28.0)
 	caret.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	caret.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	caret.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	caret.size_flags_vertical = Control.SIZE_SHRINK_END if banner else Control.SIZE_SHRINK_CENTER
 	caret.modulate = XomDaoUi.CREAM
 	caret.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(caret)
 	return button
 
 
-## A shortcut's icon, cream on a small raised disc of its own colour.
-func _badge(icon_name: String, color: Color, line: Color) -> Control:
-	var badge := Control.new()
-	badge.custom_minimum_size = Vector2(56.0, 56.0)
-	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var icon: Texture2D = XomDaoUi.icon(icon_name)
-	badge.draw.connect(
-		func() -> void:
-			XomDaoPuff.paint(badge, Rect2(Vector2.ZERO, badge.size), color, line, 28.0, 5.0)
-			badge.draw_texture_rect(icon, Rect2(11.0, 8.0, 34.0, 34.0), false, XomDaoUi.CREAM)
-	)
-	return badge
+## A picture cut to a plate's rounded corners, inside its rim, darker at the top and bottom.
+func _banner(picture: Texture2D, plate: Vector2) -> ColorRect:
+	var rect := ColorRect.new()
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 3)
+	var box: Vector2 = plate - Vector2.ONE * 6.0
+	var k: float = maxf(box.x / picture.get_width(), box.y / picture.get_height())
+	var span: Vector2 = box / (picture.get_size() * k)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://hub/lobby/glass.gdshader")
+	material.set_shader_parameter("art", picture)
+	material.set_shader_parameter("has_art", true)
+	material.set_shader_parameter("box", box)
+	material.set_shader_parameter("radius", 17.0)
+	material.set_shader_parameter("shade", 0.5)
+	material.set_shader_parameter("uv_origin", (Vector2.ONE - span) / 2.0)
+	material.set_shader_parameter("uv_span", span)
+	rect.material = material
+	return rect
 
 
 func _on_shortcut(id: String) -> void:
@@ -437,41 +436,9 @@ func _on_shortcut(id: String) -> void:
 ## The selected game: name and players online, its picture, players and length, CHƠI and
 ## Tạo phòng.
 func _build_card() -> void:
-	_card.name = "SelectedGame"
-	_card.custom_minimum_size.x = CARD_W
-	_card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var style: StyleBoxFlat = _navy(22.0)
-	style.set_content_margin_all(12.0)
-	_card.add_theme_stylebox_override("panel", style)
 	_card.gui_input.connect(_on_card_input)
 	add_child(_card)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_card.add_child(column)
-	var head := HBoxContainer.new()
-	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(head)
-	_card_name.name = "SelectedName"
-	_card_name.theme_type_variation = "HudLabel"
-	_card_name.add_theme_font_size_override("font_size", 32)
-	_card_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_card_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	head.add_child(_card_name)
-	_card_online.name = "SelectedOnline"
-	_card_online.compact()
-	_card_online.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	head.add_child(_card_online)
-	_card_art.name = "SelectedArt"
-	_card_art.custom_minimum_size.y = ART_H
-	column.add_child(_card_art)
-	_card_info.name = "SelectedInfo"
-	_card_info.add_theme_constant_override("separation", 8)
-	_card_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(_card_info)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 10)
-	column.add_child(buttons)
+	var buttons: HBoxContainer = _card.buttons
 	play.name = "Play"
 	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	play.size_flags_stretch_ratio = 1.1
