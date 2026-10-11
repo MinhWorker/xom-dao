@@ -208,6 +208,26 @@
       "transparent": false,
       "maxSize": 1800,
       "prompt": "Original Xóm Đảo game background illustration. Friendly Vietnamese coastal toy world, clean stylized 2.5D cartoon, broad colour areas, rounded forms, restrained clean cel shading, minimal material texture, NO noise or heavy texture. Bright soft upper-left daylight. Fresh but moderately saturated palette: muted turquoise, sky blue, bamboo green, honey wood, warm ivory, terracotta. Calm readable spacious compositions with sky in upper third, gently hazy distance, focal props at the edges leaving the middle lower contrast for UI. NOT cinematic, photorealistic, neon, military tactical or fantasy card art. No text, no UI, no lettering, no logos, no watermark. Single landscape panoramic 16:9 illustration. A peaceful Vietnamese coastal fishing village for Mid-Autumn Festival, moon lanterns and orange paper lanterns, small pond and fishing rod in lower right, soft pastel twilight blue and warm light, simple rounded rooftops and calm water"
+    },
+    "shortcut-cho": {
+      "transparent": false,
+      "maxSize": 640,
+      "prompt": "Wide horizontal banner (about 3:1) of a lively Vietnamese village market street seen from its middle: wooden stalls with red and teal cloth awnings on both sides, hanging paper lanterns, baskets of fruit, a sunny sky and soft clouds at the end of the street. Bright and cheerful, painterly, slightly darker and calmer in the lower left corner."
+    },
+    "shortcut-su-kien": {
+      "transparent": true,
+      "maxSize": 192,
+      "prompt": "One chunky glossy red gift box with a wide golden ribbon and a big golden bow on top, slightly tilted, three-quarter view, thick dark-red outline, game UI icon, fills the frame."
+    },
+    "shortcut-nhiem-vu": {
+      "transparent": true,
+      "maxSize": 192,
+      "prompt": "One chunky wooden clipboard holding a cream paper sheet with three green check marks beside three short brown lines, a golden metal clip on top, slightly tilted, three-quarter view, thick dark-brown outline, game UI icon, fills the frame."
+    },
+    "lobby-backdrop": {
+      "transparent": false,
+      "maxSize": 1920,
+      "prompt": "Wide 16:9 background for a game lobby with floating toy islands in front of it: a calm open sky seen from high up, a smooth gradient from muted medium blue at the top to pale hazy blue-teal at the bottom, only a few large soft rounded cartoon cloud shapes far away near the sides and the bottom, and two or three faint pale silhouettes of distant limestone karst islands in the haze low on the horizon. Strongly out of focus like a deep depth-of-field blur, very low detail, no texture, no sharp edges, low contrast, muted and slightly dim colours, the middle of the image empty. No objects in the foreground, no sun, no birds."
     }
   }
 }
