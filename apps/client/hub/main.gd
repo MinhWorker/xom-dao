@@ -11,6 +11,18 @@ extends Control
 
 ## How long to keep trying while the server wakes up.
 const WAKE_MS := 120_000
+## How long a game's own screen (HubGameIntro) stays at least, between the room and the table.
+const INTRO_MS := 1800
+## What the curtain says on the way to each place.
+const PLACE_NAMES: Dictionary = {
+	"lobby": "Sảnh",
+	"select": "Chọn trò",
+	"nha": "Nhà",
+	"cho": "Chợ",
+	"dinh": "Đình",
+	"ben": "Bến",
+	"room": "Phòng",
+}
 
 var _client: XomDaoClient = Net.client
 var _screen: Control
@@ -39,6 +51,9 @@ var _claiming: bool = false
 var _opening_rules: bool = false
 ## The screen on now (the lobby, the waiting room…).
 var _current: Control
+## The curtain between two screens, and the screens it is about to take away.
+var _transition := HubTransition.new()
+var _outgoing: Array[Node] = []
 
 
 func _ready() -> void:
@@ -63,6 +78,8 @@ func _ready() -> void:
 	_menu.rules_requested.connect(func() -> void: _show_rules(_client.snapshot.game_id))
 	add_child(_menu)
 	add_child(_music)
+	add_child(_transition)
+	_transition.covered.connect(_finish_swap)
 	_client.state_changed.connect(func(_s: XomDaoRoomSnapshot) -> void: _refresh())
 	_client.room_changed.connect(_on_room_changed)
 	_client.rewarded.connect(_on_rewarded)
@@ -217,7 +234,8 @@ func _refresh() -> void:
 		return
 	var snapshot: XomDaoRoomSnapshot = _client.snapshot
 	var playing: bool = snapshot != null and snapshot.status != "lobby"
-	_menu.button.visible = playing
+	# ☰ belongs to the table: not over the game's own screen on the way in.
+	_menu.button.visible = playing and _shown == "game"
 	if not playing and _menu.is_open() and _shown != "lobby":
 		_menu.close()
 	if _client.room_code == "":
@@ -644,8 +662,14 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 		if _loading:
 			return
 		_loading = true
-		_show_status("Đang tải", snapshot.game_id)
+		var began: int = Time.get_ticks_msec()
+		var card: XomDaoGameCard = _catalog.card(snapshot.game_id)
+		_set_screen("status", HubGameIntro.new(snapshot.game_id, card.name if card != null else ""))
 		var scene: PackedScene = await ContentLoader.load_game(snapshot.game_id)
+		# The game's own screen stays long enough to be seen, however fast the pack came.
+		var left: int = INTRO_MS - (Time.get_ticks_msec() - began)
+		if left > 0:
+			await get_tree().create_timer(left / 1000.0).timeout
 		_loading = false
 		if scene == null:
 			_show_status("Không tải được trò chơi")
@@ -659,7 +683,6 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 		return
 	if _shown != "game":
 		_set_screen("game", _game)
-	TestBridge.scene = snapshot.game_id
 	if snapshot.status == "finished":
 		if _result == null:
 			_show_result(snapshot)
@@ -776,13 +799,16 @@ func _show_status(text: String, game_id: String = "") -> void:
 	loading.busy = text.begins_with("Đang")
 
 
-## Puts `screen` on, freeing the one before (the game stays: it lives across rounds).
+## Puts `screen` on in place of the one before (the game stays: it lives across rounds). Between
+## two real screens the curtain (HubTransition) comes down first: the old screen stays until it
+## covers everything, then the new one is there when it lifts.
 func _set_screen(shown: String, screen: Control) -> void:
+	var before: String = _shown
 	_shown = shown
 	_current = screen
 	for child: Node in _screen.get_children():
-		if child != _game and child != screen:
-			child.queue_free()
+		if child != _game and child != screen and not _outgoing.has(child):
+			_outgoing.append(child)
 	if _result != null and not is_instance_valid(_result):
 		_result = null
 	if shown != "game" and _result != null:
@@ -791,9 +817,41 @@ func _set_screen(shown: String, screen: Control) -> void:
 		_ben = null
 	if screen.get_parent() == null:
 		_screen.add_child(screen)
+	# Nothing to leave (the first screen), or only words changing: no curtain.
+	if before == "" or not is_inside_tree() or (before == "status" and screen is HubLoading):
+		_finish_swap()
+		return
+	screen.visible = false
+	if shown == "game":
+		_transition.play("", null, HubTransition.Style.FADE)
+		return
+	var card: XomDaoGameCard = null
+	if shown == "room" and _catalog != null and _client.snapshot != null:
+		card = _catalog.card(_client.snapshot.game_id)
+	if shown == "room" and card == null and _catalog != null:
+		card = _catalog.card(_game_id)
+	# On the way to a game's own screen the curtain already wears the game's logo.
+	if screen is HubGameIntro and _catalog != null:
+		card = _catalog.card(_game_id_shown)
+	if card != null:
+		_transition.play(card.name, HubGameArt.logo(card.id))
+	else:
+		_transition.play(str(PLACE_NAMES.get(shown, "")))
+
+
+## The curtain covers everything (or there is none): the old screens go, the new one shows.
+func _finish_swap() -> void:
+	for old: Node in _outgoing:
+		if is_instance_valid(old) and old != _current:
+			old.queue_free()
+	_outgoing.clear()
+	if is_instance_valid(_current):
+		_current.visible = true
 	if _game != null:
-		_game.visible = shown == "game"
-	TestBridge.scene = shown if shown != "game" else _game_id_shown
+		_game.visible = _shown == "game"
+	if _shown == "game":
+		_menu.button.visible = true
+	TestBridge.scene = _shown if _shown != "game" else _game_id_shown
 
 
 func _drop_game() -> void:

@@ -194,6 +194,30 @@ func test_seats_fill_rows_by_how_many_there_are() -> void:
 	assert_eq(HubWaitingRoom.columns_for(8), 4)
 
 
+func test_the_curtain_covers_then_lifts() -> void:
+	var curtain: HubTransition = add_child_autofree(HubTransition.new())
+	watch_signals(curtain)
+	curtain.play("Chọn trò")
+	assert_true(curtain.running and curtain.visible)
+	assert_eq(curtain.mouse_filter, Control.MOUSE_FILTER_STOP, "no taps on the screen being left")
+	await wait_seconds(HubTransition.IN + 0.1)
+	assert_signal_emit_count(curtain, "covered", 1, "the screens swap under it")
+	assert_eq(curtain.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the new screen takes taps")
+	# Another screen while it is still up: it covers again at once.
+	curtain.play("Phòng")
+	await wait_process_frames(2)
+	assert_signal_emit_count(curtain, "covered", 2)
+	await wait_seconds(HubTransition.HOLD + HubTransition.OUT + 0.15)
+	assert_false(curtain.running or curtain.visible, "gone")
+
+
+func test_a_game_has_its_own_screen_on_the_way_in() -> void:
+	var intro: HubGameIntro = add_child_autofree(HubGameIntro.new("tien-len", "Tiến Lên"))
+	assert_eq((intro.find_child("IntroName", true, false) as Label).text, "Tiến Lên")
+	assert_eq((intro.find_child("Status", true, false) as Label).text, "Đang tải")
+	assert_not_null(HubGameArt.splash("tien-len"))
+
+
 func test_loading_tells_a_game_story_and_turns_its_slides() -> void:
 	var loading: HubLoading = add_child_autofree(HubLoading.new("tien-len"))
 	loading.status = "Đang tải"

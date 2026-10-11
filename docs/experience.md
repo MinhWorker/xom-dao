@@ -83,7 +83,7 @@ Sảnh theo bố cục ba cột của client game PC (League of Legends), vẽ h
 
 | Vùng | Chứa |
 | --- | --- |
-| Cột trái | Khay nổi bo tròn ở mép trái: **Nhà** (chính là sảnh, đang chọn, trên tấm vàng nổi, hình nhấp nhô), Chợ, Đình, Bến; mỗi nút một hình minh hoạ có chữ dưới |
+| Cột trái | Khay nổi bo tròn ở mép trái: **Sảnh** (hình hòn đảo, đang chọn, trên tấm vàng nổi, hình nhấp nhô), Chợ, Đình, Bến; mỗi nút một hình minh hoạ có chữ dưới |
 | Trên trái | Ảnh đại diện (hình của tài khoản, trong khung đang dùng) đè lên đầu một tấm xanh đậm; trên tấm là tên, dưới tên là một thanh bắt đầu bằng chip cấp rồi tới kinh nghiệm → **Nhà** |
 | Trên phải | Xu, hộp thư, quà, ⚙ |
 | Phải, dưới thanh trên | Lối tắt, tấm phẳng xanh đậm viền mảnh: **Chợ** (tranh phủ kín tấm), **Sự kiện** (hình hộp quà; chấm đỏ và số ngày còn lại khi có sự kiện), **Nhiệm vụ** (hình bảng kẹp) |
@@ -138,6 +138,10 @@ Mở game ─► Sảnh (vòng đảo)
   tên trò và vài dòng về gốc gác của trò đó, tự chuyển sau vài giây, chạm hoặc vuốt để chuyển
   sớm. Khi tải một trò thì mở đầu bằng tranh của chính trò đó. Trạng thái nằm ở góc dưới phải.
   Thêm trò mới thì thêm một dòng vào `SLIDES` trong `apps/client/hub/loading.gd`.
+- **Chuyển màn**: giữa hai màn luôn có một tấm màn xanh đậm viền vàng quét chéo từ trái sang, ghi
+  nơi sắp tới (Chọn trò, Chợ, Nhà…). Vào phòng thì tấm màn mang logo và tên trò. Bấm Bắt đầu thì
+  tới **màn riêng của trò**: tranh splash phủ kín, logo và tên trò ở giữa, vòng xoay "Đang tải";
+  màn này ở lại ít nhất gần hai giây rồi mờ dần sang bàn chơi.
 - Nút ← luôn về đúng một bước. Từ ván đấu về sảnh có hỏi xác nhận nếu đang giữa ván.
 - Chơi với bạn bè: phòng nào cũng có **mã phòng** ngắn. Gửi mã hoặc link mời; bạn bè nhập mã ở Bến
   hoặc mở link là vào thẳng phòng. Thoát ra thì về sảnh, với trò đó đang được chọn.

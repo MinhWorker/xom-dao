@@ -29,7 +29,7 @@ signal event_pressed(game_id: String)
 
 ## The dock: id, label, icon, picture. "lobby" is this screen.
 const PLACES: Array = [
-	["lobby", "Nhà", "house", "nav-home"],
+	["lobby", "Sảnh", "house", "nav-sanh"],
 	["cho", "Chợ", "storefront", "nav-cho"],
 	["dinh", "Đình", "bank", "nav-dinh"],
 	["ben", "Bến", "anchor", "nav-ben"],

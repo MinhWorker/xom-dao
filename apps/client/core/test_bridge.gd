@@ -84,7 +84,8 @@ func _text(node: Node) -> Variant:
 
 ## The control's box in window pixels: [x, y, width, height].
 func _rect(control: Control) -> Variant:
-	if control == null:
+	# A screen still behind the curtain is not there to tap yet.
+	if control == null or not control.is_visible_in_tree():
 		return null
 	var local := Rect2(Vector2.ZERO, control.size)
 	var box: Rect2 = (
