@@ -2,14 +2,14 @@ class_name HubLoading
 extends Control
 ## What the player looks at while the app connects or a game loads: the games' splash art one
 ## after another, each with the game's name and a few lines of where the game comes from, and
-## the status ("Đang tải") in the bottom right corner. The slides turn by themselves; a tap or
-## a swipe turns them sooner. The art is the hub's own (`hub/select/art/<id>/splash.webp`), so
-## it shows before any game pack or the catalog is there.
+## the status ("Đang tải") in the bottom right corner, a spinner beside it while `busy`. The
+## slides turn by themselves; a tap or a swipe turns them sooner. The art is the hub's own
+## (`hub/select/art/<id>/splash.webp`), so it shows before any game pack or the catalog is there.
 ##
 ##   var loading := HubLoading.new("tien-len")   # opens on that game's slide ("": any)
 ##   loading.status = "Đang tải"
 ##
-## Named nodes for tests: Status, LoadingName, LoadingStory, LoadingDots.
+## Named nodes for tests: Status, Spinner, LoadingName, LoadingStory, LoadingDots.
 
 ## One slide per game: [id, name, story].
 const SLIDES: Array[Array] = [
@@ -128,6 +128,13 @@ var status: String = "":
 	set(value):
 		status = value
 		_status.text = value
+		_layout()
+
+## Still working on it: the spinner turns. False for a status that is an end ("Không tải được").
+var busy: bool = true:
+	set(value):
+		busy = value
+		_spinner.visible = value
 
 ## The slide on show (an index of the slides that have art).
 var slide: int = 0
@@ -141,6 +148,8 @@ var _name := Label.new()
 var _story := Label.new()
 var _dots := Control.new()
 var _status := Label.new()
+var _spinner := Control.new()
+var _spin: float = 0.0
 var _held: float = 0.0
 var _press := Vector2.INF
 var _fade: Tween
@@ -192,6 +201,11 @@ func _init(game_id: String = "") -> void:
 	_status.add_theme_font_size_override("font_size", 28)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_status)
+	_spinner.name = "Spinner"
+	_spinner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spinner.size = Vector2(36.0, 36.0)
+	_spinner.draw.connect(_draw_spinner)
+	add_child(_spinner)
 	for label: Label in [_kicker, _name, _story, _status]:
 		label.add_theme_color_override("font_outline_color", Color(XomDaoUi.NAVY, 0.8))
 		label.add_theme_constant_override("outline_size", 6)
@@ -211,6 +225,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_held += delta
+	if busy:
+		_spin = fmod(_spin + delta * 5.0, TAU)
+		_spinner.queue_redraw()
 	if _held >= HOLD:
 		turn(1)
 
@@ -282,6 +299,15 @@ func _draw_shade() -> void:
 	)
 
 
+## A ring with a bright arc going round.
+func _draw_spinner() -> void:
+	var c: Vector2 = _spinner.size / 2.0
+	var r: float = c.x - 5.0
+	_spinner.draw_arc(c, r, 0.0, TAU, 40, Color(XomDaoUi.NAVY, 0.55), 9.0, true)
+	_spinner.draw_arc(c, r, 0.0, TAU, 40, Color(XomDaoUi.CREAM, 0.3), 5.0, true)
+	_spinner.draw_arc(c, r, _spin, _spin + TAU * 0.3, 16, XomDaoUi.SUN, 5.0, true)
+
+
 func _draw_dots() -> void:
 	for i: int in _slides.size():
 		var on: bool = i == slide
@@ -308,4 +334,8 @@ func _layout() -> void:
 	_kicker.position = Vector2(left, _name.position.y - _kicker.size.y + 10.0)
 	_status.size = Vector2(420.0, 40.0)
 	_status.position = Vector2(size.x - left - 420.0, bottom - 34.0)
+	var text_w: float = _status.get_minimum_size().x
+	_spinner.position = Vector2(
+		size.x - left - text_w - 14.0 - _spinner.size.x, _status.position.y + 3.0
+	)
 	_shade.queue_redraw()

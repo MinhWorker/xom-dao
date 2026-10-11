@@ -806,6 +806,7 @@ func _show_status(text: String, game_id: String = "") -> void:
 		loading = HubLoading.new(game_id)
 		_set_screen("status", loading)
 	loading.status = text
+	loading.busy = text.begins_with("Đang")
 
 
 ## Puts `screen` on, freeing the one before (the game stays: it lives across rounds).

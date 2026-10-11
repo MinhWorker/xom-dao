@@ -170,6 +170,10 @@ func test_loading_tells_a_game_story_and_turns_its_slides() -> void:
 	var loading: HubLoading = add_child_autofree(HubLoading.new("tien-len"))
 	loading.status = "Đang tải"
 	assert_eq(loading.find_child("Status", true, false).text, "Đang tải")
+	var spinner: Control = loading.find_child("Spinner", true, false)
+	assert_true(spinner.visible, "it spins while it works")
+	loading.busy = false
+	assert_false(spinner.visible, "and stops on an end")
 	var title: Label = loading.find_child("LoadingName", true, false)
 	var story: Label = loading.find_child("LoadingStory", true, false)
 	assert_eq(title.text, "Tiến Lên", "it opens on the game being loaded")
