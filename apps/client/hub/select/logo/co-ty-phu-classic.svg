@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" stroke-linejoin="round" stroke-linecap="round">
+  <title>Cờ Tỷ Phú</title>
+  <rect x="30" y="58" width="60" height="50" fill="#FFF6E3" stroke="#16233F" stroke-width="5"/>
+  <path d="M16 62 L60 22 L104 62 Z" fill="#E0352B" stroke="#16233F" stroke-width="5"/>
+  <rect x="50" y="78" width="20" height="30" fill="#FFF6E3" stroke="#16233F" stroke-width="5"/>
+  <circle cx="94" cy="94" r="24" fill="#FFD54A" stroke="#16233F" stroke-width="5"/>
+  <circle cx="94" cy="94" r="14" fill="none" stroke="#16233F" stroke-width="3.5"/>
+  <rect x="89" y="89" width="10" height="10" fill="#16233F"/>
+</svg>

@@ -96,8 +96,7 @@ func test_the_event_board_shows_tiers_and_claims() -> void:
 	catalog.card("trung-thu").tagline = "Thả câu dưới trăng rằm, gom điểm nhận quà."
 	select.show_genre(catalog, "su-kien", "trung-thu")
 	assert_signal_emitted_with_parameters(select, "progress_needed", ["trung-thu"])
-	assert_true((select.find_child("JoinEvent", true, false) as Control).visible)
-	assert_false((select.find_child("SelectCreate", true, false) as Control).visible)
+	assert_true((select.find_child("JoinEvent", true, false) as Control).is_visible_in_tree())
 	select.show_progress(
 		XomDaoEventProgress.from_dict({"eventId": "trung-thu", "points": 12, "claimed": []})
 	)
@@ -113,15 +112,12 @@ func test_the_event_board_shows_tiers_and_claims() -> void:
 	)
 	await wait_process_frames(1)
 	assert_not_null(select.find_child("Claimed_0", true, false))
-	select._layout()
-	assert_lte(select._tiers.get_combined_minimum_size().x, select._event_scroll.size.x)
-	var pending: Control = select.find_child("Claim_1", true, false)
-	assert_lte(select._points.size.y + 8 + pending.size.y / 2, select._event_scroll.size.y)
+	(select.find_child("JoinEvent", true, false) as Button).pressed.emit()
+	assert_signal_emitted_with_parameters(select, "join_pressed", ["trung-thu"])
 
 
-func test_a_table_game_keeps_its_buttons() -> void:
+func test_a_table_game_has_no_event_board() -> void:
 	var select: HubGameSelect = add_child_autofree(HubGameSelect.new())
 	select.show_genre(_catalog(true), "co", "tic-tac-toe")
-	assert_true((select.find_child("SelectCreate", true, false) as Control).visible)
-	assert_false((select.find_child("JoinEvent", true, false) as Control).visible)
-	assert_false((select.find_child("EventTiers", true, false) as Control).is_visible_in_tree())
+	assert_null(select.find_child("SelectCreate", true, false), "a tap on the poster is enough")
+	assert_false((select.find_child("EventBoard", true, false) as Control).is_visible_in_tree())

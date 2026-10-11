@@ -1,5 +1,5 @@
 extends GutTest
-## The hub's room screens: Tạo phòng options, the waiting room, the result's ranks and rewards,
+## The hub's room screens: the room's options, the waiting room, the result's ranks and rewards,
 ## Luật, and what the hub remembers.
 
 
@@ -23,28 +23,19 @@ func _snapshot(winners: Array, rewards: Array) -> XomDaoRoomSnapshot:
 	)
 
 
-func test_setup_sends_the_picked_options() -> void:
-	var setup: HubRoomSetup = add_child_autofree(HubRoomSetup.new())
-	(
-		setup
-		. show_setup(
-			"Caro",
-			[
-				{
-					"key": "opponent",
-					"label": "Chơi với",
-					"options": [["Bạn bè", "human"], ["Máy", "bot"]]
-				},
-				{"key": "level", "label": "Máy chơi", "options": [["Dễ", "easy"], ["Khó", "hard"]]},
-			]
-		)
-	)
-	assert_eq(setup.options(), {"opponent": "human", "level": "easy"})
-	setup.choices["opponent"].choose(1)
-	setup.choices["level"].choose(1)
-	watch_signals(setup)
-	setup.find_child("ConfirmCreate", true, false).pressed.emit()
-	assert_signal_emitted_with_parameters(setup, "created", [{"opponent": "bot", "level": "hard"}])
+func test_room_options_read_the_picked_values_and_find_the_rooms_own() -> void:
+	var spec: Array = [
+		{"key": "opponent", "label": "Chơi với", "options": [["Bạn bè", "human"], ["Máy", "bot"]]},
+		{"key": "rounds", "label": "Số ván", "options": [["1", 1], ["3", 3]], "default": 1},
+	]
+	var picked: Dictionary = {
+		"opponent": add_child_autofree(XomDaoChoice.create(["Bạn bè", "Máy"], 1)),
+		"rounds": add_child_autofree(XomDaoChoice.create(["1", "3"], 0)),
+	}
+	assert_eq(HubRoomOptions.values(spec, picked), {"opponent": "bot", "rounds": 1})
+	assert_eq(HubRoomOptions.index_of(spec[0], "bot"), 1)
+	assert_eq(HubRoomOptions.index_of(spec[1], 3.0), 1, "the server's numbers are floats")
+	assert_eq(HubRoomOptions.index_of(spec[1], "other"), 1, "its default when none holds it")
 
 
 func _room(players: Array, options: Variant = null) -> XomDaoRoomSnapshot:
@@ -116,7 +107,7 @@ func test_the_host_changes_the_room_options_and_guests_read_them() -> void:
 	var room: HubWaitingRoom = _waiting_room()
 	room.show_setup("tic-tac-toe", spec)
 	room.show_room(_room(players, held), "minh", _caro(), false)
-	var rounds: XomDaoChoice = room.choices["rounds"]
+	var rounds: HubRoomOption = room.choices["rounds"]
 	assert_eq(rounds.selected, 1, "the room's own value is the one picked")
 	assert_false(rounds.locked, "the host may change it")
 	watch_signals(room)
@@ -157,6 +148,43 @@ func test_the_host_starts_once_the_guests_are_ready() -> void:
 	watch_signals(room)
 	room.find_child("RoomRules", true, false).pressed.emit()
 	assert_signal_emitted(room, "rules_pressed")
+
+
+func test_an_option_is_drawn_as_what_suits_it_and_fits_the_plate() -> void:
+	var width: float = HubWaitingRoom.OPTIONS_W
+	var specs: Array = [
+		{"key": "ff", "label": "Sát thương đồng đội", "options": [["Tắt", false], ["Bật", true]]},
+		{"key": "bots", "label": "Máy chơi cùng", "options": [["Không", 0], ["1", 1], ["2", 2]]},
+		{"key": "level", "label": "Máy chơi", "options": [["Dễ", "easy"], ["Khó", "hard"]]},
+		{
+			"key": "swap",
+			"label": "Lượt bắn",
+			"options": [["Bạn bắn trước", false], ["Đối thủ bắn trước", true]]
+		},
+	]
+	var kinds: Array = [
+		HubRoomOption.Kind.SWITCH,
+		HubRoomOption.Kind.STEPPER,
+		HubRoomOption.Kind.SEGMENTS,
+		HubRoomOption.Kind.PICKER,
+	]
+	for i: int in specs.size():
+		var row: HubRoomOption = add_child_autofree(HubRoomOption.create(specs[i], width))
+		assert_eq(row.kind, kinds[i], str(specs[i]["key"]))
+		assert_lte(row.get_combined_minimum_size().x, width, "%s fits" % specs[i]["key"])
+		assert_not_null(row.find_child("Option_" + str(specs[i]["key"]), true, false))
+	var bots: HubRoomOption = add_child_autofree(HubRoomOption.create(specs[1], width))
+	watch_signals(bots)
+	bots._step(-1)
+	assert_signal_not_emitted(bots, "changed", "a stepper stops at its first value")
+	bots._step(1)
+	assert_signal_emitted_with_parameters(bots, "changed", [1])
+	var swap: HubRoomOption = add_child_autofree(HubRoomOption.create(specs[3], width))
+	swap._step(-1)
+	assert_eq(swap.selected, 1, "a picker goes round")
+	swap.locked = true
+	swap._step(1)
+	assert_eq(swap.selected, 1, "a locked row stays")
 
 
 func test_seats_fill_rows_by_how_many_there_are() -> void:

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" stroke-linejoin="round" stroke-linecap="round">
+  <title>Caro</title>
+  <path d="M62 20 L106 64 M106 20 L62 64" fill="none" stroke="#16233F" stroke-width="22"/>
+  <path d="M62 20 L106 64 M106 20 L62 64" fill="none" stroke="#FFD54A" stroke-width="13"/>
+  <path d="M22 86 a22 22 0 1 0 44 0 a22 22 0 1 0 -44 0" fill="none" stroke="#16233F" stroke-width="22"/>
+  <path d="M22 86 a22 22 0 1 0 44 0 a22 22 0 1 0 -44 0" fill="none" stroke="#FFF6E3" stroke-width="13"/>
+</svg>

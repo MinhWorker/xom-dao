@@ -30,22 +30,13 @@ export default async function run(t) {
   await godotText(host, 'Coins', coins(before));
   await host.screenshot({ path: t.shot('1-lobby.png') });
 
-  // The card opens the game select on Cờ; Luật shows the game's RULES.md.
+  // The card opens the game select on Cờ; a tap on Caro's poster opens a room of it.
   await tap(host, 'SelectedGame');
   await onScene(host, 'select');
-  // Bắn Tàu comes first in Cờ by name, so pick Caro.
-  await tapCard(host, 'tic-tac-toe');
   await host.screenshot({ path: t.shot('2-select.png') });
-  await tap(host, 'GameRules');
-  await godotText(host, 'RulesText', /./);
-  await host.screenshot({ path: t.shot('3-rules.png') });
-  await host.mouse.click(10, 400); // the shade around the board closes it
-  await tap(host, 'Back');
-  await onScene(host, 'lobby');
-  await godotText(host, 'SelectedName', 'Caro');
+  await tapCard(host, 'tic-tac-toe');
 
-  // CHƠI opens a room of your own; its plate seats the computer, then the host starts.
-  await tap(host, 'Play');
+  // The room's plate seats the computer, then the host starts.
   await onScene(host, 'room');
   await godotText(host, 'RoomCount', '1/2');
   await godotText(host, 'RoomGame', 'Caro');
@@ -55,10 +46,11 @@ export default async function run(t) {
   await godotText(host, 'RoomCount', '2/2');
   const mine = await room(host);
   if (!mine.players.some((p) => p.bot)) throw new Error('The room seated no computer');
-  await host.screenshot({ path: t.shot('4-room.png') });
+  await host.screenshot({ path: t.shot('3-room.png') });
   // The scroll shows the rules; again and they are gone.
   await tap(host, 'RoomRules');
   await godotText(host, 'RulesText', /./);
+  await host.screenshot({ path: t.shot('4-rules.png') });
   await host.mouse.click(10, 400);
   await tap(host, 'Start');
   await onScene(host, 'tic-tac-toe', 30_000);
@@ -75,8 +67,6 @@ export default async function run(t) {
   await godotText(host, 'SelectedName', 'Caro');
   await godotText(host, 'Coins', coins(after));
   await createRoom(host);
-  await tap(host, 'ConfirmCreate');
-  await onScene(host, 'room');
   const code = await godotText(host, 'RoomCode', /^[A-Z0-9]{4}$/);
   const friend = await openGodot(t, await t.page(PHONE), `?room=${code}`);
   await onScene(friend, 'room');

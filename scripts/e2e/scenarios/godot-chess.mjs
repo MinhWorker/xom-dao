@@ -5,7 +5,6 @@
 // turned round. Needs the debug web build (npm run godot:export -- --debug).
 
 import {
-  createRoom,
   DESKTOP,
   godotText,
   launch,
@@ -77,11 +76,6 @@ export default async function run(t) {
   await tap(host, 'Island_co');
   await onScene(host, 'select');
   await tapCard(host, 'chess');
-  await tap(host, 'Back');
-  await onScene(host, 'lobby');
-  await godotText(host, 'SelectedName', 'Cờ Vua');
-  await createRoom(host);
-  await tap(host, 'ConfirmCreate');
   await onScene(host, 'room');
   const code = await godotText(host, 'RoomCode', /^[A-Z0-9]{4}$/);
   await onScene(guest, 'lobby');

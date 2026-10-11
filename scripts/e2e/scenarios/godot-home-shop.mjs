@@ -55,7 +55,6 @@ export default async function run(t) {
   await tap(lan, 'Back');
   await onScene(lan, 'lobby');
   await createRoom(lan);
-  await tap(lan, 'ConfirmCreate');
   await onScene(lan, 'room');
   const code = await godotText(lan, 'RoomCode', /^[A-Z0-9]{4}$/);
 

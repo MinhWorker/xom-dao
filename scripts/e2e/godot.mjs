@@ -53,11 +53,10 @@ export async function godotText(page, name, text, timeout = 30_000) {
   return handle.jsonValue();
 }
 
-/** From the lobby: opens the game select on the selected game and its Tạo phòng board. */
+/** From the lobby: CHƠI opens a room of the selected game. */
 export async function createRoom(page) {
-  await tap(page, 'SelectedGame');
-  await onScene(page, 'select');
-  await tap(page, 'SelectCreate');
+  await tap(page, 'Play');
+  await onScene(page, 'room');
 }
 
 /** Taps a visible node by name with the mouse, once it is there and enabled. */
@@ -75,19 +74,10 @@ export async function tap(page, name, timeout = 30_000) {
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 }
 
-/** Brings a catalog island into view using the carousel's actual navigation controls. */
+/** On the game select: picks a game's poster, wherever it is on the rail, into its room. */
 export async function tapCard(page, id) {
-  for (let i = 0; i < 30; i++) {
-    const visible = await page.evaluate((name) => window.xomdao.rect(name), `Card_${id}`);
-    if (visible) {
-      await tap(page, `Card_${id}`);
-      await page.waitForTimeout(400);
-      return;
-    }
-    await tap(page, 'NextGame');
-    await page.waitForTimeout(400);
-  }
-  throw new Error(`Catalog island ${id} did not become visible`);
+  await page.waitForFunction((name) => window.xomdao.click(name), `Card_${id}`);
+  await onScene(page, 'room');
 }
 
 /**

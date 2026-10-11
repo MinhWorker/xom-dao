@@ -23,7 +23,7 @@ Godot bản khác sẽ ghi lại `project.godot` và các scene.
 | `project.godot` | Khung cố định 1280 × 720 (16:9), `canvas_items` + `keep`, màn hình ngang ([ui-guide.md](../../docs/ui-guide.md)) |
 | `core/` | Autoload `Net` (kết nối), `Session` (token đăng nhập; đăng ký, đăng nhập, đăng xuất qua `/api/auth`), `Wallet`, `ContentLoader` (tải gói trò), `TestBridge` (cầu nối test, chỉ bản debug) |
 | `hub/` | Sảnh và màn của từng khối nền tảng; `hub/main.tscn` là màn đầu tiên |
-| `hub/select/` | Băng chuyền đảo trò, splash từng trò, panel chi tiết; `art/` là ảnh nhẹ của hub, xem được trước khi tải gói trò |
+| `hub/select/` | Dãy thẻ trò (splash, logo, tên) và hàng thể loại; `art/` (splash) và `logo/` (logo trò, vật thể loại) là ảnh nhẹ của hub, xem được trước khi tải gói trò |
 | `addons/xomdao_sdk/` | API duy nhất phần Godot của trò được dùng: `XomDaoFrame`, `XomDaoClient` (kết nối server) |
 | `addons/xomdao_sdk/ui/` | Bộ thành phần giao diện chung: theme, nút, bảng, hàng tiền, ô người chơi, thẻ trò, ô lựa chọn, thông báo nhanh, menu ☰, lá bài và chiếu cho trò bài, font, icon, âm thanh |
 | `hub/gallery/` | Màn gallery liệt kê mọi thành phần: mở bằng `?gallery=<trang>` (trang 1 tới 4) |
@@ -61,16 +61,16 @@ xong thì chạy `npm run gen:protocol` để sinh lại GDScript; `npm run chec
 Màn đầu tiên là sảnh: vòng đảo thể loại trên biển (Cờ, Bài, rồi thể loại phụ; đảo Sắp có khi chưa
 có thể loại phụ). Vuốt ngang hoặc chạm một đảo để xoay; chạm lại đảo đang chọn hoặc thẻ trò ở dưới
 phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ trên phải, banner (sự kiện đang mở, hoặc Chợ), hàng Nhà, Chợ,
-Đình, Bến dưới trái, thẻ trò đang chọn với **CHƠI** (kèm số người của trò); **Tạo phòng** nằm ở màn chọn trò. Cạnh tên có chip cấp.
+Đình, Bến dưới trái, thẻ trò đang chọn với **CHƠI** (kèm số người của trò); Cạnh tên có chip cấp.
 
 - **CHƠI** mở ngay một phòng của bạn cho trò đó. Phòng (`hub/room/waiting_room.gd`) có tấm giấy
   bên trái (tranh và tên trò, nút cuộn giấy mở Luật, mã phòng, "Mời bạn", tuỳ chọn của trò mà chủ
   phòng đổi được) và lưới thẻ người chơi bên phải (`seat_card.gd`). Góc dưới phải là "Bắt đầu" cho
   chủ phòng, "Sẵn sàng" cho người khác; chủ phòng bắt đầu được khi mọi người đã sẵn sàng.
-- **Tạo phòng** mở bảng tuỳ chọn do trò điền (`room_setup()`), rồi tới phòng chờ có mã, người
-  chơi, "Mời bạn" (sao chép link `?room=<mã>`) và "Bắt đầu" cho chủ phòng.
-- **Chọn trò**: tab thể loại, ba đảo kéo ngang; chỉ đảo focus có màu và nổi nhẹ, hai đảo cạnh
-  xám xanh và tĩnh. Nền đổi theo splash của trò, chi tiết bên trái, Luật và Tạo phòng dưới phải.
+- **Chọn trò**: dãy thẻ trò kéo ngang ở giữa (tranh splash phủ kín, logo và tên trò), hàng thể
+  loại ở góc dưới trái. Chạm một thẻ là vào thẳng phòng của trò đó; thẻ sự kiện mở bảng sự kiện.
+- Tuỳ chọn của trò (`room_setup()`) hiện trên tấm giấy của phòng (`hub/room/room_option.gd`):
+  công tắc, − giá trị +, các ô, hoặc ‹ giá trị › tuỳ loại tuỳ chọn.
   Focus lưu trò và tải ngầm `.pck`. Luật là bảng phân trang có vùng hình minh họa tùy chọn,
   chặn và làm mờ/tối nền. Trò chưa có bản Godot hiện khóa. Touch có ngưỡng phân biệt vuốt với
   chạm; `hub/touch_cancel.gd` xử lý DOM touchcancel của bản web.
@@ -124,11 +124,10 @@ cần bấm hay đọc đều có tên, ví dụ ô Caro là `Cell_<x>_<y>`.
   chuột thật, tới bảng kết quả.
 - `npm run shots -- --path '/?play=tic-tac-toe'`: ảnh chụp trên các cỡ điện thoại.
 - `npm run shots -- --screen select` (hoặc `rules`): màn chọn trò và bảng luật trên các cỡ máy.
-- `npm run e2e -- --only godot-select`: vuốt chạm native, hủy touch, luật phân trang và tạo phòng.
+- `npm run e2e -- --only godot-select`: vuốt chạm native trên dãy thẻ, đổi thể loại, chạm thẻ vào phòng, luật phân trang.
 
-Artwork màn chọn dùng đảo sẵn có trong `games/<id>/assets/island.webp`. Nền riêng được ghi
-prompt trong `assets/prompts.json`; `node scripts/select-art.mjs` cắt các sheet và sao chép
-ảnh vào hub. Bảng tên chung được bake bằng Blender từ `assets/shared/render_select_label.py`.
+Tranh splash của màn chọn được ghi prompt trong `assets/prompts.json`; `node scripts/select-art.mjs`
+cắt các sheet vào `hub/select/art/`. Logo trò và vật thể loại là SVG vẽ tay trong `hub/select/logo/`.
 
 ## Xuất bản
 

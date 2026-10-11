@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" stroke-linejoin="round" stroke-linecap="round">
+  <title>Cờ Tướng</title>
+  <circle cx="64" cy="64" r="54" fill="#FFF6E3" stroke="#16233F" stroke-width="5"/>
+  <circle cx="64" cy="64" r="43" fill="none" stroke="#16233F" stroke-width="3.5"/>
+  <path d="M42 42 H86 V86 H42 Z M42 42 L86 86 M86 42 L42 86" fill="none" stroke="#16233F" stroke-width="5"/>
+  <circle cx="64" cy="64" r="9" fill="#E0352B" stroke="#16233F" stroke-width="4"/>
+</svg>

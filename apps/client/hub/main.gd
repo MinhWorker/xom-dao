@@ -37,7 +37,6 @@ var _buying: bool = false
 ## An event:claim is on its way.
 var _claiming: bool = false
 var _opening_rules: bool = false
-var _opening_setup: bool = false
 ## The screen on now (the lobby, the waiting room…).
 var _current: Control
 
@@ -442,9 +441,7 @@ func _show_select(genre_id: String) -> void:
 	select.top.money.show_balance(_coins)
 	select.top.money.settings_pressed.connect(_menu.open_settings)
 	select.back_pressed.connect(_back_to_lobby)
-	select.chosen.connect(_choose_game)
-	select.create_pressed.connect(_open_setup)
-	select.rules_pressed.connect(_show_rules)
+	select.play_pressed.connect(_play)
 	select.progress_needed.connect(_fill_progress.bind(select))
 	select.join_pressed.connect(_quick_match)
 	select.claim_pressed.connect(_claim.bind(select))
@@ -528,40 +525,8 @@ func _quick_match(game_id: String) -> void:
 		_quick = false
 
 
-## Tạo phòng: the game's own options board, then the room.
-func _open_setup(game_id: String) -> void:
-	if _opening_setup or _opening_rules or has_node("RoomSetup") or has_node("RulesBoard"):
-		return
-	_opening_setup = true
-	var origin: Node = _current
-	_choose_game(game_id)
-	var card: XomDaoGameCard = _catalog.card(game_id)
-	var scene: PackedScene = await ContentLoader.load_game(game_id)
-	_opening_setup = false
-	if not is_instance_valid(origin) or origin != _current:
-		return
-	if origin is HubGameSelect and origin.selected_game() != game_id:
-		return
-	if scene == null or card == null:
-		_say("Không tải được trò chơi")
-		return
-	var probe: Node = scene.instantiate()
-	var spec: Array = probe.call("room_setup") if probe.has_method("room_setup") else []
-	probe.free()
-	var setup := HubRoomSetup.new()
-	add_child(setup)
-	_obscure_select(setup)
-	setup.show_setup(card.name, spec)
-	setup.cancelled.connect(setup.queue_free)
-	setup.created.connect(
-		func(options: Dictionary) -> void:
-			setup.queue_free()
-			await _client.create_room(game_id, options if not options.is_empty() else null)
-	)
-
-
 func _show_rules(game_id: String) -> void:
-	if _opening_rules or _opening_setup or has_node("RulesBoard") or has_node("RoomSetup"):
+	if _opening_rules or has_node("RulesBoard"):
 		return
 	var card: XomDaoGameCard = _catalog.card(game_id)
 	if card == null:
@@ -576,23 +541,8 @@ func _show_rules(game_id: String) -> void:
 	_opening_rules = false
 	if not is_instance_valid(origin) or origin != _current:
 		return
-	if origin is HubGameSelect and origin.selected_game() != game_id:
-		return
 	var board: HubRulesBoard = HubRulesBoard.create("Luật %s" % card.name, text)
 	add_child(board)
-	_obscure_select(board)
-
-
-func _obscure_select(overlay: Node) -> void:
-	var select: HubGameSelect = _current as HubGameSelect
-	if select == null:
-		return
-	select.set_obscured(true)
-	overlay.tree_exiting.connect(
-		func() -> void:
-			if is_instance_valid(select):
-				select.set_obscured(false)
-	)
 
 
 # ── In a room ─────────────────────────────────────────────────────────────────────────────

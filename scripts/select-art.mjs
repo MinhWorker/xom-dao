@@ -1,7 +1,7 @@
-// Copy catalog islands and split the original splash sheets into small hub-ready images.
+// Split the original splash sheets into small hub-ready images.
 // npm run gen:asset -- select-sheet-co select-sheet-board select-sheet-party select-trung-thu
 // node scripts/select-art.mjs
-import { cpSync, existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
 
@@ -34,7 +34,5 @@ for (const [name, ids] of sheets) {
       .resize({ width: 1600, withoutEnlargement: true })
       .webp({ quality: 88 })
       .toFile(join(destination, 'splash.webp'));
-    cpSync(join(root, 'games', id, 'assets/island.webp'), join(destination, 'island.webp'));
   }
 }
-cpSync(join(ready, 'island-label.webp'), join(target, 'island-label.webp'));

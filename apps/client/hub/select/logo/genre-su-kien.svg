@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" stroke-linejoin="round" stroke-linecap="round">
+  <title>Sự kiện</title>
+  <path d="M64 4 V20" stroke="#9C5F2A" stroke-width="5" fill="none"/>
+  <ellipse cx="64" cy="62" rx="42" ry="36" fill="#E0352B" stroke="#7A1418" stroke-width="5"/>
+  <path d="M64 26 V98 M44 30 q-14 32 0 64 M84 30 q14 32 0 64" fill="none" stroke="#7A1418" stroke-width="3.5" opacity="0.7"/>
+  <rect x="42" y="16" width="44" height="14" rx="5" fill="#E7B53C" stroke="#B9822A" stroke-width="4"/>
+  <rect x="42" y="94" width="44" height="12" rx="5" fill="#E7B53C" stroke="#B9822A" stroke-width="4"/>
+  <path d="M54 106 V122 M64 106 V126 M74 106 V122" stroke="#E7B53C" stroke-width="5" fill="none"/>
+</svg>

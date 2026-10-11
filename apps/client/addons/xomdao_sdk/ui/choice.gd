@@ -6,7 +6,7 @@ extends HBoxContainer
 ##   var seats := XomDaoChoice.create(["2", "3", "4"], 2)
 ##   seats.changed.connect(func(index: int) -> void: ...)
 ## `locked` shows the choice without letting it change; `compact` makes a shorter row for a
-## crowded panel.
+## crowded panel; `fill` shares the row's whole width between the options, as segments.
 
 signal changed(index: int)
 
@@ -33,6 +33,12 @@ var locked: bool = false:
 var compact: bool = false:
 	set(value):
 		compact = value
+		_rebuild()
+
+## The options share the row's width equally instead of hugging their text.
+var fill: bool = false:
+	set(value):
+		fill = value
 		_rebuild()
 
 
@@ -65,7 +71,9 @@ func _rebuild() -> void:
 		option.text = options[i]
 		option.focus_mode = Control.FOCUS_NONE
 		var side: float = COMPACT_HEIGHT if compact else HEIGHT
-		option.custom_minimum_size = Vector2(side, side)
+		option.custom_minimum_size = Vector2(0.0 if fill else side, side)
+		if fill:
+			option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		option.add_theme_font_override("font", XomDaoUi.display_font(800))
 		option.add_theme_font_size_override("font_size", XomDaoUi.TEXT_MIN if compact else 28)
 		option.pressed.connect(choose.bind(i))

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128" stroke-linejoin="round" stroke-linecap="round">
+  <title>Cờ</title>
+  <rect x="24" y="104" width="80" height="16" rx="6" fill="#FBF1DC" stroke="#9C5F2A" stroke-width="5"/>
+  <path d="M38 104 L44 52 H84 L90 104 Z" fill="#FBF1DC" stroke="#9C5F2A" stroke-width="5"/>
+  <path d="M32 52 V16 H48 V28 H56 V16 H72 V28 H80 V16 H96 V52 Z" fill="#FBF1DC" stroke="#9C5F2A" stroke-width="5"/>
+  <rect x="38" y="60" width="52" height="8" rx="4" fill="#E7B53C" stroke="#9C5F2A" stroke-width="3"/>
+</svg>

@@ -36,6 +36,8 @@ const GAP := 20.0
 const SEAT_GAP := 14.0
 const HEAD_H := 44.0
 const ACTION := Vector2(320.0, 104.0)
+## The room an option's row has: the plate less its padding and the scroll bar.
+const OPTIONS_W := PLATE_W - PAD * 2.0 - 14.0
 ## A seat card is never wider or taller than this, however few seats there are.
 const SEAT_MAX := Vector2(360.0, 430.0)
 
@@ -45,7 +47,7 @@ var top: HubTopBar
 var setup_game: String = ""
 ## The game whose options are on their way (the hub loads its pack first).
 var loading_game: String = ""
-## Each option's row of choices, by key.
+## Each option's row (HubRoomOption), by key.
 var choices: Dictionary = {}
 
 var _settings: XomDaoSettings
@@ -110,24 +112,10 @@ func show_setup(game_id: String, spec: Array) -> void:
 	for option: Variant in spec:
 		if option is not Dictionary:
 			continue
-		var key: String = str(option.get("key", ""))
-		var label := Label.new()
-		label.text = str(option.get("label", ""))
-		label.theme_type_variation = "SmallLabel"
-		label.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.75))
-		_options.add_child(label)
-		var labels: Array[String] = []
-		for pair: Variant in option.get("options", []):
-			labels.append(str(pair[0]))
-		var choice := XomDaoChoice.create(labels)
-		choice.name = "Option_" + key
-		choice.compact = true
-		choice.changed.connect(_on_choice.unbind(1))
-		choices[key] = choice
-		_options.add_child(choice)
-		var space := Control.new()
-		space.custom_minimum_size.y = 4.0
-		_options.add_child(space)
+		var row: HubRoomOption = HubRoomOption.create(option, OPTIONS_W)
+		row.changed.connect(_on_choice.unbind(1))
+		choices[str(option.get("key", ""))] = row
+		_options.add_child(row)
 	if choices.is_empty():
 		var none := Label.new()
 		none.text = "Phòng thường, không có tuỳ chọn."
@@ -228,8 +216,10 @@ func _build_plate() -> void:
 	_plate.add_child(_invite)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_plate.add_child(_scroll)
-	_options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_options.add_theme_constant_override("separation", 6)
+	# Narrower than the scroll, so its bar never covers a row.
+	_options.custom_minimum_size.x = OPTIONS_W
+	_options.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_options.add_theme_constant_override("separation", 12)
 	_scroll.add_child(_options)
 	_rules.name = "RoomRules"
 	_rules.pressed.connect(rules_pressed.emit)
@@ -270,11 +260,11 @@ func _show_options() -> void:
 		if option is not Dictionary:
 			continue
 		var key: String = str(option.get("key", ""))
-		var choice: XomDaoChoice = choices.get(key)
+		var choice: HubRoomOption = choices.get(key)
 		if choice == null:
 			continue
 		if held.has(key):
-			choice.selected = HubRoomSetup.index_of(option, held[key])
+			choice.selected = HubRoomOptions.index_of(option, held[key])
 		choice.locked = not _can_change
 
 
@@ -287,7 +277,7 @@ func _clear_options() -> void:
 
 
 func _on_choice() -> void:
-	options_changed.emit(HubRoomSetup.values(_spec, choices))
+	options_changed.emit(HubRoomOptions.values(_spec, choices))
 
 
 func _on_seat(seat: HubSeatCard) -> void:

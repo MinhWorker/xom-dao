@@ -7,7 +7,7 @@ Where to look:
   - `scripts/templates/` holds the starters `new:game` / `new:event` fill in: `game/` (rules,
     bot), `event/` (over `game/`), `godot/<layout>/main.gd` (Bàn, Hành động, event),
     `godot/test/`, `e2e/`.
-  - `games/tic-tac-toe` (Caro) adds room options (Tạo phòng rows) and a computer player.
+  - `games/tic-tac-toe` (Caro) adds room options (rows on the room's plate) and a computer player.
   - `games/tien-len` is the fullest Godot table (cards, effects, sounds, art).
 - **Skills** in `.claude/skills/`: `new-content` (a game or event from a brief), `make-asset`,
   `phone-check`.
@@ -34,7 +34,7 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 | `npm run new:game -- <id> "Tên" --genre <g> [--layout ban\|hanh-dong]` | A working game (status `wip`): rules + bot + tests, a Godot table in that layout + GUT test, RULES.md, README, stand-in card, `scripts/e2e/scenarios/godot-<id>.mjs`. Then `npm run godot:check` writes the `.uid` files to commit |
 | `npm run new:event -- <id> "Tên" [--opens YYYY-MM-DD] [--closes YYYY-MM-DD]` | The same for an event (`su-kien`, Hành động layout, dates default to today + 4 weeks, reward tiers) |
 | `npm run new -- logic <id> [Name]` | Write a `Game` (+ test) from `scripts/templates/` (leave out `<id>` inside `games/<id>/`) |
-| `npm run new -- options <id>` | Write `src/game/options.ts` (the room's options); its Tạo phòng rows come from `room_setup()` in `godot/main.gd` |
+| `npm run new -- options <id>` | Write `src/game/options.ts` (the room's options); its rows in the room come from `room_setup()` in `godot/main.gd` |
 | `/?play=<id>` | Sandbox (debug builds: dev and PR previews): a real room with the computer in the other seats (`sandbox_options()`) |
 
 ## Rules
@@ -107,7 +107,7 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 - **Room options and bots**:
   - `room.options` is a zod schema, and `optionsSchema.parse({})` must work.
   - The `Game` reads them as `ctx.options`; the table gets them in the snapshot's `options`.
-  - The Tạo phòng board's rows come from `room_setup()` in the game's `godot/main.gd`.
+  - The option rows in the room come from `room_setup()` in the game's `godot/main.gd`.
   - `room.bots` seats computer players, whose moves come from `bot(ctx)`.
   - `room.withBots(options, count)` gives the options with the computer in `count` empty seats:
     quick match (CHƠI) fills a room with it when nobody else comes (`QUICK_WAIT_MS`).

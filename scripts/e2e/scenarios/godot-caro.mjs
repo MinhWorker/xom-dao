@@ -6,7 +6,6 @@
 
 import {
   caroTap,
-  createRoom,
   DESKTOP,
   godotText,
   launch,
@@ -33,12 +32,6 @@ export default async function run(t) {
   await tap(host, 'Island_co');
   await onScene(host, 'select');
   await tapCard(host, 'tic-tac-toe');
-  await tap(host, 'Back');
-  await onScene(host, 'lobby');
-  await godotText(host, 'SelectedName', 'Caro');
-  await createRoom(host);
-  await host.screenshot({ path: t.shot('1-create.png') });
-  await tap(host, 'ConfirmCreate');
   await onScene(host, 'room');
   const code = await godotText(host, 'RoomCode', /^[A-Z0-9]{4}$/);
 

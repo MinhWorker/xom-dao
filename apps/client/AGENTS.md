@@ -27,7 +27,7 @@ hub/                main.gd routes the screens: lobby (island ring + HUD), selec
   lobby/            HubLobby, HubIslandRing (ring layout, swipe/tap), HubIsland (drawn islands)
   select/           Three-island game carousel, fading detail and per-game splash art (art/)
   touch_cancel.gd   DOM touchcancel capture for web gestures (before Godot releases the touch)
-  ben/ room/        Bến; waiting room, Tạo phòng board, result, paged Luật board
+  ben/ room/        Bến; waiting room (seat cards, option rows), result, paged Luật board
   home/ shop/       Nhà (HubHome: profile + shelf, someone else's read-only) and Chợ (HubShop);
                     shelf.gd (HubShelf) is the tabbed shelf of item tiles both use
   gallery/          Every UI kit component on 4 pages: ?gallery=<page> or `-- --gallery=<page>`
@@ -53,7 +53,7 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   XomDaoClient)` once in the tree, draws `client.snapshot` and follows `state_changed`. It may
   define `sandbox_options() -> Dictionary`, the room options for `?play=<id>` (debug builds: a
   real room with the computer in the seats, started at once), and `room_setup() -> Array`, the
-  rows of options on the Tạo phòng board and on the waiting room's plate
+  rows of options on the waiting room's plate
   (`{key, label, options: [[label, value], …], default?}`: the first
   option is picked, or the one at index `default`), and `result_detail() -> Dictionary`, what
   the result board adds under its title: `{reason: String, rows: [[label, value], …]}` after the
