@@ -73,6 +73,12 @@ Notes on the options and on Codex:
 - Art baked before the shared rig keeps its own settings so a re-bake matches what is committed:
   `setup(…, lights=LEGACY_RIG)` (chess board/buttons, checkers at 96 samples) and go's disk rig.
   Only change a game's rig when you re-bake all of its art.
+- **The lobby's islands** are the app's own bake: `assets/sources/render_islands.py`
+  (`npm run blender -- app [co bai su-kien hanh-dong sap-co]`) models each genre's floating island
+  from code and bakes an 8-frame idle loop (waterfall, banner, trees, lanterns) into
+  `apps/client/hub/genres/<island>.webp`, a 4 × 2 grid of 512 px cells that `HubIsland` plays.
+  Bake every island in full colour: the client greys the ones not selected and adds the fog and
+  lock of a locked one. A new genre needs a function in `ISLANDS`, named by the genre's `island`.
 - Verify the bake with `python tools/blender/test_bake.py` or
   `blender -b --python tools/blender/test_bake.py`.
 
