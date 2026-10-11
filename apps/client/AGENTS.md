@@ -25,11 +25,11 @@ core/               Autoloads: Net (the app's XomDaoClient, server_url()), Sessi
 hub/                main.gd routes the screens: lobby (island ring + HUD), select (game select),
                     ben (Bến), room (waiting room), the game with ☰, the result over it
   lobby/            HubLobby, HubIslandRing (ring layout, swipe/tap), HubIsland (drawn islands)
-  select/           Three-island game carousel, fading detail and per-game splash art (art/)
+  select/           Game select: a rail of posters (splash art/ + flat logo/), genre objects
   touch_cancel.gd   DOM touchcancel capture for web gestures (before Godot releases the touch)
   ben/ room/        Bến; waiting room (seat cards, option rows), result, paged Luật board
-  home/ shop/       Nhà (HubHome: profile + shelf, someone else's read-only) and Chợ (HubShop);
-                    shelf.gd (HubShelf) is the tabbed shelf of item tiles both use
+  home/ shop/       Nhà (HubHome: tabs stacked down the left beside one page, someone else's
+                    read-only) and Chợ (HubShop)
   gallery/          Every UI kit component on 4 pages: ?gallery=<page> or `-- --gallery=<page>`
 addons/xomdao_sdk/  The only API a game's Godot code uses: XomDaoFrame, XomDaoClient (client.gd)
   ui/               The shared UI kit (theme, widgets, fonts, Phosphor icons, UI sounds)

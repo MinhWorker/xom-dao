@@ -325,7 +325,8 @@ func _show_profile_of(user_id: String) -> void:
 
 
 ## Fills a Nhà with `inventory:get` (yours for ""), naming the items from `shop:list`, then
-## its level, achievements and ranks (`stats:get`).
+## its level and achievements (`stats:get`) and, in your own, your finished games
+## (`history:recent`).
 func _fill_home(home: HubHome, user_id: String) -> bool:
 	var data: Dictionary = {} if user_id == "" else {"userId": user_id}
 	var reply: Dictionary = await _client.request(XomDaoProtocol.INVENTORY_GET, data)
@@ -339,6 +340,14 @@ func _fill_home(home: HubHome, user_id: String) -> bool:
 	var stats: Dictionary = await _client.request(XomDaoProtocol.STATS_GET, data)
 	if stats.get("ok") == true and is_instance_valid(home):
 		home.show_stats(XomDaoPlayerStats.from_dict(stats), _catalog.names())
+	if user_id == "" and is_instance_valid(home):
+		var history: Dictionary = await _client.request(XomDaoProtocol.HISTORY_RECENT)
+		if history.get("ok") == true and is_instance_valid(home):
+			var matches: Array[XomDaoMatchRecord] = []
+			for item: Variant in history.get("matches", []):
+				if item is Dictionary:
+					matches.append(XomDaoMatchRecord.from_dict(item))
+			home.show_history(matches, _catalog.names())
 	return true
 
 

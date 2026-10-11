@@ -225,18 +225,25 @@ tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến c
   đếm lên. Có âm thanh xu rơi.
 - Hai nút: **Chơi tiếp** (ván mới, cùng phòng) và **Về sảnh**. Ảnh concept còn ghi "Về đảo".
 
-## Nhà: hồ sơ, túi đồ, thành tích, xếp hạng
+## Nhà: hồ sơ, túi đồ, thành tích, lịch sử
 
 ![Trong Nhà](concepts/home-profile.webp)
 
 - Mở từ ảnh đại diện ở góc trên trái, hoặc nút Nhà ở hàng dưới trái.
-- Thẻ hồ sơ bên trái: ảnh đại diện, tên, cấp và thanh tiến độ, vài con số tổng.
-- Bên phải là kệ gỗ, chia theo **thẻ đánh dấu** (bookmark) gỗ: Túi đồ, Thành tích, Xếp hạng.
-- Túi đồ là các ô trên kệ. Vật phẩm nào cũng có biểu tượng vuông, nền trong suốt, để đặt được vào ô.
+- Bốn trang, chọn bằng **chồng thẻ dọc ở mép trái**: Hồ sơ, Túi đồ, Thành tích, Lịch sử. Thẻ
+  đang chọn có nền vàng. Bên phải là một tấm giấy lớn hiện trang đang chọn. (Ảnh concept trên là
+  bố cục cũ.)
+- **Hồ sơ**: ảnh đại diện lớn trong khung đang dùng, tên, chip cấp với thanh tiến độ, ba ô số (số
+  ván, số thắng, tỉ lệ thắng), và khung, lưng bài đang dùng.
+- **Lịch sử** là danh sách các ván đã xong, mới nhất ở trên: kết quả (Thắng, Thua, Hoà), tên trò,
+  chơi với ai, cách đây bao lâu và ván kéo dài bao lâu. Chỉ Nhà của chính bạn có trang này. Xếp
+  hạng xem ở Đình.
+- **Túi đồ**, **Thành tích** là lưới ô, cuộn dọc khi nhiều. Vật phẩm nào cũng có biểu
+  tượng vuông, nền trong suốt, để đặt được vào ô.
 - Cấp tính từ kinh nghiệm: 10 cho mỗi ván, cộng kinh nghiệm của mỗi thành tích đã đạt. Cấp N bắt
   đầu ở 50 × N × (N − 1) (cấp 2 ở 100, cấp 3 ở 300). Thanh tiến độ dưới chip cấp cho biết còn bao
   xa tới cấp sau.
-- Thành tích là ô trên kệ: chiếc cúp (vàng khi đã đạt), tên, "Đã đạt" hoặc số đếm như "3/10", và
+- Thành tích là ô trong lưới: chiếc cúp (vàng khi đã đạt), tên, "Đã đạt" hoặc số đếm như "3/10", và
   phần thưởng. Ô đã đạt đứng trước.
 - Xếp hạng là ô cho mỗi bảng có tên người đó: Cả xóm (theo kinh nghiệm) và từng trò (theo số ván
   thắng), mỗi ô ghi "Hạng N".

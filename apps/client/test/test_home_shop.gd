@@ -83,6 +83,8 @@ func test_home_wears_owned_items() -> void:
 	var home: HubHome = add_child_autofree(HubHome.new())
 	var owned: Array = ["core:frame-gold", "core:frame-jade", "core:card-back-lattice"]
 	home.show_profile(_profile("jade", owned), _items(owned))
+	assert_null(home.find_child("Item_frame-jade", true, false), "Hồ sơ comes first")
+	home.select("tui-do")
 	var worn: XomDaoButton = home.find_child("Equip_frame-jade", true, false)
 	assert_true(worn.disabled, "the frame you wear")
 	assert_eq(worn.text, "Đang dùng")
@@ -96,10 +98,29 @@ func test_home_wears_owned_items() -> void:
 	assert_eq((home.find_child("HomeAvatar", true, false) as XomDaoAvatar).frame, "jade")
 
 
+func test_home_stacks_its_tabs_left_of_the_page() -> void:
+	var settings := XomDaoSettings.new()
+	settings.path = ""
+	var home: HubHome = add_child_autofree(HubHome.new(settings))
+	home.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	home.size = XomDaoFrame.SIZE
+	await wait_process_frames(2)
+	var plate: Control = home.find_child("HomePlate", true, false)
+	var above: Control = null
+	for id: String in ["ho-so", "tui-do", "thanh-tich", "lich-su"]:
+		var tab: Control = home.find_child("Tab_" + id, true, false)
+		assert_lt(tab.global_position.x + tab.size.x, plate.global_position.x + 1.0, id)
+		if above != null:
+			assert_gt(tab.global_position.y, above.global_position.y, "%s is below" % id)
+		above = tab
+	assert_gt(plate.size.x, home.size.x * 0.6, "the page takes the rest")
+
+
 func test_someone_elses_home_is_read_only() -> void:
 	var home: HubHome = add_child_autofree(HubHome.new(null, false))
 	var owned: Array = ["core:frame-gold", "core:card-back-lattice"]
 	home.show_profile(_profile("gold", owned), _items(owned))
+	home.select("tui-do")
 	assert_not_null(home.find_child("Item_frame-gold", true, false))
 	assert_null(home.find_child("Equip_frame-gold", true, false))
 

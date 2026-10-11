@@ -47,6 +47,7 @@ export default async function run(t) {
   await onScene(lan, 'lobby');
   await tap(lan, 'Profile');
   await onScene(lan, 'nha');
+  await tap(lan, 'Tab_tui-do');
   await tap(lan, 'Equip_frame-jade');
   await lan.waitForFunction(() => window.xomdao.state().user.frame === 'jade');
   await godotText(lan, 'Equip_frame-jade', 'Đang dùng');
@@ -70,6 +71,7 @@ export default async function run(t) {
   await hung.screenshot({ path: t.shot('4-room-phone.png') });
   // Lan is the host, in the first seat: her Nhà opens, read-only.
   await tap(hung, 'Seat0');
+  await tap(hung, 'Tab_tui-do');
   await hung.waitForFunction(() => window.xomdao.rect('Item_frame-jade')?.width > 0);
   if (await hung.evaluate(() => window.xomdao.rect('Equip_frame-jade')))
     throw new Error("Someone else's Nhà offers Dùng");

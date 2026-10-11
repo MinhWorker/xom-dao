@@ -28,9 +28,9 @@ export default async function run(t) {
   const first = await lan.evaluate(() => window.xomdao.rect('Achievement_core-played-1'));
   if (!first) throw new Error('Ván đầu tiên is not on the shelf');
   await lan.screenshot({ path: t.shot('2-achievements.png') });
-  await tap(lan, 'Tab_xep-hang');
-  await godotText(lan, 'RankValue', /^Hạng \d+$/);
-  await lan.screenshot({ path: t.shot('3-ranks.png') });
+  await tap(lan, 'Tab_lich-su');
+  await godotText(lan, 'MatchOutcome', /^(Thắng|Thua|Hoà)$/);
+  await lan.screenshot({ path: t.shot('3-history.png') });
 
   await tap(lan, 'Back');
   await onScene(lan, 'lobby');
