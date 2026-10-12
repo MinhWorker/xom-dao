@@ -23,7 +23,8 @@ Never open a visible browser; everything here is headless.
    - text is readable at phone size; tap targets are at least the kit's button size;
    - the layout matches `docs/experience.md` (Bàn or Hành động);
    - sharpness on the `-crop.png` files, not the scaled ones.
-4. **Fix** in `_layout()` (design units: the fixed 1280 × 720 frame), export again, shoot again.
+4. **Fix** in `_layout()` (design units: fixed 1280, 1440, 1560 or 1600 × 720 frames), export
+   again, shoot again. Check an 18:9 viewport (720 × 360) as well as the device profiles.
 5. **Stop the dev server** by its PID when done (never `pkill -f`).
 
 For a whole flow (lobby → game → result) on a phone, run the e2e scenario instead:

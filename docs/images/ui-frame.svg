@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="-200 -40 1680 860" font-family="Baloo 2, system-ui, sans-serif">
-  <title>Khung hình: khung 16:9 cố định 1280 × 720, viền đen, lõi 960 × 720, hai góc HUD và lề</title>
+  <title>Khung hình: ví dụ khung 16:9 trong bốn khung cố định, viền đen, lõi 960 × 720, hai góc HUD và lề</title>
   <!-- The screen: black wherever the locked frame does not reach. -->
   <rect x="-200" y="-40" width="1680" height="860" fill="#111"/>
-  <!-- The frame: always 1280×720 (16:9). -->
+  <!-- The base preset: 1280×720 (16:9); wider presets keep the same centred core. -->
   <rect x="0" y="0" width="1280" height="720" fill="#e9f7fd" stroke="#2c5d7a" stroke-width="4"/>
   <!-- Core: 960×720, the middle of the frame. -->
   <rect x="160" y="0" width="960" height="720" fill="#fff4d6" stroke="#b5651d" stroke-width="5"/>
@@ -18,7 +18,7 @@
     <text x="640" y="420">Bàn chơi (trong lõi)</text>
   </g>
   <g font-size="30" font-weight="700" fill="#e9f7fd" text-anchor="middle">
-    <text x="640" y="770">Khung 1280 × 720 (16:9), lõi 960 × 720 ở giữa</text>
+    <text x="640" y="770">Ví dụ khung 16:9; lõi 960 × 720 ở giữa mọi khung</text>
   </g>
   <g font-size="24" fill="#1d3b4f">
     <text x="30" y="150" fill="#4a7a1e">lề 24 (chỉnh được)</text>
