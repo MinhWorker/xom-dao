@@ -1,12 +1,15 @@
 class_name XomDaoFrame
 extends RefCounted
-## The landscape frame every screen is designed on (docs/ui-guide.md): always 1280 × 720 units
-## (16:9), with black bars on screens of another shape. The 960 × 720 core in its middle is where
-## a table goes.
+## Fixed landscape frames for common phones (docs/ui-guide.md), all 720 units tall.
+## The best-fitting preset is centred with black bars; the 960 × 720 core is where a table goes.
 
 const HEIGHT := 720.0
 const SIZE := Vector2(1280.0, 720.0)
 const CORE := Vector2(960.0, 720.0)
+## 16:9, 18:9, 19.5:9 and 20:9. Never expand to an arbitrary window aspect ratio.
+const SIZES: Array[Vector2i] = [
+	Vector2i(1280, 720), Vector2i(1440, 720), Vector2i(1560, 720), Vector2i(1600, 720)
+]
 const WEB_SAFE_AREA := """
 (() => {
  let probe = document.getElementById('xomdao-safe-area');
@@ -31,6 +34,22 @@ const WEB_SAFE_AREA := """
  ]);
 })()
 """
+
+
+## The preset that fills the most window area without cropping or distorting the frame.
+## A tie keeps the narrower preset; tablets and portrait windows use the 16:9 base.
+static func size_for_window(window_size: Vector2) -> Vector2i:
+	var selected: Vector2i = SIZES[0]
+	var best_area: float = 0.0
+	if window_size.x <= 0.0 or window_size.y <= 0.0:
+		return selected
+	for preset: Vector2i in SIZES:
+		var scale: float = minf(window_size.x / preset.x, window_size.y / preset.y)
+		var area: float = preset.x * preset.y * scale * scale
+		if area > best_area:
+			selected = preset
+			best_area = area
+	return selected
 
 
 ## The core's rectangle inside a viewport of the given size, centred.

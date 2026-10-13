@@ -27,6 +27,8 @@ func test_two_clients_play_caro_by_room_code() -> void:
 	assert_eq(lan.room_code.length(), 4)
 	assert_true(await minh.join_room(lan.room_code.to_lower()), "Minh joins by code")
 	assert_eq(minh.room_code, lan.room_code)
+	var ready: Dictionary = await minh.request(XomDaoProtocol.ROOM_READY, {"ready": true})
+	assert_true(ready.get("ok") == true, "Minh is ready")
 	assert_true(await lan.start_game(), "Lan starts")
 
 	watch_signals(minh)

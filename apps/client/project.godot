@@ -20,6 +20,7 @@ config/icon.game_pack=""
 
 [autoload]
 
+FramePresets="*res://core/frame_presets.gd"
 Net="*res://core/net.gd"
 Session="*res://core/session.gd"
 Wallet="*res://core/wallet.gd"

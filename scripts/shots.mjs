@@ -28,6 +28,7 @@ import { signIn } from './e2e/godot.mjs';
 const DEVICES = {
   // Old and budget Android, 1280×720 panel.
   'android-720p': { width: 640, height: 360, dpr: 2, bar: 56 },
+  'android-18-9': { width: 720, height: 360, dpr: 3, bar: 56 },
   // The common Android panel today (1080×2400), a camera hole on one side.
   'android-fhd': { width: 800, height: 360, dpr: 3, inset: { left: 32 }, bar: 56 },
   'pixel-7': { width: 915, height: 412, dpr: 2.625, inset: { left: 28 }, bar: 56 },

@@ -6,26 +6,38 @@ hình. Game mới và mọi thay đổi giao diện bám theo đây.
 
 ## Khung hình
 
-Mọi thứ được thiết kế trên một **khung cố định 1280 × 720 đơn vị, tỉ lệ 16:9** (`XomDaoFrame`
-trong `apps/client/addons/xomdao_sdk/frame.gd`). Trong `project.godot`: kích thước gốc 1280 × 720,
-`stretch/mode = canvas_items`, `stretch/aspect = keep`. Mọi máy thấy cùng một khung; màn hình khác
-tỉ lệ thì có viền đen:
+Mọi thứ được thiết kế trên các **khung cố định cao 720 đơn vị** (`XomDaoFrame` trong
+`apps/client/addons/xomdao_sdk/frame.gd`). Khung gốc là 1280 × 720 (16:9),
+`stretch/mode = canvas_items`, `stretch/aspect = keep`. `FramePresets` tự chọn một trong bốn
+khung dưới đây khi mở ứng dụng, đổi kích thước cửa sổ hoặc xoay máy:
 
-| Tỉ lệ màn hình | Viền đen | Máy thường gặp |
+| Tỉ lệ khung | Khung (đơn vị) | Máy thường gặp |
 | --- | --- | --- |
-| 4:3, 16:10 | trên và dưới | iPad, máy tính bảng, một số laptop |
-| 16:9 | không có | laptop, màn hình máy tính, iPhone đời cũ |
-| 2:1, 20:9 | hai bên | phần lớn điện thoại bây giờ |
+| 16:9 | 1280 × 720 | laptop, màn hình máy tính, iPhone SE, điện thoại đời cũ |
+| 18:9 (2:1) | 1440 × 720 | điện thoại Android màn dài 18:9 |
+| 19.5:9 | 1560 × 720 | iPhone có tai thỏ hoặc Dynamic Island |
+| 20:9 | 1600 × 720 | phần lớn điện thoại Android hiện nay |
+
+Ứng dụng chọn khung phủ được nhiều diện tích màn hình nhất mà không cắt hay kéo méo hình;
+không có khung tự do, lựa chọn tỉ lệ tuỳ chỉnh hay chế độ `expand`. Máy tính bảng, cửa sổ hẹp
+và màn hình dọc dùng khung 16:9; màn rộng hơn 20:9 dùng khung 20:9. Thanh trình duyệt có thể làm
+ứng dụng chọn khung khác so với khi chạy PWA toàn màn hình.
 
 ![Khung hình](images/ui-frame.svg)
 
-- Khung được phóng to hết cỡ mà vẫn giữ tỉ lệ 16:9, nằm giữa màn hình. Phần thừa là **viền đen**.
+- Khung được phóng to hết cỡ mà vẫn giữ tỉ lệ đã chọn, nằm giữa màn hình. Phần thừa là **viền đen**.
   HUD tránh vùng an toàn (`XomDaoFrame.safe_inset`); tai thỏ đã nằm trong viền đen thì không tính
   nữa.
 - **Lõi 960 × 720** nằm giữa khung (`XomDaoFrame.core_rect`). Thứ bắt buộc phải thấy (bàn cờ, bài
-  trên tay, nút đánh) đặt trong lõi. Hai dải 160 đơn vị ở hai bên dành cho danh sách người chơi,
-  nút phụ, trang trí.
+  trên tay, nút đánh) đặt trong lõi. Hai dải bên cạnh rộng từ 160 đến 320 đơn vị mỗi bên, dành
+  cho danh sách người chơi, nút phụ, trang trí.
 - Chỉ chơi màn hình ngang.
+
+Ví dụ sảnh trên điện thoại Android 20:9 và laptop 16:9:
+
+![Sảnh trên Android 20:9](images/frame-presets-mobile.webp)
+
+![Sảnh trên laptop 16:9](images/frame-presets-desktop.webp)
 
 ## Đơn vị và cỡ tối thiểu
 

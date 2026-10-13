@@ -20,8 +20,8 @@ Godot bản khác sẽ ghi lại `project.godot` và các scene.
 
 | Đường dẫn | Có gì |
 | --- | --- |
-| `project.godot` | Khung cố định 1280 × 720 (16:9), `canvas_items` + `keep`, màn hình ngang ([ui-guide.md](../../docs/ui-guide.md)) |
-| `core/` | Autoload `Net` (kết nối), `Session` (token đăng nhập; đăng ký, đăng nhập, đăng xuất qua `/api/auth`), `Wallet`, `ContentLoader` (tải gói trò), `TestBridge` (cầu nối test, chỉ bản debug) |
+| `project.godot` | Khung gốc 1280 × 720; bốn khung cố định 16:9, 18:9, 19.5:9, 20:9, `canvas_items` + `keep`, màn hình ngang ([ui-guide.md](../../docs/ui-guide.md)) |
+| `core/` | Autoload `FramePresets` (chọn khung phù hợp khi mở và đổi kích thước), `Net` (kết nối), `Session` (token đăng nhập; đăng ký, đăng nhập, đăng xuất qua `/api/auth`), `Wallet`, `ContentLoader` (tải gói trò), `TestBridge` (cầu nối test, chỉ bản debug) |
 | `hub/` | Sảnh và màn của từng khối nền tảng; `hub/main.tscn` là màn đầu tiên |
 | `hub/select/` | Dãy thẻ trò (splash, logo, tên) và hàng thể loại; `art/` (splash) và `logo/` (logo trò, vật thể loại) là ảnh nhẹ của hub, xem được trước khi tải gói trò |
 | `addons/xomdao_sdk/` | API duy nhất phần Godot của trò được dùng: `XomDaoFrame`, `XomDaoClient` (kết nối server) |

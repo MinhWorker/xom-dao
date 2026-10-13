@@ -19,8 +19,8 @@ the server; this project only shows state and sends moves. Folder guide (Vietnam
 ## Layout
 
 ```
-project.godot       1280 × 720 frame locked to 16:9 (canvas_items + keep, black bars), landscape, Compatibility renderer
-core/               Autoloads: Net (the app's XomDaoClient, server_url()), Session (saved token, /api/auth register/login/logout),
+project.godot       1280 × 720 base; fixed 16:9, 18:9, 19.5:9, 20:9 presets (canvas_items + keep, black bars), landscape, Compatibility renderer
+core/               Autoloads: FramePresets (best-fitting fixed frame on startup and resize), Net (the app's XomDaoClient, server_url()), Session (saved token, /api/auth register/login/logout),
                     Wallet, ContentLoader (game packs), TestBridge (window.xomdao, debug web only)
 hub/                main.gd routes the screens: lobby (island ring + HUD), select (game select),
                     ben (Bến), room (waiting room), the game with ☰, the result over it
