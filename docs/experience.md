@@ -138,10 +138,10 @@ Mở game ─► Sảnh (vòng đảo)
   tên trò và vài dòng về gốc gác của trò đó, tự chuyển sau vài giây, chạm hoặc vuốt để chuyển
   sớm. Khi tải một trò thì mở đầu bằng tranh của chính trò đó. Trạng thái nằm ở góc dưới phải.
   Thêm trò mới thì thêm một dòng vào `SLIDES` trong `apps/client/hub/loading.gd`.
-- **Chuyển màn**: giữa hai màn luôn có một tấm màn xanh đậm viền vàng quét chéo từ trái sang, ghi
-  nơi sắp tới (Chọn trò, Chợ, Nhà…). Vào phòng thì tấm màn mang logo và tên trò. Bấm Bắt đầu thì
-  tới **màn riêng của trò**: tranh splash phủ kín, logo và tên trò ở giữa, vòng xoay "Đang tải";
-  màn này ở lại ít nhất gần hai giây rồi mờ dần sang bàn chơi.
+- **Chuyển màn**: các nơi chốn trong sảnh (Chọn trò, Nhà, Chợ, Đình, Bến) và nút ← đổi màn ngay lập
+  tức để thao tác nhanh gọn. Tấm màn xanh đậm viền vàng quét chéo mang logo và tên trò khi vào
+  phòng. Bấm Bắt đầu thì tới **màn riêng của trò**: tranh splash phủ kín, logo và tên trò ở giữa,
+  vòng xoay "Đang tải"; màn này ở lại ít nhất gần hai giây rồi mờ dần sang bàn chơi.
 - Nút ← luôn về đúng một bước. Từ ván đấu về sảnh có hỏi xác nhận nếu đang giữa ván.
 - Chơi với bạn bè: phòng nào cũng có **mã phòng** ngắn. Gửi mã hoặc link mời; bạn bè nhập mã ở Bến
   hoặc mở link là vào thẳng phòng. Thoát ra thì về sảnh, với trò đó đang được chọn.
@@ -260,8 +260,8 @@ tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến c
   - **Tạo tài khoản**: thêm tên trong game.
   Vào được rồi thì mới tới sảnh. Lần sau thiết bị nhớ đăng nhập. Người từng chơi như khách ở bản
   cũ cũng phải tạo tài khoản; dữ liệu của tài khoản khách cũ không chuyển sang.
-- Nút **Tài khoản** nằm cạnh ← (chỉ ở Nhà của mình): hiện tên đăng nhập và nút **Đăng xuất**, bấm
-  xong thì quay lại bảng Vào Xóm Đảo.
+- Nút **Tài khoản** nằm dưới các thẻ bên trái (chỉ ở Nhà của mình): hiện tên đăng nhập và nút
+  **Đăng xuất**, bấm xong thì quay lại bảng Vào Xóm Đảo.
 - Khi máy chủ đang ngủ (gói miễn phí), màn đầu ghi "Đang đánh thức máy chủ" và thử lại tới hai
   phút. Khi máy chủ đã lên bản protocol mới, màn đầu ghi "Đã có bản mới" kèm nút **Tải lại**.
 

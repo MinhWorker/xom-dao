@@ -75,6 +75,12 @@ func play(title: String = "", logo: Texture2D = null, style: Style = Style.SWEEP
 	_tween.tween_callback(_end)
 
 
+func stop() -> void:
+	if _tween != null:
+		_tween.kill()
+	_end()
+
+
 func _end() -> void:
 	running = false
 	visible = false

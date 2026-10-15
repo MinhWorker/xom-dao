@@ -276,6 +276,7 @@ export const Purchase = z.object({ item: ShopItem, balances: Balances });
 /** A player's Nhà: who they are, what they wear and what they own (free items included). */
 export const Profile = z.object({
   id: z.string(),
+  username: z.string().default(''),
   name: z.string(),
   avatar: z.string(),
   frame: z.string(),

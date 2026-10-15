@@ -17,7 +17,7 @@ extends Control
 signal back_pressed
 ## Dùng on an item of Túi đồ (your own Nhà only).
 signal equip_requested(item_id: String)
-## Tài khoản next to ← (your own Nhà only).
+## Tài khoản at the bottom of the left rail (your own Nhà only).
 signal account_pressed
 
 ## [id, label, icon], top to bottom.
@@ -55,7 +55,11 @@ var _tabs := VBoxContainer.new()
 var _plate := Control.new()
 var _page := Control.new()
 var _avatar := XomDaoAvatar.new()
+var _name_row := HBoxContainer.new()
 var _name := Label.new()
+var _username := Label.new()
+var _copy := Button.new()
+var _username_raw: String = ""
 var _level: XomDaoChip = XomDaoChip.create("Cấp 1", "star", XomDaoUi.HONEY_DARK)
 var _xp := ProgressBar.new()
 var _xp_text := Label.new()
@@ -83,8 +87,8 @@ var _drawer_out: float = 0.0:
 	set(value):
 		_drawer_out = value
 		_layout()
-## Tài khoản, next to ← (your own Nhà only).
-var _account: XomDaoIconButton = XomDaoIconButton.create("user-plus")
+## Đăng xuất / Tài khoản, at the bottom of the left rail (your own Nhà only).
+var _account: XomDaoIconButton = XomDaoIconButton.create("sign-out")
 
 
 func _init(settings: XomDaoSettings = null, own: bool = true) -> void:
@@ -99,7 +103,7 @@ func _init(settings: XomDaoSettings = null, own: bool = true) -> void:
 	if own:
 		_account.name = "AccountButton"
 		_account.pressed.connect(account_pressed.emit)
-		top.add_child(_account)
+		add_child(_account)
 	_tabs.name = "Tabs"
 	_tabs.add_theme_constant_override("separation", int(TAB_GAP))
 	add_child(_tabs)
@@ -150,6 +154,17 @@ func show_profile(profile: XomDaoProfile, items: Array[XomDaoShopItem]) -> void:
 	_profile = profile
 	_items = items
 	_name.text = profile.name
+	_username_raw = profile.username
+	if _username_raw == "" and editable and Net.client != null and Net.client.user != null:
+		_username_raw = Net.client.user.username
+	if _username_raw != "":
+		_username.text = "#" + _username_raw.trim_prefix("#")
+		_username.visible = true
+		_copy.visible = true
+	else:
+		_username.text = ""
+		_username.visible = false
+		_copy.visible = false
 	_avatar.initial = profile.name
 	_avatar.picture = XomDaoLooks.avatar(profile.avatar)
 	_avatar.frame = profile.frame
@@ -185,11 +200,46 @@ func _build_profile() -> void:
 	_plate.add_child(_page)
 	_avatar.name = "HomeAvatar"
 	_page.add_child(_avatar)
+	_name_row.name = "HomeNameRow"
+	_name_row.add_theme_constant_override("separation", 10)
+	_page.add_child(_name_row)
 	_name.name = "HomeName"
 	_name.theme_type_variation = "TitleLabel"
-	_name.clip_text = true
-	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_page.add_child(_name)
+	_name_row.add_child(_name)
+	_username.name = "HomeUsername"
+	var font := FontVariation.new()
+	font.base_font = XomDaoUi.display_font(700)
+	font.variation_transform = Transform2D(Vector2(1.0, 0.0), Vector2(0.2, 1.0), Vector2.ZERO)
+	_username.add_theme_font_override("font", font)
+	_username.add_theme_font_size_override("font_size", 28)
+	_username.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.55))
+	_username.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_username.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_name_row.add_child(_username)
+	_copy.name = "HomeCopyUsername"
+	_copy.icon = XomDaoUi.icon("copy")
+	_copy.expand_icon = true
+	_copy.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_copy.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	_copy.custom_minimum_size = Vector2(36.0, 36.0)
+	_copy.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_copy.focus_mode = Control.FOCUS_NONE
+	_copy.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var copy_style: StyleBoxFlat = XomDaoUi.box(
+		Color(XomDaoUi.PAPER_DARK, 0.5), Color.TRANSPARENT, 0, 8.0
+	)
+	var copy_hover: StyleBoxFlat = XomDaoUi.box(XomDaoUi.PAPER_DARK, XomDaoUi.HONEY, 1, 8.0)
+	var copy_down: StyleBoxFlat = XomDaoUi.box(XomDaoUi.HONEY_DARK, Color.TRANSPARENT, 0, 8.0)
+	_copy.add_theme_stylebox_override("normal", copy_style)
+	_copy.add_theme_stylebox_override("hover", copy_hover)
+	_copy.add_theme_stylebox_override("pressed", copy_down)
+	_copy.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	_copy.add_theme_color_override("icon_normal_color", Color(XomDaoUi.INK, 0.7))
+	_copy.add_theme_color_override("icon_hover_color", XomDaoUi.INK)
+	_copy.add_theme_color_override("icon_pressed_color", XomDaoUi.CREAM)
+	_copy.button_down.connect(XomDaoUi.bounce.bind(_copy))
+	_copy.pressed.connect(_on_copy_username)
+	_name_row.add_child(_copy)
 	_level.name = "HomeLevel"
 	_page.add_child(_level)
 	_xp.name = "HomeXp"
@@ -453,15 +503,18 @@ func _layout() -> void:
 	if not is_inside_tree():
 		return
 	top._layout()
-	_account.scale = top.back.scale
-	_account.position = (
-		top.back.position + Vector2((XomDaoIconButton.SIZE + 12.0) * _account.scale.x, 0.0)
-	)
 	var inset: Vector2 = XomDaoFrame.safe_inset(self)
 	var edge: float = _settings.margin
+	var k: float = _settings.ui_scale
 	var left: float = inset.x + edge
 	var up: float = top.bottom() + 12.0
 	var down: float = size.y - inset.y - edge
+	if editable:
+		_account.scale = Vector2.ONE * k
+		_account.position = Vector2(
+			left + (HubHomeTab.SIZE.x - XomDaoIconButton.SIZE * k) / 2.0,
+			down - XomDaoIconButton.SIZE * k
+		)
 	_tabs.position = Vector2(left, up)
 	_tabs.size = Vector2(HubHomeTab.SIZE.x, 0.0)
 	var plate_left: float = left + HubHomeTab.SIZE.x + GAP
@@ -493,13 +546,21 @@ func _layout() -> void:
 	_empty.size = _scroll.size
 
 
+func _on_copy_username() -> void:
+	if _username_raw == "":
+		return
+	DisplayServer.clipboard_set(_username_raw.trim_prefix("#"))
+	XomDaoUi.play(self, XomDaoUi.SOUND_TAP)
+	XomDaoToast.show_on(self, "Đã sao chép #%s" % _username_raw.trim_prefix("#"), "check-circle")
+
+
 func _layout_profile(room: Vector2) -> void:
 	_avatar.size = Vector2.ONE * AVATAR
 	_avatar.position = Vector2(8.0, 8.0)
 	var x: float = AVATAR + 40.0
 	var wide: float = room.x - x
-	_name.position = Vector2(x, 0.0)
-	_name.size = Vector2(wide, 60.0)
+	_name_row.position = Vector2(x, 0.0)
+	_name_row.size = Vector2(wide, 60.0)
 	_level.reset_size()
 	_level.position = Vector2(x, 72.0)
 	var bar_left: float = x + _level.size.x + 14.0

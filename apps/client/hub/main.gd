@@ -799,9 +799,9 @@ func _show_status(text: String, game_id: String = "") -> void:
 	loading.busy = text.begins_with("Đang")
 
 
-## Puts `screen` on in place of the one before (the game stays: it lives across rounds). Between
-## two real screens the curtain (HubTransition) comes down first: the old screen stays until it
-## covers everything, then the new one is there when it lifts.
+## Puts `screen` on in place of the one before (the game stays: it lives across rounds).
+## Transitions (HubTransition) are reserved for entering a room or game; navigation between hub
+## places (Sảnh, Chọn trò, Nhà, Chợ, Đình, Bến) and back buttons swap instantly.
 func _set_screen(shown: String, screen: Control) -> void:
 	var before: String = _shown
 	_shown = shown
@@ -821,8 +821,8 @@ func _set_screen(shown: String, screen: Control) -> void:
 	if before == "" or not is_inside_tree() or (before == "status" and screen is HubLoading):
 		_finish_swap()
 		return
-	screen.visible = false
 	if shown == "game":
+		screen.visible = false
 		_transition.play("", null, HubTransition.Style.FADE)
 		return
 	var card: XomDaoGameCard = null
@@ -830,13 +830,16 @@ func _set_screen(shown: String, screen: Control) -> void:
 		card = _catalog.card(_client.snapshot.game_id)
 	if shown == "room" and card == null and _catalog != null:
 		card = _catalog.card(_game_id)
-	# On the way to a game's own screen the curtain already wears the game's logo.
-	if screen is HubGameIntro and _catalog != null:
-		card = _catalog.card(_game_id_shown)
 	if card != null:
+		screen.visible = false
 		_transition.play(card.name, HubGameArt.logo(card.id))
+	elif shown == "room":
+		screen.visible = false
+		_transition.play(str(PLACE_NAMES.get("room", "Phòng")))
 	else:
-		_transition.play(str(PLACE_NAMES.get(shown, "")))
+		if _transition.running:
+			_transition.stop()
+		_finish_swap()
 
 
 ## The curtain covers everything (or there is none): the old screens go, the new one shows.
