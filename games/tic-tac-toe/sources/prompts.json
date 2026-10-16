@@ -1,10 +1,15 @@
 {
-  "$comment": "Prompts for this game's art: npm run gen:asset -- tic-tac-toe/<name> (the style in assets/prompts.json is added). The tile, pieces and cloth are baked with Blender (render_assets.py).",
+  "$comment": "Prompts for this game: paper is generated with Image Gen; legacy wooden art is baked with Blender (render_assets.py).",
   "assets": {
     "island": {
       "transparent": true,
       "maxSize": 640,
       "prompt": "A floating sky island: rocky brown underside tapering to a point with a few hanging vines, lush green grass on top, and on top a giant wooden tic-tac-toe board with chunky red X and blue O pieces, small bushes and a tiny red flag. Isometric 3/4 view, whole island visible."
+    },
+    "paper": {
+      "transparent": false,
+      "maxSize": 512,
+      "prompt": "Seamless flat top-down warm ivory natural notebook paper (#f4eedf), subtle fibers and fine matte tooth, evenly illuminated. No lines, grid, marks, pen, hand, text, shadows, folds, edges or vignette. Generated with Image Gen for the paper-and-ink Caro board."
     }
   }
 }

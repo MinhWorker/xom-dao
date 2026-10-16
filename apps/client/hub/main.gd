@@ -693,6 +693,10 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 
 func _show_result(snapshot: XomDaoRoomSnapshot) -> void:
 	_result = HubResult.new()
+	if _game.has_method("result_area"):
+		_result.dock(Callable(_game, "result_area"))
+		if _game.has_method("set_result_visible"):
+			_result.board_visibility_changed.connect(Callable(_game, "set_result_visible"))
 	_screen.add_child(_result)
 	_result.money.settings_pressed.connect(_menu.open_settings)
 	_result.again_pressed.connect(_client.start_game)

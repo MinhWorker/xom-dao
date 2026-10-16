@@ -127,6 +127,9 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
   `{key, label, options: [[nhãn, giá trị], …], default?}`, khớp `room.options`.
 - `result_detail() -> Dictionary`: phần game thêm vào bảng kết quả, dưới dòng Thời gian của hub:
   `{reason: "Đen thắng · Trắng hết nước", rows: [["Số lượt đi", 42], …]}`.
+- `result_area() -> Rect2` (tuỳ chọn): vùng trong khung của game để đặt HUD kết quả, không
+  phủ tối bàn chơi. `set_result_visible(shown: bool) -> void` nhận trạng thái **Xem bàn** /
+  **Kết quả** để game trượt bàn sang bên hoặc đưa về giữa. Không khai báo thì bảng vẫn ở giữa.
 - Hình và âm thanh: chép bản cần dùng từ `assets/` vào `godot/art/`, `godot/sounds/`, rồi
   `load("res://content/<id>/art/<tên>.webp")`. Nhạc nền: đặt file nhạc vào `godot/music/`; hub
   phát ngẫu nhiên một bài khi game đang chơi. Mỗi `AudioStreamPlayer` của game đặt
