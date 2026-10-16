@@ -61,6 +61,7 @@ export class InventoryService {
     if (!user) throw new InventoryError('Không tìm thấy người chơi');
     return {
       id: user.id,
+      username: user.username,
       name: user.name,
       avatar: user.avatar,
       frame: user.frame,

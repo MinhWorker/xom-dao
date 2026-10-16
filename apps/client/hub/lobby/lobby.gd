@@ -59,6 +59,7 @@ var _sidebar := Panel.new()
 var _places := VBoxContainer.new()
 var _profile := HBoxContainer.new()
 var _name := Label.new()
+var _username := Label.new()
 var _level: XomDaoChip = XomDaoChip.create("Cấp 1", "crown", XomDaoUi.GOLD_DARK)
 var _exp := ProgressBar.new()
 var _exp_text := Label.new()
@@ -139,6 +140,13 @@ func show_event(card: XomDaoGameCard) -> void:
 
 func show_user(user: XomDaoUser) -> void:
 	_name.text = user.name if user != null else ""
+	var uname: String = user.username if user != null else ""
+	if uname != "":
+		_username.text = "#" + uname.trim_prefix("#")
+		_username.visible = true
+	else:
+		_username.text = ""
+		_username.visible = false
 	avatar.initial = _name.text
 	avatar.picture = XomDaoLooks.avatar(user.avatar) if user != null else null
 	avatar.frame = user.frame if user != null else ""
@@ -239,14 +247,29 @@ func _build_profile() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.custom_minimum_size = Vector2(230.0, 0.0)
 	plate.add_child(column)
+	var name_row := HBoxContainer.new()
+	name_row.name = "NameRow"
+	name_row.add_theme_constant_override("separation", 8)
+	name_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(name_row)
 	_name.name = "PlayerName"
 	_name.theme_type_variation = "HudLabel"
 	_name.add_theme_font_size_override("font_size", 30)
-	_name.custom_minimum_size = Vector2(230.0, 38.0)
 	_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	column.add_child(_name)
+	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_row.add_child(_name)
+	_username.name = "PlayerUsername"
+	var font := FontVariation.new()
+	font.base_font = XomDaoUi.display_font(700)
+	font.variation_transform = Transform2D(Vector2(1.0, 0.0), Vector2(0.2, 1.0), Vector2.ZERO)
+	_username.add_theme_font_override("font", font)
+	_username.add_theme_font_size_override("font_size", 22)
+	_username.add_theme_color_override("font_color", Color("#9AAEC7"))
+	_username.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_username.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_row.add_child(_username)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", -14)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -466,25 +489,29 @@ func _layout() -> void:
 	var k: float = _settings.ui_scale
 	for part: Control in [_profile, money, _shortcuts, _card, _places]:
 		part.reset_size()
-	# The dock floats at the left edge, centred, shrunk to fit the height.
+	var top: float = inset.y + edge * 0.5
+	var bottom: float = view.y - edge * 0.5
+	var profile_left: float = inset.x + edge * 0.5
+	var right: float = view.x - inset.x - edge
+	# The top row shrinks rather than overlap itself.
+	var row_w: float = _profile.size.x + money.size.x + GAP
+	var k_top: float = minf(k, (right - profile_left) / row_w)
+	_profile.scale = Vector2.ONE * k_top
+	money.scale = Vector2.ONE * k_top
+	_profile.position = Vector2(profile_left, top + (88.0 - _profile.size.y) / 2.0 * k_top)
+	money.position = Vector2(right - money.size.x * k_top, top)
+	var hud_bottom: float = top + 88.0 * k_top
+	# The dock floats at the left edge under the top row, shrunk to fit the height.
 	var dock: Vector2 = _places.size + Vector2.ONE * 2.0 * DOCK_PAD
-	var k_side: float = minf(k, (view.y - 2.0 * GAP) / dock.y)
+	var side_space: float = bottom - hud_bottom - GAP
+	var k_side: float = minf(k, side_space / dock.y)
 	_sidebar.size = dock * k_side
-	_sidebar.position = Vector2(inset.x + edge * 0.5, (view.y - _sidebar.size.y) / 2.0)
+	_sidebar.position = Vector2(
+		inset.x + edge * 0.5, hud_bottom + GAP + (side_space - _sidebar.size.y) / 2.0
+	)
 	_places.scale = Vector2.ONE * k_side
 	_places.position = Vector2.ONE * DOCK_PAD * k_side
 	var left: float = _sidebar.position.x + _sidebar.size.x + edge * 0.5
-	var right: float = view.x - inset.x - edge
-	var top: float = inset.y + edge * 0.5
-	var bottom: float = view.y - edge * 0.5
-	# The top row shrinks rather than overlap itself.
-	var row_w: float = _profile.size.x + money.size.x + GAP
-	var k_top: float = minf(k, (right - left) / row_w)
-	_profile.scale = Vector2.ONE * k_top
-	money.scale = Vector2.ONE * k_top
-	_profile.position = Vector2(left, top + (88.0 - _profile.size.y) / 2.0 * k_top)
-	money.position = Vector2(right - money.size.x * k_top, top)
-	var hud_bottom: float = top + 88.0 * k_top
 	# The right column, shrunk to fit the height: the shortcuts hang under the top row and the
 	# card sits in the bottom corner.
 	var column_h: float = _shortcuts.size.y + GAP + _card.size.y
