@@ -1,0 +1,9 @@
+Locked-off orthographic camera. Animate the supplied card-game island as a quiet six-second idle loop. Preserve its original composition, painting style, geometry, colors and lighting.
+
+Make entire island inside the frame. Keep every treetop, banner pole, hanging vine and the full waterfall visible throughout, with generous empty padding on all sides. Keep the original 16:9 framing, constant apparent size and camera angle. Lock the rock base, ground, pavilion and playing cards to identical screen coordinates in every frame.
+
+Water flows steadily down the stream and waterfall, with delicate foam confined to its visible ending. Tree and bamboo leaves sway slightly, with all leaves attached. The blue cloth banner softly ripples from its fixed support. Hanging lanterns sway very subtly from fixed strings and maintain steady warm light.
+
+The entire rock island remains anchored at exactly the same screen position throughout. No up-and-down movement, bobbing, hovering motion, drifting, rotation, rocking, zooming or scaling of the island as a whole. The playing cards remain completely rigid and stationary: preserve their exact count, fan arrangement, suit markings and positions. The pavilion, rocks, paths and wooden structures remain unchanged.
+
+The background stays perfectly uniform solid magenta #FF00FF in every frame, with constant color and brightness. Keep the surrounding padding empty: no clouds, airborne leaves, particles or new objects. Camera position, framing, focus and exposure stay fixed. All animated details return to their starting pose and motion phase at the end for a seamless loop. One continuous shot with only local environmental idle motion.
