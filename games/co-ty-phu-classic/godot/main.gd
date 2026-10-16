@@ -154,7 +154,7 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = XomDaoUi.theme()
 	clip_contents = true
-	_cloth.color = Color("#123447")
+	_cloth.color = Color("#173B40")
 	_cloth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_cloth)
 	_board.name = "Board"
@@ -200,7 +200,7 @@ func _ready() -> void:
 		add_child(label)
 	_turn_name.name = "TurnName"
 	_turn_cash.name = "TurnCash"
-	_turn_cash.add_theme_color_override("font_color", XomDaoUi.HONEY_DARK)
+	_turn_cash.add_theme_color_override("font_color", Color("#3B7267"))
 	_notice.name = "Notice"
 	_status.name = "Status"
 	for label: Label in [_notice, _status]:
@@ -907,7 +907,7 @@ func _layout() -> void:
 	var radius: float = Rules.PANEL_AVATAR.z * width * 0.75
 	_turn_pawn.size = Vector2.ONE * radius * 1.6
 	_turn_pawn.position = avatar - _turn_pawn.size / 2.0
-	var font: int = clampi(roundi(height * 0.042), XomDaoUi.TEXT_MIN, 40)
+	var font: int = clampi(roundi(height * 0.034), XomDaoUi.TEXT_MIN, 32)
 	for pair: Array in [[_turn_name, Rules.PANEL_NAME], [_turn_cash, Rules.PANEL_CASH]]:
 		var label: Label = pair[0]
 		label.add_theme_font_size_override("font_size", font)

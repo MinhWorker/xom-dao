@@ -128,13 +128,16 @@ Một người sở hữu đủ ba ô nhận monopoly:
 Ô đang thế chấp không thu thuê; quyền sở hữu của nó vẫn tính vào bộ.
 
 Các ô liền nhau trong cùng bộ và cùng chủ gộp viền thành một khung chữ nhật theo mặt bàn.
-Sở hữu hai ô trong bộ thì các khung sáng nhẹ; đủ ba ô thì mọi khung của bộ sáng mạnh
-và có lửa chuyển động, kể cả khi các ô nằm cách nhau. Khung không nối qua ô khác bộ. Viền, quầng sáng và lửa nằm trong bề mặt ô, không tràn ra ngoài.
+Sở hữu hai ô trong bộ thì các khung có viền nhẹ; đủ ba ô thì mọi khung của bộ có viền rõ hơn,
+kể cả khi các ô nằm cách nhau. Viền dùng màu bộ, không thay màu chủ sở hữu. Khung không nối qua ô khác bộ. Viền và quầng sáng nằm trong bề mặt ô, không tràn ra ngoài.
 Ô pawn đang đứng không tô màu.
 Mỗi tài sản đã mua có badge màu chủ sở hữu dạng dải mảnh, phủ hết chiều ngang phần mặt ô và sát mép đầu, không chừa khoảng trống hay bo góc;
 badge nằm phẳng trong mép mặt ô, không che phần gờ hoặc làm tăng diện tích ô;
-1–4 nhà là chấm trắng đè lên badge,
-khách sạn là capsule trắng. Các ô không mua được có nền ánh kim, Khí vận màu vàng kim.
+1–4 nhà là công trình đặt phía trong ô, khách sạn là một công trình lớn hơn.
+Biểu tượng tài sản, badge sở hữu và cả thân/mái công trình mang màu chủ; đổi chủ đổi cả ba.
+Ô chưa có chủ dùng biểu tượng trung tính. Dải màu bộ đất nằm ở mép ngoài và luôn giữ nguyên,
+tách khỏi badge sở hữu ở mép trong.
+Các ô đặc biệt có mặt men màu riêng, Khí vận màu vàng. Đất thế chấp có dấu khóa trên mặt ô.
 
 | Ô | Địa danh | Màu | Giá đất | Xây mỗi cấp | Trống | 1 nhà | 2 nhà | 3 nhà | 4 nhà | Khách sạn |
 | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
