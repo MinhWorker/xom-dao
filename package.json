@@ -45,8 +45,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
-    "concurrently": "^10.0.5",
-    "playwright": "^1.63.0",
+    "concurrently": "^10.0.6",
+    "playwright": "^1.64.0",
     "sharp": "^0.35.5",
     "typescript": "~6.0.2",
     "ws": "^8.22.0"
