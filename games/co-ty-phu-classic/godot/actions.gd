@@ -4,6 +4,24 @@ extends RefCounted
 ## Each action is [node name, label, enabled]; an empty label keeps the button's own.
 
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
+const FIELD_BUTTONS: Array = [
+	["Bail", "Nộp 50", "pay-bail", XomDaoUi.Kind.SOCIAL],
+	["UseCard", "Dùng thẻ", "use-card", XomDaoUi.Kind.SOCIAL],
+	["Buy", "Mua", "buy", XomDaoUi.Kind.CONFIRM],
+	["Skip", "Bỏ qua", "end-turn", XomDaoUi.Kind.BACK],
+	["Bid", "Góp", "bid", XomDaoUi.Kind.CONFIRM],
+	["Pass", "Từ bỏ", "pass", XomDaoUi.Kind.BACK],
+	["Build", "Xây", "build", XomDaoUi.Kind.CONFIRM],
+	["EndTurn", "Hết lượt", "end-turn", XomDaoUi.Kind.BACK],
+	["PayDebt", "Trả nợ", "pay-debt", XomDaoUi.Kind.CONFIRM],
+	["Bankrupt", "Phá sản", "bankrupt", XomDaoUi.Kind.DANGER],
+]
+const CARD_BUTTONS: Array = [
+	["Confirm", "Xác nhận", "confirm-event", XomDaoUi.Kind.GO],
+	["Mortgage", "Thế chấp", "mortgage", XomDaoUi.Kind.SOCIAL],
+	["Redeem", "Chuộc", "redeem", XomDaoUi.Kind.CONFIRM],
+	["SellHouse", "Bán nhà", "sell-house", XomDaoUi.Kind.SOCIAL],
+]
 
 
 ## The field's buttons when the room waits on `me`: the dice, buying, an auction, the end of
@@ -41,11 +59,9 @@ static func phase_actions(view: Dictionary, me: int) -> Array:
 static func _auction(view: Dictionary, me: int, cash: int) -> Array:
 	var auction: Dictionary = view["auction"]
 	var amount: int = Rules.bid_amount(view)
+	var step: String = "Góp %s" % XomDaoUi.money(Rules.STATION_STEP)
 	var leading: bool = auction.get("leader") != null and int(auction["leader"]) == me
-	if auction.get("seller") == null:
-		var step: String = "Góp %s" % XomDaoUi.money(Rules.STATION_STEP)
-		return [["Bid", step, not leading and cash >= amount], ["Pass", "Từ bỏ", true]]
-	return [["Bid", "Trả %s" % XomDaoUi.money(amount), cash >= amount], ["Pass", "Bỏ", not leading]]
+	return [["Bid", step, not leading and cash >= amount], ["Pass", "Từ bỏ", true]]
 
 
 static func _build(view: Dictionary, me: int, cash: int) -> Array:
@@ -66,7 +82,7 @@ static func _build(view: Dictionary, me: int, cash: int) -> Array:
 	return [["Build", "Xây %s %s" % [what, XomDaoUi.money(cost)], bank > 0 and cash >= cost]]
 
 
-## Bán nhà, Chuộc, Thế chấp and Đấu giá for your own deed `i`, when the rules allow them now.
+## Bán nhà, Chuộc and Thế chấp for your own deed `i`, when the rules allow them now.
 static func deed_actions(view: Dictionary, me: int, i: int) -> Array:
 	var out: Array = []
 	var phase: String = view["phase"]
@@ -90,8 +106,6 @@ static func deed_actions(view: Dictionary, me: int, i: int) -> Array:
 	else:
 		var amount: int = Rules.mortgage_amount(properties, i)
 		out.append(["Mortgage", "Thế chấp +%s" % XomDaoUi.money(amount), true])
-		if houses == 0:
-			out.append(["Auction", "", true])
 	return out
 
 

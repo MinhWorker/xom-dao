@@ -1,75 +1,39 @@
+## Room snapshots drive the board; visual jobs preserve the order of movement and money.
 extends Control
-## Cờ tỷ phú Classic on the Godot client, in the **Bàn** layout (docs/experience.md): the 2.5D
-## board fills the frame, the players' slots stand in a column on the right (yours at the bottom,
-## its chip your cash), the board's printed panel shows who acts now. It draws `snapshot.view`
-## (View in src/game/model.ts) and sends the game's events (src/game/CoTyPhuClassicGame.ts).
-##
-## The green field in the middle holds the notice, the dice and your actions for the phase:
-## Gieo, Nộp 50 / Dùng thẻ in jail, Mua / Bỏ qua, Góp / Từ bỏ at a bus station, Trả / Bỏ in an
-## auction, Xây / Hết lượt, Trả nợ / Phá sản. A card over the field shows a drawn card or tax
-## (Xác nhận), a trade offer (Đồng ý / Từ chối) or a tapped square: its price, rent and owner,
-## and for your own deeds Thế chấp, Chuộc, Bán nhà, Đấu giá. Trao đổi (top right) opens trade.gd;
-## Tài sản and a deed's Thế chấp open mortgage.gd. Effects: dice.gd, gate.gd, victory.gd.
-## Named nodes for tests: Board, Square_<i>, Pawn_<seat>, Die_0, Die_1, Seat_<seat>, Notice,
-## Status, Card, CardTitle, CardText, and the buttons Roll, Bail, UseCard, Buy, Skip, Bid,
-## Pass, Build, EndTurn, PayDebt, Bankrupt, Confirm, Accept, Decline, Mortgage, Redeem,
-## SellHouse, Auction, Offer, Assets.
 
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
 const Texts := preload("res://content/co-ty-phu-classic/texts.gd")
+const PieceProjection := preload("res://content/co-ty-phu-classic/piece_projection.gd")
+const BoardSurface := preload("res://content/co-ty-phu-classic/board_surface.gd")
+const PawnMotion := preload("res://content/co-ty-phu-classic/pawn_motion.gd")
 const Actions := preload("res://content/co-ty-phu-classic/actions.gd")
-## The sounds in sounds/ (.wav), besides win.mp3.
+const Victory := preload("res://content/co-ty-phu-classic/victory.gd")
 const SOUNDS := (
 	"auction.wav bankrupt.wav build.wav buy.wav card-flip.wav coin.wav dice.wav jail.wav plane.wav"
 	+ " release.wav rent.wav step.wav turn.wav win.mp3 item-receive.mp3 trade-request.mp3"
 )
 const INKS: Array[Color] = [Color("#DF6554"), Color("#5793D3"), Color("#60AF72"), Color("#E6BE52")]
 const PAWNS: Array[String] = ["red", "blue", "green", "yellow"]
-const DECKS: Dictionary = {"chance": "Cơ hội", "chest": "Khí vận"}
-## The part of board.webp that is drawn (fractions of its width and height).
 const SEEN := Rect2(0.07, 0.048, 0.86, 0.822)
-const COLUMN := 210.0
+const COLUMN := 276.0
 const STEP_SECONDS := 0.14
 const FLY_SECONDS := 0.7
 const GOLD := Color("#FFE2A0")
 const FIELD_INK := Color("#2F4A3A")
-## Phase actions: [node name, label, event, kind].
-const ACTIONS: Array = [
-	["Roll", "Gieo", "roll", XomDaoUi.Kind.GO],
-	["Bail", "Nộp 50", "pay-bail", XomDaoUi.Kind.SOCIAL],
-	["UseCard", "Dùng thẻ", "use-card", XomDaoUi.Kind.SOCIAL],
-	["Buy", "Mua", "buy", XomDaoUi.Kind.CONFIRM],
-	["Skip", "Bỏ qua", "end-turn", XomDaoUi.Kind.BACK],
-	["Bid", "Góp", "bid", XomDaoUi.Kind.CONFIRM],
-	["Pass", "Từ bỏ", "pass", XomDaoUi.Kind.BACK],
-	["Build", "Xây", "build", XomDaoUi.Kind.CONFIRM],
-	["EndTurn", "Hết lượt", "end-turn", XomDaoUi.Kind.GO],
-	["PayDebt", "Trả nợ", "pay-debt", XomDaoUi.Kind.CONFIRM],
-	["Bankrupt", "Phá sản", "bankrupt", XomDaoUi.Kind.DANGER],
-]
-## Card actions: [node name, label, event, kind].
-const CARD_ACTIONS: Array = [
-	["Confirm", "Xác nhận", "confirm-event", XomDaoUi.Kind.GO],
-	["Accept", "Đồng ý", "accept-trade", XomDaoUi.Kind.CONFIRM],
-	["Decline", "Từ chối", "decline-trade", XomDaoUi.Kind.BACK],
-	["Mortgage", "Thế chấp", "mortgage", XomDaoUi.Kind.SOCIAL],
-	["Redeem", "Chuộc", "redeem", XomDaoUi.Kind.CONFIRM],
-	["SellHouse", "Bán nhà", "sell-house", XomDaoUi.Kind.SOCIAL],
-	["Auction", "Đấu giá", "auction", XomDaoUi.Kind.GO],
-]
 var _client: XomDaoClient
+var _snapshot_at: int = 0
 var _snapshot: XomDaoRoomSnapshot
 var _view: Dictionary = {}
-## Your seat, or -1 for a spectator.
 var _me: int = -1
 
-var _cloth := ColorRect.new()
+var _table := Control.new()
+var _game_hud: Array[Control] = []
+var _cloth: Control = preload("res://content/co-ty-phu-classic/background.gd").new()
 var _board := TextureRect.new()
 var _marks: Control = preload("res://content/co-ty-phu-classic/marks.gd").new()
 var _squares: Array[Control] = []
 var _pawns: Array[TextureRect] = []
 var _dice: Array[TextureRect] = []
-var _faces: Array[Texture2D] = []
 var _turn_pawn := TextureRect.new()
 var _turn_name := Label.new()
 var _turn_cash := Label.new()
@@ -82,37 +46,33 @@ var _card_title := Label.new()
 var _card_text := Label.new()
 var _card_row := HBoxContainer.new()
 var _slots: Array[XomDaoPlayerSlot] = []
-var _trade: PanelContainer = preload("res://content/co-ty-phu-classic/trade.gd").new()
-var _offer_trade: XomDaoButton = XomDaoButton.create("Trao đổi", XomDaoUi.Kind.SOCIAL)
-var _mortgage: PanelContainer = preload("res://content/co-ty-phu-classic/mortgage.gd").new()
-var _assets: XomDaoButton = XomDaoButton.create("Tài sản", XomDaoUi.Kind.SOCIAL)
+var _ledger: Control = preload("res://content/co-ty-phu-classic/ledger.gd").new()
+var _ledger_open: XomDaoIconButton = XomDaoIconButton.create("book-open")
 var _throw: Control = preload("res://content/co-ty-phu-classic/dice.gd").new()
 var _gate: Control = preload("res://content/co-ty-phu-classic/gate.gd").new()
-var _victory: Control = preload("res://content/co-ty-phu-classic/victory.gd").new()
+var _victory: Control = Victory.new()
 var _fx := Control.new()
 var _sounds: Dictionary = {}
 var _textures: Array[Texture2D] = []
 
-## The square you tapped, shown on the card (-1 for none).
 var _focus: int = -1
-## Where each pawn is drawn now (it lags the view while it walks).
 var _shown: Array[int] = []
-## Cash as shown on the slots (it changes when the money moves).
 var _cash: Array[int] = []
-## Animations run one after another; the actions wait for them.
 var _jobs: Array[Callable] = []
 var _running: bool = false
 var _readied: int = -1
 var _sent: bool = false
+var _can_roll: bool = false
+var _field_ink: Control = preload("res://content/co-ty-phu-classic/field_ink.gd").new()
 var _field := Rect2()
+var _surface: Control = BoardSurface.new()
+var _exchange: Control = preload("res://content/co-ty-phu-classic/turn_exchange.gd").new()
 
 
-## Options for a sandbox room (`?play=co-ty-phu-classic` in a debug build): three computer players.
 func sandbox_options() -> Dictionary:
 	return {"bots": 3, "turnSeconds": 30}
 
 
-## The hub's Tạo phòng board (`optionsSchema` in src/game/model.ts, with its defaults).
 func room_setup() -> Array:
 	return [
 		{
@@ -129,18 +89,11 @@ func room_setup() -> Array:
 	]
 
 
-## The figures for the hub's result board.
 func result_detail() -> Dictionary:
 	if _client != null and _client.snapshot != null:
 		_show(_client.snapshot)
-	if _view.is_empty() or _view.get("winner") == null:
-		return {}
-	var winner: int = int(_view["winner"])
-	var rows: Array = [
-		["Số vòng", str(int(_view["round"]) + 1)],
-		["Tổng tài sản", XomDaoUi.money(Rules.asset_value(_view, winner)) + " ₫"],
-	]
-	return {"reason": "Các đối thủ đã phá sản", "rows": rows}
+	var detail: Dictionary = Victory.result_detail(_view)
+	return detail
 
 
 func bind(client: XomDaoClient) -> void:
@@ -154,7 +107,6 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = XomDaoUi.theme()
 	clip_contents = true
-	_cloth.color = Color("#123447")
 	_cloth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_cloth)
 	_board.name = "Board"
@@ -165,42 +117,44 @@ func _ready() -> void:
 	add_child(_board)
 	_marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_marks)
+	add_child(_surface)
+	add_child(_exchange)
 	for i: int in Rules.SQUARES.size():
 		var square := Control.new()
 		square.name = "Square_%d" % i
-		square.mouse_filter = Control.MOUSE_FILTER_STOP
-		square.gui_input.connect(_on_square_input.bind(i))
+		square.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(square)
 		_squares.append(square)
-	for face: int in 6:
-		_faces.append(load("res://content/co-ty-phu-classic/art/dice-%d.webp" % (face + 1)))
 	add_child(_throw)
-	_throw.set("faces", _faces)
+	_throw.set("board", _board)
 	for k: int in 2:
-		var die := TextureRect.new()
+		var die: TextureRect = preload("res://content/co-ty-phu-classic/die_mesh.gd").new()
 		die.name = "Die_%d" % k
-		die.texture = _faces[0]
+		die.set("value", 1)
 		die.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		die.mouse_filter = Control.MOUSE_FILTER_STOP
 		die.gui_input.connect(_on_dice_input)
 		add_child(die)
 		_dice.append(die)
 	_throw.set("dice", _dice)
+	_throw.set("pawns", _pawns)
 	for color: String in PAWNS:
 		_textures.append(load("res://content/co-ty-phu-classic/art/pawn-%s.webp" % color))
 	_turn_pawn.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_turn_pawn.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_turn_pawn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_pawn.hide()
 	add_child(_turn_pawn)
 	for label: Label in [_turn_name, _turn_cash]:
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		label.add_theme_font_override("font", XomDaoUi.display_font(800))
 		label.add_theme_color_override("font_color", XomDaoUi.INK)
 		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.self_modulate.a = 0.0
 		add_child(label)
 	_turn_name.name = "TurnName"
 	_turn_cash.name = "TurnCash"
-	_turn_cash.add_theme_color_override("font_color", XomDaoUi.HONEY_DARK)
+	_turn_cash.add_theme_color_override("font_color", Color("#3B7267"))
 	_notice.name = "Notice"
 	_status.name = "Status"
 	for label: Label in [_notice, _status]:
@@ -210,34 +164,37 @@ func _ready() -> void:
 		label.add_theme_font_override("font", XomDaoUi.display_font(800))
 		label.add_theme_font_size_override("font_size", XomDaoUi.TEXT_MIN)
 		add_child(label)
+	_notice.self_modulate.a = 0.0
+	_status.self_modulate.a = 0.0
+	_field_ink.set("status_source", _status)
+	_field_ink.set("source", _notice)
+	_throw.add_child(_field_ink)
+	_throw.move_child(_field_ink, 0)
+	_throw.set("prompt", _status)
 	_notice.add_theme_color_override("font_color", FIELD_INK)
 	_status.add_theme_color_override("font_color", XomDaoUi.LACQUER_DARK)
 	_row.name = "Actions"
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_row.add_theme_constant_override("separation", 10)
 	add_child(_row)
-	for action: Array in ACTIONS:
+	for action: Array in Actions.FIELD_BUTTONS:
 		_row.add_child(_action_button(action))
 	_build_card()
-	_offer_trade.name = "Offer"
-	_offer_trade.visible = false
-	_offer_trade.pressed.connect(func() -> void: _trade.call("open", _view, _me, _names()))
-	add_child(_offer_trade)
-	_trade.connect("offered", _on_offer)
-	_trade.visibility_changed.connect(_refresh)
-	add_child(_trade)
-	_assets.name = "Assets"
-	_assets.visible = false
-	_assets.pressed.connect(_open_mortgage)
-	add_child(_assets)
-	_mortgage.connect("chosen", _on_mortgage)
-	_mortgage.visibility_changed.connect(_refresh)
-	add_child(_mortgage)
+	_surface.call("attach", _buttons)
+	_ledger_open.name = "LedgerOpen"
+	_ledger_open.custom_minimum_size = Vector2(112, 112)
+	_ledger_open.background = XomDaoUi.SEA_DEEP
+	_ledger_open.get("_body").set("radius", 56.0)
+	_ledger_open.pressed.connect(func() -> void: _ledger.call("open"))
+	add_child(_ledger_open)
+	_ledger.connect("acted", _on_ledger_action)
+	_ledger.visibility_changed.connect(_refresh)
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_fx)
 	add_child(_victory)
 	add_child(_gate)
+	add_child(_ledger)
 	for sound: String in SOUNDS.split(" "):
 		var player := AudioStreamPlayer.new()
 		player.bus = XomDaoSettings.SFX_BUS
@@ -245,6 +202,27 @@ func _ready() -> void:
 		player.max_polyphony = 3
 		add_child(player)
 		_sounds[sound.get_basename()] = player
+	_table.name = "Table"
+	_table.position = Vector2.ZERO
+	_table.size = size
+	_table.mouse_filter = Control.MOUSE_FILTER_STOP
+	_table.clip_contents = true
+	_game_hud = [
+		_surface,
+		_exchange,
+		_row,
+		_card,
+		_ledger_open,
+		_ledger,
+		_turn_pawn,
+		_turn_name,
+		_turn_cash,
+		_notice,
+		_status,
+		_field_ink,
+		_fx,
+	]
+	_victory.call("wrap_table", self, _table)
 	resized.connect(_layout)
 	_layout.call_deferred()
 
@@ -286,13 +264,14 @@ func _build_card() -> void:
 	_card_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_card_row.add_theme_constant_override("separation", 10)
 	column.add_child(_card_row)
-	for action: Array in CARD_ACTIONS:
+	for action: Array in Actions.CARD_BUTTONS:
 		_card_row.add_child(_action_button(action))
 	add_child(_card)
 
 
 func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	_snapshot = snapshot
+	_snapshot_at = Time.get_ticks_msec()
 	if snapshot.view is not Dictionary:
 		return
 	var view: Dictionary = snapshot.view
@@ -307,11 +286,21 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		_view = view
 		_place_all()
 		_refresh()
+		if view.get("winner") != null:
+			_enqueue(_win)
 		return
 	var before: Dictionary = _view
+	if before.get("winner") != null and view.get("winner") == null:
+		_victory.call("reset")
+		_ledger.hide()
+		_turn_pawn.hide()
+	if BoardSurface.event_changed(before.get("specialEvent"), view.get("specialEvent")):
+		_readied = -1
 	_view = view
+	_refresh_marks()
 	_sent = false
 	_animate(before, view)
+	_ledger.call("refresh", _view, _me, _names(), _slots, _running or _sent)
 	if not _running:
 		_refresh()
 
@@ -326,19 +315,19 @@ func _build(count: int, view: Dictionary) -> void:
 	_shown.clear()
 	_cash.clear()
 	for seat: int in count:
-		var slot := XomDaoPlayerSlot.new()
+		var slot: XomDaoPlayerSlot = preload("res://content/co-ty-phu-classic/player_card.gd").new()
 		slot.name = "Seat_%d" % seat
-		slot.compact = true
-		add_child(slot)
-		move_child(slot, _card.get_index())
+		slot.set("accent", INKS[seat % INKS.size()])
+		_table.add_child(slot)
+		_table.move_child(slot, _card.get_index())
 		_slots.append(slot)
-		var pawn := TextureRect.new()
+		var pawn: TextureRect = preload("res://content/co-ty-phu-classic/pawn_piece.gd").new()
 		pawn.name = "Pawn_%d" % seat
 		pawn.texture = _textures[seat % 4]
 		pawn.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		pawn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(pawn)
-		move_child(pawn, _dice[0].get_index())
+		_table.add_child(pawn)
+		_table.move_child(pawn, _dice[0].get_index())
 		_pawns.append(pawn)
 		var player: Dictionary = view["players"][seat]
 		_shown.append(int(player["position"]))
@@ -367,10 +356,7 @@ func _owner(i: int) -> int:
 	return -1 if owner == null else int(owner)
 
 
-# ── Animation ────────────────────────────────────────────────────────────────────────────────
-
-
-## Queues what changed from `before` to `view`: the dice, each pawn's walk or flight, the money.
+## Queue the dice, clockwise paths or airport transport, then the remaining transfers.
 func _animate(before: Dictionary, view: Dictionary) -> void:
 	var turn: int = int(before["turn"])
 	var dice: Variant = view.get("dice")
@@ -392,6 +378,11 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 		_enqueue(_gate_job.bind(false))
 	if rolled:
 		_enqueue(_roll.bind((dice as Array).duplicate(), turn))
+	var transfers: Array = (
+		view.get("transfers", []).duplicate(true)
+		if int(view.get("moneySequence", 0)) != int(before.get("moneySequence", 0))
+		else []
+	)
 	var players: Array = view["players"]
 	for seat: int in players.size():
 		var was: Dictionary = before["players"][seat]
@@ -404,23 +395,44 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 		if to == int(was["position"]) and bool(now["jailed"]) == bool(was["jailed"]):
 			continue
 		var steps: int = posmod(to - int(was["position"]), 40)
+		var reward: Array = []
+		for entry: Dictionary in transfers.duplicate():
+			if (
+				entry.get("from") == null
+				and entry.get("to") == seat
+				and entry.get("reason") in ["Qua Xuất phát", "Đáp Xuất phát"]
+			):
+				reward.append(entry)
+				transfers.erase(entry)
 		var jailing: bool = bool(now["jailed"]) and not bool(was["jailed"])
 		if jailing:
+			if int(was["position"]) == 30 and to == 10:
+				_enqueue(_jail_spotlight.bind(seat))
 			if seat == _me:
 				_enqueue(_gate_job.bind(true))
 			_enqueue(_fly.bind(seat, to, "jail"))
 		elif bool(was["jailed"]) and not bool(now["jailed"]) and steps == 0 and seat != _me:
 			_enqueue(_sfx_job.bind("release"))
-		elif steps > 0 and steps <= 12 and int(was["position"]) != 20:
-			_enqueue(_walk.bind(seat, int(was["position"]), steps))
+		elif (
+			steps > 0
+			and not (
+				before.get("specialEvent") is Dictionary
+				and before["specialEvent"].get("kind") == "airport"
+			)
+		):
+			_enqueue(_walk.bind(seat, int(was["position"]), steps, reward))
 		else:
-			_enqueue(_fly.bind(seat, to, "plane" if int(was["position"]) == 20 else "step"))
+			_enqueue(_fly.bind(seat, to, "plane", reward))
 	if int(view.get("moneySequence", 0)) != int(before.get("moneySequence", 0)):
-		var transfers: Array = view.get("transfers", [])
 		if not transfers.is_empty():
 			_enqueue(_money.bind(transfers.duplicate(true)))
-	if view.get("specialEvent") is Dictionary and before.get("specialEvent") is not Dictionary:
-		_enqueue(_sfx_job.bind("card-flip"))
+	if (
+		view.get("specialEvent") is Dictionary
+		and BoardSurface.event_changed(before.get("specialEvent"), view.get("specialEvent"))
+	):
+		var revealed: Dictionary = view["specialEvent"]
+		if revealed.get("kind") == "card":
+			_enqueue(_draw_event.bind(revealed.duplicate(true)))
 	if view["phase"] == "trade" and before["phase"] != "trade" and Rules.decision_seat(view) == _me:
 		_enqueue(_sfx_job.bind("trade-request"))
 	if str(view["phase"]) == "auction" and str(before["phase"]) != "auction":
@@ -457,6 +469,13 @@ func _run() -> void:
 	_refresh()
 
 
+func _draw_event(event: Dictionary) -> void:
+	for die: TextureRect in _dice:
+		die.hide()
+	_sfx("card-flip")
+	await _surface.call("reveal", event)
+
+
 func _sfx_job(sound: String) -> void:
 	_sfx(sound)
 	await get_tree().process_frame
@@ -467,7 +486,6 @@ func _roll(values: Array, seat: int) -> void:
 	await _throw.call("roll", values, _notice, _seat_name(seat))
 
 
-## The jail doors: shut as you are sent in (the pawn flies meanwhile), apart as you walk out.
 func _gate_job(shut: bool) -> void:
 	if shut:
 		_gate.call("slam")
@@ -477,77 +495,125 @@ func _gate_job(shut: bool) -> void:
 		await _gate.call("open")
 
 
+func _jail_spotlight(seat: int) -> void:
+	var pawn: TextureRect = _pawns[seat]
+	var foot: Vector2 = pawn.position + Vector2(pawn.size.x / 2.0, pawn.size.y * 0.92)
+	await _gate.call("spotlight", foot, _board.size.x * 0.075)
+
+
 func _win() -> void:
-	_sfx("win")
 	var seat: int = int(_view["winner"])
-	var title: String = "%s chiến thắng!" % _seat_name(seat)
-	_victory.call("play", _textures[seat % 4], title, Rules.asset_value(_view, seat))
-	await get_tree().process_frame
+	_can_roll = false
+	_sfx("win")
+	await _victory.call(
+		"play",
+		_table,
+		_pawns[seat],
+		Vector2(size.x * 0.43, size.y * 0.52),
+		_game_hud,
+		_buttons.values(),
+		_slots,
+		_dice,
+		_throw
+	)
 
 
-func _walk(seat: int, from: int, steps: int) -> void:
+## The hub shows the result after the camera has settled on the winning pawn.
+func wait_for_result_panel() -> void:
+	await _victory.call("wait_for_panel")
+
+
+## Xem bàn restores the overview; Kết quả brings the winner back into focus.
+func set_result_view(looking: bool) -> void:
+	_victory.call("set_board_view", looking)
+
+
+func can_declare_bankruptcy() -> bool:
+	return (
+		not _view.is_empty()
+		and _me >= 0
+		and _me < _view["players"].size()
+		and _view.get("winner") == null
+		and not bool(_view["players"][_me]["bankrupt"])
+	)
+
+
+func declare_bankruptcy() -> bool:
+	if _client == null or _sent or not can_declare_bankruptcy():
+		return false
+	_sent = true
+	_refresh()
+	var accepted: bool = await _client.send("bankrupt", {})
+	if not accepted:
+		_sent = false
+		if is_inside_tree():
+			_refresh()
+	return accepted
+
+
+## Start rewards belong to the arrival hop, before the rest of the clockwise path.
+func _walk(seat: int, from: int, steps: int, reward: Array = []) -> void:
 	for k: int in steps:
 		var square: int = (from + k + 1) % 40
 		_shown[seat] = square
-		var tween: Tween = create_tween()
 		var pawn: TextureRect = _pawns[seat]
 		var target: Vector2 = _pawn_position(seat, square)
-		var lift := Vector2(0.0, -pawn.size.y * 0.25)
-		tween.tween_property(
-			pawn, "position", (pawn.position + target) / 2.0 + lift, STEP_SECONDS / 2.0
-		)
-		tween.tween_property(pawn, "position", target, STEP_SECONDS / 2.0)
 		_sfx("step")
-		await tween.finished
+		await PawnMotion.move(self, pawn, target, STEP_SECONDS, 0.045)
 		if not is_inside_tree():
 			return
+		if square == 0 and not reward.is_empty():
+			await _money(reward)
 	_place_pawns()
 
 
-func _fly(seat: int, to: int, sound: String) -> void:
+## The airport carries the pawn; jail retains its separate transport.
+func _fly(seat: int, to: int, sound: String, reward: Array = []) -> void:
 	_sfx(sound)
 	_shown[seat] = to
 	var pawn: TextureRect = _pawns[seat]
 	var target: Vector2 = _pawn_position(seat, to)
-	var tween: Tween = create_tween()
-	tween.tween_property(
-		pawn, "position", (pawn.position + target) / 2.0 - Vector2(0.0, 80.0), FLY_SECONDS / 2.0
-	)
-	tween.tween_property(pawn, "position", target, FLY_SECONDS / 2.0)
-	await tween.finished
+	if sound == "plane":
+		await _throw.call(
+			"fly", pawn, target, _money.bind(reward) if not reward.is_empty() else Callable()
+		)
+	else:
+		await PawnMotion.move(self, pawn, target, FLY_SECONDS, 0.65)
 	if is_inside_tree():
 		_place_pawns()
 
 
-## Shows each player's net change over their slot, then updates the cash.
+## Count both endpoints before applying the external HUD cash effect.
 func _money(transfers: Array) -> void:
 	_sfx(Rules.money_sound(transfers))
+	for transfer: Dictionary in transfers:
+		if transfer.get("reason") not in ["Qua Xuất phát", "Đáp Xuất phát"]:
+			continue
+		var recipient: Variant = transfer.get("to")
+		if recipient != null and int(recipient) < _pawns.size():
+			Texts.start_reward_burst(_fx, _pawns[int(recipient)])
 	var net: Dictionary = Rules.net_changes(transfers)
+	for seat: Variant in net:
+		var change: int = int(net[seat])
+		if change == 0 or int(seat) >= _slots.size():
+			continue
+		Texts.float_money_change(_fx, _pawns[int(seat)], change, int(seat))
+	await _exchange.call("play", transfers)
 	for seat: Variant in net:
 		var change: int = int(net[seat])
 		if change == 0 or int(seat) >= _slots.size():
 			continue
 		_cash[int(seat)] += change
 		var slot: XomDaoPlayerSlot = _slots[int(seat)]
-		var label: Label = Texts.floater(XomDaoUi.delta(change), XomDaoUi.delta_color(change))
-		_fx.add_child(label)
-		label.reset_size()
-		label.position = slot.position + Vector2(slot.size.x - label.size.x, -8.0)
-		var tween: Tween = label.create_tween()
-		tween.tween_property(label, "position:y", label.position.y - 40.0, 1.1)
-		tween.parallel().tween_property(label, "modulate:a", 0.0, 1.1).set_delay(0.5)
-		tween.tween_callback(label.queue_free)
+		slot.call("change_cash", _cash[int(seat)], change)
+	await get_tree().create_timer(1.04).timeout
 	_show_slots()
-	await get_tree().create_timer(0.35).timeout
 
 
 func _sfx(sound: String) -> void:
 	var player: AudioStreamPlayer = _sounds.get(sound)
 	if player != null and XomDaoSettings.current().sfx and is_inside_tree():
 		player.play()
-
-
-# ── Input ────────────────────────────────────────────────────────────────────────────────
 
 
 static func _is_tap(event: InputEvent) -> bool:
@@ -559,30 +625,29 @@ static func _is_tap(event: InputEvent) -> bool:
 	return false
 
 
-func _on_square_input(event: InputEvent, i: int) -> void:
-	if not _is_tap(event):
-		return
-	_focus = -1 if _focus == i else i
-	XomDaoUi.play(self, XomDaoUi.SOUND_TAP)
-	_refresh()
+func _on_square_input(_event: InputEvent, _i: int) -> void:
+	pass
 
 
 func _on_board_input(event: InputEvent) -> void:
+	if _view.get("winner") != null:
+		return
 	if _is_tap(event) and _focus >= 0:
 		_focus = -1
 		_refresh()
 
 
 func _on_dice_input(event: InputEvent) -> void:
-	if _is_tap(event) and (_buttons["Roll"] as Control).visible:
+	if _view.get("winner") == null and _is_tap(event) and _can_roll:
 		_on_action("Roll", "roll")
 
 
 func _on_action(button: String, event: String) -> void:
-	if _client == null or _sent:
+	if _client == null or _sent or _view.get("winner") != null:
 		return
 	if button == "Mortgage":
-		_open_mortgage(_focus)
+		_ledger.call("open", 0, _focus)
+		_ledger.get("_estate").call("_batch")
 		return
 	var payload: Dictionary = {}
 	match button:
@@ -590,7 +655,7 @@ func _on_action(button: String, event: String) -> void:
 			payload = {"amount": Rules.bid_amount(_view)}
 		"Build":
 			payload = {"square": int(_view["buildable"])}
-		"Redeem", "SellHouse", "Auction":
+		"Redeem", "SellHouse":
 			payload = {"square": _focus}
 	_sent = true
 	_refresh()
@@ -601,28 +666,18 @@ func _on_action(button: String, event: String) -> void:
 			_refresh()
 
 
-## Thế chấp tài sản, with `square` picked.
-func _open_mortgage(square: int = -1) -> void:
-	_trade.hide()
-	_focus = -1
-	_mortgage.call("open", _view, _me, square)
-
-
-func _on_mortgage(squares: Array[int]) -> void:
-	if _client != null and not _sent:
-		_sent = true
-		if not await _client.send("mortgage", {"squares": squares}):
-			_sent = false
-
-
-func _on_offer(payload: Dictionary) -> void:
-	if _client != null and not _sent:
-		_sent = true
-		if not await _client.send("offer-trade", payload):
-			_sent = false
-
-
-# ── State ────────────────────────────────────────────────────────────────────────────────
+func _on_ledger_action(event: String, payload: Dictionary) -> void:
+	if _client == null or _sent or _view.get("winner") != null:
+		return
+	_sent = true
+	_refresh()
+	if await _client.send(event, payload):
+		if event == "bankrupt":
+			_ledger.hide()
+	else:
+		_sent = false
+		if is_inside_tree():
+			_refresh()
 
 
 func _refresh() -> void:
@@ -636,13 +691,26 @@ func _refresh() -> void:
 	_show_panel()
 	_show_actions()
 	_show_card()
-	_marks.set("view", _view)
-	_marks.set("focus", _focus)
-	_marks.queue_redraw()
+	var confirming: bool = str(_view["phase"]) == "event" and not _running
+	_field_ink.set("confirmation", confirming)
+	_field_ink.set("heading", _card_title.text)
+	_field_ink.set("description", _card_text.text)
+	for die: TextureRect in _dice:
+		die.visible = (
+			_view.get("winner") == null
+			and (str(_view["phase"]) != "event" or not str(_throw.get("_motion")).is_empty())
+		)
+	_throw.visible = not _ledger.visible
+	_refresh_marks()
 	_layout()
 
 
-## Tells the server the drawn card is on screen, so its countdown starts (`event-ready`).
+func _refresh_marks() -> void:
+	_marks.set("view", _view)
+	_marks.set("focus", _focus)
+	_marks.queue_redraw()
+
+
 func _ready_event() -> void:
 	var event: Variant = _view.get("specialEvent")
 	if event is not Dictionary or str(_view["phase"]) != "event" or int(_view["turn"]) != _me:
@@ -664,8 +732,10 @@ func _show_slots() -> void:
 		var info: XomDaoPlayerInfo = (
 			_snapshot.seats[seat] if seat < _snapshot.seats.size() else null
 		)
-		slot.player_name = _seat_name(seat)
+		slot.player_name = info.name if info != null else _seat_name(seat)
+		slot.set("local_player", seat == _me)
 		if info != null:
+			slot.picture = XomDaoLooks.avatar("bot" if info.bot else info.avatar)
 			slot.frame = info.frame
 			slot.host = info.id != "" and info.id == str(_snapshot.host_id)
 		if bool(player["bankrupt"]):
@@ -674,60 +744,67 @@ func _show_slots() -> void:
 			slot.extra = "Tù · %s" % XomDaoUi.money(_cash[seat])
 		else:
 			slot.extra = XomDaoUi.money(_cash[seat]) + " ₫"
+		slot.call(
+			"set_cash",
+			_cash[seat],
+			"Phá sản" if bool(player["bankrupt"]) else ("Tù" if bool(player["jailed"]) else "")
+		)
 		slot.modulate.a = 0.45 if bool(player["bankrupt"]) else 1.0
 		_pawns[seat].visible = not bool(player["bankrupt"])
 		var on_turn: bool = winner == null and seat == acting
 		if on_turn and timer != null and timer.ms > 0.0:
-			slot.start_turn(timer.ms / 1000.0, maxf(0.0, (timer.ms - timer.left) / 1000.0))
-		elif on_turn and not slot.is_turn():
+			slot.start_turn(
+				timer.ms / 1000.0,
+				maxf(0.0, (timer.ms - timer.left + Time.get_ticks_msec() - _snapshot_at) / 1000.0)
+			)
+		elif on_turn:
 			slot.show_turn()
 		elif not on_turn and slot.is_turn():
 			slot.end_turn()
 
 
-## The board's printed panel: who acts now, with their pawn and cash.
+## Fixed viewer cards and bank seal; the acting seat only changes the highlight.
 func _show_panel() -> void:
 	var seat: int = Rules.decision_seat(_view)
 	if _view.get("winner") != null:
 		seat = int(_view["winner"])
+	_exchange.call("refresh", seat, _names(), _cash, _textures, _slots, _me, _view)
 	_turn_pawn.texture = _textures[seat % 4]
 	_turn_name.text = _seat_name(seat)
 	_turn_cash.text = XomDaoUi.money(_cash[seat]) + " ₫"
 
 
 func _show_actions() -> void:
+	_can_roll = false
 	for name_of: String in _buttons:
 		(_buttons[name_of] as Control).visible = false
+	if _view.get("winner") != null:
+		_notice.text = ""
+		_status.text = ""
+		_ledger_open.hide()
+		_ledger.hide()
+		_throw.set("can_roll", false)
+		return
 	var phase: String = _view["phase"]
 	_notice.text = "" if _running else str(_view.get("notice", ""))
 	_status.text = "" if _running else Texts.status(_view, _me, _names())
 	var dice: Variant = _view.get("dice")
 	if dice is Array and not _running:
 		for k: int in 2:
-			_dice[k].texture = _faces[clampi(int(dice[k]), 1, 6) - 1]
-	var trading: bool = (
-		not _running
-		and not _sent
-		and _me >= 0
-		and _view.get("winner") == null
-		and int(_view["turn"]) == _me
-		and phase in ["roll", "buy", "end"]
-	)
-	_offer_trade.visible = trading and not _trade.visible and not _mortgage.visible
-	if not trading:
-		_trade.hide()
-	_trade.call("update", _view)
-	var managing: bool = Actions.may_mortgage(_view, _me)
-	_assets.visible = managing and not _running and not _sent and not _trade.visible
-	_assets.visible = _assets.visible and not _mortgage.visible
-	if not managing:
-		_mortgage.hide()
-	_mortgage.call("update", _view)
-	if not (_running or _sent or _trade.visible or _mortgage.visible):
+			_dice[k].set("value", clampi(int(dice[k]), 1, 6))
+	_ledger_open.visible = not _view.is_empty()
+	_ledger.call("refresh", _view, _me, _names(), _slots, _running or _sent)
+	if not (_running or _sent or _ledger.visible):
 		_offer_all(Actions.phase_actions(_view, _me))
+	_throw.set("can_roll", _can_roll)
+	if _can_roll:
+		_status.text = "Chạm xúc xắc để gieo"
 
 
 func _offer(button: String, label: String = "", enabled: bool = true) -> void:
+	if button == "Roll":
+		_can_roll = enabled
+		return
 	var node: XomDaoButton = _buttons[button]
 	if label != "":
 		node.text = label
@@ -740,58 +817,27 @@ func _offer_all(actions: Array) -> void:
 		_offer(str(action[0]), str(action[1]), bool(action[2]))
 
 
-## The card over the field: the drawn card or tax, a trade offer, or the tapped square.
 func _show_card() -> void:
-	for action: Array in CARD_ACTIONS:
+	for action: Array in Actions.CARD_BUTTONS:
 		(_buttons[str(action[0])] as Control).visible = false
+	if _view.get("winner") != null:
+		_card.hide()
+		return
 	var event: Variant = _view.get("specialEvent")
 	var trade: Variant = _view.get("trade")
 	_card.visible = true
 	if event is Dictionary and str(_view["phase"]) == "event" and not _running:
 		_show_event(event)
-	elif trade is Dictionary and str(_view["phase"]) == "trade":
-		_show_trade(trade)
-	elif _focus >= 0:
-		_show_square(_focus)
 	else:
 		_card.visible = false
 
 
 func _show_event(event: Dictionary) -> void:
-	var kind: String = event["kind"]
-	match kind:
-		"card":
-			_card_title.text = DECKS.get(str(event["deck"]), "Thẻ")
-		"tax":
-			_card_title.text = str(event["reason"])
-		"jail":
-			_card_title.text = "Vào tù"
-		_:
-			_card_title.text = "Sân bay"
+	_card.hide()
+	_card_title.text = BoardSurface.title(event)
 	_card_text.text = str(_view.get("notice", ""))
 	if int(_view["turn"]) == _me and not _sent:
 		_offer("Confirm")
-
-
-func _show_trade(trade: Dictionary) -> void:
-	var from: int = int(trade["from"])
-	var to: int = int(trade["to"])
-	_card_title.text = "Trao đổi"
-	_card_text.text = Texts.trade(trade, _names())
-	if _sent:
-		return
-	if to == _me:
-		_offer("Accept")
-		_offer("Decline", "Từ chối")
-	elif from == _me:
-		_offer("Decline", "Huỷ")
-
-
-func _show_square(i: int) -> void:
-	_card_title.text = str(Rules.SQUARES[i]["name"])
-	_card_text.text = Texts.square(_view, i, _names())
-	if not (_sent or _running):
-		_offer_all(Actions.deed_actions(_view, _me, i))
 
 
 func _names() -> Array[String]:
@@ -801,10 +847,6 @@ func _names() -> Array[String]:
 	return out
 
 
-# ── Board ────────────────────────────────────────────────────────────────────────────────
-
-
-## A point of board.webp (fractions of its size) on this table.
 func _at(fraction: Vector2) -> Vector2:
 	return _board.position + fraction * _board.size
 
@@ -816,17 +858,10 @@ func _quad(i: int) -> PackedVector2Array:
 	return out
 
 
-## The pawn's top left when it stands on `square`: side by side, jailed ones behind the bars.
 func _pawn_position(seat: int, square: int) -> Vector2:
-	var u: float = 0.2 + 0.2 * seat
-	var v: float = 0.62
-	if square == 10:
-		var jailed: bool = bool(_player(seat)["jailed"])
-		u = 0.55 + 0.12 * seat if jailed else 0.15 + 0.1 * seat
-		v = 0.4 if jailed else 0.85
-	var foot: Vector2 = _at(Rules.cell_point(square, u, v))
-	var pawn: TextureRect = _pawns[seat]
-	return foot - Vector2(pawn.size.x / 2.0, pawn.size.y * 0.92)
+	return PieceProjection.pawn_position(
+		seat, square, _board, _pawns[seat].size, bool(_player(seat)["jailed"])
+	)
 
 
 func _place_all() -> void:
@@ -838,7 +873,7 @@ func _place_all() -> void:
 func _place_pawns() -> void:
 	if _pawns.is_empty() or _view.is_empty():
 		return
-	var height: float = _board.size.y * 0.085
+	var height: float = _board.size.y * 0.040
 	for seat: int in _pawns.size():
 		var pawn: TextureRect = _pawns[seat]
 		pawn.size = Vector2(height * 0.75, height)
@@ -851,16 +886,15 @@ func _place_pawns() -> void:
 		func(a: int, b: int) -> bool: return _pawns[a].position.y < _pawns[b].position.y
 	)
 	for seat: int in order:
-		move_child(_pawns[seat], _dice[0].get_index() - 1)
-
-
-# ── Layout ────────────────────────────────────────────────────────────────────────────────
+		_table.move_child(_pawns[seat], _dice[0].get_index() - 1)
 
 
 func _layout() -> void:
 	if not is_inside_tree():
 		return
+	_table.size = size
 	_cloth.size = size
+	_victory.call("layout_background", size)
 	var inset: Vector2 = XomDaoFrame.safe_inset(self)
 	var edge: float = float(XomDaoSettings.current().margin)
 	var left: float = inset.x + edge
@@ -900,22 +934,11 @@ func _layout() -> void:
 		_squares[i].position = low
 		_squares[i].size = high - low
 
-	# The printed panel: the acting player's pawn, name and cash.
-	var avatar: Vector2 = _at(
-		Rules.plane_point(Vector2(Rules.PANEL_AVATAR.x, Rules.PANEL_AVATAR.y))
-	)
-	var radius: float = Rules.PANEL_AVATAR.z * width * 0.75
-	_turn_pawn.size = Vector2.ONE * radius * 1.6
-	_turn_pawn.position = avatar - _turn_pawn.size / 2.0
-	var font: int = clampi(roundi(height * 0.042), XomDaoUi.TEXT_MIN, 40)
-	for pair: Array in [[_turn_name, Rules.PANEL_NAME], [_turn_cash, Rules.PANEL_CASH]]:
-		var label: Label = pair[0]
-		label.add_theme_font_size_override("font_size", font)
-		label.reset_size()
-		var at: Vector2 = _at(Rules.plane_point(pair[1]))
-		label.size.x = width * 0.25
-		label.position = Vector2(at.x, at.y - label.size.y / 2.0)
-
+	_surface.call("arrange", _board)
+	_exchange.position = _board.position
+	_exchange.size = _board.size
+	_field_ink.position = _board.position
+	_field_ink.size = _board.size
 	# The field: notice on top, the dice, your actions at the bottom.
 	var field_top: Vector2 = _at(Rules.plane_point(Rules.FIELD.position))
 	var field_end: Vector2 = _at(Rules.plane_point(Rules.FIELD.end))
@@ -936,9 +959,8 @@ func _layout() -> void:
 	_status.size.x = _field.size.x - 24.0
 	_status.position = Vector2(_field.position.x + 12.0, _row.position.y - _status.size.y - 2.0)
 	var die: float = clampf(_field.size.y * 0.3, 44.0, 96.0)
-	var dice_top: float = _notice.position.y + _notice.size.y
-	var dice_bottom: float = _status.position.y
-	var dice_y: float = (dice_top + dice_bottom - die) / 2.0
+	# Fixed contact points on the board, independent of notices and action buttons.
+	var dice_y: float = _at(Rules.plane_point(Vector2(0.5, 0.59))).y - die * 0.96
 	for k: int in 2:
 		_dice[k].size = Vector2.ONE * die
 		_dice[k].pivot_offset = Vector2.ONE * die / 2.0
@@ -955,22 +977,8 @@ func _layout() -> void:
 		clampf(_field.get_center().y - _card.size.y / 2.0, top, bottom - _card.size.y)
 	)
 
-	# Trao đổi and Tài sản: top right; their boards over the middle of the table.
-	_offer_trade.reset_size()
-	_offer_trade.position = Vector2(right - _offer_trade.size.x, top)
-	_assets.reset_size()
-	var beside: float = _offer_trade.position.x - 12.0 if _offer_trade.visible else right
-	_assets.position = Vector2(beside - _assets.size.x, top)
-	_trade.custom_minimum_size.x = 560.0
-	_mortgage.custom_minimum_size.x = minf(680.0, right - left)
-	var middle: Vector2 = _board.position + _board.size * Vector2(0.5, 0.46)
-	for board: Control in [_trade, _mortgage]:
-		board.size = Vector2.ZERO
-		board.reset_size()
-		board.position = Vector2(
-			clampf(middle.x - board.size.x / 2.0, left, right - board.size.x),
-			clampf(middle.y - board.size.y / 2.0, top, bottom - board.size.y)
-		)
+	_ledger_open.size = Vector2(112, 112)
+	_ledger_open.position = Vector2(right - 112, top)
 	_throw.queue_redraw()
 
 	# The slots: a column on the right, yours at the bottom, the others above in turn order.
@@ -980,8 +988,11 @@ func _layout() -> void:
 		var seat: int = (maxi(_me, 0) - k + count) % count if _me >= 0 else count - 1 - k
 		var slot: XomDaoPlayerSlot = _slots[seat]
 		slot.reset_size()
-		y -= slot.size.y
-		slot.position = Vector2(right - slot.size.x, y)
-		y -= 12.0
+		slot.z_index = 0
+		# Draw the local card last among the cards, beneath modal panels.
+		_table.move_child(slot, _card.get_index() - 1 - k)
+		slot.rotation = deg_to_rad(0.0 if k == 0 else (-1.3 if k % 2 else 1.3))
+		slot.position = Vector2(right - slot.size.x - (6.0 if k % 2 else 0.0), y - slot.size.y)
+		y -= slot.size.y - 10.0
 	if not _running:
 		_place_pawns()

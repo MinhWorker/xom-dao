@@ -200,11 +200,17 @@ func _soon() -> void:
 func _build_sidebar() -> void:
 	_sidebar.name = "Sidebar"
 	_sidebar.mouse_filter = Control.MOUSE_FILTER_STOP
-	var style: StyleBoxFlat = XomDaoUi.box(Color(XomDaoUi.NAVY, 0.94), XomDaoUi.NAVY_LINE, 2, 32.0)
+	var style: StyleBoxFlat = XomDaoUi.box(Color("#101726", 0.96), Color("#C4922F", 0.75), 2, 32.0)
 	style.shadow_color = XomDaoPuff.SHADE
-	style.shadow_size = 3
-	style.shadow_offset = Vector2(0.0, 5.0)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0.0, 6.0)
 	_sidebar.add_theme_stylebox_override("panel", style)
+	_sidebar.draw.connect(
+		func() -> void:
+			var s: Vector2 = _sidebar.size
+			_draw_rivet(_sidebar, Vector2(s.x / 2.0, 10.0), 3.0)
+			_draw_rivet(_sidebar, Vector2(s.x / 2.0, s.y - 10.0), 3.0)
+	)
 	add_child(_sidebar)
 	_places.name = "Places"
 	_places.add_theme_constant_override("separation", 4)
@@ -234,15 +240,20 @@ func _build_profile() -> void:
 	var plate := PanelContainer.new()
 	plate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style: StyleBoxFlat = XomDaoUi.box(Color(XomDaoUi.NAVY, 0.9), XomDaoUi.NAVY_LINE, 2, 24.0)
+	var style: StyleBoxFlat = XomDaoUi.box(Color("#111827", 0.96), Color("#C4922F", 0.8), 2, 24.0)
 	style.shadow_color = XomDaoPuff.SHADE
-	style.shadow_size = 3
-	style.shadow_offset = Vector2(0.0, 4.0)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0.0, 5.0)
 	style.content_margin_left = 38.0
-	style.content_margin_right = 14.0
+	style.content_margin_right = 16.0
 	style.content_margin_top = 4.0
 	style.content_margin_bottom = 10.0
 	plate.add_theme_stylebox_override("panel", style)
+	plate.draw.connect(
+		func() -> void:
+			_draw_rivet(plate, Vector2(plate.size.x - 14.0, 14.0), 3.5)
+			_draw_rivet(plate, Vector2(plate.size.x - 14.0, plate.size.y - 14.0), 3.5)
+	)
 	_profile.add_child(plate)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)
@@ -286,18 +297,31 @@ func _build_profile() -> void:
 	_exp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_exp.show_percentage = false
 	_exp.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_exp.add_theme_stylebox_override(
-		"background", XomDaoUi.box(Color(0.0, 0.0, 0.0, 0.35), XomDaoUi.NAVY_LINE, 2, 14.0)
-	)
-	_exp.add_theme_stylebox_override(
-		"fill", XomDaoUi.box(XomDaoUi.SUN, XomDaoUi.GOLD_DARK, 2, 14.0)
-	)
+	var exp_bg := StyleBoxFlat.new()
+	exp_bg.bg_color = Color(0.04, 0.06, 0.1, 0.9)
+	exp_bg.border_width_left = 2
+	exp_bg.border_width_top = 2
+	exp_bg.border_width_right = 2
+	exp_bg.border_width_bottom = 2
+	exp_bg.border_color = Color(0.02, 0.03, 0.05, 0.95)
+	exp_bg.set_corner_radius_all(14)
+	_exp.add_theme_stylebox_override("background", exp_bg)
+	var exp_fill := StyleBoxFlat.new()
+	exp_fill.bg_color = Color("#F3BA2F")
+	exp_fill.border_width_left = 1
+	exp_fill.border_width_top = 1
+	exp_fill.border_width_right = 1
+	exp_fill.border_width_bottom = 2
+	exp_fill.border_color = Color("#9C620E")
+	exp_fill.set_corner_radius_all(14)
+	_exp.add_theme_stylebox_override("fill", exp_fill)
 	_exp.visible = false
 	row.add_child(_exp)
 	_exp_text.name = "LobbyExpText"
 	_exp_text.theme_type_variation = "HudLabel"
 	_exp_text.add_theme_font_size_override("font_size", XomDaoUi.TEXT_MIN)
-	_exp_text.add_theme_color_override("font_outline_color", XomDaoUi.NAVY)
+	_exp_text.add_theme_color_override("font_color", XomDaoUi.CREAM)
+	_exp_text.add_theme_color_override("font_outline_color", Color("#0A101A"))
 	_exp_text.add_theme_constant_override("outline_size", 6)
 	_exp_text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_exp_text.offset_left = 14.0
@@ -313,11 +337,14 @@ func _build_profile() -> void:
 ## Mail and gifts go between the balance and ⚙.
 func _build_money() -> void:
 	add_child(money)
-	money.add_theme_constant_override("separation", 8)
-	money.coins.custom_minimum_size.x = 170.0
-	money.coins.background = XomDaoUi.NAVY_HUD
+	money.add_theme_constant_override("separation", 10)
+	money.coins.custom_minimum_size.x = 180.0
+	money.coins.background = Color("#111A29")
 	for button: XomDaoIconButton in [mail, gifts, money.settings]:
-		button.background = XomDaoUi.NAVY_HUD
+		button.background = Color("#141E30")
+		button.border = 2
+		button.edge = XomDaoUi.GOLD_DARK
+		button.lit = true
 	mail.name = "Mail"
 	mail.pressed.connect(_soon)
 	money.add_child(mail)
@@ -343,103 +370,11 @@ func _shortcut(entry: Array) -> Button:
 	var id: String = str(entry[0])
 	var height: float = float(entry[3])
 	var banner: bool = entry[4]
-	var button := Button.new()
-	button.name = "Shortcut_" + id
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.custom_minimum_size = Vector2(SHORTCUT_W, height)
-	button.clip_contents = false
-	var style: StyleBoxFlat = XomDaoUi.box(Color(XomDaoUi.NAVY, 0.94), XomDaoUi.NAVY_LINE, 2, 20.0)
-	style.shadow_color = XomDaoPuff.SHADE
-	style.shadow_size = 3
-	style.shadow_offset = Vector2(0.0, 5.0)
-	var down: StyleBoxFlat = style.duplicate()
-	down.bg_color = XomDaoUi.NAVY.darkened(0.2)
-	var hover: StyleBoxFlat = style.duplicate()
-	hover.border_color = XomDaoUi.SUN
-	button.add_theme_stylebox_override("normal", style)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", down)
-	button.add_theme_stylebox_override("hover_pressed", down)
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	button.button_down.connect(XomDaoUi.bounce.bind(button))
-	button.button_down.connect(XomDaoUi.play.bind(button, XomDaoUi.SOUND_TAP))
+	var button := HubShortcutButton.create(id, str(entry[1]), str(entry[2]), height, banner)
 	button.pressed.connect(_on_shortcut.bind(id))
-	var picture_path: String = "res://hub/lobby/shortcut-%s.webp" % id
-	var picture: Texture2D = load(picture_path) if ResourceLoader.exists(picture_path) else null
-	if banner and picture != null:
-		button.add_child(_banner(picture, Vector2(SHORTCUT_W, height)))
-	var row := HBoxContainer.new()
-	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 12)
-	row.offset_left = 16.0
-	row.add_theme_constant_override("separation", 14)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(row)
-	if not banner or picture == null:
-		var icon := TextureRect.new()
-		icon.texture = picture if picture != null else XomDaoUi.icon(str(entry[2]))
-		icon.custom_minimum_size = Vector2.ONE * (76.0 if picture != null else 52.0)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		# A picture is drawn smaller than its file: mipmaps keep its edges smooth.
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		icon.modulate = Color.WHITE if picture != null else XomDaoUi.SUN
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(icon)
-	var column := VBoxContainer.new()
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# On a banner the label sits at the bottom, where the picture is darker.
-	column.alignment = BoxContainer.ALIGNMENT_END if banner else BoxContainer.ALIGNMENT_CENTER
-	column.add_theme_constant_override("separation", 0)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(column)
-	var title := Label.new()
-	title.name = "ShortcutTitle_" + id
-	title.text = str(entry[1])
-	title.theme_type_variation = "HudLabel"
-	title.add_theme_font_size_override("font_size", 34)
-	title.add_theme_color_override("font_outline_color", Color(XomDaoUi.NAVY, 0.7))
-	title.add_theme_constant_override("outline_size", 5)
-	column.add_child(title)
 	if id == "su-kien":
-		_event_tag = XomDaoChip.create("", "", XomDaoUi.LACQUER)
-		_event_tag.name = "EventTag"
-		_event_tag.compact()
-		_event_tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		column.add_child(_event_tag)
-	var caret := TextureRect.new()
-	caret.texture = XomDaoUi.icon("caret-right")
-	caret.custom_minimum_size = Vector2(28.0, 28.0)
-	caret.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	caret.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	caret.size_flags_vertical = Control.SIZE_SHRINK_END if banner else Control.SIZE_SHRINK_CENTER
-	caret.modulate = XomDaoUi.CREAM
-	caret.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(caret)
+		_event_tag = button.get_event_tag()
 	return button
-
-
-## A picture cut to a plate's rounded corners, inside its rim, darker at the top and bottom.
-func _banner(picture: Texture2D, plate: Vector2) -> ColorRect:
-	var rect := ColorRect.new()
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 3)
-	var box: Vector2 = plate - Vector2.ONE * 6.0
-	var k: float = maxf(box.x / picture.get_width(), box.y / picture.get_height())
-	var span: Vector2 = box / (picture.get_size() * k)
-	var material := ShaderMaterial.new()
-	material.shader = preload("res://hub/lobby/glass.gdshader")
-	material.set_shader_parameter("art", picture)
-	material.set_shader_parameter("has_art", true)
-	material.set_shader_parameter("box", box)
-	material.set_shader_parameter("radii", Vector4(17.0, 17.0, 17.0, 17.0))
-	material.set_shader_parameter("shade_top", 0.2)
-	material.set_shader_parameter("shade_bottom", 0.55)
-	material.set_shader_parameter("uv_origin", (Vector2.ONE - span) / 2.0)
-	material.set_shader_parameter("uv_span", span)
-	rect.material = material
-	return rect
 
 
 func _on_shortcut(id: String) -> void:
@@ -525,3 +460,12 @@ func _layout() -> void:
 	var ring_right: float = minf(_card.position.x, _shortcuts.position.x) - GAP
 	ring.position = Vector2(left, ring_top)
 	ring.size = Vector2(maxf(0.0, ring_right - left), maxf(0.0, bottom - ring_top))
+
+
+static func _draw_rivet(canvas: CanvasItem, pos: Vector2, r: float = 3.5) -> void:
+	canvas.draw_circle(pos + Vector2(0.0, 1.2), r, Color(0.0, 0.0, 0.0, 0.45), true, -1.0, true)
+	canvas.draw_circle(pos, r, Color("#754511"), true, -1.0, true)
+	canvas.draw_circle(pos, r * 0.72, Color("#E5A730"), true, -1.0, true)
+	canvas.draw_circle(
+		pos + Vector2(-r * 0.25, -r * 0.25), r * 0.3, Color("#FFF8E7"), true, -1.0, true
+	)

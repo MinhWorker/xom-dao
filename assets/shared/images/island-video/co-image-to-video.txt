@@ -1,0 +1,9 @@
+Locked-off orthographic camera. Animate the supplied board-game island as a quiet six-second idle loop. Preserve its original composition, painting style, geometry, colors and lighting.
+
+Make entire island inside the frame. Keep every treetop, banner pole, hanging vine and the full waterfall visible throughout the video, with generous empty padding on all sides. Keep the original 16:9 framing, a constant apparent size and camera angle. Lock the rock base, buildings and ground to identical screen coordinates in every frame; only the small environmental details described below animate.
+
+Water flows steadily down the stream and waterfall, with gentle foam confined to the waterfall's visible ending. Bamboo leaves and the tree canopy sway slightly. The red cloth banner softly ripples between its fixed attachment points. Hanging vines move very subtly. The entire rock island remains anchored at exactly the same screen position throughout. No up-and-down movement, bobbing, hovering motion, drifting, rotation, rocking, zooming or scaling of the island as a whole.
+
+The stone board, engraved grid, playing pieces, pavilion and lantern structures remain rigid and unchanged. The playing pieces stay in their exact positions. All leaves remain attached to their branches.
+
+The background stays perfectly uniform solid magenta #FF00FF in every frame, with constant color and brightness. Keep the surrounding padding empty and clean. Camera position, framing, focus and exposure stay fixed. All moving elements return to their starting pose and motion phase at the end for a seamless loop. One continuous shot, with movement confined to the island.

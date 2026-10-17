@@ -1,21 +1,26 @@
 extends Control
 ## Cờ tỷ phú's dice throw, after the old board's Dice3D: the two dice fly in on one of four paths
-## (tumble, arc, skipping, spiral), spinning and showing faces as they turn, their shadows shrink
+## (tumble, arc, skipping, spiral), spinning and showing faces as they turn, their shadows soften
 ## as they lift, and both settle on the server's faces. The notice then shows the sum for a
-## moment. This control covers the table and draws the shadows; main.gd owns the dice.
+## moment. board_stage.gd renders the Blender pieces and their ground-contact shadows.
 
+const Stage := preload("res://content/co-ty-phu-classic/board_stage.gd")
 const MOTIONS: Array[String] = ["tumble", "arc", "skipping", "spiral"]
 ## How long a throw takes, and how long the sum stays.
 const SECONDS := 1.08
 const RESULT_SECONDS := 0.7
-const SHADOW := Color("#644424")
 ## Turns each die makes on each path.
 const TURNS: Dictionary = {
 	"tumble": [3.35, 3.7], "arc": [2.8, 3.4], "skipping": [4.6, 4.1], "spiral": [4.2, 4.8]
 }
 
 var dice: Array[TextureRect] = []
-var faces: Array[Texture2D] = []
+var pawns: Array[TextureRect] = []
+var can_roll: bool = false
+var prompt: Label
+var board: Control
+var stage: Control
+var _last_motion: String = ""
 
 ## The throw now: its path, its progress (0–1) and where the dice rest; empty when still.
 var _motion: String = ""
@@ -58,6 +63,12 @@ static func sum_text(values: Array) -> String:
 	return "%d + %d = %d" % [a, b, a + b]
 
 
+func _ready() -> void:
+	stage = Stage.new()
+	stage.set("host", self)
+	add_child(stage)
+
+
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -65,13 +76,17 @@ func _init() -> void:
 
 ## Throws the dice to `values`; `notice` says who throws, then the sum.
 func roll(values: Array, notice: Label, who: String) -> void:
-	_motion = MOTIONS[randi() % MOTIONS.size()]
+	var choices: Array[String] = MOTIONS.duplicate()
+	choices.erase(_last_motion)
+	_motion = choices[randi() % choices.size()]
+	_last_motion = _motion
 	_rest.clear()
-	for die: TextureRect in dice:
-		_rest.append(die.position)
+	for k: int in dice.size():
+		dice[k].show()
+		_rest.append(dice[k].position)
+		dice[k].set("value", clampi(int(values[k]), 1, 6))
 	notice.text = "%s gieo xúc xắc" % who
 	var start: int = Time.get_ticks_msec()
-	var shown: Array[int] = [-1, -1]
 	_progress = 0.0
 	while _progress < 1.0:
 		_progress = minf(1.0, (Time.get_ticks_msec() - start) / (SECONDS * 1000.0))
@@ -81,15 +96,8 @@ func roll(values: Array, notice: Label, who: String) -> void:
 			var unit: float = die.size.x / 2.0
 			die.position = _rest[k] + Vector2(float(at["x"]), -float(at["lift"])) * unit
 			var spin: float = float(at["spin"])
-			die.rotation = fmod(spin, TAU)
-			# A new face shows each quarter turn; the last one is the server's.
-			var quarter: int = floori(spin / (PI / 2.0))
-			if _progress >= 1.0:
-				die.texture = faces[clampi(int(values[k]), 1, 6) - 1]
-			elif quarter != shown[k]:
-				shown[k] = quarter
-				die.texture = faces[randi() % 6]
-			die.scale = Vector2(1.0, 1.0 - 0.18 * absf(sin(spin * 2.0)))
+			die.set("tumble", Vector3(spin, spin * 0.73, spin * 0.23))
+
 		queue_redraw()
 		await get_tree().process_frame
 		if not is_inside_tree():
@@ -98,14 +106,26 @@ func roll(values: Array, notice: Label, who: String) -> void:
 		dice[k].position = _rest[k]
 		dice[k].rotation = 0.0
 		dice[k].scale = Vector2.ONE
-		XomDaoUi.bounce(dice[k])
+		dice[k].set("tumble", Vector3.ZERO)
 	_motion = ""
 	queue_redraw()
 	notice.text = sum_text(values)
 	await get_tree().create_timer(RESULT_SECONDS).timeout
 
 
-func _draw() -> void:
+func _process(_delta: float) -> void:
+	if prompt != null:
+		prompt.modulate.a = (
+			0.62 + 0.38 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.004)) if can_roll else 1.0
+		)
+	for die: TextureRect in dice:
+		die.mouse_default_cursor_shape = (
+			Control.CURSOR_POINTING_HAND if can_roll else Control.CURSOR_ARROW
+		)
+	_sync_grounds()
+
+
+func _sync_grounds() -> void:
 	for k: int in dice.size():
 		var die: TextureRect = dice[k]
 		if not die.visible:
@@ -119,8 +139,9 @@ func _draw() -> void:
 			x = float(at["x"])
 			rest = _rest[k]
 		var unit: float = die.size.x / 2.0
-		var shrink: float = 1.0 / (1.0 + lift * 0.3)
-		var middle: Vector2 = rest + Vector2(unit + x * unit, die.size.y * 0.96)
-		draw_set_transform(middle, 0.0, Vector2(1.0, 0.28))
-		draw_circle(Vector2.ZERO, unit * 1.1 * shrink, Color(SHADOW, 0.22 * shrink))
-	draw_set_transform(Vector2.ZERO)
+		die.set("ground", rest + Vector2(unit + x * unit, die.size.y * 0.96))
+		die.set("lift", lift)
+
+
+func fly(pawn: Control, target: Vector2, landed: Callable = Callable()) -> void:
+	await stage.call("fly", board, pawn, target, landed)

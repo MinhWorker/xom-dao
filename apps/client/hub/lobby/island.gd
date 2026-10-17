@@ -122,7 +122,9 @@ func _init() -> void:
 	_sign.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_sign.add_theme_font_override("font", XomDaoUi.display_font(800))
 	_sign.add_theme_font_size_override("font_size", 30)
-	_sign.add_theme_color_override("font_color", XomDaoUi.INK)
+	_sign.add_theme_color_override("font_color", Color("#FFFBF2"))
+	_sign.add_theme_color_override("font_outline_color", Color("#3D1D05"))
+	_sign.add_theme_constant_override("outline_size", 6)
 	_sign.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bubble.add_child(_sign)
 	_fit_bubble()
@@ -226,29 +228,80 @@ func _place_bubble() -> void:
 	)
 
 
-## A sheet of paper with round ends and a small tail under its middle, outlined in ink.
+## A carved honey-wood signboard with gold trim, brass rivets, and a wooden pointer.
 func _draw_bubble() -> void:
-	var paper: StyleBoxFlat = XomDaoUi.box(
-		XomDaoUi.PAPER, XomDaoUi.INK, XomDaoUi.BORDER, SIGN.y / 2.0
-	)
-	paper.shadow_color = XomDaoPuff.SHADE
-	paper.shadow_size = 3
-	paper.shadow_offset = Vector2(0.0, 4.0)
-	_bubble.draw_style_box(paper, Rect2(Vector2.ZERO, _bubble.size))
-	var mid: float = _bubble.size.x / 2.0
-	var base: float = SIGN.y - XomDaoUi.BORDER - 0.5
-	var tail := PackedVector2Array(
-		[Vector2(mid - 13.0, base), Vector2(mid + 13.0, base), Vector2(mid, SIGN.y + TAIL)]
-	)
-	_bubble.draw_colored_polygon(tail, XomDaoUi.PAPER)
-	var edge := PackedVector2Array(
+	var w: float = _bubble.size.x
+	var h: float = SIGN.y
+	# 2.5D base lip (dark timber bottom edge)
+	var lip := StyleBoxFlat.new()
+	lip.bg_color = Color("#5C310D")
+	lip.set_corner_radius_all(18)
+	lip.shadow_color = XomDaoPuff.SHADE
+	lip.shadow_size = 5
+	lip.shadow_offset = Vector2(0.0, 5.0)
+	_bubble.draw_style_box(lip, Rect2(0.0, 4.0, w, h))
+
+	# Main board face: honey wood with carved timber border
+	var wood := StyleBoxFlat.new()
+	wood.bg_color = Color("#E5A038")
+	wood.border_width_left = 3
+	wood.border_width_top = 3
+	wood.border_width_right = 3
+	wood.border_width_bottom = 3
+	wood.border_color = Color("#5C310D")
+	wood.set_corner_radius_all(18)
+	_bubble.draw_style_box(wood, Rect2(0.0, 0.0, w, h))
+
+	# Inner gold inlay contour line
+	var inlay := StyleBoxFlat.new()
+	inlay.bg_color = Color.TRANSPARENT
+	inlay.border_width_left = 1
+	inlay.border_width_top = 1
+	inlay.border_width_right = 1
+	inlay.border_width_bottom = 1
+	inlay.border_color = Color(1.0, 0.88, 0.55, 0.6)
+	inlay.set_corner_radius_all(15)
+	_bubble.draw_style_box(inlay, Rect2(4.0, 4.0, w - 8.0, h - 8.0))
+
+	# Top specular wood highlight
+	var spec := StyleBoxFlat.new()
+	spec.bg_color = Color(1.0, 1.0, 1.0, 0.18)
+	spec.corner_radius_top_left = 15
+	spec.corner_radius_top_right = 15
+	_bubble.draw_style_box(spec, Rect2(5.0, 5.0, w - 10.0, (h - 10.0) * 0.45))
+
+	# Brass rivets at both ends
+	var rivets: Array[Vector2] = [
+		Vector2(14.0, h / 2.0),
+		Vector2(w - 14.0, h / 2.0),
+	]
+	for p: Vector2 in rivets:
+		_bubble.draw_circle(p + Vector2(0.0, 1.0), 3.0, Color(0.2, 0.1, 0.0, 0.4), true, -1.0, true)
+		_bubble.draw_circle(p, 3.0, Color("#754511"), true, -1.0, true)
+		_bubble.draw_circle(p, 2.2, Color("#E5A730"), true, -1.0, true)
+		_bubble.draw_circle(p + Vector2(-0.6, -0.6), 1.0, Color("#FFF8E7"), true, -1.0, true)
+
+	# The wooden pointer pointing down to the island
+	var mid: float = w / 2.0
+	var tail_pts := PackedVector2Array(
 		[
-			Vector2(mid - 13.0, SIGN.y - 1.5),
-			Vector2(mid, SIGN.y + TAIL),
-			Vector2(mid + 13.0, SIGN.y - 1.5)
+			Vector2(mid - 12.0, h - 1.0),
+			Vector2(mid + 12.0, h - 1.0),
+			Vector2(mid, h + TAIL),
 		]
 	)
-	_bubble.draw_polyline(edge, XomDaoUi.INK, XomDaoUi.BORDER, true)
+	_bubble.draw_colored_polygon(tail_pts, Color("#E5A038"))
+	var tail_edge := PackedVector2Array(
+		[
+			Vector2(mid - 12.0, h - 1.0),
+			Vector2(mid, h + TAIL),
+			Vector2(mid + 12.0, h - 1.0),
+		]
+	)
+	_bubble.draw_polyline(tail_edge, Color("#5C310D"), 3.0, true)
+	_bubble.draw_line(
+		Vector2(mid, h), Vector2(mid, h + TAIL - 3.0), Color(1.0, 0.88, 0.55, 0.5), 1.5, true
+	)
 
 
 ## Grey with distance (none at the front), more so in fog.
@@ -293,14 +346,46 @@ func _draw_fog(c: Vector2, rx: float, k: float) -> void:
 		Vector2(0.35, 0.4),
 		Vector2(0.0, 0.15),
 	]
+	# Pass 1: Soft cloud ambient mist
 	for puff: Vector2 in puffs:
-		_overlay.draw_circle(c + puff * rx, rx * 0.42, Color(1, 1, 1, 0.62), true, -1.0, true)
-	var side: float = 56.0 * k
-	var plate := Rect2(c - Vector2(side, side) * 0.7, Vector2(side, side) * 1.4)
-	_overlay.draw_style_box(XomDaoUi.box(XomDaoUi.NAVY_HUD, Color.TRANSPARENT, 0, 18.0 * k), plate)
-	_overlay.draw_texture_rect(
-		_lock, Rect2(c - Vector2(side, side) / 2.0, Vector2(side, side)), false, XomDaoUi.CREAM
+		_overlay.draw_circle(
+			c + puff * rx, rx * 0.48, Color(0.65, 0.8, 0.95, 0.4), true, -1.0, true
+		)
+	# Pass 2: Fluffy cloud body
+	for puff: Vector2 in puffs:
+		_overlay.draw_circle(
+			c + puff * rx, rx * 0.42, Color(0.96, 0.98, 1.0, 0.72), true, -1.0, true
+		)
+	# Pass 3: Fluffy cloud crest highlights
+	for puff: Vector2 in puffs:
+		_overlay.draw_circle(
+			c + puff * rx + Vector2(-rx * 0.05, -rx * 0.06),
+			rx * 0.33,
+			Color(1.0, 1.0, 1.0, 0.82),
+			true,
+			-1.0,
+			true
+		)
+
+	# Antique brass & lacquer padlock medallion
+	var mr: float = 34.0 * k
+	_overlay.draw_circle(
+		c + Vector2(0.0, 3.5 * k), mr, Color(0.1, 0.15, 0.22, 0.45), true, -1.0, true
 	)
+	_overlay.draw_circle(c + Vector2(0.0, 2.5 * k), mr, Color("#4A2808"), true, -1.0, true)
+	_overlay.draw_circle(c, mr, Color("#6B3C0F"), true, -1.0, true)
+	_overlay.draw_circle(c, mr * 0.92, Color("#E5A730"), true, -1.0, true)
+	_overlay.draw_circle(c, mr * 0.82, Color("#131C2B"), true, -1.0, true)
+
+	var side: float = 40.0 * k
+	var lock_rect := Rect2(c - Vector2(side, side) / 2.0, Vector2(side, side))
+	_overlay.draw_texture_rect(
+		_lock,
+		Rect2(lock_rect.position + Vector2(0.0, 1.5 * k), lock_rect.size),
+		false,
+		Color("#080D14")
+	)
+	_overlay.draw_texture_rect(_lock, lock_rect, false, Color("#FFDA66"))
 
 
 ## A red pennant on a pole with the event's days left.

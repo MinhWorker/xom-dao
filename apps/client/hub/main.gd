@@ -42,6 +42,7 @@ var _game: Control
 var _game_id_shown: String = ""
 var _loading: bool = false
 var _result: HubResult
+var _result_waiting: bool = false
 var _music := HubMusic.new()
 var _ben: HubBen
 ## A shop:buy is on its way.
@@ -75,6 +76,7 @@ func _ready() -> void:
 	_menu.button.name = "Menu"
 	_menu.button.visible = false
 	_menu.leave_requested.connect(_leave_game)
+	_menu.leave_confirmed.connect(_confirm_leave)
 	_menu.rules_requested.connect(func() -> void: _show_rules(_client.snapshot.game_id))
 	add_child(_menu)
 	add_child(_music)
@@ -480,6 +482,11 @@ func _show_select(genre_id: String) -> void:
 	select.progress_needed.connect(_fill_progress.bind(select))
 	select.join_pressed.connect(_quick_match)
 	select.claim_pressed.connect(_claim.bind(select))
+	select.join_room_requested.connect(
+		func(code: String) -> void:
+			if not await _client.join_room(code):
+				_say("Không tìm thấy phòng %s" % code)
+	)
 	select.show_genre(_catalog, genre_id, _game_id)
 
 
@@ -522,21 +529,51 @@ func _show_ben() -> void:
 	_ben.top.money.show_balance(_coins)
 	_ben.top.money.settings_pressed.connect(_menu.open_settings)
 	_ben.back_pressed.connect(_back_to_lobby)
-	_ben.join_requested.connect(func(code: String) -> void: _client.join_room(code))
-	var card: XomDaoGameCard = _catalog.card(_game_id)
+	_ben.join_requested.connect(
+		func(code: String) -> void:
+			if not await _client.join_room(code):
+				_say("Không tìm thấy phòng %s" % code)
+	)
+	_ben.game_selected.connect(_on_ben_game_selected)
+
+	# Ensure a playable game is picked
+	if _game_id == "" and _catalog != null:
+		for card: XomDaoGameCard in _catalog.catalog.games:
+			if _catalog.can_play(card.id):
+				_choose_game(card.id)
+				break
+
+	_ben.setup(_catalog, _game_id)
+	if _game_id != "":
+		_watch_ben_rooms(_game_id)
+
+
+func _on_ben_game_selected(game_id: String) -> void:
+	if _game_id != game_id:
+		_choose_game(game_id)
+	_watch_ben_rooms(game_id)
+
+
+func _watch_ben_rooms(game_id: String) -> void:
+	var card: XomDaoGameCard = _catalog.card(game_id) if _catalog != null else null
 	var title: String = card.name if card != null else ""
-	_ben.show_rooms(title, [])
-	if _game_id == "":
+	if not is_instance_valid(_ben) or _shown != "ben":
 		return
-	var reply: Dictionary = await _client.request(XomDaoProtocol.LOBBY_WATCH, {"gameId": _game_id})
-	if reply.get("ok") == true and _ben != null and is_instance_valid(_ben):
-		_ben.show_rooms(title, XomDaoRoomList.from_dict(reply).rooms)
+	_ben.show_rooms(title, [], game_id)
+	var reply: Dictionary = await _client.request(XomDaoProtocol.LOBBY_WATCH, {"gameId": game_id})
+	if (
+		reply.get("ok") == true
+		and is_instance_valid(_ben)
+		and _shown == "ben"
+		and _game_id == game_id
+	):
+		_ben.show_rooms(title, XomDaoRoomList.from_dict(reply).rooms, game_id)
 
 
 func _on_event(_event: String, data: Variant) -> void:
 	if data is XomDaoLobbyRooms and _shown == "ben" and data.game_id == _game_id:
 		var card: XomDaoGameCard = _catalog.card(_game_id)
-		_ben.show_rooms(card.name if card != null else "", data.rooms)
+		_ben.show_rooms(card.name if card != null else "", data.rooms, _game_id)
 
 
 func _back_to_lobby() -> void:
@@ -684,11 +721,32 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 	if _shown != "game":
 		_set_screen("game", _game)
 	if snapshot.status == "finished":
-		if _result == null:
-			_show_result(snapshot)
-	elif _result != null:
-		_result.queue_free()
-		_result = null
+		_menu.button.hide()
+		if _menu.is_open():
+			_menu.close()
+		if _result == null and not _result_waiting:
+			_result_waiting = true
+			_show_result_after_intro(snapshot)
+	else:
+		_result_waiting = false
+		if _result != null:
+			_result.queue_free()
+			_result = null
+
+
+func _show_result_after_intro(snapshot: XomDaoRoomSnapshot) -> void:
+	if (
+		_game.has_method("wait_for_result_panel")
+		and snapshot.view is Dictionary
+		and snapshot.view.get("winner") != null
+	):
+		await _game.call("wait_for_result_panel")
+	if not is_inside_tree():
+		return
+	_result_waiting = false
+	if _client.snapshot == null or _client.snapshot.status != "finished" or _result != null:
+		return
+	_show_result(_client.snapshot)
 
 
 func _show_result(snapshot: XomDaoRoomSnapshot) -> void:
@@ -701,6 +759,7 @@ func _show_result(snapshot: XomDaoRoomSnapshot) -> void:
 	_result.money.settings_pressed.connect(_menu.open_settings)
 	_result.again_pressed.connect(_client.start_game)
 	_result.home_pressed.connect(_leave)
+	_result.board_view_changed.connect(_set_result_board_view)
 	var card: XomDaoGameCard = _catalog.card(snapshot.game_id)
 	var detail: Variant = _game.call("result_detail") if _game.has_method("result_detail") else {}
 	_result.show_result(
@@ -710,9 +769,15 @@ func _show_result(snapshot: XomDaoRoomSnapshot) -> void:
 		card != null and card.kind == "event",
 		detail if detail is Dictionary else {}
 	)
+	_result.present()
 	# The ledger may have paid before the board came up.
 	if _balance() != _coins:
 		_on_rewarded(null)
+
+
+func _set_result_board_view(looking: bool) -> void:
+	if _game != null and _game.has_method("set_result_view"):
+		_game.call("set_result_view", looking)
 
 
 ## Achievements a game got you: one notice naming them; their coins join the balance.
@@ -733,42 +798,51 @@ func _on_rewarded(_notice: XomDaoRewardNotice) -> void:
 	_coins = balance
 
 
-## ☰ → Rời phòng: in the middle of a game, ask first.
+## ☰ → Rời phòng: confirm voluntary bankruptcy for games that support it.
 func _leave_game() -> void:
 	if _client.snapshot == null or _client.snapshot.status != "playing":
 		await _leave()
 		return
-	var confirm: XomDaoBoard = XomDaoBoard.create("Rời ván?", true)
-	confirm.name = "ConfirmBoard"
-	var shade := ColorRect.new()
-	shade.color = Color(XomDaoUi.INK, 0.45)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(shade)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.add_child(center)
-	center.add_child(confirm)
-	var note := Label.new()
-	note.text = "Ván đang chơi sẽ dừng."
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	confirm.content.add_child(note)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 16)
-	confirm.content.add_child(buttons)
-	var stay: XomDaoButton = XomDaoButton.create("Ở lại", XomDaoUi.Kind.BACK)
-	stay.name = "Stay"
-	stay.pressed.connect(shade.queue_free)
-	buttons.add_child(stay)
-	var leave: XomDaoButton = XomDaoButton.create("Rời phòng", XomDaoUi.Kind.DANGER)
-	leave.name = "ConfirmLeave"
-	leave.pressed.connect(
-		func() -> void:
-			shade.queue_free()
-			_leave()
+	var can_declare: bool = (
+		_game != null
+		and _game.has_method("can_declare_bankruptcy")
+		and bool(_game.call("can_declare_bankruptcy"))
 	)
-	buttons.add_child(leave)
-	confirm.closed.connect(shade.queue_free)
-	confirm.open()
+	_menu.call(
+		"confirm_leave",
+		"Phá sản và rời phòng?" if can_declare else "Rời ván?",
+		(
+			"Tài sản sẽ về ngân hàng, số dư về 0 và bạn bị loại khỏi ván trước khi rời phòng."
+			if can_declare
+			else "Bạn sẽ rời khỏi phòng đang chơi."
+		),
+		"Phá sản & rời" if can_declare else "Rời phòng",
+		can_declare
+	)
+
+
+func _confirm_leave(declare_bankruptcy: bool) -> void:
+	if declare_bankruptcy:
+		if _client.snapshot == null or _client.snapshot.status != "playing":
+			await _leave()
+			return
+		if _game == null or not is_instance_valid(_game):
+			_say("Không thể phá sản lúc này.")
+			return
+		if (
+			_game.has_method("can_declare_bankruptcy")
+			and not bool(_game.call("can_declare_bankruptcy"))
+		):
+			await _leave()
+			return
+		var declared: bool = await _game.call("declare_bankruptcy")
+		if not declared:
+			if _client.snapshot == null or _client.snapshot.status != "playing":
+				await _leave()
+				return
+			_say("Không thể tuyên bố phá sản lúc này.")
+			return
+	await _leave()
 
 
 func _leave() -> void:

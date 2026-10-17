@@ -143,6 +143,17 @@ func _field(
 	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	input.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_DEFAULT
 	input.add_theme_font_size_override("font_size", 28)
+	var box_normal: StyleBoxFlat = XomDaoUi.box(Color("#FFFDF7"), Color("#C8B693"), 2, 14.0)
+	box_normal.content_margin_left = 16.0
+	box_normal.content_margin_right = 16.0
+	var box_focus: StyleBoxFlat = XomDaoUi.box(Color("#FFFDF7"), XomDaoUi.HONEY_DARK, 2, 14.0)
+	box_focus.content_margin_left = 16.0
+	box_focus.content_margin_right = 16.0
+	input.add_theme_stylebox_override("normal", box_normal)
+	input.add_theme_stylebox_override("focus", box_focus)
+	input.add_theme_color_override("font_color", XomDaoUi.INK)
+	input.add_theme_color_override("font_placeholder_color", Color(XomDaoUi.INK, 0.4))
+	input.add_theme_color_override("caret_color", XomDaoUi.LACQUER)
 	input.text_submitted.connect(func(_text: String) -> void: _send())
 	grid.add_child(cell if cell != null else input)
 

@@ -26,13 +26,19 @@ export const copy = (state: State): State => ({
   stationAuctions: Object.fromEntries(
     Object.entries(state.stationAuctions).map(([square, auction]) => [
       square,
-      { ...auction, passed: [...auction.passed], bids: [...auction.bids] },
+      {
+        ...auction,
+        passed: [...auction.passed],
+        bids: [...auction.bids],
+        contributions: auction.contributions && [...auction.contributions],
+      },
     ]),
   ),
   auction: state.auction && {
     ...state.auction,
     passed: [...state.auction.passed],
     bids: [...state.auction.bids],
+    contributions: state.auction.contributions && [...state.auction.contributions],
   },
   debt: state.debt && { ...state.debt },
   trade: state.trade && { ...state.trade },
@@ -106,6 +112,24 @@ export function ownsGroup(s: Pick<State, 'properties'>, owner: number, square: n
   return Boolean(group && groupSquares(group).every((i) => s.properties[i]?.owner === owner));
 }
 
+export function rentMultiplier(
+  s: Pick<State, 'properties'>,
+  owner: number,
+  square: number,
+): number {
+  const group = BOARD[square]?.group;
+  if (!group) return 1;
+  const squares = groupSquares(group);
+  if (ownsGroup(s, owner, square)) return squares.length;
+
+  const position = squares.indexOf(square);
+  const neighbors = [squares[position - 1], squares[position + 1]];
+  const hasAdjacentProperty = neighbors.some(
+    (neighbor) => neighbor !== undefined && s.properties[neighbor]?.owner === owner,
+  );
+  return hasAdjacentProperty ? 2 : 1;
+}
+
 export const bankHouses = (s: Pick<State, 'properties'>) =>
   32 - s.properties.reduce((sum, p) => sum + (p.houses === 5 ? 0 : p.houses), 0);
 export const bankHotels = (s: Pick<State, 'properties'>) =>
@@ -125,7 +149,7 @@ export function rent(
     return STATION_BASE_FEE * count;
   }
   if (cell.kind === 'utility') return roll * utilityMultiplier(s, square);
-  return (cell.rent?.[deed.houses] ?? 0) * (ownsGroup(s, deed.owner, square) ? 3 : 1);
+  return (cell.rent?.[deed.houses] ?? 0) * rentMultiplier(s, deed.owner, square);
 }
 
 /** Record the same public transfer that changes the authoritative balances. */
@@ -315,6 +339,7 @@ export function land(s: State, seat: number, roll: number, multiplier = 1) {
           leader: null,
           passed: [],
           bids: s.players.map(() => 0),
+          contributions: s.players.map(() => 0),
         };
         const auction = s.stationAuctions[square]!;
         if (auction.passed.includes(seat) || auction.leader === seat) return;
@@ -370,6 +395,7 @@ export function settleStations(s: State) {
     auction.bids.forEach((amount, seat) => {
       transferMoney(s, null, seat, amount, 'Hoàn tiền đấu giá');
       auction.bids[seat] = 0;
+      if (auction.contributions) auction.contributions[seat] = 0;
     });
   }
   for (const { auction, remaining } of settlements) {
@@ -387,11 +413,19 @@ export function settleStations(s: State) {
   }
 }
 
-export function bankrupt(s: State, seat: number, creditor: number | null, ctx: Context) {
+export function bankrupt(
+  s: State,
+  seat: number,
+  creditor: number | null,
+  debtAmount: number,
+  ctx: Context,
+) {
   const p = s.players[seat]!;
+  const cashBeforeBankruptcy = p.cash;
   for (const auction of Object.values(s.stationAuctions)) {
     transferMoney(s, null, seat, auction.bids[seat]!, 'Hoàn tiền đấu giá');
     auction.bids[seat] = 0;
+    if (auction.contributions) auction.contributions[seat] = 0;
     if (!auction.passed.includes(seat)) auction.passed.push(seat);
     if (auction.leader === seat) auction.leader = null;
   }
@@ -401,26 +435,24 @@ export function bankrupt(s: State, seat: number, creditor: number | null, ctx: C
     if (deed.owner === seat && deed.houses)
       transferMoney(s, null, seat, (deed.houses * BOARD[i]!.houseCost!) / 2, 'Thanh lý nhà');
   }
-  if (creditor !== null && !s.players[creditor]!.bankrupt) {
-    transferMoney(s, seat, creditor, p.cash, 'Thanh lý tài sản');
-    s.players[creditor]!.freeCards.push(...p.freeCards);
-  } else {
-    for (const deck of p.freeCards) {
-      const cards = deck === 'chance' ? CHANCE : CHEST;
-      s[deck].push(cards.findIndex((card) => card.kind === 'free'));
-    }
+  for (const deck of p.freeCards) {
+    const cards = deck === 'chance' ? CHANCE : CHEST;
+    s[deck].push(cards.findIndex((card) => card.kind === 'free'));
   }
+  const recipient = creditor !== null && !s.players[creditor]!.bankrupt ? creditor : null;
+  const creditorPayment = Math.min(cashBeforeBankruptcy, debtAmount);
+  if (recipient !== null && creditorPayment > 0)
+    transferMoney(s, seat, recipient, creditorPayment, 'Thanh lý tài sản');
   if (p.cash > 0) transferMoney(s, seat, null, p.cash, 'Thanh lý tài sản');
   for (const deed of s.properties) {
     if (deed.owner !== seat) continue;
-    deed.owner = creditor;
+    deed.owner = null;
     deed.houses = 0;
-    if (creditor === null) {
-      deed.mortgaged = false;
-      deed.mortgage = undefined;
-    }
+    deed.mortgaged = false;
+    deed.mortgage = undefined;
   }
   p.freeCards = [];
+  p.cash = 0;
   if (s.turn === seat) s.specialEvent = null;
   s.trade = null;
   s.auction = null;

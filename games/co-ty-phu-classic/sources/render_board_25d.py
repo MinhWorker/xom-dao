@@ -9,24 +9,24 @@ from __future__ import annotations
 import json
 import math
 import sys
+import shutil
 from pathlib import Path
 
 import bpy
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
-ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "assets" / "board.webp"
-PNG = ROOT.parents[1] / ".blender" / "co-ty-phu-classic-board.png"
-PRINT = ROOT.parents[1] / ".blender" / "co-ty-phu-classic-board-print.png"
-METAL_INK = ROOT.parents[1] / ".blender" / "co-ty-phu-classic-metal-ink.png"
+REPO = Path("/home/minhnk/Projects/Games/xom-dao")
+ROOT = REPO / "games" / "co-ty-phu-classic"
+PNG = REPO / ".blender" / "co-ty-phu-classic-board.png"
+METAL_INK = REPO / ".blender" / "co-ty-phu-classic-metal-ink.png"
 WEBP = ROOT / "assets" / "board-25d.webp"
-GEOMETRY = ROOT / "src" / "scenes" / "board" / "boardGeometry.ts"
-BLEND = ROOT.parents[1] / ".blender" / "co-ty-phu-classic-board.blend"
+GEOMETRY = ROOT / "assets" / "board-geometry.json"
+BLEND = REPO / ".blender" / "co-ty-phu-classic-board.blend"
 WIDTH, HEIGHT = 1400, 1200
 CROP_X, CROP_Y, CROP_WIDTH, CROP_HEIGHT = 35, 145, 1330, 1045
-INK = (63, 49, 38, 255)
+INK = (34, 69, 68, 255)
 GROUP_COLORS = {
     "nau": (67, 73, 89, 255),
     "xanh-nhat": (115, 221, 231, 255),
@@ -37,22 +37,15 @@ GROUP_COLORS = {
     "xanh-la": (103, 60, 145, 255),
     "xanh-dam": (23, 101, 120, 255),
 }
-# The players' panel: the tile ring widened into the field's upper part, with sockets the game
-# fills in (the turn player's picture, name, cash and clock; each seat's ball and cash). In board
-# units (0–1 across the printed board); exported with the projection to boardGeometry.ts.
-FIELD = (0.18, 0.18, 0.82, 0.79)  # the inner field's edges: left, top, right, bottom
-PANEL_BOTTOM = 0.412  # where the field now starts
+# A compact inset in the open field, in unprojected board coordinates.
+FIELD = (0.18, 0.18, 0.82, 0.79)
+PANEL_BOTTOM = 0.365
 PANEL = {
-    "avatar": {"u": 0.262, "v": 0.296, "r": 0.058},
-    "name": {"u": 0.34, "v": 0.243},
-    "cash": {"u": 0.34, "v": 0.292},
-    "bar": {"u0": 0.34, "u1": 0.565, "v": 0.344, "h": 0.016},
-    "rule": {"u": 0.589, "v0": 0.2, "v1": 0.392},
-    "seats": [{"u": 0.618, "v": round(0.217 + i * 0.0485, 4), "r": 0.019} for i in range(4)],
-    "seatCash": {"u": 0.646},
+    "avatar": {"u": 0.322, "v": 0.274, "r": 0.033},
+    "name": {"u": 0.375, "v": 0.248},
+    "cash": {"u": 0.375, "v": 0.299},
     "field": {"top": PANEL_BOTTOM, "bottom": FIELD[3]},
 }
-INLAY = {"ring": (215, 164, 67, 255), "edge": (107, 58, 16, 255), "shine": (246, 216, 140, 255), "well": (201, 180, 140, 255), "deep": (74, 56, 40, 255)}
 
 # Keep this order and the group colors in sync with BOARD and GROUP_COLORS in game/model.ts.
 SQUARES = [
@@ -149,7 +142,7 @@ def face_bounds(square):
     return u0 + du, v0 + dv, u1 - du, v1 - dv
 
 
-def draw_icon(draw, kind, size):
+def draw_icon(draw, kind, size, color=INK):
     """Draw a single-ink tile symbol into a square, transparent vector-style canvas."""
     center = size / 2
     unit = size * 0.9
@@ -157,10 +150,10 @@ def draw_icon(draw, kind, size):
     def point(x, y):
         return (center + (x - 50) * unit / 100, center + (y - 50) * unit / 100)
 
-    def poly(points, fill=INK):
+    def poly(points, fill=color):
         draw.polygon([point(x, y) for x, y in points], fill=fill)
 
-    def rect(box, radius=0, fill=INK):
+    def rect(box, radius=0, fill=color):
         x0, y0 = point(box[0], box[1])
         x1, y1 = point(box[2], box[3])
         if radius:
@@ -168,7 +161,7 @@ def draw_icon(draw, kind, size):
         else:
             draw.rectangle((x0, y0, x1, y1), fill=fill)
 
-    def ellipse(box, fill=INK):
+    def ellipse(box, fill=color):
         x0, y0 = point(box[0], box[1])
         x1, y1 = point(box[2], box[3])
         draw.ellipse((x0, y0, x1, y1), fill=fill)
@@ -209,13 +202,13 @@ def draw_icon(draw, kind, size):
     elif kind == "tax":
         ellipse((19, 22, 56, 48))
         rect((19, 35, 56, 48))
-        ellipse((19, 28, 56, 51), fill=INK)
+        ellipse((19, 28, 56, 51), fill=color)
         ellipse((43, 42, 80, 68))
         rect((43, 55, 80, 68))
-        ellipse((43, 48, 80, 71), fill=INK)
+        ellipse((43, 48, 80, 71), fill=color)
         ellipse((22, 62, 77, 90))
         rect((22, 76, 77, 90))
-        ellipse((22, 62, 77, 84), fill=INK)
+        ellipse((22, 62, 77, 84), fill=color)
         ellipse((29, 67, 70, 79), fill=clear)
     elif kind in ("jail", "go-jail"):
         rect((16, 16, 84, 24), radius=3)
@@ -233,444 +226,249 @@ def draw_icon(draw, kind, size):
         ])
 
 
-def widen_track(image):
-    """Deepen the tile faces while preserving their actual outer edges in the source art."""
-    source_edges = {
-        True: (0.0, 0.044, 0.15, 0.85, 0.956, 1.0),
-        False: (0.0, 0.044, 0.15, 0.82, 0.915, 1.0),
-    }
-    target_edges = {
-        True: (0.0, 0.044, 0.18, 0.82, 0.956, 1.0),
-        False: (0.0, 0.044, 0.18, 0.79, 0.915, 1.0),
-    }
-
-    def remap_axis(source, horizontal):
-        length = source.width if horizontal else source.height
-        result = Image.new("RGBA", source.size, (0, 0, 0, 0))
-        for source_start, source_end, target_start, target_end in zip(
-            source_edges[horizontal],
-            source_edges[horizontal][1:],
-            target_edges[horizontal],
-            target_edges[horizontal][1:],
-        ):
-            s0, s1 = round(source_start * length), round(source_end * length)
-            t0, t1 = round(target_start * length), round(target_end * length)
-            if horizontal:
-                strip = source.crop((s0, 0, s1, source.height))
-                strip = strip.resize((t1 - t0, source.height), Image.Resampling.LANCZOS)
-                result.paste(strip, (t0, 0))
-            else:
-                strip = source.crop((0, s0, source.width, s1))
-                strip = strip.resize((source.width, t1 - t0), Image.Resampling.LANCZOS)
-                result.paste(strip, (0, t0))
-        return result
-
-    return remap_axis(remap_axis(image, True), False)
-
-
-def make_print_texture():
-    source = Image.open(SOURCE).convert("RGBA")
-    scale = 2
-    image = source.resize((source.width * scale, source.height * scale), Image.Resampling.LANCZOS)
-    image = widen_track(image)
-    # Reuse the illustration's blank ivory faces, but rebuild every divider. The source
-    # has only eight spaces on each vertical side; stretching it cannot make a 40-cell board.
-    def source_patch(bounds):
-        return source.crop(tuple(round(value * source.width) for value in bounds))
-
-    face = source_patch((0.151, 0.049, 0.225, 0.145))
-    corner = source_patch((0.044, 0.044, 0.15, 0.15))
-    for i in range(len(SQUARES)):
-        u0, v0, u1, v1 = square_bounds(i)
-        x0, y0 = round(u0 * image.width), round(v0 * image.height)
-        x1, y1 = round(u1 * image.width), round(v1 * image.height)
-        patch = corner if tile_side(i) == "corner" else face
-        if tile_side(i) in ("left", "right"):
-            patch = patch.transpose(Image.Transpose.ROTATE_90)
-        image.paste(patch.resize((x1 - x0, y1 - y0), Image.Resampling.LANCZOS), (x0, y0))
-    draw = ImageDraw.Draw(image)
-    metal_ink = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    for i, (kind, group) in enumerate(SQUARES):
-        u0, v0, u1, v1 = square_bounds(i)
-        x0, y0 = round(u0 * image.width), round(v0 * image.height)
-        x1, y1 = round(u1 * image.width), round(v1 * image.height)
-        width, height = x1 - x0, y1 - y0
-        side = tile_side(i)
-        center_x = (x0 + x1) / 2
-        center_y = (y0 + y1) / 2
-        icon_canvas = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
-        draw_icon(ImageDraw.Draw(icon_canvas, "RGBA"), kind, 512)
-        icon_size = round(min(width, height) * (0.42 if side == "corner" else 0.54))
-        # Leave the inner half of every face for the live Vietnamese place label.
-        if side == "bottom":
-            center_y = y0 + height * 0.6
-        elif side == "top":
-            center_y = y0 + height * 0.4
-        elif side == "left":
-            center_x = x0 + width * 0.4
-        elif side == "right":
-            center_x = x0 + width * 0.6
-        else:
-            center_y = y0 + height * 0.38
-        icon_canvas = icon_canvas.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-        target = metal_ink if kind in METAL_COLORS else image
-        target.alpha_composite(
-            icon_canvas,
-            (round(center_x - icon_size / 2), round(center_y - icon_size / 2)),
-        )
-    image = widen_into_field(image)
-    PRINT.parent.mkdir(parents=True, exist_ok=True)
-    image.save(PRINT)
-    metal_ink.save(METAL_INK)
-
-
-def widen_into_field(image):
-    """The tile ring's top band reaches down into the field as one big tile (the players' panel).
-
-    The field's border, with its corner pieces, moves down to the panel's foot; the side columns
-    of tiles are left untouched, so the two corners where panel and field meet stay clean.
-    """
-    W, H = image.size
-    px = lambda u: round(u * W)
-    py = lambda v: round(v * H)
-    # The field's border band runs from 14 px outside its edge to 11 px inside it.
-    left, right, top, bottom = px(FIELD[0]) - 14, px(FIELD[2]) + 9, py(FIELD[1]) - 14, py(FIELD[3]) + 1
-    foot = py(PANEL_BOTTOM) - 14
-    # One top-row tile (square 25: its face and bevel); its inner half is blank paper. The dark
-    # line just left of it is the groove between tiles.
-    u0, v0, u1, v1 = square_bounds(25)
-    tile = image.crop((px(u0) + 3, py(v0) + 12, px(u1) - 3, py(v1) - 18))
-    groove = image.getpixel((px(u0) - 1, py((v0 + v1) / 2)))
-    tw, th = tile.size
-    raw = tile.crop((26, th - 140, tw - 26, th - 26))
-    import numpy as np  # bundled with Blender
-
-    # Keep only the paper's fine grain over one even tone, so laid side by side it shows no seams.
-    grain = np.asarray(raw, np.float32) - np.asarray(raw.filter(ImageFilter.GaussianBlur(10)), np.float32)
-    tone = np.asarray(raw, np.float32).reshape(-1, 4).mean(axis=0)
-    paper = Image.fromarray(np.clip(grain + tone, 0, 255).astype(np.uint8), "RGBA")
-
-    def big_tile(w, h, m=30):
-        out = Image.new("RGBA", (w, h))
-        pw, ph = paper.size
-        for y in range(0, h, ph):
-            for x in range(0, w, pw):
-                patch = paper
-                if (x // pw + y // ph) % 2:
-                    patch = patch.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-                if (x // pw) % 3 == 1:
-                    patch = patch.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
-                out.paste(patch, (x, y))
-        out.paste(tile.crop((m, 0, tw - m, m)).resize((w - 2 * m, m)), (m, 0))
-        out.paste(tile.crop((m, th - m, tw - m, th)).resize((w - 2 * m, m)), (m, h - m))
-        out.paste(tile.crop((0, m, m, th - m)).resize((m, h - 2 * m)), (0, m))
-        out.paste(tile.crop((tw - m, m, tw, th - m)).resize((m, h - 2 * m)), (w - m, m))
-        for sx, sy, dx, dy in ((0, 0, 0, 0), (tw - m, 0, w - m, 0), (0, th - m, 0, h - m), (tw - m, th - m, w - m, h - m)):
-            out.paste(tile.crop((sx, sy, sx + m, sy + m)), (dx, dy))
-        return out
-
-    # The border's top run and its two corner pieces, taken from inside the side columns only.
-    strip = image.crop((left, top - 2, right, top + 110))
-    # Its outer line carries a gold tab under every top-row tile seam; under the big tile there
-    # are no seams, so the line is relaid from a seamless stretch (mid-tile) end to end. At the
-    # two ends it then meets the field's side lines in a clean corner.
-    mid = px(sum(square_bounds(25)[0::2]) / 2) - left
-    clean = strip.crop((mid - 20, 0, mid + 20, 16))
-    for x in range(0, strip.width, clean.width):
-        strip.paste(clean, (x, 0))
-    image.paste(Image.new("RGBA", (right - left, foot - top + 4), groove), (left, top - 2))
-    image.alpha_composite(strip, (left, foot - 2))
-    image.alpha_composite(big_tile(right - left - 4, foot - top - 4), (left + 2, top))
-    # A soft shadow on the field under the raised paper.
-    shade = np.asarray(image, np.float32).copy()
-    for i in range(28):
-        shade[foot + 28 + i, left + 26 : right - 26, :3] *= 1 - 0.18 * (1 - i / 28)
-    image = Image.fromarray(shade.astype(np.uint8), "RGBA")
-    return inlay_sockets(image)
-
-
-def inlay_sockets(image):
-    """Cartoon inlays on the panel: gold-rimmed wells for the pictures and balls, the clock's groove
-    and a rule before the seats' list. Drawn 3× and scaled down for smooth edges."""
-    W, H = image.size
-    x0, y0, x1, y1 = round(FIELD[0] * W), round(FIELD[1] * H), round(FIELD[2] * W), round(PANEL_BOTTOM * H)
-    S = 3
-    layer = Image.new("RGBA", ((x1 - x0) * S, (y1 - y0) * S), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
-    at = lambda u, v: ((u * W - x0) * S, (v * H - y0) * S)
-
-    def well(u, v, r, rim):
-        cx, cy = at(u, v)
-        R = r * W * S
-        rim *= S
-        d.ellipse((cx - R - rim, cy - R - rim, cx + R + rim, cy + R + rim), fill=INLAY["edge"])
-        d.ellipse((cx - R - rim * 0.8, cy - R - rim * 0.8, cx + R + rim * 0.8, cy + R + rim * 0.8), fill=INLAY["ring"])
-        d.arc((cx - R - rim * 0.55, cy - R - rim * 0.55, cx + R + rim * 0.55, cy + R + rim * 0.55), 200, 320, fill=INLAY["shine"], width=max(2, round(rim * 0.25)))
-        d.ellipse((cx - R, cy - R, cx + R, cy + R), fill=INLAY["edge"])
-        d.ellipse((cx - R * 0.94, cy - R * 0.94, cx + R * 0.94, cy + R * 0.94), fill=INLAY["well"])
-
-    a = PANEL["avatar"]
-    well(a["u"], a["v"], a["r"], 22)
-    for seat in PANEL["seats"]:
-        well(seat["u"], seat["v"], seat["r"], 9)
-    b = PANEL["bar"]
-    (bx0, by0), (bx1, by1) = at(b["u0"], b["v"] - b["h"] / 2), at(b["u1"], b["v"] + b["h"] / 2)
-    radius = (by1 - by0) / 2
-    d.rounded_rectangle((bx0 - 7 * S, by0 - 7 * S, bx1 + 7 * S, by1 + 7 * S), radius=radius + 7 * S, fill=INLAY["edge"])
-    d.rounded_rectangle((bx0 - 5 * S, by0 - 5 * S, bx1 + 5 * S, by1 + 5 * S), radius=radius + 5 * S, fill=INLAY["ring"])
-    d.rounded_rectangle((bx0, by0, bx1, by1), radius=radius, fill=INLAY["deep"])
-    r = PANEL["rule"]
-    (rx, ry0), (_, ry1) = at(r["u"], r["v0"]), at(r["u"], r["v1"])
-    d.rounded_rectangle((rx - 4 * S, ry0, rx + 4 * S, ry1), radius=4 * S, fill=INLAY["edge"])
-    d.rounded_rectangle((rx - 2 * S, ry0 + 2 * S, rx + 1 * S, ry1 - 2 * S), radius=2 * S, fill=INLAY["ring"])
-    image.alpha_composite(layer.resize((x1 - x0, y1 - y0), Image.Resampling.LANCZOS), (x0, y0))
-    return image
-
-bpy.ops.object.select_all(action="SELECT")
-bpy.ops.object.delete(use_global=False)
-
-
-def material(name, color, metallic=0.0, roughness=0.55):
+def material(name, color, metallic=0.0, roughness=0.5):
     mat = bpy.data.materials.new(name)
-    mat.diffuse_color = (*color, 1)
     mat.use_nodes = True
-    principled = mat.node_tree.nodes.get("Principled BSDF")
-    principled.inputs["Base Color"].default_value = (*color, 1)
-    principled.inputs["Metallic"].default_value = metallic
-    principled.inputs["Roughness"].default_value = roughness
+    shader = mat.node_tree.nodes.get("Principled BSDF")
+    # Input palette is sRGB; Blender shader colors are linear.
+    rgb = tuple(c / 12.92 if c <= .04045 else ((c + .055) / 1.055) ** 2.4 for c in color)
+    mat.diffuse_color = (*rgb, 1)
+    shader.inputs["Base Color"].default_value = (*rgb, 1)
+    shader.inputs["Metallic"].default_value = metallic
+    shader.inputs["Roughness"].default_value = roughness
     return mat
 
 
-METAL_COLORS = {
-    "start": (0.32, 0.52, 0.38), "chance": (0.51, 0.40, 0.65),
-    "chest": (0.72, 0.43, 0.10), "tax": (0.61, 0.36, 0.25),
-    "jail": (0.37, 0.47, 0.60), "go-jail": (0.35, 0.42, 0.55),
-    "airport": (0.06, 0.62, 0.68),
-}
-
-
-def brushed_metal(name, color):
-    mat = material(name, color, 0.72, 0.45)
-    nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    shader = nodes.get("Principled BSDF")
-    anisotropy = shader.inputs.get("Anisotropic") or shader.inputs.get("Anisotropic IOR Level")
-    if anisotropy:
-        anisotropy.default_value = 0.35
-    coordinate = nodes.new("ShaderNodeTexCoord")
-    stretch = nodes.new("ShaderNodeVectorMath")
-    stretch.operation = "MULTIPLY"
-    stretch.inputs[1].default_value = (8, 550, 8)
-    links.new(coordinate.outputs["Generated"], stretch.inputs[0])
-    grain = nodes.new("ShaderNodeTexNoise")
-    grain.inputs["Scale"].default_value = 1
-    grain.inputs["Detail"].default_value = 2
-    links.new(stretch.outputs[0], grain.inputs["Vector"])
-    bump = nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.03
-    bump.inputs["Distance"].default_value = 0.00015
-    links.new(grain.outputs["Fac"], bump.inputs["Height"])
-    links.new(bump.outputs["Normal"], shader.inputs["Normal"])
-    return mat
-
-
-wood = material("Honey lacquered wood", (0.30, 0.105, 0.038), 0.05, 0.28)
-dark_wood = material("Carved lower edge", (0.11, 0.038, 0.018), 0.02, 0.4)
-gold = material("Warm brass reveal", (0.72, 0.38, 0.065), 0.68, 0.23)
-
-
-def rounded_slab(name, size, z, height, bevel, mat):
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0.082, z))
+def slab(name, bounds, top, thickness, bevel, mat):
+    u0, v0, u1, v1 = bounds
+    bpy.ops.mesh.primitive_cube_add(size=1, location=((u0 + u1 - 1) * 2, (1 - v0 - v1) * 2, top - thickness / 2))
     obj = bpy.context.object
     obj.name = name
-    obj.dimensions = (size, size - 0.164, height)
+    obj.dimensions = ((u1 - u0) * 4, (v1 - v0) * 4, thickness)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    modifier = obj.modifiers.new("Soft carved edge", "BEVEL")
-    modifier.width = bevel
-    modifier.segments = 5
-    obj.modifiers.new("Weighted normals", "WEIGHTED_NORMAL")
+    edge = obj.modifiers.new("Soft toy edge", "BEVEL")
+    edge.width, edge.segments = bevel, 4
+    obj.modifiers.new("Weighted face normals", "WEIGHTED_NORMAL")
     obj.data.materials.append(mat)
     return obj
 
 
-rounded_slab("lower wood tier", 3.74, -0.10, 0.10, 0.025, dark_wood)
-rounded_slab("brass inset", 3.72, -0.035, 0.025, 0.012, gold)
-rounded_slab("upper wood tier", 3.70, -0.005, 0.05, 0.012, wood)
+def print_symbols():
+    ink = Image.new("RGBA", (3072, 3072), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(ink)
 
-# The base illustration keeps the board's material detail; monochrome symbols and group bands
-# are printed into its UV texture before Blender renders the perspective.
-mesh = bpy.data.meshes.new("board surface")
-mesh.from_pydata(
-    [(-1.848, -1.684, 0.035), (1.848, -1.684, 0.035), (1.848, 1.848, 0.035), (-1.848, 1.848, 0.035)],
-    [],
-    [(0, 1, 2, 3)],
-)
-mesh.update()
-uv = mesh.uv_layers.new(name="board UV")
-for loop, coord in zip(mesh.polygons[0].loop_indices, [(0.038, 0.079), (0.962, 0.079), (0.962, 0.962), (0.038, 0.962)]):
-    uv.data[loop].uv = coord
-surface = bpy.data.objects.new("printed board", mesh)
-bpy.context.collection.objects.link(surface)
-make_print_texture()
-image = bpy.data.images.load(str(PRINT))
-image.pack()
-print_mat = bpy.data.materials.new("Original printed board")
-print_mat.use_nodes = True
-nodes = print_mat.node_tree.nodes
-nodes.clear()
-output = nodes.new("ShaderNodeOutputMaterial")
-mix = nodes.new("ShaderNodeMixShader")
-transparent = nodes.new("ShaderNodeBsdfTransparent")
-emission = nodes.new("ShaderNodeEmission")
-texture = nodes.new("ShaderNodeTexImage")
-texture.image = image
-links = print_mat.node_tree.links
-links.new(texture.outputs["Color"], emission.inputs["Color"])
-links.new(texture.outputs["Alpha"], mix.inputs[0])
-links.new(transparent.outputs[0], mix.inputs[1])
-links.new(emission.outputs[0], mix.inputs[2])
-links.new(mix.outputs[0], output.inputs["Surface"])
-surface.data.materials.append(print_mat)
+    # Corner symbols
+    for i, (kind, _) in enumerate(SQUARES):
+        if kind in ("street", "station", "power", "water", "chance", "chest", "tax"):
+            continue
+        u0, v0, u1, v1 = square_bounds(i)
+        side = tile_side(i)
+        u, v = .5, .38 if side == "corner" else .5
+        if side == "bottom":
+            v = .61
+        elif side == "top":
+            v = .39
+        elif side == "left":
+            u, v = .38, .58
+        elif side == "right":
+            u, v = .62, .58
+        symbol = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
+        draw_icon(ImageDraw.Draw(symbol), kind, 512)
+        pixels = round(min(u1 - u0, v1 - v0) * ink.width * .43)
+        symbol = symbol.resize((pixels, pixels), Image.Resampling.LANCZOS)
+        ink.alpha_composite(symbol, (round((u0 + (u1 - u0) * u) * ink.width - pixels / 2), round((v0 + (v1 - v0) * v) * ink.height - pixels / 2)))
 
-# Real shallow metal plates: bevels and highlights come from the shared studio lights,
-# rather than gradients painted onto the board's emissive illustration.
-def metal_plate(square, kind):
-    u0, v0, u1, v1 = face_bounds(square)
-    x0, x1 = (u0 - .5) * 4, (u1 - .5) * 4
-    y0, y1 = (.5 - v1) * 4, (.5 - v0) * 4
-    # Build the rounded XY silhouette explicitly. A cube bevel alone clamps the corner
-    # radius to half the plate thickness, leaving nearly square corners on a thin sheet.
-    radius = min(x1 - x0, y1 - y0) * .055
-    outline = []
-    for cx, cy, start in [(x1-radius, y1-radius, 0), (x0+radius, y1-radius, 90),
-                          (x0+radius, y0+radius, 180), (x1-radius, y0+radius, 270)]:
-        for step in range(9):
-            angle = math.radians(start + step * 90 / 8)
-            outline.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
-    n = len(outline)
-    vertices = [(x, y, z) for z in (.035, .041) for x, y in outline]
-    faces = [tuple(reversed(range(n))), tuple(range(n, n * 2))]
-    faces += [(i, (i+1) % n, (i+1) % n+n, i+n) for i in range(n)]
-    mesh = bpy.data.meshes.new(f"Rounded metal face {square}")
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-    plate = bpy.data.objects.new(f"Brushed {kind} plate {square}", mesh)
-    bpy.context.collection.objects.link(plate)
-    bevel = plate.modifiers.new("Fine machined lip", "BEVEL")
-    bevel.width, bevel.segments = .001, 3
-    plate.modifiers.new("Planar highlights", "WEIGHTED_NORMAL")
-    plate.data.materials.append(brushed_metal(f"{kind} satin metal", METAL_COLORS[kind]))
+    gold_ink = (185, 145, 75, 235)
+
+    # Card deck top filigree and gold emblems
+    def draw_card_top(u0, v0, u1, v1, is_chest):
+        x0, y0 = round(u0 * 3072), round(v0 * 3072)
+        x1, y1 = round(u1 * 3072), round(v1 * 3072)
+        pad = round((x1 - x0) * 0.08)
+        draw.rounded_rectangle((x0 + pad, y0 + pad, x1 - pad, y1 - pad), radius=16, outline=gold_ink, width=4)
+        draw.rounded_rectangle((x0 + pad + 6, y0 + pad + 6, x1 - pad - 6, y1 - pad - 6), radius=12, outline=gold_ink, width=2)
+        cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
+        size = round((x1 - x0) * 0.50)
+        icon_img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw_icon(ImageDraw.Draw(icon_img), "chest" if is_chest else "chance", size, color=gold_ink)
+        ink.alpha_composite(icon_img, (cx - size // 2, cy - size // 2))
+
+    draw_card_top(0.193, 0.536, 0.297, 0.684, True)
+    draw_card_top(0.703, 0.536, 0.807, 0.684, False)
+
+    ink.save(METAL_INK)
+
+    # Transfer mesh on the board surface and tiles
+    mesh = bpy.data.meshes.new("Printed symbols")
+    mesh.from_pydata([(-2, -2, .0325), (2, -2, .0325), (2, 2, .0325), (-2, 2, .0325)], [], [(0, 1, 2, 3)])
+    uv = mesh.uv_layers.new()
+    for loop, coord in zip(mesh.polygons[0].loop_indices, [(0, 0), (1, 0), (1, 1), (0, 1)]):
+        uv.data[loop].uv = coord
+    obj = bpy.data.objects.new("Ink on the tile faces", mesh)
+    bpy.context.collection.objects.link(obj)
+
+    mat = bpy.data.materials.new("Transparent ceramic transfers")
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    nodes.clear()
+    output = nodes.new("ShaderNodeOutputMaterial")
+    mix = nodes.new("ShaderNodeMixShader")
+    clear = nodes.new("ShaderNodeBsdfTransparent")
+    shader = nodes.new("ShaderNodeBsdfPrincipled")
+    shader.inputs["Roughness"].default_value = .65
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.image = bpy.data.images.load(str(METAL_INK))
+    texture.image.pack()
+    links.new(texture.outputs["Color"], shader.inputs["Base Color"])
+    links.new(texture.outputs["Alpha"], mix.inputs[0])
+    links.new(clear.outputs[0], mix.inputs[1])
+    links.new(shader.outputs[0], mix.inputs[2])
+    links.new(mix.outputs[0], output.inputs["Surface"])
+    obj.data.materials.append(mat)
+
+    # Deck top transfer mesh at deck height
+    deck_mesh = bpy.data.meshes.new("Deck top transfers")
+    deck_mesh.from_pydata([(-2, -2, .0585), (2, -2, .0585), (2, 2, .0585), (-2, 2, .0585)], [], [(0, 1, 2, 3)])
+    uv2 = deck_mesh.uv_layers.new()
+    for loop, coord in zip(deck_mesh.polygons[0].loop_indices, [(0, 0), (1, 0), (1, 1), (0, 1)]):
+        uv2.data[loop].uv = coord
+    deck_obj = bpy.data.objects.new("Deck top transfers obj", deck_mesh)
+    bpy.context.collection.objects.link(deck_obj)
+    deck_obj.data.materials.append(mat)
 
 
-for square, (kind, _) in enumerate(SQUARES):
-    if kind not in METAL_COLORS:
+bpy.ops.object.select_all(action="SELECT")
+bpy.ops.object.delete(use_global=False)
+PNG.parent.mkdir(parents=True, exist_ok=True)
+
+wood = material("Deep teal lacquer", (.13, .29, .29), .05, .34)
+dark_wood = material("Dark underside", (.08, .17, .18), .02, .5)
+gold = material("Satin brass", (.77, .59, .32), .55, .36)
+ivory = material("Warm ceramic", (.96, .92, .82), .02, .48)
+paper = material("Turn plaque porcelain", (.99, .96, .88), .02, .48)
+felt = material("Quiet jade playing field", (.47, .67, .60), 0, .94)
+slab("Underframe", (.034, .034, .966, .927), -.050, .115, .035, dark_wood)
+slab("Slim brass reveal", (.036, .036, .964, .925), -.018, .028, .012, gold)
+slab("Lacquer playing tray", (.039, .039, .961, .922), .015, .05, .018, wood)
+slab("Inset field brass rim", (.177, .177, .823, .793), .018, .025, .009, gold)
+slab("Jade field", (.181, .181, .819, .789), .024, .025, .010, felt)
+
+special_colors = {
+    "start": (.74, .85, .69), "chance": (.80, .75, .89),
+    "chest": (.94, .78, .40), "tax": (.89, .76, .64),
+    "jail": (.66, .76, .80), "go-jail": (.66, .76, .80),
+    "airport": (.42, .76, .77), "station": (.86, .87, .81),
+    "power": (.92, .84, .60), "water": (.69, .85, .88),
+}
+specials = {kind: material(f"{kind} enamel", rgb, .12, .43) for kind, rgb in special_colors.items()}
+groups = {name: material(f"Group {name}", tuple(c / 255 for c in rgb[:3]), .03, .4) for name, rgb in GROUP_COLORS.items()}
+for i, (kind, group) in enumerate(SQUARES):
+    bounds = face_bounds(i)
+    slab(f"Tile {i:02d} {kind}", bounds, .035, .032, .010, ivory if group else specials[kind])
+    if not group:
         continue
-    metal_plate(square, kind)
+    u0, v0, u1, v1 = bounds
+    w, h = u1 - u0, v1 - v0
+    side = tile_side(i)
+    if side == "bottom":
+        band = (u0 + w * .035, v1 - h * .12, u1 - w * .035, v1 - h * .035)
+    elif side == "top":
+        band = (u0 + w * .035, v0 + h * .035, u1 - w * .035, v0 + h * .12)
+    elif side == "left":
+        band = (u0 + w * .035, v0 + h * .035, u0 + w * .12, v1 - h * .035)
+    else:
+        band = (u1 - w * .12, v0 + h * .035, u1 - w * .035, v1 - h * .035)
+    slab(f"Group inlay {i:02d}", band, .036, .004, .0015, groups[group])
 
-# Transparent printed ink rests on top of the metal, at the identical board UV positions.
-ink_mesh = bpy.data.meshes.new("metal ink plane")
-ink_mesh.from_pydata([(-2, -2, 0.0415), (2, -2, 0.0415), (2, 2, 0.0415), (-2, 2, 0.0415)], [], [(0, 1, 2, 3)])
-ink_uv = ink_mesh.uv_layers.new(name="ink UV")
-for loop, coord in zip(ink_mesh.polygons[0].loop_indices, [(0, 0), (1, 0), (1, 1), (0, 1)]):
-    ink_uv.data[loop].uv = coord
-ink_obj = bpy.data.objects.new("symbols on metal", ink_mesh)
-bpy.context.collection.objects.link(ink_obj)
-ink_mat = print_mat.copy()
-ink_mat.name = "Metal symbol ink"
-ink_image = bpy.data.images.load(str(METAL_INK))
-ink_image.pack()
-ink_mat.node_tree.nodes.get("Image Texture").image = ink_image
-ink_obj.data.materials.append(ink_mat)
+# One continuous header fills the inset above the playing field.
+p_bounds = (0.181, 0.181, 0.819, PANEL_BOTTOM)
+slab("Turn header brass rim", (p_bounds[0] - .003, p_bounds[1] - .003, p_bounds[2] + .003, p_bounds[3] + .003), .030, .012, .003, gold)
+slab("Turn header plate", p_bounds, .032, .006, .002, paper)
 
-# A mild pitch makes the board feel like an object on a table without compressing the far row.
+# Card decks (3D physical stacks in the field)
+card_stack_mat = material("Card stack edge paper", (.94, .91, .82), .01, .68)
+chest_lacquer = material("Chest card back lacquer", (.06, .26, .30), .04, .28)
+chance_lacquer = material("Chance card back lacquer", (.45, .06, .06), .04, .28)
+
+chest_bounds = (0.193, 0.536, 0.297, 0.684)
+slab("Chest deck stack", chest_bounds, .056, .032, .003, card_stack_mat)
+slab("Chest top card", chest_bounds, .058, .004, .002, chest_lacquer)
+
+chance_bounds = (0.703, 0.536, 0.807, 0.684)
+slab("Chance deck stack", chance_bounds, .056, .032, .003, card_stack_mat)
+slab("Chance top card", chance_bounds, .058, .004, .002, chance_lacquer)
+
+# Bake ceramic ink transfers (corner symbols, placeholder ink-texture, card deck insignias)
+print_symbols()
+
+# Keep the established projection so board movement and hit regions remain familiar.
 bpy.ops.object.camera_add(location=(0, -5.7, 8.7))
 camera = bpy.context.object
-direction = Vector((0, 0, -0.02)) - camera.location
-camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
-camera.data.type = "PERSP"
-camera.data.lens = 75
-bpy.context.scene.camera = camera
-
-bpy.ops.object.light_add(type="AREA", location=(-3.5, -4.0, 7.0))
-key = bpy.context.object
-key.data.energy = 850
-key.data.shape = "DISK"
-key.data.size = 6
-bpy.ops.object.light_add(type="AREA", location=(4.0, 2.0, 5.0))
-fill = bpy.context.object
-fill.data.energy = 450
-fill.data.size = 5
-
+camera.rotation_euler = (Vector((0, 0, -.02)) - camera.location).to_track_quat("-Z", "Y").to_euler()
+camera.data.type, camera.data.lens = "PERSP", 75
 scene = bpy.context.scene
+scene.camera = camera
+for name, location, energy, size in [("Soft upper-left key", (-3.5, -4, 7), 1050, 5), ("Broad fill", (4, 2, 5), 500, 5)]:
+    bpy.ops.object.light_add(type="AREA", location=location)
+    light = bpy.context.object
+    light.name = name
+    light.data.energy, light.data.size = energy, size
 scene.render.engine = "CYCLES"
-scene.cycles.samples = 96
-scene.cycles.use_denoising = False
-scene.render.resolution_x = WIDTH
-scene.render.resolution_y = HEIGHT
+scene.cycles.samples = 48
+scene.cycles.use_denoising = True
+scene.render.resolution_x, scene.render.resolution_y = WIDTH, HEIGHT
 scene.render.resolution_percentage = 100
 scene.render.film_transparent = True
 scene.render.image_settings.file_format = "PNG"
 scene.render.filepath = str(PNG)
 scene.view_settings.view_transform = "Standard"
-scene.world.color = (0.28, 0.28, 0.28)
+scene.world.color = (.35, .35, .35)
 
 
-def project(u, v):
-    point = Vector(((u - 0.5) * 4, (0.5 - v) * 4, 0.035))
-    image_point = world_to_camera_view(scene, camera, point)
-    return [
-        round((image_point.x * WIDTH - CROP_X) / CROP_WIDTH, 6),
-        round(((1 - image_point.y) * HEIGHT - CROP_Y) / CROP_HEIGHT, 6),
-    ]
+def project(u, v, z=.035):
+    point = world_to_camera_view(scene, camera, Vector(((u - .5) * 4, (.5 - v) * 4, z)))
+    return [round((point.x * WIDTH - CROP_X) / CROP_WIDTH, 6), round(((1 - point.y) * HEIGHT - CROP_Y) / CROP_HEIGHT, 6)]
 
 
-cells = []
-faces = []
+cells, faces = [], []
 for i in range(40):
-    if i <= 10:
-        col, row = 10 - i, 10
-    elif i <= 20:
-        col, row = 0, 20 - i
-    elif i <= 30:
-        col, row = i - 20, 0
-    else:
-        col, row = 10, i - 30
-    u, w = axis(col, True)
-    v, h = axis(row, False)
-    cells.append([project(u, v), project(u + w, v), project(u + w, v + h), project(u, v + h)])
-    u0, v0, u1, v1 = face_bounds(i)
-    faces.append([project(u0, v0), project(u1, v0), project(u1, v1), project(u0, v1)])
+    for target, bounds in [(cells, square_bounds(i)), (faces, face_bounds(i))]:
+        u0, v0, u1, v1 = bounds
+        target.append([project(u0, v0), project(u1, v0), project(u1, v1), project(u0, v1)])
 
-# The board's plane seen by the camera: a projective map from board units to the image.
-import numpy as np  # bundled with Blender
+import numpy as np
 
 corners = [(0, 0), (1, 0), (1, 1), (0, 1)]
 rows, rhs = [], []
 for (u, v), (x, y) in zip(corners, [project(u, v) for u, v in corners]):
-    rows.append([u, v, 1, 0, 0, 0, -u * x, -v * x])
-    rows.append([0, 0, 0, u, v, 1, -u * y, -v * y])
+    rows += [[u, v, 1, 0, 0, 0, -u*x, -v*x], [0, 0, 0, u, v, 1, -u*y, -v*y]]
     rhs += [x, y]
-homography = [round(float(value), 8) for value in np.linalg.solve(np.array(rows), np.array(rhs))] + [1]
+homography = [round(float(v), 8) for v in np.linalg.solve(np.array(rows), np.array(rhs))] + [1]
+geometry = {"cells": cells, "faces": faces, "homography": homography, "ratio": CROP_WIDTH / CROP_HEIGHT, "panel": PANEL}
+GEOMETRY.write_text(json.dumps(geometry, indent=2) + "\n")
 
-GEOMETRY.write_text(
-    "// Generated by sources/render_board_25d.py; coordinates are normalized to board-25d.webp.\n"
-    "export const BOARD_CELLS = [\n"
-    + "".join(
-        "  [\n" + "".join(f"    {json.dumps(point)},\n" for point in cell) + "  ],\n"
-        for cell in cells
-    )
-    + "] as const;\n"
-    + "/** Visible tile faces inside their printed bevels; overlays must stay within these. */\n"
-    + "export const BOARD_FACES = " + json.dumps(faces, indent=2) + " as const;\n"
-    + f"export const BOARD_IMAGE_RATIO = {CROP_WIDTH / CROP_HEIGHT} as const;\n"
-    + "/** Board units (0–1 across the printed board) to the image: x = (h0 u + h1 v + h2) / w, … */\n"
-    + f"export const BOARD_HOMOGRAPHY = {json.dumps(homography)} as const;\n"
-    + "/** The players' panel in board units: sockets the game fills in, and the field below it. */\n"
-    + f"export const PLAYER_PANEL = {json.dumps(PANEL, indent=2)} as const;\n"
-)
+# Generate the runtime geometry directly; there is no retired Phaser TypeScript step.
+lines = ["extends RefCounted", "## Generated by sources/render_board_25d.py. Do not edit coordinates.", "", "const CELLS: Array = ["]
+for cell in cells:
+    lines.append("\t[")
+    for j, (x, y) in enumerate(cell):
+        lines.append(f"\t\tVector2({x}, {y})" + ("," if j < len(cell) - 1 else ""))
+    lines.append("\t],")
+lines += ["]", f"const IMAGE_RATIO := {geometry['ratio']}", "const HOMOGRAPHY: Array[float] = ["]
+lines.append("\t" + ", ".join(str(v) for v in homography[:5]) + ",")
+lines.append("\t" + ", ".join(str(v) for v in homography[5:]))
+lines.append("]")
+a = PANEL["avatar"]
+lines += [f"const PANEL_AVATAR := Vector3({a['u']}, {a['v']}, {a['r']})"]
+for key in ("name", "cash"):
+    p = PANEL[key]
+    lines.append(f"const PANEL_{key.upper()} := Vector2({p['u']}, {p['v']})")
+lines += [f"const FIELD := Rect2(0.18, {PANEL_BOTTOM}, 0.64, {FIELD[3] - PANEL_BOTTOM})", ""]
+(ROOT / "godot" / "board_geometry.gd").write_text("\n".join(lines))
 
-BLEND.parent.mkdir(parents=True, exist_ok=True)
-bpy.ops.wm.save_as_mainfile(filepath=str(BLEND))
 if "--geometry-only" not in sys.argv:
+    bpy.ops.wm.save_as_mainfile(filepath=str(BLEND))
     bpy.ops.render.render(write_still=True)
     Image.open(PNG).crop((CROP_X, CROP_Y, CROP_X + CROP_WIDTH, CROP_Y + CROP_HEIGHT)).save(WEBP, "WEBP", quality=95)
+    shutil.copyfile(WEBP, ROOT / "godot" / "art" / "board.webp")
     print(f"Wrote {WEBP} and {GEOMETRY}")

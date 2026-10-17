@@ -1,0 +1,9 @@
+Locked-off orthographic camera. Animate the supplied unopened-destination island as a quiet six-second idle loop. Preserve its original composition, painting style, geometry, full natural colors and lighting.
+
+Make entire island inside the frame. Keep the entire gate, tree canopy, bamboo, hanging vines and the complete waterfall visible throughout the video, with generous empty padding on all sides. Keep the original 16:9 framing, a constant apparent size and camera angle. Lock the rock base, buildings and ground to identical screen coordinates in every frame; only the small environmental details described below animate.
+
+The tree canopy and bamboo leaves sway gently in a light breeze, with all leaves remaining attached. Hanging vines move very slightly. Water flows steadily down the narrow stream and waterfall, with delicate foam confined to its visible ending. The entire rock island remains anchored at exactly the same screen position throughout. No up-and-down movement, bobbing, hovering motion, drifting, rotation, rocking, zooming or scaling of the island as a whole.
+
+The wooden gate stays completely closed and stationary. The pillars, tiled lintel, path and rocks remain rigid and unchanged. Keep the island in full color and the surrounding air clear; the game interface will supply its own locked-state treatment.
+
+The background stays perfectly uniform solid magenta #FF00FF in every frame, with constant color and brightness. Keep the surrounding padding empty and clean. Camera position, framing, focus and exposure stay fixed. All moving elements return to their starting pose and motion phase at the end for a seamless loop. One continuous shot.

@@ -81,6 +81,13 @@ Notes on the options and on Codex:
   `-- --pack` rewrites the sheets and scenes from the frames in `.blender/islands/` without rendering.
   Bake every island in full colour: the client greys the ones not selected and adds the fog and
   lock of a locked one. A new genre needs a function in `ISLANDS`, named by the genre's `island`.
+- **Island video trials**: all five genre scenes use three `<island>-video-<page>.webp`
+  atlases each (48 alpha frames, 512 px, 12 fps). Sources are the owner's MP4s in
+  `.blender/bai-diorama/new/`. `assets/sources/previews/key_island_video.py` crops and keys
+  them; its README records source mapping, crop, timing, inset and optional first-frame
+  silhouette masking for detached background particles. Keep the input aspect ratio when
+  fitting crops. The Blender bake above overwrites these scenes; rerun video conversion
+  afterward to restore the video art.
 - Verify the bake with `python tools/blender/test_bake.py` or
   `blender -b --python tools/blender/test_bake.py`.
 

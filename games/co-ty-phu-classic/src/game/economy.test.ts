@@ -72,8 +72,10 @@ describe('station contributions on landing', () => {
     expect(game.error('a', 'bid', { amount: 200 })).toBeTruthy();
     game.send('a', 'bid', { amount: 150 });
     expect(game.state.stationAuctions[5]!.bids).toEqual([200, 100, 0]);
+    expect(game.state.stationAuctions[5]!.contributions).toEqual([2, 1, 0]);
     expect(game.state.players[0]!.cash).toBe(800);
     expect(previous.stationAuctions[5]!.bids).toEqual([50, 0, 0]);
+    expect(previous.stationAuctions[5]!.contributions).toEqual([1, 0, 0]);
   });
 
   it('refunds each withdrawing player immediately and the winner before payment', () => {
@@ -92,6 +94,7 @@ describe('station contributions on landing', () => {
     game.send('b', 'pass');
     expect(game.state.players[1]!.cash).toBe(1000);
     expect(game.state.stationAuctions[5]!.bids[1]).toBe(0);
+    expect(game.state.stationAuctions[5]!.contributions).toEqual([2, 0, 1, 0]);
     expect(game.state.stationAuctions[5]!.highest).toBe(200);
     visit(game, 1);
     expect(game.state.phase).toBe('end');

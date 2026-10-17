@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="124" viewBox="0 0 160 124">
+  <title>Thẻ mục chưa chọn</title>
+  <!-- Inactive tab body -->
+  <path d="M14 6H146L156 62L146 118H14Q4 118 4 108V16Q4 6 14 6Z" fill="#1E293B" stroke="#334155" stroke-width="2.5"/>
+  <path d="M16 12H140L148 62L140 112H16" fill="none" stroke="#2B3A4F" stroke-width="1.5"/>
+</svg>

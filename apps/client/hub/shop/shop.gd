@@ -53,7 +53,10 @@ func _init(settings: XomDaoSettings = null) -> void:
 	top.back_pressed.connect(back_pressed.emit)
 	add_child(top)
 	_tab_strip.name = "ShopTabs"
-	var strip: StyleBoxFlat = XomDaoUi.box(Color(XomDaoUi.NAVY, 0.94), XomDaoUi.NAVY_LINE, 2, 22.0)
+	var strip: StyleBoxFlat = XomDaoUi.box(Color("#101726", 0.96), Color("#C4922F", 0.75), 2, 22.0)
+	strip.shadow_color = XomDaoPuff.SHADE
+	strip.shadow_size = 5
+	strip.shadow_offset = Vector2(0.0, 5.0)
 	strip.set_content_margin_all(6.0)
 	_tab_strip.add_theme_stylebox_override("panel", strip)
 	add_child(_tab_strip)
@@ -143,38 +146,75 @@ func _plain(button: Button) -> void:
 	button.button_down.connect(XomDaoUi.play.bind(button, XomDaoUi.SOUND_TAP))
 
 
-## The chosen tab is a honey wood plate; the chosen filter a sheet of paper. The others are navy.
+## The chosen tab is a raised honey wood plate; the chosen filter a raised tactile plaque.
 func _restyle() -> void:
 	for button: Button in _tabs.get_children():
 		var on: bool = button.name == "Tab_" + tab
-		var fill: Color = XomDaoUi.HONEY if on else Color(XomDaoUi.NAVY, 0.0)
-		var edge: Color = XomDaoUi.HONEY_DARK if on else Color(XomDaoUi.NAVY, 0.0)
-		_dress(button, XomDaoUi.box(fill, edge, XomDaoUi.BORDER, 16.0), XomDaoUi.CREAM, on)
+		var style := StyleBoxFlat.new()
+		if on:
+			style.bg_color = Color("#FFD54A")
+			style.border_width_left = 2
+			style.border_width_top = 2
+			style.border_width_right = 2
+			style.border_width_bottom = 3
+			style.border_color = Color("#945D0F")
+			style.set_corner_radius_all(16)
+			style.shadow_color = Color(0.2, 0.1, 0.0, 0.3)
+			style.shadow_size = 3
+			style.shadow_offset = Vector2(0.0, 3.0)
+		else:
+			style.bg_color = Color.TRANSPARENT
+			style.set_corner_radius_all(16)
+		_dress(button, style, Color("#452309") if on else XomDaoUi.CREAM, on)
 	for button: Button in _filters.get_children():
 		var on: bool = button.name == "Filter_" + filter
-		var fill: Color = XomDaoUi.PAPER if on else Color(XomDaoUi.NAVY, 0.94)
-		var edge: Color = XomDaoUi.HONEY_DARK if on else XomDaoUi.NAVY_LINE
-		var style: StyleBoxFlat = XomDaoUi.box(fill, edge, 2, 20.0)
-		style.shadow_color = XomDaoPuff.SHADE
-		style.shadow_size = 3
-		style.shadow_offset = Vector2(0.0, 4.0)
+		var style := StyleBoxFlat.new()
+		if on:
+			style.bg_color = Color("#FFDA55")
+			style.border_width_left = 3
+			style.border_width_top = 2
+			style.border_width_right = 3
+			style.border_width_bottom = 5
+			style.border_color = Color("#945D0F")
+			style.set_corner_radius_all(20)
+			style.shadow_color = XomDaoPuff.SHADE
+			style.shadow_size = 5
+			style.shadow_offset = Vector2(0.0, 5.0)
+		else:
+			style.bg_color = Color("#111827", 0.94)
+			style.border_width_left = 2
+			style.border_width_top = 2
+			style.border_width_right = 2
+			style.border_width_bottom = 4
+			style.border_color = Color("#C4922F", 0.6)
+			style.set_corner_radius_all(20)
+			style.shadow_color = XomDaoPuff.SHADE
+			style.shadow_size = 4
+			style.shadow_offset = Vector2(0.0, 4.0)
 		style.content_margin_top = 16.0
 		style.content_margin_bottom = 10.0
-		_dress(button, style, XomDaoUi.INK if on else XomDaoUi.CREAM, on)
+		_dress(button, style, Color("#452309") if on else XomDaoUi.CREAM, on)
 
 
 func _dress(button: Button, style: StyleBoxFlat, text: Color, on: bool) -> void:
 	var hover: StyleBoxFlat = style.duplicate()
 	if not on:
-		hover.bg_color = Color(XomDaoUi.NAVY_LINE, 0.6)
+		hover.bg_color = style.bg_color.lightened(0.08)
+		hover.border_color = Color("#FFDA55", 0.8)
 	for state: String in ["normal", "pressed", "hover_pressed", "disabled"]:
 		button.add_theme_stylebox_override(state, style)
 	button.add_theme_stylebox_override("hover", hover)
-	var shown: Color = text if on else Color(text, 0.8)
+	var shown: Color = text if on else Color(text, 0.9)
 	for state: String in ["font_color", "font_hover_color", "font_pressed_color"]:
 		button.add_theme_color_override(state, shown)
 	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
 		button.add_theme_color_override(state, shown)
+	if on:
+		button.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.35))
+		button.add_theme_constant_override("outline_size", 3)
+	else:
+		button.add_theme_color_override("font_outline_color", Color("#0A101A"))
+		button.add_theme_constant_override("outline_size", 4)
 
 
 func _show_grid() -> void:

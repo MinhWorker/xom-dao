@@ -97,18 +97,23 @@ for (const name of names) {
     )
     .catch(() => console.log(`  ${name}: no test bridge (release build?), shot after the wait`));
   if (args.screen) {
-    if (!['select', 'rules'].includes(args.screen))
-      throw new Error('screen must be select or rules');
-    // select: the lobby's card opens it. rules: CHƠI opens a room, whose scroll opens them.
-    const rules = args.screen === 'rules';
-    const first = await (
-      await page.waitForFunction((n) => window.xomdao?.rect(n), rules ? 'Play' : 'SelectedGame')
-    ).jsonValue();
-    await page.mouse.click(first.x + first.width / 2, first.y + first.height / 2);
-    await page.waitForFunction((s) => window.xomdao.scene() === s, rules ? 'room' : 'select');
-    if (rules) {
-      await page.waitForFunction(() => window.xomdao.click('RoomRules'));
-      await page.waitForFunction(() => window.xomdao.rect('RulesPanel'));
+    if (!['select', 'rules', 'ben'].includes(args.screen))
+      throw new Error('screen must be select, rules or ben');
+    if (args.screen === 'ben') {
+      await page.waitForFunction(() => window.xomdao?.click('Place_ben'));
+      await page.waitForFunction(() => window.xomdao?.scene() === 'ben');
+    } else {
+      // select: the lobby's card opens it. rules: CHƠI opens a room, whose scroll opens them.
+      const rules = args.screen === 'rules';
+      const first = await (
+        await page.waitForFunction((n) => window.xomdao?.rect(n), rules ? 'Play' : 'SelectedGame')
+      ).jsonValue();
+      await page.mouse.click(first.x + first.width / 2, first.y + first.height / 2);
+      await page.waitForFunction((s) => window.xomdao.scene() === s, rules ? 'room' : 'select');
+      if (rules) {
+        await page.waitForFunction(() => window.xomdao.click('RoomRules'));
+        await page.waitForFunction(() => window.xomdao.rect('RulesPanel'));
+      }
     }
   }
   await page.waitForTimeout(Number(args.wait));

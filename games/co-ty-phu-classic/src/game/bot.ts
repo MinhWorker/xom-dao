@@ -1,5 +1,5 @@
 import type { GameEvent } from '@xomdao/sdk';
-import { auctionRaise, BOARD, isDeed, STATION_CONTRIBUTION_STEP, type State } from './model.js';
+import { BOARD, isDeed, STATION_CONTRIBUTION_STEP, type State } from './model.js';
 import { bankHotels, bankHouses, redeemAmount } from './rules.js';
 
 const event = (name: string, payload?: object): GameEvent => ({ event: name, payload });
@@ -22,14 +22,9 @@ export function botMove(state: State, seat: number): GameEvent | null {
   if (state.phase === 'auction') {
     const auction = state.auction;
     if (!auction || auction.bidder !== seat) return null;
-    const max = Math.min(me.cash - 100, Math.floor((BOARD[auction.square]?.price ?? 0) * 0.9));
-    const amount = auction.highest + auctionRaise(auction.square);
-    if (auction.seller === undefined) {
-      const contribution = auction.highest + STATION_CONTRIBUTION_STEP;
-      const limit = Math.min(me.cash - 100, Math.floor(BOARD[auction.square]!.price! * 0.9));
-      return limit >= contribution ? event('bid', { amount: contribution }) : event('pass');
-    }
-    return max >= amount ? event('bid', { amount }) : event('pass');
+    const contribution = auction.highest + STATION_CONTRIBUTION_STEP;
+    const limit = Math.min(me.cash - 100, Math.floor(BOARD[auction.square]!.price! * 0.9));
+    return limit >= contribution ? event('bid', { amount: contribution }) : event('pass');
   }
 
   if ((state.phase === 'debt' ? (state.debt?.payer ?? state.turn) : state.turn) !== seat)

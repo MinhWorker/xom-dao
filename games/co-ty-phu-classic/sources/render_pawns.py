@@ -1,7 +1,6 @@
-"""Render four enamel pawns for the board or front-facing victory celebration.
+"""Legacy front-facing enamel pawn bake; current board models use render_board_pieces.py.
 
 Run from the repository root:
-  blender -b -t 4 --python games/co-ty-phu-classic/sources/render_pawns.py
   blender -b -t 4 --python games/co-ty-phu-classic/sources/render_pawns.py -- --front
 
 The editable Blender scene and PNG previews stay in .blender/; game-ready WebP files go in assets/.
@@ -22,6 +21,9 @@ REPO = ROOT.parents[1]
 PREVIEW = REPO / ".blender"
 ASSETS = ROOT / "assets"
 FRONT = "--front" in sys.argv
+if not FRONT:
+    print("Board pawns and HUD portraits now come from render_board_pieces.py; --front keeps the legacy front view.")
+    raise SystemExit(0)
 PREVIEW.mkdir(parents=True, exist_ok=True)
 
 bpy.ops.object.select_all(action="SELECT")

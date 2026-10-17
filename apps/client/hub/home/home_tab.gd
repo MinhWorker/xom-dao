@@ -43,16 +43,48 @@ func _draw() -> void:
 	var down: bool = get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED
 	var over: bool = get_draw_mode() == DRAW_HOVER
 	var plate := Rect2(0.0, 0.0, size.x - REACH + (REACH if selected else 0.0), size.y)
-	var ink: Color = XomDaoUi.INK if selected else XomDaoUi.CREAM
 	if selected:
-		XomDaoPuff.paint(self, plate, XomDaoUi.SUN, XomDaoUi.GOLD_DARK, 20.0, 6.0, down)
+		XomDaoPuff.paint(
+			self, plate, Color("#FFDA55"), Color("#945D0F"), 20.0, 6.0, down, 3, false, true
+		)
+		var sunk: float = 4.0 if down else 0.0
+		# 2 decorative brass rivets on the left
+		_draw_rivet(Vector2(14.0, 14.0 + sunk), 2.2)
+		_draw_rivet(Vector2(14.0, size.y - 18.0 + sunk), 2.2)
 	else:
-		var fill: Color = XomDaoUi.NAVY_HUD.lightened(0.08 if over else 0.0)
-		XomDaoPuff.paint(self, plate, fill, XomDaoUi.NAVY_LINE, 20.0, 6.0, down, 2, false, false)
+		var fill: Color = Color("#111827", 0.94).lightened(0.06 if over else 0.0)
+		var edge: Color = Color("#C4922F", 0.6 if over else 0.4)
+		XomDaoPuff.paint(self, plate, fill, edge, 20.0, 5.0, down, 2, false, true)
 	var sunk: float = 4.0 if down else 0.0
 	var middle: float = (size.y - 6.0) / 2.0 + sunk
-	draw_texture_rect(_icon, Rect2(20.0, middle - 19.0, 38.0, 38.0), false, ink)
+	var ink: Color = Color("#452309") if selected else XomDaoUi.CREAM
+	draw_texture_rect(_icon, Rect2(22.0, middle - 19.0, 38.0, 38.0), false, ink)
 	var font: Font = XomDaoUi.display_font(800)
-	draw_string(
-		font, Vector2(72.0, middle + 10.0), label, HORIZONTAL_ALIGNMENT_LEFT, size.x - 84.0, 28, ink
-	)
+	var text_pos := Vector2(74.0, middle + 10.0)
+	if selected:
+		draw_string(
+			font,
+			text_pos + Vector2(0.0, 1.2),
+			label,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			size.x - 86.0,
+			28,
+			Color(1.0, 1.0, 1.0, 0.4)
+		)
+		draw_string(
+			font, text_pos, label, HORIZONTAL_ALIGNMENT_LEFT, size.x - 86.0, 28, Color("#452309")
+		)
+	else:
+		draw_string_outline(
+			font, text_pos, label, HORIZONTAL_ALIGNMENT_LEFT, size.x - 86.0, 28, 4, Color("#090E16")
+		)
+		draw_string(
+			font, text_pos, label, HORIZONTAL_ALIGNMENT_LEFT, size.x - 86.0, 28, XomDaoUi.CREAM
+		)
+
+
+func _draw_rivet(pos: Vector2, r: float = 2.5) -> void:
+	draw_circle(pos + Vector2(0.0, 1.0), r, Color(0.0, 0.0, 0.0, 0.35), true, -1.0, true)
+	draw_circle(pos, r, Color("#754511"), true, -1.0, true)
+	draw_circle(pos, r * 0.72, Color("#E5A730"), true, -1.0, true)
+	draw_circle(pos + Vector2(-r * 0.25, -r * 0.25), r * 0.3, Color("#FFF8E7"), true, -1.0, true)

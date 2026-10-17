@@ -56,11 +56,14 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   rows of options on the waiting room's plate
   (`{key, label, options: [[label, value], …], default?}`: the first
   option is picked, or the one at index `default`), and `result_detail() -> Dictionary`, what
-  the result board adds under its title: `{reason: String, rows: [[label, value], …]}` after the
-  hub's own Thời gian row.
-  Optional `result_area() -> Rect2` docks the shared result HUD in that game-local area without
-  a screen shade. Pair it with `set_result_visible(shown: bool) -> void` to move the board when
-  Xem bàn / Kết quả toggles the HUD. Other games keep the centred result overlay.
+  the result board adds under its title: `{reason: String, rows: [[label, value], …], layout?: "right"}` after the
+  hub's own Thời gian row. `layout: "right"` docks the panel on the right for a game's end-of-game presentation.
+  Optional `result_area() -> Rect2` docks the shared result HUD in a game-provided area without a
+  screen shade. Pair it with `set_result_visible(shown: bool) -> void` to follow Xem bàn / Kết quả.
+  Games without this hook keep the centred result overlay.
+  Games with voluntary elimination may also define `can_declare_bankruptcy() -> bool` and
+  `declare_bankruptcy() -> bool`; the hub uses these hooks to confirm and apply bankruptcy before
+  leaving a live room.
   A game's `music/` folder (`res://content/<id>/music/`) is its background music: the hub's
   `HubMusic` plays a random track while the game is on, at the settings' music volume.
   The hub draws the ☰ menu, the room, the result (Xem bàn puts it away to look at the final board, Kết quả brings it back) and Luật (the game's RULES.md, which
@@ -112,6 +115,7 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 | Command | What it does |
 | --- | --- |
 | `npm run godot:check` | gdformat --check, gdlint, the boundary rule, headless import, compile every script and scene, GUT. `npm run check` runs it when Godot is installed |
+| `npm run godot:capture` | Ask the already-running desktop debug game to save its current root viewport to `.shots/godot-live.png`; pass `-- --output .shots/name.png` to choose another file, or `-- --timeout 30` to wait longer |
 | `npm run godot:link` | (Re)make the `content/<id>` symlinks; check and export do it too |
 | `npm run godot:export` | Web build into `dist/` (`-- --debug` for a debug build) plus `dist/content/<id>.<hash>.pck` and `manifest.json`. Runs on a copy in `.tools/export/` because Godot's export filters do not follow symlinks |
 | `npm run godot:net` | Builds and starts a dev server (no database) on a free port, then runs the GUT tests that need it (`test_net.gd`, skipped by `godot:check`) |

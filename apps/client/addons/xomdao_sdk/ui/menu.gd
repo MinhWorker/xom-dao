@@ -10,8 +10,11 @@ extends Control
 ##   add_child(menu)                 # covers its parent; only the button and board take input
 ##   menu.leave_requested.connect(...)
 ## The settings apply by themselves (XomDaoSettings); the rest is up to the screen.
+## After `leave_requested`, the screen can call `confirm_leave(title, message, label, action)`;
+## the confirmed action is returned through `leave_confirmed`.
 
 signal leave_requested
+signal leave_confirmed(game_action: bool)
 signal rules_requested
 signal emote_chosen(emote: String)
 
@@ -79,6 +82,46 @@ func open_settings() -> void:
 	board.title = "Cài đặt"
 	_side.visible = false
 	_show()
+
+
+func confirm_leave(
+	title: String, message: String, confirm_label: String, game_action: bool = false
+) -> void:
+	close()
+	var confirm: XomDaoBoard = XomDaoBoard.create(title, true)
+	confirm.name = "ConfirmLeaveBoard"
+	confirm.custom_minimum_size = Vector2(minf(size.x - 48.0, 540.0), 0.0)
+	var shade := ColorRect.new()
+	shade.name = "ConfirmLeaveShade"
+	shade.color = Color(XomDaoUi.INK, 0.45)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.add_child(center)
+	center.add_child(confirm)
+	var note := Label.new()
+	note.text = message
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	confirm.content.add_child(note)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 16)
+	confirm.content.add_child(buttons)
+	var stay: XomDaoButton = XomDaoButton.create("Ở lại", XomDaoUi.Kind.BACK)
+	stay.name = "Stay"
+	stay.pressed.connect(shade.queue_free)
+	buttons.add_child(stay)
+	var leave: XomDaoButton = XomDaoButton.create(confirm_label, XomDaoUi.Kind.DANGER)
+	leave.name = "ConfirmLeave"
+	leave.pressed.connect(
+		func() -> void:
+			shade.queue_free()
+			leave_confirmed.emit(game_action)
+	)
+	buttons.add_child(leave)
+	confirm.closed.connect(shade.queue_free)
+	confirm.open()
 
 
 func _show() -> void:

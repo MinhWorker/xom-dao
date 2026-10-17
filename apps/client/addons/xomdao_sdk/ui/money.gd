@@ -24,9 +24,7 @@ var text: String:
 var background: Color = XomDaoUi.HUD:
 	set(value):
 		background = value
-		_pill.add_theme_stylebox_override(
-			"panel", XomDaoUi.box(value, Color.TRANSPARENT, 0, HEIGHT / 2.0)
-		)
+		_update_pill()
 
 var _pill := Panel.new()
 var _label := Label.new()
@@ -46,18 +44,35 @@ static func create(
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = Vector2(220.0, HEIGHT + 8.0)
-	background = XomDaoUi.HUD
 	_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_pill)
+	background = XomDaoUi.HUD
 	_label.add_theme_font_override("font", XomDaoUi.display_font(800))
 	_label.add_theme_font_size_override("font_size", 38)
 	_label.add_theme_color_override("font_color", XomDaoUi.CREAM)
+	_label.add_theme_color_override("font_outline_color", Color(0.06, 0.09, 0.14, 0.9))
+	_label.add_theme_constant_override("outline_size", 6)
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_pill.add_child(_label)
 	add_child(_icon)
 	resized.connect(_layout)
 	_layout()
+
+
+func _update_pill() -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(XomDaoUi.GOLD_DARK.lightened(0.1), 0.75)
+	style.set_corner_radius_all(int(HEIGHT / 2.0))
+	style.shadow_color = XomDaoPuff.SHADE
+	style.shadow_size = 3
+	style.shadow_offset = Vector2(0.0, 3.0)
+	_pill.add_theme_stylebox_override("panel", style)
 
 
 ## Rolls the shown number to `value` over `seconds` (the balance counting up after a reward).

@@ -230,264 +230,15 @@ const GROUP_COLORS: Dictionary = {
 	"xanh-la": Color("#673c91"),
 	"xanh-dam": Color("#176578"),
 }
-## Each square's corners on board-25d.webp (fractions of its width and height): top left,
-## top right, bottom right, bottom left.
-const CELLS: Array = [
-	[
-		Vector2(0.788285, 0.705104),
-		Vector2(0.910805, 0.705104),
-		Vector2(0.922681, 0.836335),
-		Vector2(0.796618, 0.836335)
-	],
-	[
-		Vector2(0.724221, 0.705104),
-		Vector2(0.788285, 0.705104),
-		Vector2(0.796618, 0.836335),
-		Vector2(0.730703, 0.836335)
-	],
-	[
-		Vector2(0.660158, 0.705104),
-		Vector2(0.724221, 0.705104),
-		Vector2(0.730703, 0.836335),
-		Vector2(0.664788, 0.836335)
-	],
-	[
-		Vector2(0.596095, 0.705104),
-		Vector2(0.660158, 0.705104),
-		Vector2(0.664788, 0.836335),
-		Vector2(0.598873, 0.836335)
-	],
-	[
-		Vector2(0.532032, 0.705104),
-		Vector2(0.596095, 0.705104),
-		Vector2(0.598873, 0.836335),
-		Vector2(0.532958, 0.836335)
-	],
-	[
-		Vector2(0.467968, 0.705104),
-		Vector2(0.532032, 0.705104),
-		Vector2(0.532958, 0.836335),
-		Vector2(0.467042, 0.836335)
-	],
-	[
-		Vector2(0.403905, 0.705104),
-		Vector2(0.467968, 0.705104),
-		Vector2(0.467042, 0.836335),
-		Vector2(0.401127, 0.836335)
-	],
-	[
-		Vector2(0.339842, 0.705104),
-		Vector2(0.403905, 0.705104),
-		Vector2(0.401127, 0.836335),
-		Vector2(0.335212, 0.836335)
-	],
-	[
-		Vector2(0.275779, 0.705104),
-		Vector2(0.339842, 0.705104),
-		Vector2(0.335212, 0.836335),
-		Vector2(0.269297, 0.836335)
-	],
-	[
-		Vector2(0.211715, 0.705104),
-		Vector2(0.275779, 0.705104),
-		Vector2(0.269297, 0.836335),
-		Vector2(0.203382, 0.836335)
-	],
-	[
-		Vector2(0.089195, 0.705104),
-		Vector2(0.211715, 0.705104),
-		Vector2(0.203382, 0.836335),
-		Vector2(0.077319, 0.836335)
-	],
-	[
-		Vector2(0.095359, 0.636984),
-		Vector2(0.216041, 0.636984),
-		Vector2(0.211715, 0.705104),
-		Vector2(0.089195, 0.705104)
-	],
-	[
-		Vector2(0.101341, 0.570878),
-		Vector2(0.220239, 0.570878),
-		Vector2(0.216041, 0.636984),
-		Vector2(0.095359, 0.636984)
-	],
-	[
-		Vector2(0.107149, 0.506699),
-		Vector2(0.224315, 0.506699),
-		Vector2(0.220239, 0.570878),
-		Vector2(0.101341, 0.570878)
-	],
-	[
-		Vector2(0.11279, 0.444363),
-		Vector2(0.228274, 0.444363),
-		Vector2(0.224315, 0.506699),
-		Vector2(0.107149, 0.506699)
-	],
-	[
-		Vector2(0.118272, 0.383792),
-		Vector2(0.23212, 0.383792),
-		Vector2(0.228274, 0.444363),
-		Vector2(0.11279, 0.444363)
-	],
-	[
-		Vector2(0.1236, 0.324911),
-		Vector2(0.23586, 0.324911),
-		Vector2(0.23212, 0.383792),
-		Vector2(0.118272, 0.383792)
-	],
-	[
-		Vector2(0.128782, 0.267652),
-		Vector2(0.239496, 0.267652),
-		Vector2(0.23586, 0.324911),
-		Vector2(0.1236, 0.324911)
-	],
-	[
-		Vector2(0.133823, 0.211948),
-		Vector2(0.243033, 0.211948),
-		Vector2(0.239496, 0.267652),
-		Vector2(0.128782, 0.267652)
-	],
-	[
-		Vector2(0.138728, 0.157736),
-		Vector2(0.246476, 0.157736),
-		Vector2(0.243033, 0.211948),
-		Vector2(0.133823, 0.211948)
-	],
-	[
-		Vector2(0.148186, 0.053225),
-		Vector2(0.253113, 0.053225),
-		Vector2(0.246476, 0.157736),
-		Vector2(0.138728, 0.157736)
-	],
-	[
-		Vector2(0.253113, 0.053225),
-		Vector2(0.307977, 0.053225),
-		Vector2(0.302815, 0.157736),
-		Vector2(0.246476, 0.157736)
-	],
-	[
-		Vector2(0.307977, 0.053225),
-		Vector2(0.362841, 0.053225),
-		Vector2(0.359153, 0.157736),
-		Vector2(0.302815, 0.157736)
-	],
-	[
-		Vector2(0.362841, 0.053225),
-		Vector2(0.417704, 0.053225),
-		Vector2(0.415492, 0.157736),
-		Vector2(0.359153, 0.157736)
-	],
-	[
-		Vector2(0.417704, 0.053225),
-		Vector2(0.472568, 0.053225),
-		Vector2(0.471831, 0.157736),
-		Vector2(0.415492, 0.157736)
-	],
-	[
-		Vector2(0.472568, 0.053225),
-		Vector2(0.527432, 0.053225),
-		Vector2(0.528169, 0.157736),
-		Vector2(0.471831, 0.157736)
-	],
-	[
-		Vector2(0.527432, 0.053225),
-		Vector2(0.582296, 0.053225),
-		Vector2(0.584508, 0.157736),
-		Vector2(0.528169, 0.157736)
-	],
-	[
-		Vector2(0.582296, 0.053225),
-		Vector2(0.637159, 0.053225),
-		Vector2(0.640847, 0.157736),
-		Vector2(0.584508, 0.157736)
-	],
-	[
-		Vector2(0.637159, 0.053225),
-		Vector2(0.692023, 0.053225),
-		Vector2(0.697185, 0.157736),
-		Vector2(0.640847, 0.157736)
-	],
-	[
-		Vector2(0.692023, 0.053225),
-		Vector2(0.746887, 0.053225),
-		Vector2(0.753524, 0.157736),
-		Vector2(0.697185, 0.157736)
-	],
-	[
-		Vector2(0.746887, 0.053225),
-		Vector2(0.851814, 0.053225),
-		Vector2(0.861272, 0.157736),
-		Vector2(0.753524, 0.157736)
-	],
-	[
-		Vector2(0.753524, 0.157736),
-		Vector2(0.861272, 0.157736),
-		Vector2(0.866177, 0.211948),
-		Vector2(0.756967, 0.211948)
-	],
-	[
-		Vector2(0.756967, 0.211948),
-		Vector2(0.866177, 0.211948),
-		Vector2(0.871218, 0.267652),
-		Vector2(0.760504, 0.267652)
-	],
-	[
-		Vector2(0.760504, 0.267652),
-		Vector2(0.871218, 0.267652),
-		Vector2(0.8764, 0.324911),
-		Vector2(0.76414, 0.324911)
-	],
-	[
-		Vector2(0.76414, 0.324911),
-		Vector2(0.8764, 0.324911),
-		Vector2(0.881728, 0.383792),
-		Vector2(0.76788, 0.383792)
-	],
-	[
-		Vector2(0.76788, 0.383792),
-		Vector2(0.881728, 0.383792),
-		Vector2(0.88721, 0.444363),
-		Vector2(0.771726, 0.444363)
-	],
-	[
-		Vector2(0.771726, 0.444363),
-		Vector2(0.88721, 0.444363),
-		Vector2(0.892851, 0.506699),
-		Vector2(0.775685, 0.506699)
-	],
-	[
-		Vector2(0.775685, 0.506699),
-		Vector2(0.892851, 0.506699),
-		Vector2(0.898659, 0.570878),
-		Vector2(0.77976, 0.570878)
-	],
-	[
-		Vector2(0.77976, 0.570878),
-		Vector2(0.898659, 0.570878),
-		Vector2(0.904641, 0.636984),
-		Vector2(0.783959, 0.636984)
-	],
-	[
-		Vector2(0.783959, 0.636984),
-		Vector2(0.904641, 0.636984),
-		Vector2(0.910805, 0.705104),
-		Vector2(0.788285, 0.705104)
-	],
-]
-const IMAGE_RATIO := 1.2727272727272727
-const HOMOGRAPHY: Array[float] = [
-	0.765042, -0.09543849, 0.117479, 0, 0.73190475, 0.020574, 0, -0.19087698, 1
-]
-## The printed players' panel in board units (PLAYER_PANEL in the board geometry).
-const PANEL_AVATAR := Vector3(0.262, 0.296, 0.058)
-const PANEL_NAME := Vector2(0.34, 0.243)
-const PANEL_CASH := Vector2(0.34, 0.292)
-const PANEL_SEATS: Array[Vector2] = [
-	Vector2(0.618, 0.217), Vector2(0.618, 0.2655), Vector2(0.618, 0.314), Vector2(0.618, 0.3625)
-]
-const PANEL_SEAT_RADIUS := 0.019
-## The green field inside the squares, in board units.
-const FIELD := Rect2(0.155, 0.412, 0.69, 0.378)
+## Board coordinates come from the same Blender render as the board image.
+const Geometry := preload("res://content/co-ty-phu-classic/board_geometry.gd")
+const CELLS: Array = Geometry.CELLS
+const IMAGE_RATIO: float = Geometry.IMAGE_RATIO
+const HOMOGRAPHY: Array[float] = Geometry.HOMOGRAPHY
+const PANEL_AVATAR: Vector3 = Geometry.PANEL_AVATAR
+const PANEL_NAME: Vector2 = Geometry.PANEL_NAME
+const PANEL_CASH: Vector2 = Geometry.PANEL_CASH
+const FIELD: Rect2 = Geometry.FIELD
 
 
 ## A point of the printed board (board units) on board-25d.webp (fractions of its size).
@@ -515,11 +266,6 @@ static func price(i: int) -> int:
 	return int(SQUARES[i].get("price", 0))
 
 
-## The least raise in an owner's auction (`auctionRaise`).
-static func auction_raise(i: int) -> int:
-	return ceili(price(i) / 5.0)
-
-
 static func group_of(i: int) -> Array[int]:
 	var out: Array[int] = []
 	var group: String = str(SQUARES[i].get("group", ""))
@@ -539,6 +285,27 @@ static func owns_group(properties: Array, owner: int, i: int) -> bool:
 		if _owner(properties, j) != owner:
 			return false
 	return true
+
+
+static func rent_multiplier(view: Dictionary, i: int) -> int:
+	if SQUARES[i]["kind"] != "street":
+		return 1
+	var properties: Array = view["properties"]
+	var owner: int = _owner(properties, i)
+	if owner < 0:
+		return 1
+	var group: Array[int] = group_of(i)
+	if owns_group(properties, owner, i):
+		return group.size()
+	var position: int = group.find(i)
+	for neighbor_position: int in [position - 1, position + 1]:
+		if (
+			neighbor_position >= 0
+			and neighbor_position < group.size()
+			and _owner(properties, group[neighbor_position]) == owner
+		):
+			return 2
+	return 1
 
 
 static func _owner(properties: Array, i: int) -> int:
@@ -562,7 +329,7 @@ static func rent(view: Dictionary, i: int, roll: int = 7) -> int:
 	if kind == "utility":
 		return roll * utility_multiplier(view, i)
 	var ladder: Array = SQUARES[i]["rent"]
-	return int(ladder[int(deed["houses"])]) * (3 if owns_group(properties, owner, i) else 1)
+	return int(ladder[int(deed["houses"])]) * rent_multiplier(view, i)
 
 
 static func utility_multiplier(view: Dictionary, i: int) -> int:
@@ -656,12 +423,10 @@ static func decision_seat(view: Dictionary) -> int:
 	return int(view["turn"])
 
 
-## What the Bid button offers: one more contribution at a station, the least raise elsewhere.
+## What the Bid button offers: the next contribution at this station.
 static func bid_amount(view: Dictionary) -> int:
 	var auction: Dictionary = view["auction"]
-	if auction.get("seller") == null:
-		return int(auction["highest"]) + STATION_STEP
-	return int(auction["highest"]) + auction_raise(int(auction["square"]))
+	return int(auction["highest"]) + STATION_STEP
 
 
 ## Each seat's net change over a view's money transfers ({seat: amount}).

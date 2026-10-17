@@ -85,6 +85,38 @@ func test_select_plays_a_tapped_game_and_keeps_genres_in_the_bottom_left() -> vo
 	assert_gt(HubGenreTab.OBJECT, HubGenreTab.PLATE_H, "the object stands out of its plate")
 
 
+func test_select_joins_room_by_code_and_keeps_it_in_the_bottom_right() -> void:
+	var select: HubGameSelect = add_child_autofree(HubGameSelect.new())
+	select.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	select.size = Vector2(1280, 720)
+	var catalog: HubCatalog = _catalog(2)
+	select.show_genre(catalog, "co")
+	watch_signals(select)
+
+	var room_join: Control = select.find_child("RoomJoin", true, false)
+	assert_not_null(room_join, "RoomJoin container exists")
+	assert_gt(room_join.global_position.x, select.size.x / 2.0, "on the right")
+	assert_gt(
+		room_join.global_position.y, select.strip.position.y + select.strip.size.y - 1.0, "below"
+	)
+
+	var input: LineEdit = select.find_child("CodeInput", true, false)
+	assert_not_null(input, "CodeInput exists")
+	var join: XomDaoButton = select.find_child("JoinRoom", true, false)
+	assert_not_null(join, "JoinRoom button exists")
+
+	input.text = "abcd"
+	input.text_changed.emit("abcd")
+	assert_eq(input.text, "ABCD", "auto-uppercased")
+
+	join.pressed.emit()
+	assert_signal_emitted_with_parameters(select, "join_room_requested", ["ABCD"])
+
+	input.text = "wxyz"
+	input.text_submitted.emit("wxyz")
+	assert_signal_emitted_with_parameters(select, "join_room_requested", ["WXYZ"])
+
+
 func test_long_rules_are_split_without_losing_text() -> void:
 	var body: String = "Một câu luật với đầy đủ dấu tiếng Việt. ".repeat(60).strip_edges()
 	var source: Array[Dictionary] = HubRulesBoard.sections("# Luật\n\n## Xếp tàu\n" + body)

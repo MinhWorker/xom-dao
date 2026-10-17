@@ -295,33 +295,6 @@ describe('Cờ tỷ phú Classic', () => {
     expect(game.state.transfers).toEqual([]);
   });
 
-  it('auctions an owned street and pays the seller', () => {
-    const game = testGame(plugin, ['a', 'b', 'c']);
-    game.state.properties[3]!.owner = 0;
-    game.send('a', 'auction', { square: 3 });
-    expect(game.error('a', 'bid', { amount: 50 })).toBeTruthy();
-    game.send('b', 'bid', { amount: 50 });
-    expect(game.error('c', 'bid', { amount: 60 })).toBeTruthy();
-    game.send('c', 'bid', { amount: 86 });
-    game.send('b', 'pass');
-    expect(game.state.properties[3]?.owner).toBe(2);
-    expect(game.state.players.map((p) => p.cash)).toEqual([1086, 1000, 914]);
-    expect(game.state.auction).toBeNull();
-    expect(game.state.phase).toBe('roll');
-  });
-
-  it('gives each bidder a countdown and passes when it runs out', () => {
-    const game = testGame(plugin, ['a', 'b', 'c'], { bots: ['c'] });
-    game.state.properties[3]!.owner = 0;
-    game.send('a', 'auction', { square: 3 });
-    expect(game.state.auction?.bidder).toBe(1);
-    expect(game.timer).toMatchObject({ event: 'turn-timeout', ms: AUCTION_TURN_MS });
-    game.fireTimer();
-    expect(game.state.auction?.passed).toEqual([0, 1]);
-    expect(game.state.auction?.bidder).toBe(2);
-    expect(game.timer).toBeNull();
-  });
-
   it('charges rent and pauses for liquidation if cash is short', () => {
     const game = at(37);
     game.state.properties[37]!.owner = 1;
@@ -507,28 +480,20 @@ describe('Cờ tỷ phú Classic', () => {
     expect(game.state.properties[3]?.owner).toBe(0);
   });
 
-  it('keeps the current bidder when a different bidder leaves', () => {
-    const game = testGame(plugin, ['a', 'b', 'c']);
-    game.state.properties[3]!.owner = 0;
-    game.send('a', 'auction', { square: 3 });
-    game.send('b', 'bid', { amount: 50 });
-    expect(game.state.auction?.bidder).toBe(2);
-    game.leave('b');
-    expect(game.state.auction?.bidder).toBe(2);
-    game.send('c', 'bid', { amount: 36 });
-    expect(game.state.properties[3]?.owner).toBe(2);
-    expect(game.state.players[0]!.cash).toBe(1036);
-  });
-
-  it('transfers a held jail card to the creditor after bankruptcy', () => {
+  it('pays remaining cash to the fee collector and returns other assets to the bank after bankruptcy', () => {
     const game = at(37);
     game.state.properties[37]!.owner = 1;
+    game.state.properties[3]!.owner = 0;
     game.state.players[0]!.cash = 1;
     game.state.players[0]!.freeCards.push('chance');
     game.send('a', 'roll');
     expect(game.state.phase).toBe('debt');
     game.send('a', 'bankrupt');
-    expect(game.state.players[1]?.freeCards).toEqual(['chance']);
+    expect(game.state.players[0]).toMatchObject({ bankrupt: true, cash: 0, freeCards: [] });
+    expect(game.state.players[1]?.cash).toBe(1001);
+    expect(game.state.properties[3]).toMatchObject({ owner: null, mortgaged: false });
+    expect(game.state.properties[37]).toMatchObject({ owner: 1, mortgaged: false });
+    expect(game.state.players[1]?.freeCards).toEqual([]);
   });
 
   it('lets computer players handle a long game without a rejected move', () => {

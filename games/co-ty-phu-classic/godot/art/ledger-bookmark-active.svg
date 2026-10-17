@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="124" viewBox="0 0 160 124">
+  <title>Thẻ mục đang chọn</title>
+  <!-- Active tab body matching ivory ledger book -->
+  <path d="M14 6H146L156 62L146 118H14Q4 118 4 108V16Q4 6 14 6Z" fill="#FFFDF8" stroke="#DFD5BE" stroke-width="2.5"/>
+  <!-- Gold active indicator bar on left edge -->
+  <rect x="6" y="24" width="6" height="76" rx="3" fill="#F59E0B"/>
+  <!-- Subtle inner frame -->
+  <path d="M16 12H140L148 62L140 112H16" fill="none" stroke="#F1ECE0" stroke-width="1.5"/>
+</svg>

@@ -1,0 +1,9 @@
+Locked-off orthographic camera. Animate the supplied playful action-game island as a quiet six-second idle loop. Preserve its original composition, painting style, geometry, colors and lighting.
+
+Make entire island inside the frame. Keep the full palm canopy, pennant, bomb fuse, hanging vines and the complete waterfall visible throughout the video, with generous empty padding on all sides. Keep the original 16:9 framing, a constant apparent size and camera angle. Lock the rock base, buildings and ground to identical screen coordinates in every frame; only the small environmental details described below animate.
+
+The tiny ember at the fuse tip softly pulses between warm amber and pale gold. The fuse remains the same length and the bomb remains intact and stationary throughout. Palm fronds and tree leaves sway gently, with all leaves attached. The rust-red pennant softly ripples from its fixed support. Water flows steadily down the stream and waterfall, with delicate foam confined to its visible ending. The entire rock island remains anchored at exactly the same screen position throughout. No up-and-down movement, bobbing, hovering motion, drifting, rotation, rocking, zooming or scaling of the island as a whole.
+
+The bomb body, stone platform, crates, barrels, fencing and shelter stay rigid and retain their exact shapes and positions. Keep the action at a calm idle state, with the ember confined to the fuse tip and the surrounding air clear.
+
+The background stays perfectly uniform solid magenta #FF00FF in every frame, with constant color and brightness. Keep the surrounding padding empty and clean. Camera position, framing, focus and exposure stay fixed. All moving elements return to their starting pose and motion phase at the end for a seamless loop. One continuous shot.

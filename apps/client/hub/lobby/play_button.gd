@@ -54,94 +54,179 @@ func _draw() -> void:
 	var down: bool = mode == DRAW_PRESSED or mode == DRAW_HOVER_PRESSED
 	var off: bool = mode == DRAW_DISABLED
 	var sunk: float = DEPTH - 3.0 if down else 0.0
-	var fill: Color = XomDaoUi.SUN
-	var line: Color = XomDaoUi.GOLD_DARK
-	var ink: Color = XomDaoUi.INK
+	var fill: Color = XomDaoUi.LACQUER
+	var border_gold: Color = XomDaoUi.GOLD
+	var border_dark: Color = XomDaoUi.GOLD_DARK
+	var lip_color: Color = Color("#54090D")
+	var text_color: Color = XomDaoUi.CREAM
+	var text_shadow: Color = Color("#380508")
 	if mode == DRAW_HOVER:
-		fill = fill.lightened(0.12)
+		fill = fill.lightened(0.08)
+		border_gold = border_gold.lightened(0.08)
 	if off:
-		fill = Color("#B9B6AC")
-		line = Color("#7E7B72")
-		ink = Color(XomDaoUi.INK, 0.55)
-	# The lip, then the face standing DEPTH off its bottom.
-	_fill(_shape(sunk, size.y), line.darkened(0.3), line.darkened(0.3))
+		fill = Color("#827E78")
+		border_gold = Color("#66635D")
+		border_dark = Color("#524F4A")
+		lip_color = Color("#42403B")
+		text_color = Color(XomDaoUi.CREAM, 0.45)
+		text_shadow = Color(0.0, 0.0, 0.0, 0.3)
+
+	# 1. Contact shadow under the lip.
+	var shadow_shape: PackedVector2Array = _shape(sunk + 4.0, size.y + 4.0)
+	draw_colored_polygon(shadow_shape, Color(0.12, 0.05, 0.03, 0.35))
+
+	# 2. The lip, standing DEPTH off its bottom.
+	_fill(_shape(sunk, size.y), lip_color, lip_color.darkened(0.25))
+
+	# 3. The face standing DEPTH off the lip's bottom.
 	var face: PackedVector2Array = _shape(sunk, size.y - DEPTH + sunk)
-	_fill(face, fill, line)
+	_fill(face, fill, border_gold, 4.0)
+
 	var top: float = sunk
 	var bottom: float = size.y - DEPTH + sunk
+
 	if not off:
-		# Light from above on the upper half, the lower third turning away.
-		var half := Rect2(0.0, top, size.x, (bottom - top) * 0.5)
-		_overlay(face, half, Color(1.0, 1.0, 1.0, 0.1 if down else 0.22))
-		var low := Rect2(0.0, bottom - (bottom - top) * 0.3, size.x, (bottom - top) * 0.3)
-		_overlay(face, low, Color(0.55, 0.3, 0.0, 0.12))
+		# 4. Inset gold inlay contour (khảm chỉ vàng truyền thống).
+		var inners: Array[PackedVector2Array] = Geometry2D.offset_polygon(face, -5.5)
+		for inner: PackedVector2Array in inners:
+			draw_polyline(
+				inner + PackedVector2Array([inner[0]]), Color(border_dark, 0.7), 1.5, true
+			)
+
+		# 5. 2.5D Directional Lighting:
+		# Soft gloss on upper half:
+		var half := Rect2(0.0, top, size.x, (bottom - top) * 0.48)
+		_overlay(face, half, Color(1.0, 1.0, 1.0, 0.08 if down else 0.18))
+		# Shading on lower third:
+		var low := Rect2(0.0, bottom - (bottom - top) * 0.28, size.x, (bottom - top) * 0.28)
+		_overlay(face, low, Color(0.0, 0.0, 0.0, 0.16))
+
+		# Highlight on top-left cut bevel:
 		draw_line(
-			Vector2(CUT.x + 10.0, top + 7.0),
-			Vector2(size.x - small_corner - 6.0, top + 7.0),
-			Color(1.0, 1.0, 1.0, 0.55),
+			Vector2(4.0, top + CUT.y - 2.0),
+			Vector2(CUT.x - 2.0, top + 4.0),
+			Color(1.0, 1.0, 1.0, 0.45 if not down else 0.2),
+			2.5,
+			true
+		)
+		# Specular rim under top horizontal edge:
+		draw_line(
+			Vector2(CUT.x + 8.0, top + 6.0),
+			Vector2(size.x - small_corner - 6.0, top + 6.0),
+			Color(1.0, 1.0, 1.0, 0.6 if not down else 0.25),
 			3.0,
 			true
 		)
 		if _shine < 1.0 and not down:
 			_glint(top, bottom)
-	# CHƠI ▶ on the left, the seats on a dark pill on the right.
+
+	# 6. "CHƠI ▶" Typography:
 	var font: Font = XomDaoUi.display_font(800)
 	var mid: float = (top + bottom) / 2.0
 	var word := "CHƠI"
 	var word_size: int = 62
-	var at := Vector2(CUT.x - 10.0, mid + word_size * 0.33)
-	draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, word_size, ink)
+	var at := Vector2(CUT.x - 2.0, mid + word_size * 0.33)
+
+	# Embossed 3D shadow for letters:
+	draw_string(
+		font, at + Vector2(0.0, 3.0), word, HORIZONTAL_ALIGNMENT_LEFT, -1, word_size, text_shadow
+	)
+	draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, word_size, text_color)
+
 	var after: float = at.x + font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, word_size).x
 	var arrow := PackedVector2Array(
 		[
-			Vector2(after + 16.0, mid - 18.0),
-			Vector2(after + 46.0, mid),
-			Vector2(after + 16.0, mid + 18.0)
+			Vector2(after + 18.0, mid - 18.0),
+			Vector2(after + 48.0, mid),
+			Vector2(after + 18.0, mid + 18.0)
 		]
 	)
-	draw_colored_polygon(arrow, ink)
-	draw_polyline(arrow + PackedVector2Array([arrow[0]]), ink, 5.0, true)
+	var arrow_shadow := PackedVector2Array(
+		[
+			Vector2(after + 18.0, mid - 18.0 + 3.0),
+			Vector2(after + 48.0, mid + 3.0),
+			Vector2(after + 18.0, mid + 18.0 + 3.0)
+		]
+	)
+	draw_colored_polygon(arrow_shadow, text_shadow)
+	draw_colored_polygon(arrow, border_gold if not off else text_color)
+	draw_polyline(
+		arrow + PackedVector2Array([arrow[0]]),
+		border_gold.lightened(0.2) if not off else text_color,
+		2.0,
+		true
+	)
+
 	if seats != "":
-		_draw_seats(font, mid, ink, off)
+		_draw_seats(font, mid, off)
 
 
-func _draw_seats(font: Font, mid: float, ink: Color, off: bool) -> void:
+func _draw_seats(font: Font, mid: float, off: bool) -> void:
 	var text_size: int = 26
 	var width: float = font.get_string_size(seats, HORIZONTAL_ALIGNMENT_LEFT, -1, text_size).x
-	var pill := Rect2(0.0, mid - 23.0, width + 62.0, 46.0)
-	pill.position.x = size.x - 20.0 - pill.size.x
-	var box: StyleBoxFlat = XomDaoUi.box(
-		Color(ink, 0.5 if off else 0.92), Color.TRANSPARENT, 0, 23.0
+	var pill := Rect2(0.0, mid - 24.0, width + 64.0, 48.0)
+	pill.position.x = size.x - 22.0 - pill.size.x
+
+	# Pill shadow
+	var pill_shadow: StyleBoxFlat = XomDaoUi.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 24.0)
+	pill_shadow.shadow_color = Color(0.12, 0.02, 0.03, 0.45)
+	pill_shadow.shadow_size = 2
+	pill_shadow.shadow_offset = Vector2(0.0, 2.0)
+	draw_style_box(pill_shadow, pill)
+
+	# Pill background: dark lacquer / dark wood with thin gold border
+	var pill_box: StyleBoxFlat = XomDaoUi.box(
+		Color("#36080B") if not off else Color("#45423E"),
+		Color(XomDaoUi.GOLD_DARK, 0.8) if not off else Color("#6A6660"),
+		2,
+		24.0
 	)
-	draw_style_box(box, pill)
-	var light: Color = Color("#D8D5CC") if off else XomDaoUi.SUN
+	draw_style_box(pill_box, pill)
+
+	# Inner subtle top bevel on pill
+	var pill_top := StyleBoxFlat.new()
+	pill_top.bg_color = Color(1.0, 1.0, 1.0, 0.12)
+	pill_top.corner_radius_top_left = 22
+	pill_top.corner_radius_top_right = 22
+	draw_style_box(
+		pill_top, Rect2(pill.position + Vector2(2.0, 2.0), Vector2(pill.size.x - 4.0, 14.0))
+	)
+
+	var icon_color: Color = XomDaoUi.GOLD if not off else Color("#A8A59E")
+	var label_color: Color = XomDaoUi.CREAM if not off else Color("#D8D5CC")
+
+	# User icon
 	draw_texture_rect(
-		_users, Rect2(pill.position + Vector2(14.0, 10.0), Vector2(26.0, 26.0)), false, light
+		_users, Rect2(pill.position + Vector2(14.0, 11.0), Vector2(26.0, 26.0)), false, icon_color
 	)
+
+	# Seats text with carved shadow
+	var text_pos := pill.position + Vector2(46.0, 24.0 + text_size * 0.34)
 	draw_string(
 		font,
-		pill.position + Vector2(46.0, 23.0 + text_size * 0.34),
+		text_pos + Vector2(0.0, 1.5),
 		seats,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,
 		text_size,
-		light
+		Color(0.1, 0.02, 0.03, 0.8)
 	)
+	draw_string(font, text_pos, seats, HORIZONTAL_ALIGNMENT_LEFT, -1, text_size, label_color)
 
 
 func _glint(top: float, bottom: float) -> void:
 	var left: float = CUT.x + 8.0
 	var right: float = size.x - round_corner
-	var band: float = 60.0
+	var band: float = 64.0
 	var x: float = lerpf(left, right - band, _shine)
-	var glow := Color(1.0, 1.0, 1.0, 0.4 * sin(_shine * PI))
+	var glow := Color(1.0, 0.95, 0.82, 0.42 * sin(_shine * PI))
 	draw_colored_polygon(
 		PackedVector2Array(
 			[
-				Vector2(x + 22.0, top + 5.0),
-				Vector2(x + 22.0 + band, top + 5.0),
-				Vector2(x + band, bottom - 5.0),
-				Vector2(x, bottom - 5.0)
+				Vector2(x + 24.0, top + 4.0),
+				Vector2(x + 24.0 + band, top + 4.0),
+				Vector2(x + band, bottom - 4.0),
+				Vector2(x, bottom - 4.0)
 			]
 		),
 		glow
@@ -166,9 +251,9 @@ func _arc(points: PackedVector2Array, centre: Vector2, radius: float, from: floa
 
 
 ## A filled shape with a smooth edge in `line`.
-func _fill(shape: PackedVector2Array, color: Color, line: Color) -> void:
+func _fill(shape: PackedVector2Array, color: Color, line: Color, line_width: float = 3.0) -> void:
 	draw_colored_polygon(shape, color)
-	draw_polyline(shape + PackedVector2Array([shape[0]]), line, 3.0, true)
+	draw_polyline(shape + PackedVector2Array([shape[0]]), line, line_width, true)
 
 
 ## A tint over the part of `shape` inside `band`.
