@@ -81,6 +81,8 @@ func _restyle() -> void:
 	add_theme_font_size_override("font_size", 48 if play else (40 if home_play else 32))
 	for state: String in ["font_color", "font_hover_color", "font_pressed_color"]:
 		add_theme_color_override(state, text)
+	add_theme_color_override("font_outline_color", Color(colors[1].darkened(0.25), 0.85))
+	add_theme_constant_override("outline_size", 4)
 	add_theme_color_override("font_disabled_color", Color(text, 0.6))
 	add_theme_constant_override("h_separation", 12)
 	add_theme_constant_override("icon_max_width", 40)

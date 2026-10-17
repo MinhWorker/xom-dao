@@ -31,7 +31,7 @@ describe('utilities and monopoly', () => {
     },
   );
 
-  it('triples every building level and removes the bonus when a set is split', () => {
+  it('doubles adjacent pairs and triples complete sets at every building level', () => {
     const g = game();
     const squares = groupSquares(BOARD[1]!.group!);
     for (const square of squares) g.state.properties[square]!.owner = 0;
@@ -44,7 +44,7 @@ describe('utilities and monopoly', () => {
       expect(g.state.players[1]!.cash).toBe(10000 - charge);
     }
     g.state.properties[3]!.owner = 1;
-    expect(rent(g.state, 1, 7)).toBe(BOARD[1]!.rent![5]);
+    expect(rent(g.state, 1, 7)).toBe(BOARD[1]!.rent![5]! * 2);
     g.state.players[0]!.jailed = true;
     expect(rent(g.state, 1, 7)).toBe(0);
   });
@@ -58,7 +58,7 @@ describe('utilities and monopoly', () => {
     expect(assetValue(g.state, 0)).toBe(1580);
   });
 
-  it('triples scattered streets without requiring or charging the intervening chance square', () => {
+  it('applies pair and full-set rent across an intervening chance square', () => {
     const g = game();
     for (const square of [6, 8, 9]) g.state.properties[square]!.owner = 0;
     expect([6, 8, 9].map((square) => rent(g.state, square, 7))).toEqual([84, 96, 105]);
@@ -69,7 +69,7 @@ describe('utilities and monopoly', () => {
     expect(g.state.specialEvent?.kind).toBe('card');
     expect(g.state.players[1]!.cash).toBe(916);
     g.state.properties[9]!.owner = 2;
-    expect([6, 8, 9].map((square) => rent(g.state, square, 7))).toEqual([28, 32, 35]);
+    expect([6, 8, 9].map((square) => rent(g.state, square, 7))).toEqual([56, 64, 35]);
   });
 });
 

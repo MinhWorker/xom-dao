@@ -36,6 +36,7 @@
     "setup:godot": "node tools/godot/setup.mjs",
     "godot": "node tools/godot/run.mjs",
     "godot:check": "node tools/godot/check.mjs",
+    "godot:capture": "node tools/godot/capture.mjs",
     "godot:link": "node tools/godot/link.mjs",
     "godot:export": "node tools/godot/export.mjs",
     "godot:smoke": "node tools/godot/smoke.mjs",

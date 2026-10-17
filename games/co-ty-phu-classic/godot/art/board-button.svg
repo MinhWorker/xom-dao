@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="160" viewBox="0 0 512 160"><title>Nút gắn trên mặt bàn</title>
+<defs><linearGradient id="face" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d6d6d6"/></linearGradient></defs>
+<rect x="4" y="8" width="504" height="148" rx="16" fill="#686868"/>
+<rect x="4" y="3" width="504" height="146" rx="16" fill="url(#face)" stroke="#777" stroke-width="5"/>
+<path d="M22 13H490" stroke="#fff" stroke-opacity=".7" stroke-width="3"/>
+</svg>

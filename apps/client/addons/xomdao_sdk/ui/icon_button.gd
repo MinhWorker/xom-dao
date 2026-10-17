@@ -26,6 +26,21 @@ var background: Color = XomDaoUi.HUD:
 		background = value
 		_restyle()
 
+var border: int = 0:
+	set(value):
+		border = value
+		_restyle()
+
+var edge: Color = Color.TRANSPARENT:
+	set(value):
+		edge = value
+		_restyle()
+
+var lit: bool = false:
+	set(value):
+		lit = value
+		_restyle()
+
 var icon_name: String = "":
 	set(value):
 		icon_name = value
@@ -59,11 +74,13 @@ func _restyle() -> void:
 	if _body == null:
 		return
 	_body.face = background
-	_body.edge = Color(background.darkened(0.25), background.a)
-	_body.border = 0
+	_body.edge = (
+		edge if edge != Color.TRANSPARENT else Color(background.darkened(0.25), background.a)
+	)
+	_body.border = border
 	_body.radius = SIZE / 2.0
 	_body.depth = DEPTH
-	_body.lit = false
+	_body.lit = lit
 	var pad: float = (SIZE - ICON) / 2.0
 	var normal := StyleBoxEmpty.new()
 	normal.set_content_margin_all(pad)

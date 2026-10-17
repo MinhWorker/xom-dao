@@ -102,6 +102,10 @@ func _init(settings: XomDaoSettings = null, own: bool = true) -> void:
 	add_child(top)
 	if own:
 		_account.name = "AccountButton"
+		_account.background = Color("#141E30")
+		_account.border = 2
+		_account.edge = XomDaoUi.GOLD_DARK
+		_account.lit = true
 		_account.pressed.connect(account_pressed.emit)
 		add_child(_account)
 	_tabs.name = "Tabs"
@@ -244,13 +248,25 @@ func _build_profile() -> void:
 	_page.add_child(_level)
 	_xp.name = "HomeXp"
 	_xp.show_percentage = false
-	_xp.add_theme_stylebox_override(
-		"background", XomDaoUi.box(XomDaoUi.PAPER_DARK, Color.TRANSPARENT, 0, 10.0)
-	)
-	_xp.add_theme_stylebox_override("fill", XomDaoUi.box(XomDaoUi.GOLD, Color.TRANSPARENT, 0, 10.0))
+	var xp_bg := StyleBoxFlat.new()
+	xp_bg.bg_color = Color(0.2, 0.14, 0.08, 0.18)
+	xp_bg.border_width_left = 1
+	xp_bg.border_width_top = 1
+	xp_bg.border_width_right = 1
+	xp_bg.border_width_bottom = 1
+	xp_bg.border_color = Color("#824F18", 0.4)
+	xp_bg.set_corner_radius_all(10)
+	_xp.add_theme_stylebox_override("background", xp_bg)
+	var xp_fill := StyleBoxFlat.new()
+	xp_fill.bg_color = Color("#F5BA31")
+	xp_fill.border_width_bottom = 2
+	xp_fill.border_color = Color("#9C620E")
+	xp_fill.set_corner_radius_all(10)
+	_xp.add_theme_stylebox_override("fill", xp_fill)
 	_page.add_child(_xp)
 	_xp_text.theme_type_variation = "SmallLabel"
-	_xp_text.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.7))
+	_xp_text.add_theme_font_override("font", XomDaoUi.display_font(800))
+	_xp_text.add_theme_color_override("font_color", Color("#4A2508"))
 	_xp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_page.add_child(_xp_text)
 	_totals.add_theme_constant_override("separation", 14)
@@ -261,13 +277,17 @@ func _build_profile() -> void:
 	for i: int in labels.size():
 		var box := PanelContainer.new()
 		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var style: StyleBoxFlat = XomDaoUi.box(Color("#FFF9EC"), XomDaoUi.PAPER_DARK, 2, 18.0)
+		var style: StyleBoxFlat = XomDaoUi.box(Color("#FFFDF7"), Color("#C4922F", 0.8), 2, 18.0)
+		style.shadow_color = XomDaoPuff.SHADE
+		style.shadow_size = 4
+		style.shadow_offset = Vector2(0.0, 3.0)
 		style.set_content_margin_all(14.0)
 		box.add_theme_stylebox_override("panel", style)
 		labels[i].name = names[i]
 		labels[i].text = starts[i]
 		labels[i].add_theme_font_override("font", XomDaoUi.display_font(800))
 		labels[i].add_theme_font_size_override("font_size", 30)
+		labels[i].add_theme_color_override("font_color", Color("#3D1F08"))
 		labels[i].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(labels[i])
 		_totals.add_child(box)
@@ -488,15 +508,31 @@ func _draw_plate() -> void:
 	XomDaoPuff.paint(
 		_plate,
 		Rect2(Vector2.ZERO, _plate.size),
-		XomDaoUi.PAPER,
-		XomDaoUi.HONEY_DARK,
+		Color("#FDF6E8"),
+		Color("#824F18"),
 		ROUND,
 		8.0,
 		false,
 		3,
 		false,
-		false
+		true
 	)
+	var inset := 18.0
+	var w: float = _plate.size.x
+	var h: float = _plate.size.y
+	_draw_plate_rivet(Vector2(inset, inset))
+	_draw_plate_rivet(Vector2(w - inset, inset))
+	_draw_plate_rivet(Vector2(inset, h - inset))
+	_draw_plate_rivet(Vector2(w - inset, h - inset))
+
+
+func _draw_plate_rivet(pos: Vector2) -> void:
+	var rivet_color := Color("#C4922F")
+	var rivet_dark := Color("#5A3A0B")
+	var rivet_shine := Color("#FFEAA7")
+	_plate.draw_circle(pos + Vector2(0.0, 1.0), 3.5, rivet_dark)
+	_plate.draw_circle(pos, 3.0, rivet_color)
+	_plate.draw_circle(pos - Vector2(0.8, 0.8), 1.0, rivet_shine)
 
 
 func _layout() -> void:

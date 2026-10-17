@@ -260,6 +260,41 @@ func test_result_ranks_and_rewards() -> void:
 	assert_eq(result.money.coins.text, "120")
 
 
+func test_right_result_panel_stays_inside_viewport_after_scaling() -> void:
+	var won: XomDaoRoomSnapshot = _snapshot(["minh"], [])
+	var settings := XomDaoSettings.new()
+	settings.path = ""
+	var result: HubResult = add_child_autofree(HubResult.new(settings))
+	result.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	result.size = XomDaoFrame.SIZE
+	(
+		result
+		. show_result(
+			won,
+			"minh",
+			100,
+			false,
+			{
+				"reason": "Các đối thủ đã phá sản",
+				"rows": [["Thời gian", "0:12"], ["Số vòng", "1"], ["Tổng tài sản", "1.000 ₫"]],
+				"layout": "right",
+			}
+		)
+	)
+	await wait_process_frames(2)
+	var panel: Control = result.find_child("ResultBoard", true, false)
+	var top_left: Vector2 = panel.position + panel.pivot_offset * (Vector2.ONE - panel.scale)
+	var bottom_right: Vector2 = top_left + panel.size * panel.scale
+	assert_gte(top_left.x, settings.margin, "the panel stays inside the left edge")
+	assert_gte(top_left.y, settings.margin, "the panel stays inside the top edge")
+	assert_lte(
+		bottom_right.x, result.size.x - settings.margin, "the panel stays inside the right edge"
+	)
+	assert_lte(
+		bottom_right.y, result.size.y - settings.margin, "the panel stays inside the bottom edge"
+	)
+
+
 func test_rules_read_as_plain_text() -> void:
 	var text: String = HubRulesBoard.plain(
 		"# Luật Caro\n\nHai người **lần lượt**.\n\n## Thắng\n\n- Đủ `5` quân thì thắng."

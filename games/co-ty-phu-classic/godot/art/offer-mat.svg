@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="210" viewBox="0 0 500 210">
+  <title>Khay trao đổi</title>
+  <!-- Drop shadow -->
+  <rect x="3" y="6" width="494" height="201" rx="16" fill="#D5CBB9"/>
+  <!-- Outer rim -->
+  <rect x="3" y="3" width="494" height="201" rx="16" fill="#FAF8F3" stroke="#D8CFBC" stroke-width="2.5"/>
+  <!-- Recessed inner tray -->
+  <rect x="9" y="9" width="482" height="189" rx="12" fill="#F3EFE6" stroke="#E6DFD0" stroke-width="1.5"/>
+</svg>

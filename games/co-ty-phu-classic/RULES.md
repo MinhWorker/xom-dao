@@ -48,37 +48,29 @@ Thẻ thiếu điện/nước nhân đôi phí thuê ô tương ứng trong vòn
 Điện/nước thế chấp hoặc chủ ở tù không thu phí. Đơn vị thế chấp vẫn tính khi xét sở hữu cả hai.
 Thẻ tới điện/nước gần nhất và chuyến bay dùng tổng xúc xắc đã gieo để tính phí.
 Một vòng bàn bắt đầu khi lượt quay về ghế đầu tiên còn chơi; hiệu lực hết khi vòng sau bắt đầu.
-Các thẻ thiếu hụt cùng loại không cộng dồn mức phí. Giá trên ô hiển thị hệ số xúc xắc;
-đuôi `x2` chỉ hiệu lực thiếu hụt. Đất thuộc bộ monopoly hiển thị giá thuê cơ bản với đuôi `x3`.
+Các thẻ thiếu hụt cùng loại không cộng dồn mức phí. Ô chưa có chủ hiện giá mua; ô đã mua hiện
+mức tiền thuê tính được. Với đất phố, hai ô phố liền nhau trong cùng bộ được nhân `×2`; sở hữu đủ
+ba ô được nhân `×3`. Xét liền nhau theo thứ tự các ô phố trong bộ, bỏ qua ô đặc biệt xen giữa.
+Hai ô không liền nhau không được nhân đôi; hệ số nằm ngay sau tiền thuê cơ bản trên ô. Điện lực/
+Cấp nước hiển thị mức thuê theo tổng xúc xắc 7 và hiệu lực thẻ thiếu hụt; khi thu tiền thật,
+dùng tổng đã gieo.
 
 Sân bay không thưởng khi bay qua Xuất phát; đáp đúng Xuất phát nhận 200.
 Chuyến bay giữ quyền gieo thêm từ xúc xắc đôi, trừ khi ô đến đưa người chơi vào tù.
-Thẻ chuyển tới ô khác đi tiến theo chiều bàn và nhận thưởng khi qua Xuất phát.
+Thẻ chuyển tới ô cụ thể hoặc ô gần nhất đi theo chiều kim đồng hồ qua từng ô trên đường.
+Thưởng Xuất phát hiện ngay khi quân chạm ô này, trước khi tiếp tục tới đích.
 Ô đến từ thẻ hoặc chuyến bay vẫn xử lý mua đất, xây, thuê hoặc sự kiện như một lần đến thường.
 
 Cơ hội, Khí vận, thuế, Sân bay và việc bị đưa vào tù có bước **Xác nhận** trước khi áp dụng.
 Chỉ người đang có lượt được xác nhận. Nếu ô đến tiếp tục có sự kiện thì xác nhận sự kiện mới riêng.
 Tiền thuê và thưởng Xuất phát không cần xác nhận.
 
-## Mua bán và đấu giá tài sản
+## Mua bán tài sản
 
 Đất phố, Điện lực và Cấp nước mua trực tiếp theo giá niêm yết khi đến ô chưa có chủ.
 Bến xe chưa có chủ dùng luật góp tiền bên dưới; điện/nước không xây công trình.
-
-Trong lượt mình, người sở hữu có thể mở **Đấu giá** đất phố, điện/nước hoặc bến xe bất kỳ của mình,
-không cần đứng trên ô đó. Người đang nợ tiền mua bến ngoài lượt cũng được mở bán để trả nợ.
-Nút búa đấu giá mở bảng xác nhận tên tài sản, công trình và mức tăng giá tối thiểu;
-chỉ bắt đầu phiên khi chọn **Mở đấu giá**. Chọn **Hủy** thì giữ nguyên tài sản.
-
-- Người bán không trả giá; những người còn chơi trả giá lần lượt từ ghế tiếp theo người bán.
-- Giá khởi đầu là 0. Mỗi lần trả giá phải tăng ít nhất `ceil(20% × giá gốc)` và không vượt tiền mặt.
-  Ví dụ đất giá 180 có mức tăng tối thiểu 36, kể cả lần trả giá đầu.
-- Người bỏ đấu giá không tham gia lại trong phiên. Người giữ giá cao nhất không được rút giá.
-- Khi chỉ còn người giữ giá cao nhất, người đó trả giá thắng cho người bán và nhận tài sản.
-  Công trình, tình trạng thế chấp và hạn chuộc được giữ. Không ai trả giá thì người bán giữ tài sản.
-- Trong phiên không quản lý tài sản hoặc trao đổi. Hết phiên tiếp tục bước trước khi mở bán,
-  giữ ô đang chờ mua hoặc khoản nợ.
-- Người bán hoặc chủ lượt rời ván huỷ phiên. Người dẫn giá rời thì giá cao nhất trở về 0.
+Người chơi không mở đấu giá tài sản đang sở hữu. Muốn chuyển tài sản cho người khác,
+hai bên dùng trao đổi; muốn lấy tiền từ ngân hàng thì bán công trình hoặc thế chấp.
 
 ## Góp tiền bến xe
 
@@ -123,9 +115,11 @@ Bán từng cấp nhận 50% giá xây cấp đó. Bán khách sạn xuống 4 n
 Tám bộ màu, mỗi bộ gồm ba đất phố kế tiếp trên đường đi, bỏ qua các ô khác:
 (1, 2, 3), (6, 8, 9), (11, 13, 14), (16, 18, 19), (21, 23, 24), (26, 27, 29),
 (31, 32, 34) và (36, 37, 39). Các ô cùng bộ không cần nằm liền nhau và có cùng màu viền.
-Một người sở hữu đủ ba ô nhận monopoly:
-**cả ba ô thu tiền thuê gấp 3 ở mọi cấp**, kể cả nhà và khách sạn. Mất một ô thì mất hệ số.
-Ô đang thế chấp không thu thuê; quyền sở hữu của nó vẫn tính vào bộ.
+Hai ô phố liền nhau trong cùng bộ (xét theo thứ tự bộ, bỏ qua ô đặc biệt xen giữa) thu tiền thuê
+gấp 2 ở mọi cấp. Sở hữu đủ ba ô tạo thành bộ monopoly và nâng hệ số lên **gấp 3 cho cả ba ô**,
+kể cả nhà và khách sạn.
+Hai ô không liền nhau không được nhân đôi. Ô đang thế chấp không thu thuê; quyền sở hữu của nó
+vẫn tính vào bộ.
 
 Các ô liền nhau trong cùng bộ và cùng chủ gộp viền thành một khung chữ nhật theo mặt bàn.
 Sở hữu hai ô trong bộ thì các khung có viền nhẹ; đủ ba ô thì mọi khung của bộ có viền rõ hơn,
@@ -185,7 +179,7 @@ gieo thêm do ra đôi không tính thành lượt mới. Hết hạn, ngân hà
 tháo toàn bộ công trình, trả chúng về ngân hàng và để đất trống chưa có chủ.
 Đổi chủ giữ người vay và hạn gốc; người vay phá sản hoặc rời ván thì các khoản thế chấp của họ bị thu hồi.
 
-Không mở bán, thế chấp hoặc chuộc trong lúc chờ xác nhận sự kiện, trao đổi hoặc đấu giá.
+Không thế chấp hoặc chuộc trong lúc chờ xác nhận sự kiện, trao đổi hoặc quyết định góp vốn bến xe.
 
 ## Trao đổi
 
@@ -194,7 +188,7 @@ mỗi bên và một khoản tiền mỗi bên. Tài sản phải đúng chủ v
 phải đủ trong tiền mặt. Có thể trao đổi đất đang thế chấp, giữ khoản vay và hạn chuộc.
 
 Người nhận đồng ý thì chuyển tài sản và tiền; từ chối hoặc bên đề nghị huỷ thì giữ nguyên.
-Không trao đổi khi đang xác nhận sự kiện, đấu giá, trả nợ hoặc chờ một trao đổi khác.
+Không trao đổi khi đang xác nhận sự kiện, góp vốn bến xe, trả nợ hoặc chờ một trao đổi khác.
 Hết trao đổi tiếp tục quyết định trước đó.
 
 Trong mục **Trao đổi**, chọn **Vé ra tù · 200 ₫** thay cho đất để bán một vé cho người nhận,
@@ -221,15 +215,19 @@ Khi ra tù, người chơi thấy hai cửa song sắt mở ra cùng âm thanh m
 ## Nợ, phá sản và rời ván
 
 Khoản phải trả lớn hơn tiền mặt đưa người trả vào bước **Nợ**. Bán công trình,
-thế chấp hoặc đấu giá tài sản để lấy tiền, rồi **Trả** đủ khoản nợ một lần.
-Nếu tiền mặt chưa đủ có thể **Phá sản**; đã đủ tiền thì phải trả.
+hoặc thế chấp tài sản để lấy tiền, rồi **Trả** đủ khoản nợ một lần.
+Nếu tiền mặt chưa đủ, người trả có thể **Phá sản**. Người chơi cũng có thể chủ động phá sản
+bất cứ lúc nào bằng biểu tượng ngân hàng ở góc dưới trái sổ tài sản, không cần chờ có khoản nợ
+hay thiếu tiền; giao diện hỏi xác nhận trước khi thanh lý. Khi chọn rời phòng giữa ván, người chơi
+còn hoạt động cũng xác nhận phá sản trước khi rời.
 
 Khi phá sản, hoàn tiền góp bến và thu hồi các khoản thế chấp có người vay là người phá sản trước.
-Công trình còn lại của họ được thanh lý bằng nửa tổng giá xây.
-Nếu chủ nợ là người chơi, chuyển tiền mặt, đất còn lại và thẻ ra tù cho chủ nợ;
-công trình đã thanh lý không chuyển kèm. Đất thế chấp vay bởi người khác giữ khoản vay và hạn chuộc.
-Nếu nợ ngân hàng hoặc rời ván, đất trả về ngân hàng, xoá thế chấp và công trình;
-thẻ ra tù trả về bộ tương ứng. Người phá sản không tham gia lượt sau.
+Công trình còn lại của họ được thanh lý bằng nửa tổng giá xây; tiền thu từ thanh lý về ngân hàng.
+Nếu đang có khoản nợ với người chơi còn hoạt động, người đó nhận số tiền mặt người phá sản đang có
+ngay khi chọn phá sản, tối đa bằng khoản nợ đang thu; phần tiền dư sau thanh lý về ngân hàng.
+Nếu không có chủ nợ còn hoạt động, toàn bộ tiền mặt về ngân hàng.
+Đất và thẻ ra tù trả về ngân hàng; đất được xoá thế chấp và công trình. Số dư người phá sản bằng 0.
+Người phá sản không tham gia lượt sau.
 
 ## Thẻ Cơ hội và Khí vận
 
@@ -300,3 +298,24 @@ Người cuối cùng chưa phá sản thắng; pawn của người đó phóng 
 cùng pháo hoa, thông điệp chiến thắng và nhạc kết quả Mậu Binh. Dãy số đếm lên tổng tài sản:
 tiền mặt + giá gốc tài sản + tổng chi phí xây + 200 mỗi vé ra tù − tiền chuộc các tài sản thế chấp.
 Các khoản góp bến còn giữ được hoàn trước khi tính tổng.
+
+
+## Sổ tài sản
+
+Nút tròn hình sổ mở giao diện phủ toàn cảnh. Hai tab bên trái là **Tài sản** và **Trao đổi**;
+hàng avatar phía trên chọn người đang xem hoặc đối tác. Có thể xem tài sản ngoài lượt,
+nhưng thao tác quản lý vẫn tuân theo luật của lượt chơi.
+Biểu tượng ngân hàng ở góc dưới trái mở xác nhận phá sản.
+
+Tài sản xếp thành các cụm thẻ theo bộ màu. Chọn thẻ để xem tiền thuê, công trình và các
+hành động đang hợp lệ. Thế chấp có thể chọn nhiều thẻ rồi chốt một lần.
+Các phần góp bến xe còn giữ cũng xuất hiện trong sổ.
+
+Trao đổi chỉ giữ một đề nghị. Mỗi bên chọn một tài sản chưa có công trình cùng tiền mặt;
+vé ra tù vẫn bán riêng giá 200 theo luật bên trên. Có thể chạm hoặc kéo thẻ vào khay của bên đó;
+chạm chồng tiền để nhập số. **Làm trống** xóa bản đang soạn. Khi đề nghị kết thúc do đồng ý,
+từ chối, hủy, hết giờ hoặc người tham gia rời ván, cả hai khay và tiền tự trở về trống.
+
+Giá đề nghị tự điền theo giá niêm yết: mua/bán một thẻ điền toàn bộ giá, đổi hai thẻ điền
+phần chênh lệch vào bên cần bù tiền. Người chơi vẫn sửa được số tiền; thay lựa chọn thẻ sẽ tính
+lại giá gợi ý. Vé ra tù giữ giá cố định 200.

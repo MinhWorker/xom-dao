@@ -143,15 +143,6 @@ func _draw_deed(i: int, quad: PackedVector2Array) -> void:
 			false,
 			XomDaoUi.CREAM
 		)
-	var auctions: Dictionary = view.get("stationAuctions", {})
-	var auction: Variant = auctions.get(str(i), auctions.get(i))
-	if auction is Dictionary:
-		var bids: Array = (auction as Dictionary)["bids"]
-		var center: Vector2 = (quad[0] + quad[1] + quad[2] + quad[3]) / 4.0
-		var step: float = (quad[1] - quad[0]).length() / 5.0
-		for seat: int in bids.size():
-			if int(bids[seat]) > 0:
-				draw_circle(center + Vector2(step * (seat - 1.5), 0.0), step * 0.4, INKS[seat % 4])
 
 
 ## Where a square's name goes (u from–to across it, v from–to down it, 0–1): on the side towards

@@ -216,13 +216,13 @@
     },
     "shortcut-su-kien": {
       "transparent": true,
-      "maxSize": 192,
-      "prompt": "One chunky glossy red gift box with a wide golden ribbon and a big golden bow on top, slightly tilted, three-quarter view, thick dark-red outline, game UI icon, fills the frame."
+      "maxSize": 256,
+      "prompt": "One chunky glossy red lacquer Vietnamese festival lantern (đèn lồng quả trám Hội An) with brass-gold trim, golden cap ring on top and yellow-gold silk tassel hanging below, slightly tilted, three-quarter view, thick dark-red outline, game UI prop icon, fills the frame."
     },
     "shortcut-nhiem-vu": {
       "transparent": true,
-      "maxSize": 192,
-      "prompt": "One chunky wooden clipboard holding a cream paper sheet with three green check marks beside three short brown lines, a golden metal clip on top, slightly tilted, three-quarter view, thick dark-brown outline, game UI icon, fills the frame."
+      "maxSize": 256,
+      "prompt": "One chunky traditional Vietnamese Do paper scroll (cuộn giấy dó) opened slightly showing cream parchment with two green brush checkmarks and ink strokes, honey-wood roller ends, tied with a red braided cord and green jade bead, thick dark-brown outline, game UI prop icon, fills the frame."
     },
     "lobby-backdrop": {
       "transparent": false,

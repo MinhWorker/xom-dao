@@ -21,6 +21,7 @@ var play := HubPlayButton.new()
 
 var _picture: Texture2D
 var _art := ColorRect.new()
+var _online_plate := PanelContainer.new()
 var _online_row := HBoxContainer.new()
 var _lock := TextureRect.new()
 var _shader: Shader = preload("res://hub/lobby/glass.gdshader")
@@ -33,9 +34,9 @@ func _init() -> void:
 	# Under the art: the card's short dense shadow.
 	var ground := Panel.new()
 	var shadow: StyleBoxFlat = _leaf(XomDaoUi.NAVY, Color.TRANSPARENT, 0)
-	shadow.shadow_color = XomDaoPuff.SHADE
-	shadow.shadow_size = 4
-	shadow.shadow_offset = Vector2(0.0, 6.0)
+	shadow.shadow_color = Color(0.12, 0.06, 0.03, 0.48)
+	shadow.shadow_size = 6
+	shadow.shadow_offset = Vector2(0.0, 8.0)
 	ground.add_theme_stylebox_override("panel", shadow)
 	_cover(ground)
 	_piece(_art, Vector4(ROUND, SMALL, ROUND, SMALL))
@@ -52,37 +53,72 @@ func _init() -> void:
 	add_child(_lock)
 	# The rim of the card, over the art.
 	var frame := Panel.new()
-	var line: StyleBoxFlat = _leaf(Color.TRANSPARENT, XomDaoUi.NAVY_LINE, 2)
+	var line: StyleBoxFlat = _leaf(
+		Color.TRANSPARENT,
+		Color(XomDaoUi.NAVY_LINE.r, XomDaoUi.NAVY_LINE.g, XomDaoUi.NAVY_LINE.b, 0.95),
+		3
+	)
 	line.draw_center = false
 	frame.add_theme_stylebox_override("panel", line)
 	_cover(frame)
+	# Inner gold accent highlight.
+	var inner_frame := Panel.new()
+	var inner_line: StyleBoxFlat = _leaf(
+		Color.TRANSPARENT, Color(XomDaoUi.GOLD.r, XomDaoUi.GOLD.g, XomDaoUi.GOLD.b, 0.35), 1
+	)
+	inner_line.draw_center = false
+	inner_line.content_margin_left = 3.0
+	inner_line.content_margin_top = 3.0
+	inner_line.content_margin_right = 3.0
+	inner_line.content_margin_bottom = 3.0
+	inner_frame.add_theme_stylebox_override("panel", inner_line)
+	_cover(inner_frame)
 	title.name = "SelectedName"
 	title.theme_type_variation = "HudLabel"
 	title.add_theme_font_size_override("font_size", TITLE_SIZE)
-	title.add_theme_color_override("font_outline_color", Color(XomDaoUi.NAVY, 0.75))
-	title.add_theme_constant_override("outline_size", 6)
+	title.add_theme_color_override("font_color", XomDaoUi.CREAM)
+	title.add_theme_color_override("font_outline_color", Color(0.06, 0.09, 0.16, 0.95))
+	title.add_theme_constant_override("outline_size", 8)
+	title.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.45))
+	title.add_theme_constant_override("shadow_offset_y", 2)
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
+	_online_plate.name = "SelectedOnlinePlate"
+	_online_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var plate_style: StyleBoxFlat = XomDaoUi.box(
+		Color(XomDaoUi.NAVY.r, XomDaoUi.NAVY.g, XomDaoUi.NAVY.b, 0.82),
+		Color(XomDaoUi.NAVY_LINE.r, XomDaoUi.NAVY_LINE.g, XomDaoUi.NAVY_LINE.b, 0.8),
+		1,
+		14.0
+	)
+	plate_style.content_margin_left = 10.0
+	plate_style.content_margin_right = 12.0
+	plate_style.content_margin_top = 2.0
+	plate_style.content_margin_bottom = 2.0
+	plate_style.shadow_color = XomDaoPuff.SHADE
+	plate_style.shadow_size = 2
+	plate_style.shadow_offset = Vector2(0.0, 2.0)
+	_online_plate.add_theme_stylebox_override("panel", plate_style)
+	add_child(_online_plate)
 	_online_row.name = "SelectedOnlineRow"
 	_online_row.add_theme_constant_override("separation", 6)
-	_online_row.alignment = BoxContainer.ALIGNMENT_END
+	_online_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_online_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_online_row)
+	_online_plate.add_child(_online_row)
 	var people := TextureRect.new()
 	people.texture = XomDaoUi.icon("users")
-	people.custom_minimum_size = Vector2(28.0, 28.0)
+	people.custom_minimum_size = Vector2(22.0, 22.0)
 	people.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	people.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	people.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	people.modulate = XomDaoUi.CREAM
+	people.modulate = XomDaoUi.GOLD
 	people.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_online_row.add_child(people)
 	online.name = "SelectedOnline"
 	online.theme_type_variation = "HudLabel"
-	online.add_theme_font_size_override("font_size", 28)
-	online.add_theme_color_override("font_outline_color", Color(XomDaoUi.NAVY, 0.75))
-	online.add_theme_constant_override("outline_size", 5)
+	online.add_theme_font_size_override("font_size", 24)
+	online.add_theme_color_override("font_color", XomDaoUi.CREAM)
 	online.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_online_row.add_child(online)
 	add_child(play)
@@ -119,7 +155,8 @@ func show_title(text: String) -> void:
 ## Shows or hides the players online.
 func show_online(count: int, shown: bool) -> void:
 	online.text = str(count)
-	_online_row.visible = shown
+	_online_plate.visible = shown
+	_layout()
 
 
 ## A box with the card's corners: two round, two small.
@@ -149,10 +186,10 @@ func _layout() -> void:
 	var box: Vector2 = size
 	if box.x <= 0.0 or box.y <= 0.0:
 		return
-	title.position = Vector2(26.0, 12.0)
+	title.position = Vector2(26.0, 14.0)
 	title.size = Vector2(box.x - 26.0 - 110.0, 50.0)
-	_online_row.position = Vector2(box.x - 20.0 - 100.0, 14.0)
-	_online_row.size = Vector2(100.0, 46.0)
+	_online_plate.reset_size()
+	_online_plate.position = Vector2(box.x - 20.0 - _online_plate.size.x, 14.0)
 	play.round_corner = ROUND
 	play.small_corner = SMALL
 	play.position = Vector2(0.0, box.y - HubPlayButton.HEIGHT)

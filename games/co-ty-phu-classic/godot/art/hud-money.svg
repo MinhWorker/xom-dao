@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="76" viewBox="0 0 96 76">
+  <title>Tiền vàng</title>
+  <defs>
+    <linearGradient id="coinGrad" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="45%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="backCoinGrad" x1="0" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </linearGradient>
+  </defs>
+  <!-- Drop shadow -->
+  <ellipse cx="60" cy="46" rx="25" ry="23" fill="#1E293B" opacity="0.18"/>
+  <ellipse cx="36" cy="42" rx="28" ry="25" fill="#1E293B" opacity="0.22"/>
+  <!-- Back coin -->
+  <circle cx="60" cy="40" r="23" fill="url(#backCoinGrad)" stroke="#92400E" stroke-width="2.5"/>
+  <circle cx="60" cy="40" r="19" fill="none" stroke="#FDE68A" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.85"/>
+  <circle cx="60" cy="40" r="12" fill="#B45309" opacity="0.4"/>
+  <!-- Front coin -->
+  <circle cx="36" cy="36" r="26" fill="url(#coinGrad)" stroke="#92400E" stroke-width="3"/>
+  <circle cx="36" cy="36" r="21.5" fill="none" stroke="#FEF08A" stroke-width="2"/>
+  <!-- Minted 4-point star / diamond emblem -->
+  <path d="M36 19 L39.5 32.5 L53 36 L39.5 39.5 L36 53 L32.5 39.5 L19 36 L32.5 32.5 Z" fill="#78350F" opacity="0.85"/>
+  <circle cx="36" cy="36" r="4.5" fill="#FEF08A"/>
+  <!-- Top gleam -->
+  <ellipse cx="31" cy="21" rx="6" ry="2.5" transform="rotate(-30 31 21)" fill="#FFFFFF" opacity="0.75"/>
+</svg>

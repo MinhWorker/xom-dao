@@ -6,7 +6,7 @@ extends Control
 ## An event's poster opens its board instead: your points, the tiers to claim and Tham gia.
 ##
 ## Named nodes for tests: Cards, Card_<id>, GenreTabs, Tab_<genre>, EventBoard, EventPoints,
-## Tier_<i>, Claim_<i>, Claimed_<i>, JoinEvent.
+## Tier_<i>, Claim_<i>, Claimed_<i>, JoinEvent, RoomJoin, CodeInput, JoinRoom.
 
 signal back_pressed
 ## A playable game's poster was tapped.
@@ -14,9 +14,13 @@ signal play_pressed(game_id: String)
 signal progress_needed(game_id: String)
 signal join_pressed(game_id: String)
 signal claim_pressed(game_id: String, tier: int)
+signal join_room_requested(code: String)
 
 var top: HubTopBar
 var strip := HubGameStrip.new()
+var code_input := LineEdit.new()
+var join_btn: XomDaoButton
+var _room_join := HBoxContainer.new()
 var _catalog: HubCatalog
 var _genre: String = ""
 ## The event whose board is open ("" for none).
@@ -44,6 +48,7 @@ func _init(settings: XomDaoSettings = null) -> void:
 	_tabs.name = "GenreTabs"
 	_tabs.add_theme_constant_override("separation", 14)
 	add_child(_tabs)
+	_build_room_join()
 	_build_event()
 	resized.connect(_layout)
 	_settings.changed.connect(_layout)
@@ -155,6 +160,71 @@ func _build_tabs() -> void:
 		_tabs.add_child(tab)
 
 
+func _build_room_join() -> void:
+	_room_join.name = "RoomJoin"
+	_room_join.add_theme_constant_override("separation", 10)
+	add_child(_room_join)
+
+	code_input.name = "CodeInput"
+	code_input.placeholder_text = "Mã phòng"
+	code_input.max_length = 4
+	code_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	code_input.custom_minimum_size = Vector2(160.0, 60.0)
+	code_input.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_DEFAULT
+	code_input.add_theme_font_override("font", XomDaoUi.display_font(800))
+	code_input.add_theme_font_size_override("font_size", 28)
+	code_input.add_theme_color_override("font_color", XomDaoUi.CREAM)
+	code_input.add_theme_color_override("font_placeholder_color", Color(XomDaoUi.CREAM, 0.45))
+	code_input.add_theme_color_override("caret_color", XomDaoUi.GOLD)
+	code_input.add_theme_color_override("selection_color", Color(XomDaoUi.GOLD, 0.35))
+
+	var box_normal: StyleBoxFlat = XomDaoUi.box(
+		Color(0.086, 0.137, 0.247, 0.88), XomDaoUi.NAVY_LINE, 2, 18.0
+	)
+	box_normal.content_margin_left = 12.0
+	box_normal.content_margin_right = 12.0
+	box_normal.content_margin_top = 4.0
+	box_normal.content_margin_bottom = 4.0
+	box_normal.shadow_color = Color(0.0, 0.0, 0.0, 0.3)
+	box_normal.shadow_size = 4
+	box_normal.shadow_offset = Vector2(2.0, 4.0)
+
+	var box_focus: StyleBoxFlat = box_normal.duplicate()
+	box_focus.bg_color = Color(0.10, 0.16, 0.28, 0.95)
+	box_focus.border_color = XomDaoUi.GOLD
+	box_focus.shadow_color = Color(0.9, 0.7, 0.2, 0.25)
+	box_focus.shadow_size = 6
+
+	code_input.add_theme_stylebox_override("normal", box_normal)
+	code_input.add_theme_stylebox_override("focus", box_focus)
+	code_input.text_changed.connect(_on_code_changed)
+	code_input.text_submitted.connect(func(_t: String) -> void: _join_room())
+	_room_join.add_child(code_input)
+
+	join_btn = XomDaoButton.create("Vào", XomDaoUi.Kind.SOCIAL)
+	join_btn.name = "JoinRoom"
+	join_btn.pad = 18.0
+	join_btn.body.radius = 18.0
+	join_btn.add_theme_font_size_override("font_size", 28)
+	join_btn.custom_minimum_size = Vector2(96.0, 60.0)
+	join_btn.pressed.connect(_join_room)
+	_room_join.add_child(join_btn)
+
+
+func _on_code_changed(new_text: String) -> void:
+	var upper := new_text.to_upper()
+	if upper != new_text:
+		var caret: int = code_input.caret_column
+		code_input.text = upper
+		code_input.caret_column = caret
+
+
+func _join_room() -> void:
+	var code: String = code_input.text.strip_edges().to_upper()
+	if code != "":
+		join_room_requested.emit(code)
+
+
 ## The event's board over a shade: points, one row per tier and Tham gia.
 func _build_event() -> void:
 	_event_layer.name = "EventLayer"
@@ -202,9 +272,15 @@ func _layout() -> void:
 	_tabs.reset_size()
 	_tabs.scale = Vector2.ONE * k
 	_tabs.position = Vector2(inset.x + edge, size.y - inset.y - edge - _tabs.size.y * k)
+	_room_join.reset_size()
+	_room_join.scale = Vector2.ONE * k
+	_room_join.position = Vector2(
+		size.x - inset.x - edge - _room_join.size.x * k,
+		size.y - inset.y - edge - _room_join.size.y * k
+	)
 	var y: float = top.bottom() + 4.0
 	strip.position = Vector2(0.0, y)
-	strip.size = Vector2(size.x, maxf(0.0, _tabs.position.y - 8.0 - y))
+	strip.size = Vector2(size.x, maxf(0.0, minf(_tabs.position.y, _room_join.position.y) - 8.0 - y))
 	if _event_layer.visible:
 		_event_board.reset_size()
 		var room: Vector2 = (size - Vector2(32.0, 16.0)) / _event_board.size

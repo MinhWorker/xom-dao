@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import math
 import sys
+import shutil
 from pathlib import Path
 
 import bpy
@@ -16,12 +17,13 @@ from PIL import Image, ImageDraw
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
-ROOT = Path(__file__).resolve().parents[1]
-PNG = ROOT.parents[1] / ".blender" / "co-ty-phu-classic-board.png"
-METAL_INK = ROOT.parents[1] / ".blender" / "co-ty-phu-classic-metal-ink.png"
+REPO = Path("/home/minhnk/Projects/Games/xom-dao")
+ROOT = REPO / "games" / "co-ty-phu-classic"
+PNG = REPO / ".blender" / "co-ty-phu-classic-board.png"
+METAL_INK = REPO / ".blender" / "co-ty-phu-classic-metal-ink.png"
 WEBP = ROOT / "assets" / "board-25d.webp"
 GEOMETRY = ROOT / "assets" / "board-geometry.json"
-BLEND = ROOT.parents[1] / ".blender" / "co-ty-phu-classic-board.blend"
+BLEND = REPO / ".blender" / "co-ty-phu-classic-board.blend"
 WIDTH, HEIGHT = 1400, 1200
 CROP_X, CROP_Y, CROP_WIDTH, CROP_HEIGHT = 35, 145, 1330, 1045
 INK = (34, 69, 68, 255)
@@ -253,8 +255,11 @@ def slab(name, bounds, top, thickness, bevel, mat):
 
 def print_symbols():
     ink = Image.new("RGBA", (3072, 3072), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(ink)
+
+    # Corner symbols
     for i, (kind, _) in enumerate(SQUARES):
-        if kind in ("street", "station", "power", "water"):
+        if kind in ("street", "station", "power", "water", "chance", "chest", "tax"):
             continue
         u0, v0, u1, v1 = square_bounds(i)
         side = tile_side(i)
@@ -272,14 +277,36 @@ def print_symbols():
         pixels = round(min(u1 - u0, v1 - v0) * ink.width * .43)
         symbol = symbol.resize((pixels, pixels), Image.Resampling.LANCZOS)
         ink.alpha_composite(symbol, (round((u0 + (u1 - u0) * u) * ink.width - pixels / 2), round((v0 + (v1 - v0) * v) * ink.height - pixels / 2)))
+
+    gold_ink = (185, 145, 75, 235)
+
+    # Card deck top filigree and gold emblems
+    def draw_card_top(u0, v0, u1, v1, is_chest):
+        x0, y0 = round(u0 * 3072), round(v0 * 3072)
+        x1, y1 = round(u1 * 3072), round(v1 * 3072)
+        pad = round((x1 - x0) * 0.08)
+        draw.rounded_rectangle((x0 + pad, y0 + pad, x1 - pad, y1 - pad), radius=16, outline=gold_ink, width=4)
+        draw.rounded_rectangle((x0 + pad + 6, y0 + pad + 6, x1 - pad - 6, y1 - pad - 6), radius=12, outline=gold_ink, width=2)
+        cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
+        size = round((x1 - x0) * 0.50)
+        icon_img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw_icon(ImageDraw.Draw(icon_img), "chest" if is_chest else "chance", size, color=gold_ink)
+        ink.alpha_composite(icon_img, (cx - size // 2, cy - size // 2))
+
+    draw_card_top(0.193, 0.536, 0.297, 0.684, True)
+    draw_card_top(0.703, 0.536, 0.807, 0.684, False)
+
     ink.save(METAL_INK)
+
+    # Transfer mesh on the board surface and tiles
     mesh = bpy.data.meshes.new("Printed symbols")
-    mesh.from_pydata([(-2, -2, .0362), (2, -2, .0362), (2, 2, .0362), (-2, 2, .0362)], [], [(0, 1, 2, 3)])
+    mesh.from_pydata([(-2, -2, .0325), (2, -2, .0325), (2, 2, .0325), (-2, 2, .0325)], [], [(0, 1, 2, 3)])
     uv = mesh.uv_layers.new()
     for loop, coord in zip(mesh.polygons[0].loop_indices, [(0, 0), (1, 0), (1, 1), (0, 1)]):
         uv.data[loop].uv = coord
     obj = bpy.data.objects.new("Ink on the tile faces", mesh)
     bpy.context.collection.objects.link(obj)
+
     mat = bpy.data.materials.new("Transparent ceramic transfers")
     mat.use_nodes = True
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
@@ -298,6 +325,16 @@ def print_symbols():
     links.new(shader.outputs[0], mix.inputs[2])
     links.new(mix.outputs[0], output.inputs["Surface"])
     obj.data.materials.append(mat)
+
+    # Deck top transfer mesh at deck height
+    deck_mesh = bpy.data.meshes.new("Deck top transfers")
+    deck_mesh.from_pydata([(-2, -2, .0585), (2, -2, .0585), (2, 2, .0585), (-2, 2, .0585)], [], [(0, 1, 2, 3)])
+    uv2 = deck_mesh.uv_layers.new()
+    for loop, coord in zip(deck_mesh.polygons[0].loop_indices, [(0, 0), (1, 0), (1, 1), (0, 1)]):
+        uv2.data[loop].uv = coord
+    deck_obj = bpy.data.objects.new("Deck top transfers obj", deck_mesh)
+    bpy.context.collection.objects.link(deck_obj)
+    deck_obj.data.materials.append(mat)
 
 
 bpy.ops.object.select_all(action="SELECT")
@@ -343,8 +380,25 @@ for i, (kind, group) in enumerate(SQUARES):
         band = (u1 - w * .12, v0 + h * .035, u1 - w * .035, v1 - h * .035)
     slab(f"Group inlay {i:02d}", band, .036, .004, .0015, groups[group])
 
-slab("Turn plaque brass foot", (.275, .207, .725, .346), .036, .025, .012, gold)
-slab("Turn plaque", (.278, .210, .722, .341), .042, .025, .012, paper)
+# One continuous header fills the inset above the playing field.
+p_bounds = (0.181, 0.181, 0.819, PANEL_BOTTOM)
+slab("Turn header brass rim", (p_bounds[0] - .003, p_bounds[1] - .003, p_bounds[2] + .003, p_bounds[3] + .003), .030, .012, .003, gold)
+slab("Turn header plate", p_bounds, .032, .006, .002, paper)
+
+# Card decks (3D physical stacks in the field)
+card_stack_mat = material("Card stack edge paper", (.94, .91, .82), .01, .68)
+chest_lacquer = material("Chest card back lacquer", (.06, .26, .30), .04, .28)
+chance_lacquer = material("Chance card back lacquer", (.45, .06, .06), .04, .28)
+
+chest_bounds = (0.193, 0.536, 0.297, 0.684)
+slab("Chest deck stack", chest_bounds, .056, .032, .003, card_stack_mat)
+slab("Chest top card", chest_bounds, .058, .004, .002, chest_lacquer)
+
+chance_bounds = (0.703, 0.536, 0.807, 0.684)
+slab("Chance deck stack", chance_bounds, .056, .032, .003, card_stack_mat)
+slab("Chance top card", chance_bounds, .058, .004, .002, chance_lacquer)
+
+# Bake ceramic ink transfers (corner symbols, placeholder ink-texture, card deck insignias)
 print_symbols()
 
 # Keep the established projection so board movement and hit regions remain familiar.
@@ -396,8 +450,14 @@ GEOMETRY.write_text(json.dumps(geometry, indent=2) + "\n")
 # Generate the runtime geometry directly; there is no retired Phaser TypeScript step.
 lines = ["extends RefCounted", "## Generated by sources/render_board_25d.py. Do not edit coordinates.", "", "const CELLS: Array = ["]
 for cell in cells:
-    lines.append("\t[" + ", ".join(f"Vector2({x}, {y})" for x, y in cell) + "],")
-lines += ["]", f"const IMAGE_RATIO := {geometry['ratio']}", "const HOMOGRAPHY: Array[float] = " + str(homography)]
+    lines.append("\t[")
+    for j, (x, y) in enumerate(cell):
+        lines.append(f"\t\tVector2({x}, {y})" + ("," if j < len(cell) - 1 else ""))
+    lines.append("\t],")
+lines += ["]", f"const IMAGE_RATIO := {geometry['ratio']}", "const HOMOGRAPHY: Array[float] = ["]
+lines.append("\t" + ", ".join(str(v) for v in homography[:5]) + ",")
+lines.append("\t" + ", ".join(str(v) for v in homography[5:]))
+lines.append("]")
 a = PANEL["avatar"]
 lines += [f"const PANEL_AVATAR := Vector3({a['u']}, {a['v']}, {a['r']})"]
 for key in ("name", "cash"):
@@ -410,4 +470,5 @@ if "--geometry-only" not in sys.argv:
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND))
     bpy.ops.render.render(write_still=True)
     Image.open(PNG).crop((CROP_X, CROP_Y, CROP_X + CROP_WIDTH, CROP_Y + CROP_HEIGHT)).save(WEBP, "WEBP", quality=95)
+    shutil.copyfile(WEBP, ROOT / "godot" / "art" / "board.webp")
     print(f"Wrote {WEBP} and {GEOMETRY}")

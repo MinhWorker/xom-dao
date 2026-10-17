@@ -266,11 +266,6 @@ static func price(i: int) -> int:
 	return int(SQUARES[i].get("price", 0))
 
 
-## The least raise in an owner's auction (`auctionRaise`).
-static func auction_raise(i: int) -> int:
-	return ceili(price(i) / 5.0)
-
-
 static func group_of(i: int) -> Array[int]:
 	var out: Array[int] = []
 	var group: String = str(SQUARES[i].get("group", ""))
@@ -290,6 +285,27 @@ static func owns_group(properties: Array, owner: int, i: int) -> bool:
 		if _owner(properties, j) != owner:
 			return false
 	return true
+
+
+static func rent_multiplier(view: Dictionary, i: int) -> int:
+	if SQUARES[i]["kind"] != "street":
+		return 1
+	var properties: Array = view["properties"]
+	var owner: int = _owner(properties, i)
+	if owner < 0:
+		return 1
+	var group: Array[int] = group_of(i)
+	if owns_group(properties, owner, i):
+		return group.size()
+	var position: int = group.find(i)
+	for neighbor_position: int in [position - 1, position + 1]:
+		if (
+			neighbor_position >= 0
+			and neighbor_position < group.size()
+			and _owner(properties, group[neighbor_position]) == owner
+		):
+			return 2
+	return 1
 
 
 static func _owner(properties: Array, i: int) -> int:
@@ -313,7 +329,7 @@ static func rent(view: Dictionary, i: int, roll: int = 7) -> int:
 	if kind == "utility":
 		return roll * utility_multiplier(view, i)
 	var ladder: Array = SQUARES[i]["rent"]
-	return int(ladder[int(deed["houses"])]) * (3 if owns_group(properties, owner, i) else 1)
+	return int(ladder[int(deed["houses"])]) * rent_multiplier(view, i)
 
 
 static func utility_multiplier(view: Dictionary, i: int) -> int:
@@ -407,12 +423,10 @@ static func decision_seat(view: Dictionary) -> int:
 	return int(view["turn"])
 
 
-## What the Bid button offers: one more contribution at a station, the least raise elsewhere.
+## What the Bid button offers: the next contribution at this station.
 static func bid_amount(view: Dictionary) -> int:
 	var auction: Dictionary = view["auction"]
-	if auction.get("seller") == null:
-		return int(auction["highest"]) + STATION_STEP
-	return int(auction["highest"]) + auction_raise(int(auction["square"]))
+	return int(auction["highest"]) + STATION_STEP
 
 
 ## Each seat's net change over a view's money transfers ({seat: amount}).

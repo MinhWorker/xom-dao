@@ -38,6 +38,9 @@ window.xomdao = {
 };
 """
 
+const CAPTURE_REQUEST := "res://.godot/xomdao_capture/request.json"
+const CAPTURE_RESULT := "res://.godot/xomdao_capture/result.json"
+
 ## Set by the hub: the name of what is on screen.
 var scene: String = "boot"
 
@@ -45,15 +48,55 @@ var scene: String = "boot"
 var _reply: Variant = null
 var _api: JavaScriptObject
 var _callback: JavaScriptObject
+var _capture_pending: bool = false
 
 
 func _ready() -> void:
+	if OS.is_debug_build() and not OS.has_feature("web"):
+		var timer := Timer.new()
+		timer.wait_time = 0.2
+		timer.timeout.connect(_poll_capture_request)
+		add_child(timer)
+		timer.start()
 	if not OS.has_feature("web") or not OS.is_debug_build():
 		return
 	JavaScriptBridge.eval(SHIM, true)
 	_api = JavaScriptBridge.get_interface("xomdao")
 	_callback = JavaScriptBridge.create_callback(_on_call)
 	_api["_run"] = _callback
+
+
+func _poll_capture_request() -> void:
+	if _capture_pending or not FileAccess.file_exists(CAPTURE_REQUEST):
+		return
+	var file := FileAccess.open(CAPTURE_REQUEST, FileAccess.READ)
+	if file == null:
+		return
+	var request: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if not request is Dictionary or str(request.get("id", "")).is_empty():
+		return
+	_capture_pending = true
+	_capture_viewport(str(request["id"]), str(request.get("output", "")))
+
+
+func _capture_viewport(request_id: String, output: String) -> void:
+	await RenderingServer.frame_post_draw
+	var image: Image = get_viewport().get_texture().get_image()
+	var error: Error = ERR_INVALID_PARAMETER if output.is_empty() else image.save_png(output)
+	var result: Dictionary = {
+		"id": request_id,
+		"ok": error == OK,
+		"width": image.get_width(),
+		"height": image.get_height(),
+		"error": "" if error == OK else "save_png returned error %d for %s" % [error, output],
+	}
+	var file := FileAccess.open(CAPTURE_RESULT, FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify(result))
+		file.close()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(CAPTURE_REQUEST))
+	_capture_pending = false
 
 
 func _on_call(args: Array) -> void:

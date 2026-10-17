@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="348" viewBox="0 0 240 348">
+  <title>Thẻ sở hữu</title>
+  <!-- Card thickness shadow at bottom -->
+  <rect x="4" y="6" width="232" height="338" rx="16" fill="#D3C7B0"/>
+  <!-- Card face -->
+  <rect x="4" y="4" width="232" height="336" rx="16" fill="#FFFFFF" stroke="#DFD7C7" stroke-width="2.5"/>
+  <!-- Delicate inner frame -->
+  <rect x="11" y="11" width="218" height="322" rx="11" fill="none" stroke="#F1ECE1" stroke-width="1.5"/>
+</svg>

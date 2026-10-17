@@ -19,8 +19,17 @@ func _init(settings: XomDaoSettings = null) -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	back.name = "Back"
+	back.background = Color("#141E30")
+	back.border = 2
+	back.edge = XomDaoUi.GOLD_DARK
+	back.lit = true
 	back.pressed.connect(back_pressed.emit)
 	add_child(back)
+	money.coins.background = Color("#111A29")
+	money.settings.background = Color("#141E30")
+	money.settings.border = 2
+	money.settings.edge = XomDaoUi.GOLD_DARK
+	money.settings.lit = true
 	add_child(money)
 	resized.connect(_layout)
 	_settings.changed.connect(_layout)

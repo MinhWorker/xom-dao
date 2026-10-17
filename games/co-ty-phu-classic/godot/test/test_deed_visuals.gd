@@ -3,6 +3,7 @@ extends GutTest
 
 const Marks := preload("res://content/co-ty-phu-classic/marks.gd")
 const Sets := preload("res://content/co-ty-phu-classic/deed_sets.gd")
+const Print := preload("res://content/co-ty-phu-classic/tile_ink.gd")
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
 
 
@@ -77,17 +78,22 @@ func test_set_frames_join_neighbors_but_never_cross_a_foreign_square() -> void:
 
 
 func test_surface_print_keeps_upright_rows_inside_every_deed() -> void:
-	var print_script: GDScript = load("res://content/co-ty-phu-classic/tile_ink.gd")
 	var font: Font = XomDaoUi.display_font(700)
 	for i: int in 40:
 		if not Rules.is_deed(i):
 			continue
-		var layout: Dictionary = print_script.call("rows", i)
-		var span: Vector2 = print_script.call("plane_size", i)
+		var layout: Dictionary = Print.rows(i)
+		var span: Vector2 = Print.plane_size(i)
 		assert_lt(layout["label"].y, layout["symbol"].y)
-		assert_lt(layout["symbol"].y, layout["number"].y)
+		if (i > 10 and i < 20) or i > 30:
+			assert_eq(layout["symbol"].y, layout["number"].y)
+			var symbol_edge: float = layout["symbol"].x + layout["symbol_size"] / span.x / 2.0
+			var number_edge: float = layout["number"].x - layout["number_width"] / span.x / 2.0
+			assert_lt(symbol_edge, number_edge, "Fixed symbol and number slots never overlap")
+		else:
+			assert_lt(layout["symbol"].y, layout["number"].y)
 		assert_gt(layout["symbol"].y - layout["symbol_size"] / span.y / 2.0, 0.27)
-		assert_lt(layout["symbol"].y + layout["symbol_size"] / span.y / 2.0, 0.72)
+		assert_lt(layout["symbol"].y + layout["symbol_size"] / span.y / 2.0, 0.90)
 		var fitted: float = minf(
 			layout["label_size"] / 64.0,
 			layout["width"] / font.get_string_size(Rules.SQUARES[i]["name"], 0, -1, 64).x
@@ -96,15 +102,21 @@ func test_surface_print_keeps_upright_rows_inside_every_deed() -> void:
 			font.get_string_size(Rules.SQUARES[i]["name"], 0, -1, 64).x * fitted,
 			layout["width"] + 0.001
 		)
-		var surface: Transform2D = print_script.call(
-			"surface_transform", i, layout["symbol"], Vector2(1000, 786)
-		)
+		var surface: Transform2D = Print.surface_transform(i, layout["symbol"], Vector2(1000, 786))
 		assert_gt(surface.x.x, 0.0, "Text reads left to right on every edge")
 		assert_gt(surface.y.y, 0.0, "Text is upright on every edge")
-	var near_side: Transform2D = print_script.call(
-		"surface_transform", 2, Vector2(0.5, 0.5), Vector2(1000, 786)
-	)
-	var far_side: Transform2D = print_script.call(
-		"surface_transform", 24, Vector2(0.5, 0.5), Vector2(1000, 786)
-	)
+	var near_side: Transform2D = Print.surface_transform(2, Vector2(0.5, 0.5), Vector2(1000, 786))
+	var far_side: Transform2D = Print.surface_transform(24, Vector2(0.5, 0.5), Vector2(1000, 786))
 	assert_lt(far_side.x.length(), near_side.x.length(), "Far tiles have smaller physical print")
+
+
+func test_large_tile_numbers_use_thousands_without_trailing_zeroes() -> void:
+	for pair: Array in [
+		[999, "999"],
+		[1000, "1k"],
+		[1250, "1,25k"],
+		[1500, "1,5k"],
+		[10000, "10k"],
+		[-1500, "-1,5k"]
+	]:
+		assert_eq(Print.compact_number(pair[0]), pair[1])

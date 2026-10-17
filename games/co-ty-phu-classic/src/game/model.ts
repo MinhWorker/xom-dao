@@ -56,14 +56,13 @@ export const AUCTION_TURN_MS = 10_000;
 
 export interface Auction {
   square: number;
-  /** Absent for the persistent station contribution mechanic. */
-  seller?: number;
-  resume?: Phase;
   bidder: number;
   highest: number;
   leader: number | null;
   passed: number[];
   bids: number[];
+  /** Successful station deposits per seat, independent of their increasing amounts. */
+  contributions?: number[];
 }
 
 /** Deposits and withdrawals persist between visits to this station. */
@@ -71,8 +70,6 @@ export type StationAuction = Omit<Auction, 'bidder'>;
 
 export const STATION_CONTRIBUTION_STEP = 50;
 export const STATION_BASE_FEE = 50;
-
-export const auctionRaise = (square: number) => Math.ceil(BOARD[square]!.price! / 5);
 
 export interface Debt {
   /** A station winner may owe the bank during another player's turn. */

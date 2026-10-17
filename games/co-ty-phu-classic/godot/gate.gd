@@ -14,6 +14,12 @@ var closure: float = 0.0:
 	set(value):
 		closure = value
 		queue_redraw()
+var _spotlight_at := Vector2.ZERO
+var _spotlight_radius: float = 72.0
+var _spotlight_power: float = 0.0:
+	set(value):
+		_spotlight_power = value
+		queue_redraw()
 
 
 func _init() -> void:
@@ -58,11 +64,76 @@ func open() -> void:
 	visible = false
 
 
+## Briefly isolate a pawn on the Go To Jail square before its transport.
+func spotlight(at: Vector2, radius: float) -> void:
+	closure = 0.0
+	_spotlight_at = at
+	_spotlight_radius = maxf(radius, 24.0)
+	_spotlight_power = 0.0
+	modulate.a = 1.0
+	visible = true
+	var tween: Tween = create_tween()
+	tween.tween_property(self, "_spotlight_power", 1.0, 0.12).set_trans(Tween.TRANS_SINE)
+	tween.tween_interval(0.3)
+	tween.tween_property(self, "_spotlight_power", 0.0, 0.24).set_trans(Tween.TRANS_SINE)
+	await tween.finished
+	visible = false
+
+
 func _draw() -> void:
+	if _spotlight_power > 0.0:
+		_draw_spotlight()
 	var half: float = size.x / 2.0
 	var gap: float = half * (1.0 - closure)
 	_door(-gap, half, 0)
 	_door(half + gap, half, 1)
+
+
+func _draw_spotlight() -> void:
+	var power: float = clampf(_spotlight_power, 0.0, 1.0)
+	var center: Vector2 = _spotlight_at
+	var radius: float = _spotlight_radius
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.015, 0.025, 0.06, 0.34 * power))
+	var beam := PackedVector2Array(
+		[
+			Vector2(center.x - radius * 0.12, -size.y * 0.06),
+			Vector2(center.x + radius * 0.12, -size.y * 0.06),
+			center + Vector2(radius, radius * 0.24),
+			center + Vector2(-radius, radius * 0.24),
+		]
+	)
+	draw_colored_polygon(beam, Color(1.0, 0.91, 0.68, 0.13 * power))
+	draw_line(
+		Vector2(center.x, -size.y * 0.06),
+		center,
+		Color(1.0, 0.93, 0.72, 0.2 * power),
+		maxf(1.0, size.x * 0.0015),
+		true
+	)
+	draw_set_transform(center, 0.0, Vector2(1.55, 0.58))
+	draw_circle(Vector2.ZERO, radius, Color(1.0, 0.82, 0.38, 0.19 * power))
+	draw_circle(Vector2.ZERO, radius * 0.62, Color(1.0, 0.93, 0.67, 0.14 * power))
+	draw_arc(
+		Vector2.ZERO,
+		radius * 0.94,
+		0.0,
+		TAU,
+		48,
+		Color(1.0, 0.89, 0.55, 0.82 * power),
+		maxf(1.5, size.x * 0.002),
+		true
+	)
+	draw_arc(
+		Vector2.ZERO,
+		radius * 0.68,
+		0.0,
+		TAU,
+		48,
+		Color(1.0, 0.95, 0.76, 0.45 * power),
+		maxf(1.0, size.x * 0.0012),
+		true
+	)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## One door, `width` wide, its left edge at `left`; `side` 0 is the left door.

@@ -104,19 +104,33 @@ func _draw_art() -> void:
 	var box: Vector2 = _art.size
 	var down: bool = get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED
 	if selected:
+		var plate_rect := Rect2(4.0, 2.0, box.x - 8.0, box.y - 4.0)
 		XomDaoPuff.paint(
-			_art,
-			Rect2(4.0, 2.0, box.x - 8.0, box.y - 4.0),
-			XomDaoUi.SUN,
-			XomDaoUi.GOLD_DARK,
-			24.0,
-			XomDaoPuff.DEPTH,
-			down
+			_art, plate_rect, Color("#FFDA55"), Color("#945D0F"), 24.0, XomDaoPuff.DEPTH, down, 3
 		)
+		# 4 corner rivets on selected plaque
+		var sunk: float = XomDaoPuff.DEPTH - 2.0 if down else 0.0
+		var r_pos: Array[Vector2] = [
+			Vector2(14.0, 12.0 + sunk),
+			Vector2(box.x - 14.0, 12.0 + sunk),
+			Vector2(14.0, box.y - 18.0 + sunk),
+			Vector2(box.x - 14.0, box.y - 18.0 + sunk),
+		]
+		for p: Vector2 in r_pos:
+			_art.draw_circle(
+				p + Vector2(0.0, 1.0), 2.5, Color(0.2, 0.1, 0.0, 0.35), true, -1.0, true
+			)
+			_art.draw_circle(p, 2.5, Color("#8A550C"), true, -1.0, true)
+			_art.draw_circle(p, 1.8, Color("#FFE070"), true, -1.0, true)
 	elif _lift > 0.0:
-		var glow: StyleBoxFlat = XomDaoUi.box(
-			Color(XomDaoUi.NAVY_LINE, 0.4 * _lift), Color.TRANSPARENT, 0, 24.0
-		)
+		var glow := StyleBoxFlat.new()
+		glow.bg_color = Color(1.0, 1.0, 1.0, 0.06 * _lift)
+		glow.border_width_left = 2
+		glow.border_width_top = 2
+		glow.border_width_right = 2
+		glow.border_width_bottom = 2
+		glow.border_color = Color(XomDaoUi.GOLD_DARK, 0.5 * _lift)
+		glow.set_corner_radius_all(24)
 		_art.draw_style_box(glow, Rect2(4.0, 2.0, box.x - 8.0, box.y - 4.0))
 	# The picture: bobbing where the player is, lifted under the pointer.
 	var rise: float = _lift * 5.0
@@ -130,25 +144,33 @@ func _draw_art() -> void:
 	var ground := Vector2(box.x / 2.0, 10.0 + ICON.y + 1.0)
 	var spread: float = 26.0 - rise * 0.8
 	_art.draw_set_transform(ground, 0.0, Vector2(1.0, 0.28))
-	_art.draw_circle(Vector2.ZERO, spread, Color(0.0, 0.0, 0.0, 0.2), true, -1.0, true)
+	_art.draw_circle(Vector2.ZERO, spread, Color(0.0, 0.0, 0.0, 0.25), true, -1.0, true)
 	_art.draw_set_transform(Vector2.ZERO)
 	var tint: Color = Color.WHITE
 	if _tinted:
-		tint = XomDaoUi.INK if selected else XomDaoUi.CREAM
+		tint = Color("#452309") if selected else XomDaoUi.CREAM
 	_art.draw_texture_rect(_picture, Rect2(at, drawn), false, tint)
 	var font: Font = XomDaoUi.display_font(800)
 	var font_size: int = XomDaoUi.TEXT_MIN
 	var line := Vector2(0.0, box.y - 13.0 - (XomDaoPuff.DEPTH if selected and not down else 4.0))
-	if not selected:
-		_art.draw_string_outline(
-			font, line, label, HORIZONTAL_ALIGNMENT_CENTER, box.x, font_size, 6, XomDaoUi.NAVY
+	if selected:
+		# Embossed highlight below the carved text
+		_art.draw_string(
+			font,
+			line + Vector2(0.0, 1.2),
+			label,
+			HORIZONTAL_ALIGNMENT_CENTER,
+			box.x,
+			font_size,
+			Color(1.0, 1.0, 1.0, 0.45)
 		)
-	_art.draw_string(
-		font,
-		line,
-		label,
-		HORIZONTAL_ALIGNMENT_CENTER,
-		box.x,
-		font_size,
-		XomDaoUi.INK if selected else XomDaoUi.CREAM
-	)
+		_art.draw_string(
+			font, line, label, HORIZONTAL_ALIGNMENT_CENTER, box.x, font_size, Color("#452309")
+		)
+	else:
+		_art.draw_string_outline(
+			font, line, label, HORIZONTAL_ALIGNMENT_CENTER, box.x, font_size, 6, Color("#0B121E")
+		)
+		_art.draw_string(
+			font, line, label, HORIZONTAL_ALIGNMENT_CENTER, box.x, font_size, XomDaoUi.CREAM
+		)

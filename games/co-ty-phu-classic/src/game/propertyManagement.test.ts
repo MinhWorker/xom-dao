@@ -2,7 +2,6 @@ import { testGame } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
 import plugin from '../index.js';
 import { botMove } from './bot.js';
-import { BOARD } from './model.js';
 import { bankHotels, bankHouses, copy, mortgageStatus, move } from './rules.js';
 
 const ids = ['a', 'b', 'c', 'd'];
@@ -22,7 +21,7 @@ describe('declining an unowned street', () => {
     game.state.players[0]!.cash = cash;
     move(game.state, 0, 3, false, 3);
     expect(game.error('b', 'end-turn')).toBeTruthy();
-    expect(game.error('a', 'auction', { square: 3 })).toBe('Bạn không sở hữu ô này');
+    expect(game.error('a', 'auction', { square: 3 })).toBeTruthy();
     game.send('a', 'end-turn');
     expect(game.state.turn).toBe(1);
     expect(game.state.pending).toBeNull();
@@ -50,117 +49,14 @@ describe('declining an unowned street', () => {
   });
 });
 
-describe('selling owned real estate at auction', () => {
-  it.each([1, 5])('sells square %s remotely with a 20%% increment and pays its owner', (square) => {
+describe('personal asset auctions are unavailable', () => {
+  it.each([1, 5, 12])('rejects auctioning owned square %s without changing its owner', (square) => {
     const game = fixture();
     game.state.properties[square]!.owner = 0;
-    const raise = BOARD[square]!.price! / 5;
-    expect(game.error('b', 'auction', { square })).toBeTruthy();
-    game.send('a', 'auction', { square });
-    expect(game.state.auction).toMatchObject({ seller: 0, bidder: 1, passed: [0] });
-    expect(game.error('a', 'bid', { amount: raise })).toBeTruthy();
-    expect(game.error('b', 'bid', { amount: raise - 1 })).toBeTruthy();
-    game.send('b', 'bid', { amount: raise });
-    expect(game.error('c', 'bid', { amount: raise * 2 - 1 })).toBeTruthy();
-    game.send('c', 'bid', { amount: raise * 2 });
-    game.send('d', 'pass').send('b', 'pass');
-    expect(game.state.properties[square]!.owner).toBe(2);
-    expect(game.state.transfers).toEqual([
-      { from: 2, to: 0, amount: raise * 2, reason: `Đấu giá ${BOARD[square]!.name}` },
-    ]);
-    expect(game.state.players[0]!.cash).toBe(1000 + raise * 2);
-    expect(game.state.players[2]!.cash).toBe(1000 - raise * 2);
-    expect(game.state.stationAuctions).toEqual({});
-    expect(game.state.phase).toBe('roll');
-  });
-
-  it('keeps the original deed and pending landing if nobody buys', () => {
-    const game = fixture();
-    game.state.properties[1]!.owner = 0;
-    game.state.properties[1]!.houses = 2;
-    move(game.state, 0, 3, false, 3);
-    game.send('a', 'auction', { square: 1 });
-    game.send('b', 'pass').send('c', 'pass').send('d', 'pass');
-    expect(game.state.phase).toBe('buy');
-    expect(game.state.pending).toBe(3);
-    expect(game.state.properties[1]).toMatchObject({ owner: 0, houses: 2 });
-    expect(game.state.transfers).toEqual([]);
-    game.send('a', 'buy');
-    expect(game.state.properties[3]!.owner).toBe(0);
-  });
-
-  it('retains buildings and resumes debt after paying the seller', () => {
-    const game = fixture();
-    Object.assign(game.state, {
-      phase: 'debt',
-      debt: { amount: 100, creditor: null, reason: 'Thuế', after: 'end' },
-    });
-    game.state.players[0]!.cash = 0;
-    Object.assign(game.state.properties[1]!, { owner: 0, houses: 2 });
-    game.send('a', 'auction', { square: 1 });
-    game.send('b', 'bid', { amount: 100 }).send('c', 'pass').send('d', 'pass');
-    expect(game.state.properties[1]).toMatchObject({ owner: 1, houses: 2 });
-    expect(game.state.phase).toBe('debt');
-    game.send('a', 'pay-debt');
-    expect(game.state.phase).toBe('end');
-    expect(game.state.players[0]!.cash).toBe(0);
-  });
-
-  it('rejects unaffordable bids and cancels cleanly when the seller leaves', () => {
-    const game = fixture();
-    game.state.properties[1]!.owner = 0;
-    game.state.players[1]!.cash = 39;
-    game.send('a', 'auction', { square: 1 });
-    expect(game.error('b', 'bid', { amount: 40 })).toBeTruthy();
-    game.leave('a');
+    expect(game.error('a', 'auction', { square })).toBeTruthy();
     expect(game.state.auction).toBeNull();
+    expect(game.state.properties[square]!.owner).toBe(0);
     expect(game.state.phase).toBe('roll');
-    expect(game.state.properties[1]!.owner).toBeNull();
-  });
-
-  it('changes an auction seller’s creditor to the bank if the creditor leaves', () => {
-    const game = fixture();
-    Object.assign(game.state, {
-      phase: 'debt',
-      debt: { amount: 100, creditor: 1, reason: 'Thuê', after: 'end' },
-    });
-    game.state.players[0]!.cash = 0;
-    game.state.properties[1]!.owner = 0;
-    game.send('a', 'auction', { square: 1 });
-    game.leave('b');
-    game.send('c', 'bid', { amount: 100 }).send('d', 'pass');
-    expect(game.state.debt?.creditor).toBeNull();
-    game.send('a', 'pay-debt');
-    expect(game.state.transfers[0]).toMatchObject({ from: 0, to: null, amount: 100 });
-  });
-
-  it('carries an existing mortgage through a resale without extending its deadline', () => {
-    const game = fixture();
-    game.state.properties[1]!.owner = 0;
-    game.send('a', 'mortgage', { square: 1 });
-    game.send('a', 'auction', { square: 1 });
-    game.send('b', 'bid', { amount: 40 }).send('c', 'pass').send('d', 'pass');
-    expect(game.state.properties[1]).toMatchObject({
-      owner: 1,
-      mortgaged: true,
-      mortgage: { borrower: 0, deadline: 4 },
-    });
-  });
-
-  it('resumes the visitor when an off-turn indebted seller leaves', () => {
-    const game = fixture();
-    Object.assign(game.state, {
-      turn: 2,
-      phase: 'debt',
-      debt: { payer: 0, amount: 200, creditor: null, reason: 'Mua bến', after: 'end' },
-    });
-    game.state.properties[1]!.owner = 0;
-    game.send('a', 'auction', { square: 1 });
-    game.leave('a');
-    expect(game.state.turn).toBe(2);
-    expect(game.state.phase).toBe('end');
-    expect(game.state.debt).toBeNull();
-    expect(game.state.auction).toBeNull();
   });
 });
 
