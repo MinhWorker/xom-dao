@@ -12,7 +12,7 @@ Hai người chơi Caro trên bàn mở rộng, với bạn hoặc máy.
 | Hàng thắng, hoà và bàn mở rộng | `src/game/board.ts` |
 | Dữ liệu và tuỳ chọn | `src/game/model.ts` |
 | Máy | `src/game/bot.ts` |
-| Bàn: ô gỗ, quân, bàn mở rộng, hàng thắng, Đổi quân, `room_setup()` và `result_detail()` | `godot/main.tscn`, `godot/main.gd` (test: `godot/test/`) |
+| Bàn giấy: nét mực, bàn mở rộng, hàng thắng, Đổi quân, `room_setup()` và `result_detail()` | `godot/main.tscn`, `godot/main.gd` (test: `godot/test/`) |
 | Hình, âm thanh và nhạc của bàn | `godot/art/`, `godot/sounds/`, `godot/music/` |
 
 `src/index.ts` đăng ký game phía server. `assets/` chứa hình và âm thanh cỡ đầy đủ (bàn chép bản
@@ -28,10 +28,15 @@ Kiểm tra bằng `npm run check` và `npm run godot:check`. Hướng dẫn SDK 
 
 ## Tài nguyên
 
-Ô gỗ mật ong, quân X sơn mài đỏ, quân O sơn mài xanh và nền vải kết xuất bằng Blender theo
-[hướng nghệ thuật](../../docs/art-direction.md): `npm run blender -- tic-tac-toe` chạy
-`sources/render_assets.py` (nắng trên trái). Bàn dùng các ảnh này trong `godot/art/`:
-quân hiện ra kèm tiếng, bàn lớn thêm thì ô mới hiện dần và bàn trượt cho vừa, năm ô thắng chuyển
-vàng và quân nảy lên; chủ phòng đổi quân cho ván sau bằng **Đổi quân**. Hình đảo tạo bằng Codex,
+Bàn dùng nền giấy ngà có vân nhẹ tạo bằng Image Gen (`assets/paper.webp`, bản dùng trong
+`godot/art/paper.webp`; prompt trong `sources/prompts.json`). Lưới ô liền mạch và nét mực được
+vẽ bằng GDScript: `paper_cell.gd` vẽ ô giấy; `ink_mark.gd` vẽ X đỏ thành hai nét và O xanh thành
+một vòng liên tục, không có bút hay bàn tay. Khi đi sát mép, bàn vẫn mở rộng, ô mới hiện dần và
+cả bàn trượt cho vừa. Hàng thắng được khoanh vàng. Khi hết ván, cả bàn trượt sang trái và HUD
+kết quả hiện bên phải; **Xem bàn** đưa bàn về giữa, **Kết quả** mở lại HUD. Chủ phòng dùng
+**Đổi quân** để chọn quân cho ván sau. Hình ô gỗ và quân sơn mài cũ vẫn giữ trong tài nguyên
+nguồn Blender (`sources/render_assets.py`).
+
+Hình đảo tạo bằng Codex,
 prompt trong `sources/prompts.json`. Âm thanh chép từ `assets/` vào `godot/sounds/`;
 bản gốc ở `assets/games/tic-tac-toe/` tại gốc repo.

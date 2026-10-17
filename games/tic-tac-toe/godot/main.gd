@@ -1,24 +1,15 @@
 extends Control
-## Caro on the Godot client, in the **Bàn** layout (docs/experience.md): the board of wooden tiles
-## in the middle, as tall as the frame; the two players in the column on its left (yours at the
-## bottom, the other under the hub's ☰), each with the piece it plays as a badge; the status and,
-## for the host after a game, Đổi quân in the column on its right. It draws `snapshot.view` (the
-## server's State in src/game/model.ts) and sends `place {x, y}` when you tap a free tile on your
-## turn.
-##
-## A piece pops in with its sound. When a piece reaches an edge the board grows: the new tiles
-## fade in, nearest the old board first, while the board glides to fit. After a win the five
-## tiles turn gold and their pieces bounce.
-##
-## Named nodes for tests: Board, Cell_<x>_<y> (a button per tile, in board coordinates, so
-## x and y go negative once the board grew left or up), Piece_<x>_<y>, Status, Rule, Seat_<seat>,
-## Swap.
+## Paper-and-ink Caro. The notebook grid grows at an edge; marks write themselves in place.
+## At the end the whole board glides left, leaving room for the hub's result HUD.
+## Named nodes: Board, Cell_<x>_<y>, Piece_<x>_<y>, Status, Rule, Seat_<seat>, Swap.
 
-const RED := Color("#E0463A")
-const BLUE := Color("#5FB4FF")
-const HOVER := Color("#FFF1B8")
-const LAST := Color("#FFE6A0")
-const WIN_TINT := Color("#FFD34D")
+const INK_MARK := preload("res://content/tic-tac-toe/ink_mark.gd")
+const PAPER_CELL := preload("res://content/tic-tac-toe/paper_cell.gd")
+const RED := Color("#a52f3e")
+const BLUE := Color("#245477")
+const HOVER := Color(0.62, 0.72, 0.76, 0.2)
+const LAST := Color(0.85, 0.68, 0.3, 0.12)
+const WIN_TINT := Color(0.91, 0.7, 0.24, 0.24)
 ## Marks in a row that win (WIN in src/game/model.ts).
 const WIN := 5
 const GLIDE_SECONDS := 0.65
@@ -38,7 +29,7 @@ var _client: XomDaoClient
 var _snapshot: XomDaoRoomSnapshot
 var _view: Dictionary = {}
 
-var _cloth := TextureRect.new()
+var _paper := TextureRect.new()
 var _board := Control.new()
 var _tiles_layer := Control.new()
 var _pieces_layer := Control.new()
@@ -46,9 +37,9 @@ var _cells := Control.new()
 var _status := Label.new()
 var _rule := Label.new()
 var _swap: XomDaoButton = XomDaoButton.create("Đổi quân", XomDaoUi.Kind.INFO)
-var _swap_icon := TextureRect.new()
+var _swap_icon: Control = INK_MARK.new()
 var _slots: Array[XomDaoPlayerSlot] = []
-var _icons: Array[TextureRect] = []
+var _icons: Array[Control] = []
 var _sounds: Dictionary = {}
 var _textures: Dictionary = {}
 
@@ -56,7 +47,9 @@ var _textures: Dictionary = {}
 var _tiles: Dictionary = {}
 var _buttons: Dictionary = {}
 var _pieces: Dictionary = {}
-var _bounces: Dictionary = {}
+var _win_ring := Line2D.new()
+var _result_visible: bool = true
+var _board_center := Vector2.ZERO
 ## The board's bounds on screen now (left, top, cols, rows).
 var _shape := Vector4i(0, 0, -1, -1)
 ## Where the board's centre (in board coordinates) sits, and a cell's side on screen.
@@ -116,16 +109,16 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = XomDaoUi.theme()
 	clip_contents = true
-	var sea := ColorRect.new()
-	sea.color = Color("#10404A")
-	sea.set_anchors_preset(Control.PRESET_FULL_RECT)
-	sea.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(sea)
-	_cloth.texture = _art("cloth")
-	_cloth.stretch_mode = TextureRect.STRETCH_TILE
-	_cloth.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-	_cloth.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_cloth)
+	var paper_color := ColorRect.new()
+	paper_color.color = Color("#f4eedf")
+	paper_color.set_anchors_preset(Control.PRESET_FULL_RECT)
+	paper_color.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(paper_color)
+	_paper.texture = _art("paper")
+	_paper.stretch_mode = TextureRect.STRETCH_TILE
+	_paper.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	_paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_paper)
 
 	_board.name = "Board"
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -135,12 +128,14 @@ func _ready() -> void:
 		_board.add_child(layer)
 
 	_status.name = "Status"
-	_status.theme_type_variation = "HudLabel"
+	_status.add_theme_font_override("font", XomDaoUi.display_font(800))
+	_status.add_theme_font_size_override("font_size", 32)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_status)
 	_rule.name = "Rule"
-	_rule.theme_type_variation = "HudLabel"
+	_rule.add_theme_color_override("font_color", BLUE)
+	_rule.add_theme_font_size_override("font_size", 28)
 	_rule.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_rule.text = "Nối %d" % WIN
 	add_child(_rule)
@@ -149,7 +144,6 @@ func _ready() -> void:
 	_swap.pressed.connect(_on_swap)
 	_swap.visible = false
 	add_child(_swap)
-	_swap_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_swap_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_swap_icon.custom_minimum_size = Vector2(44.0, 44.0)
 	_swap_icon.size = _swap_icon.custom_minimum_size
@@ -161,13 +155,16 @@ func _ready() -> void:
 		slot.compact = true
 		add_child(slot)
 		_slots.append(slot)
-		var icon := TextureRect.new()
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		var icon: Control = INK_MARK.new()
 		icon.custom_minimum_size = Vector2(56.0, 56.0)
 		icon.size = icon.custom_minimum_size
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(icon)
 		_icons.append(icon)
+	_win_ring.default_color = Color("#d4a333")
+	_win_ring.width = 3.0
+	_win_ring.antialiased = true
+	_tiles_layer.add_child(_win_ring)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
 		player.bus = XomDaoSettings.SFX_BUS
@@ -189,7 +186,9 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	var fresh: bool = snapshot.round != _round
 	if fresh:
 		_round = snapshot.round
+		_seq = -1
 		_clear_pieces()
+		_result_visible = true
 		if not first and snapshot.status == "playing":
 			_sfx("caro-start")
 	var board: Dictionary = view["board"]
@@ -202,7 +201,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	var placed := Vector2i(1 << 20, 1 << 20)
 	if snapshot.last != null and snapshot.last.seq != _seq:
 		var move: Variant = snapshot.last.move
-		if _seq >= 0 and move is Dictionary and (move as Dictionary).get("payload") is Dictionary:
+		if not first and move is Dictionary and (move as Dictionary).get("payload") is Dictionary:
 			var payload: Dictionary = (move as Dictionary)["payload"]
 			placed = Vector2i(int(payload.get("x", 0)), int(payload.get("y", 0)))
 		_seq = snapshot.last.seq
@@ -213,7 +212,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		_sfx("caro-line-complete" if not _line.is_empty() else "caro-draw")
 	_ended = ended
 	_tint_tiles()
-	_glow()
+	_place_board()
 	_show_seats()
 	_show_status()
 	_layout()
@@ -240,7 +239,7 @@ func _at(p: Vector2i) -> String:
 
 ## A cell's centre on screen, in the board layer.
 func _center_of(p: Vector2i) -> Vector2:
-	return _area.get_center() + (Vector2(p) - _mid) * _cell
+	return _board_center + (Vector2(p) - _mid) * _cell
 
 
 ## One tile and one button per cell of the board: tiles off it go, new ones are made (fading
@@ -262,9 +261,7 @@ func _sync_tiles(shape: Vector4i, animate: bool) -> void:
 	for p: Vector2i in wanted:
 		if _tiles.has(p):
 			continue
-		var tile := TextureRect.new()
-		tile.texture = _art("tile")
-		tile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		var tile: Control = PAPER_CELL.new()
 		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_tiles_layer.add_child(tile)
 		_tiles[p] = tile
@@ -290,6 +287,10 @@ func _sync_tiles(shape: Vector4i, animate: bool) -> void:
 				0.12 + away * 0.11
 			)
 
+	for p: Vector2i in _tiles:
+		_tiles[p].set("left_edge", p.x == shape.x)
+		_tiles[p].set("top_edge", p.y == shape.y)
+
 
 ## Glides (or jumps) so the whole board fits the board area, centred.
 func _frame(smooth: bool) -> void:
@@ -300,11 +301,13 @@ func _frame(smooth: bool) -> void:
 	if _glide != null:
 		_glide.kill()
 	if not smooth or not is_inside_tree():
+		_board_center = _area.get_center()
 		_mid = mid
 		_cell = cell
 		_place_board()
 		return
 	_glide = create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	_glide.tween_property(self, "_board_center", _area.get_center(), GLIDE_SECONDS)
 	_glide.tween_property(self, "_mid", mid, GLIDE_SECONDS)
 	_glide.tween_property(self, "_cell", cell, GLIDE_SECONDS)
 	_glide.tween_method(func(_t: float) -> void: _place_board(), 0.0, 1.0, GLIDE_SECONDS)
@@ -313,27 +316,29 @@ func _frame(smooth: bool) -> void:
 func _place_board() -> void:
 	for p: Vector2i in _tiles:
 		var at: Vector2 = _center_of(p)
-		var tile: TextureRect = _tiles[p]
-		tile.size = Vector2.ONE * _cell * 0.96
+		var tile: Control = _tiles[p]
+		tile.size = Vector2.ONE * _cell
 		tile.position = at - tile.size / 2.0
 		var cell: Button = _buttons[p]
 		cell.size = Vector2.ONE * _cell
 		cell.position = at - cell.size / 2.0
 	for p: Vector2i in _pieces:
-		var piece: TextureRect = _pieces[p]
-		piece.size = Vector2.ONE * _cell * 1.1
+		var piece: Control = _pieces[p]
+		piece.size = Vector2.ONE * _cell * 0.68
 		piece.pivot_offset = piece.size / 2.0
 		piece.position = _center_of(p) - piece.size / 2.0
 
+	_place_win_ring()
+
 
 func _clear_pieces() -> void:
-	for piece: TextureRect in _pieces.values():
+	for piece: Control in _pieces.values():
 		piece.queue_free()
 	_pieces.clear()
-	_bounces.clear()
+	_win_ring.clear_points()
 
 
-## The pieces on screen follow the board; the one just placed pops in with its sound.
+## The ink follows the paper; a new mark writes itself with its placement sound.
 func _sync_pieces(placed: Vector2i) -> void:
 	for p: Vector2i in _pieces.keys():
 		if _at(p) != "":
@@ -344,22 +349,16 @@ func _sync_pieces(placed: Vector2i) -> void:
 		var mark: String = _at(p)
 		if mark == "" or _pieces.has(p):
 			continue
-		var piece := TextureRect.new()
+		var piece: Control = INK_MARK.new()
 		piece.name = "Piece_%d_%d" % [p.x, p.y]
-		piece.texture = _art("piece-x" if mark == "X" else "piece-o")
-		piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		piece.set("mark", mark)
+		piece.set("ink", RED if mark == "X" else BLUE)
+		piece.set("variation", float(p.x * 7 + p.y * 13))
 		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_pieces_layer.add_child(piece)
 		_pieces[p] = piece
 		if p == placed and is_inside_tree():
-			piece.scale = Vector2.ZERO
-			(
-				piece
-				. create_tween()
-				. tween_property(piece, "scale", Vector2.ONE, 0.26)
-				. set_trans(Tween.TRANS_BACK)
-				. set_ease(Tween.EASE_OUT)
-			)
+			piece.call("write")
 			_sfx(PLACE_SOUND[mark])
 	_place_board()
 
@@ -398,39 +397,33 @@ func _tint_tiles() -> void:
 		if payload is Dictionary:
 			last = Vector2i(int(payload.get("x", 0)), int(payload.get("y", 0)))
 	for p: Vector2i in _tiles:
-		var tile: TextureRect = _tiles[p]
-		var alpha: float = tile.modulate.a
+		var tile: Control = _tiles[p]
 		if _line.has(p):
-			tile.modulate = WIN_TINT
+			tile.set("wash", WIN_TINT)
 		elif p == _hovered and _can_play(p):
-			tile.modulate = HOVER
+			tile.set("wash", HOVER)
 		elif p == last and _snapshot.status == "playing":
-			tile.modulate = LAST
+			tile.set("wash", LAST)
 		else:
-			tile.modulate = Color.WHITE
-		tile.modulate.a = alpha
+			tile.set("wash", Color.TRANSPARENT)
 		(_buttons[p] as Button).disabled = not _can_play(p)
 
 
-## The winning pieces bounce, one after another, while the result shows.
-func _glow() -> void:
-	for p: Vector2i in _bounces.keys():
-		if _line.has(p):
-			continue
-		(_bounces[p] as Tween).kill()
-		_bounces.erase(p)
-		if _pieces.has(p):
-			(_pieces[p] as TextureRect).scale = Vector2.ONE
-	for i: int in _line.size():
-		var p: Vector2i = _line[i]
-		if _bounces.has(p) or not _pieces.has(p) or not is_inside_tree():
-			continue
-		var piece: TextureRect = _pieces[p]
-		var bounce: Tween = piece.create_tween().set_loops()
-		bounce.tween_interval(0.3 + i * 0.12)
-		bounce.tween_property(piece, "scale", Vector2.ONE * 1.18, 0.42).set_trans(Tween.TRANS_SINE)
-		bounce.tween_property(piece, "scale", Vector2.ONE, 0.42).set_trans(Tween.TRANS_SINE)
-		_bounces[p] = bounce
+## A hand-drawn gold oval around the winning row, behind the ink.
+func _place_win_ring() -> void:
+	_win_ring.clear_points()
+	if _line.is_empty():
+		return
+	var first: Vector2 = _center_of(_line[0])
+	var last: Vector2 = _center_of(_line[-1])
+	var center: Vector2 = (first + last) / 2.0
+	var angle: float = (last - first).angle()
+	var radius: float = first.distance_to(last) / 2.0 + _cell * 0.48
+	for i: int in 81:
+		var t: float = TAU * float(i) / 80.0
+		var point := Vector2(cos(t) * radius, sin(t) * _cell * 0.46)
+		point.y += sin(t * 3.0) * _cell * 0.035
+		_win_ring.add_point(center + point.rotated(angle))
 
 
 func _tap(p: Vector2i) -> void:
@@ -497,7 +490,9 @@ func _show_seats() -> void:
 			slot.show_turn()
 		elif not on_turn and slot.is_turn():
 			slot.end_turn()
-		_icons[i].texture = _art("piece-x" if mark == "X" else "piece-o")
+		_icons[i].set("mark", mark)
+		_icons[i].set("ink", RED if mark == "X" else BLUE)
+		_icons[i].queue_redraw()
 
 
 func _show_status() -> void:
@@ -510,13 +505,15 @@ func _show_status() -> void:
 		_status.text = "Lượt %s" % _name(str(_view.get("turn", "")))
 	_status.add_theme_color_override("font_color", RED if _turn_mark() == "X" else BLUE)
 	if not playing:
-		_status.remove_theme_color_override("font_color")
+		_status.add_theme_color_override("font_color", BLUE)
 	# The host picks the piece for the next game between games.
 	var host: bool = _snapshot.host_id != null and str(_snapshot.host_id) == _client.player_id
 	_swap.visible = not playing and host and _snapshot.players.size() == 2
 	_swap_icon.visible = _swap.visible
 	if _swap.visible:
-		_swap_icon.texture = _art("piece-x" if _next_mark() == "X" else "piece-o")
+		_swap_icon.set("mark", _next_mark())
+		_swap_icon.set("ink", RED if _next_mark() == "X" else BLUE)
+		_swap_icon.queue_redraw()
 
 
 func _turn_mark() -> String:
@@ -557,7 +554,7 @@ func _layout() -> void:
 	var edge: float = float(XomDaoSettings.current().margin)
 	var left: float = inset.x + edge
 	var right: float = size.x - inset.x - edge
-	_cloth.size = size
+	_paper.size = size
 	var seats_width: float = COLUMN
 	for slot: XomDaoPlayerSlot in _slots:
 		slot.reset_size()
@@ -571,13 +568,29 @@ func _layout() -> void:
 		Vector2(between + maxf(0.0, (room - side) / 2.0), (size.y - side) / 2.0),
 		Vector2(side, side)
 	)
+	var docked: bool = _ended and _result_visible
+	if docked:
+		var panel: Rect2 = result_area()
+		var available: float = panel.position.x - left - 32.0
+		var top: float = inset.y + edge + MENU + 12.0
+		var height: float = size.y - inset.y - edge - top
+		var final_side: float = minf(available, height)
+		area = Rect2(
+			Vector2(left + (available - final_side) / 2.0, top + (height - final_side) / 2.0),
+			Vector2.ONE * final_side
+		)
+	_status.visible = not docked
+	_rule.visible = not docked
+	for i: int in _slots.size():
+		_slots[i].visible = not docked
+		_icons[i].visible = not docked
 	var resized_area: bool = area != _area
 	_area = area
 	for layer: Control in [_board, _tiles_layer, _pieces_layer, _cells]:
 		layer.position = Vector2.ZERO
 		layer.size = size
-	if resized_area and (_glide == null or not _glide.is_running()):
-		_frame(false)
+	if resized_area:
+		_frame(_shape.z > 0 and _board_center != Vector2.ZERO)
 	for i: int in 2:
 		var slot: XomDaoPlayerSlot = _slots[i]
 		var y: float = size.y - edge - slot.size.y if i == 0 else edge + MENU + 12.0
@@ -597,10 +610,37 @@ func _layout() -> void:
 		_swap.position.y - _swap_icon.size.y - 10.0
 	)
 
+	if docked:
+		_swap_icon.position = Vector2(
+			_swap.position.x - _swap_icon.size.x - 12.0,
+			_swap.position.y + (_swap.size.y - _swap_icon.size.y) / 2.0
+		)
+
 
 ## Each player's piece sits on its avatar like a badge, once the slots have laid out.
 func _place_icons() -> void:
 	for i: int in _slots.size():
 		var avatar: Control = _slots[i].avatar
-		var icon: TextureRect = _icons[i]
-		icon.position = (avatar.global_position - global_position + avatar.size - icon.size * 0.62)
+		var icon: Control = _icons[i]
+		icon.position = (
+			avatar.global_position
+			- global_position
+			+ Vector2(avatar.size.x - icon.size.x * 0.45, (avatar.size.y - icon.size.y) / 2.0)
+		)
+
+
+## Optional hub hook: a result HUD on the right, without a shade over the final board.
+func result_area() -> Rect2:
+	var inset: Vector2 = XomDaoFrame.safe_inset(self)
+	var edge: float = float(XomDaoSettings.current().margin)
+	var left: float = size.x * 0.5 + 16.0
+	return Rect2(
+		Vector2(left, inset.y + edge + 80.0),
+		Vector2(size.x - inset.x - edge - left, size.y - inset.y * 2.0 - edge * 2.0 - 180.0)
+	)
+
+
+## Xem bàn restores the centred board; Kết quả slides it left again.
+func set_result_visible(shown: bool) -> void:
+	_result_visible = shown
+	_layout()

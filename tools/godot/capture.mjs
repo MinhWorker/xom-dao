@@ -10,18 +10,22 @@ const args = process.argv.slice(2);
 let output = '.shots/godot-live.png';
 let timeoutSeconds = 15;
 for (let i = 0; i < args.length; i += 1) {
-	const value = args[i + 1];
-	if (args[i] === '--output' && value) output = value, i += 1;
-	else if (args[i] === '--timeout' && value) timeoutSeconds = Number(value), i += 1;
-	else {
-		console.error(`Unknown or incomplete argument: ${args[i]}`);
-		process.exit(2);
-	}
+  const value = args[i + 1];
+  if (args[i] === '--output' && value) {
+    output = value;
+    i += 1;
+  } else if (args[i] === '--timeout' && value) {
+    timeoutSeconds = Number(value);
+    i += 1;
+  } else {
+    console.error(`Unknown or incomplete argument: ${args[i]}`);
+    process.exit(2);
+  }
 }
 
 if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
-	console.error('--timeout must be a positive number of seconds.');
-	process.exit(2);
+  console.error('--timeout must be a positive number of seconds.');
+  process.exit(2);
 }
 
 const outputPath = isAbsolute(output) ? output : resolve(root, output);
@@ -37,20 +41,22 @@ console.log(`Waiting for the running Godot game to capture its current viewport:
 
 const deadline = Date.now() + timeoutSeconds * 1000;
 while (Date.now() < deadline) {
-	try {
-		const result = JSON.parse(readFileSync(resultPath, 'utf8'));
-		if (result.id === requestId) {
-			if (result.ok) {
-				console.log(`Captured ${result.width}x${result.height}: ${outputPath}`);
-				process.exit(0);
-			}
-			console.error(`Godot viewport capture failed: ${result.error}`);
-			process.exit(1);
-		}
-	} catch {}
-	await delay(100);
+  try {
+    const result = JSON.parse(readFileSync(resultPath, 'utf8'));
+    if (result.id === requestId) {
+      if (result.ok) {
+        console.log(`Captured ${result.width}x${result.height}: ${outputPath}`);
+        process.exit(0);
+      }
+      console.error(`Godot viewport capture failed: ${result.error}`);
+      process.exit(1);
+    }
+  } catch {}
+  await delay(100);
 }
 
 rmSync(requestPath, { force: true });
-console.error('No response from the running game. Keep the desktop Godot project running in a debug build and retry.');
+console.error(
+  'No response from the running game. Keep the desktop Godot project running in a debug build and retry.',
+);
 process.exit(1);

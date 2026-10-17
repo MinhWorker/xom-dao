@@ -58,6 +58,9 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   option is picked, or the one at index `default`), and `result_detail() -> Dictionary`, what
   the result board adds under its title: `{reason: String, rows: [[label, value], …], layout?: "right"}` after the
   hub's own Thời gian row. `layout: "right"` docks the panel on the right for a game's end-of-game presentation.
+  Optional `result_area() -> Rect2` docks the shared result HUD in a game-provided area without a
+  screen shade. Pair it with `set_result_visible(shown: bool) -> void` to follow Xem bàn / Kết quả.
+  Games without this hook keep the centred result overlay.
   Games with voluntary elimination may also define `can_declare_bankruptcy() -> bool` and
   `declare_bankruptcy() -> bool`; the hub uses these hooks to confirm and apply bankruptcy before
   leaving a live room.

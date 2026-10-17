@@ -9,6 +9,7 @@ extends Control
 signal again_pressed
 signal home_pressed
 signal board_view_changed(looking: bool)
+signal board_visibility_changed(shown: bool)
 
 var money := HubMoneyRow.new()
 
@@ -26,6 +27,8 @@ var _settings: XomDaoSettings
 var _panel_bounds := Rect2()
 var _presenting: bool = false
 var _side_panel: bool = false
+var _dock_area: Callable
+var _reveal: Tween
 
 
 ## The ranks of a finished game: 1 for the winners, 2 for the others; everyone 0 in a draw.
@@ -185,12 +188,28 @@ func present() -> void:
 		return
 	_layout()
 	if not _side_panel:
-		_shade.modulate.a = 1.0
-		_board.modulate.a = 1.0
-		_board.open()
+		if _dock_area.is_valid():
+			_shade.visible = false
+			_shade.modulate.a = 0.0
+			_board.modulate.a = 0.0
+			_reveal = create_tween()
+			_reveal.tween_property(_board, "modulate:a", 1.0, 0.35).set_delay(0.3)
+			XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
+		else:
+			_shade.modulate.a = 1.0
+			_board.modulate.a = 1.0
+			_board.open()
 		return
 	var target: Vector2 = _board.position
 	var final_scale: Vector2 = _board.scale
+	if _dock_area.is_valid():
+		_shade.visible = false
+		_shade.modulate.a = 0.0
+		_board.modulate.a = 0.0
+		_reveal = create_tween()
+		_reveal.tween_property(_board, "modulate:a", 1.0, 0.35).set_delay(0.3)
+		XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
+		return
 	_presenting = true
 	_board.position.x += _board.size.x * final_scale.x + 20.0
 	_board.pivot_offset = _board.size / 2.0
@@ -216,12 +235,13 @@ func present() -> void:
 
 ## `true` puts the board away to look at the table, with Kết quả to bring it back.
 func show_board(looking: bool) -> void:
-	_shade.visible = not looking
+	_shade.visible = not looking and not _dock_area.is_valid()
 	_board.visible = not looking
 	money.visible = not looking
 	_reopen.visible = looking
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if looking else Control.MOUSE_FILTER_STOP
 	board_view_changed.emit(looking)
+	board_visibility_changed.emit(not looking)
 	XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
 	_layout.call_deferred()
 
@@ -285,11 +305,13 @@ func _row(player: XomDaoPlayerInfo, rank: int, amount: int, me: String) -> Contr
 		"crown" if rank == 1 else "",
 		XomDaoUi.GOLD_DARK if rank == 1 else XomDaoUi.HUD
 	)
-	place.custom_minimum_size.x = 96.0
+	place.custom_minimum_size.x = (
+		96.0 if _side_panel else (110.0 if _dock_area.is_valid() else 150.0)
+	)
 	place.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(place)
 	var avatar := XomDaoAvatar.new()
-	avatar.custom_minimum_size = Vector2(48.0, 48.0)
+	avatar.custom_minimum_size = Vector2(48.0, 48.0) if _side_panel else Vector2(64.0, 64.0)
 	avatar.initial = player.name
 	avatar.frame = player.frame
 	row.add_child(avatar)
@@ -298,6 +320,7 @@ func _row(player: XomDaoPlayerInfo, rank: int, amount: int, me: String) -> Contr
 	label.add_theme_font_override("font", XomDaoUi.display_font(800))
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.custom_minimum_size.x = 100.0 if _side_panel or _dock_area.is_valid() else 200.0
 	row.add_child(label)
 	var delta := XomDaoDelta.create(amount)
 	delta.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -349,8 +372,22 @@ func _layout() -> void:
 		if not _presenting:
 			_board.position = _panel_bounds.position - pivot_shift
 		_reopen.position = Vector2(right - _reopen.size.x, panel_top)
+	elif _dock_area.is_valid():
+		_board.reset_size()
+		var area: Rect2 = _dock_area.call()
+		var fit: float = minf(area.size.x / _board.size.x, area.size.y / _board.size.y)
+		_board.scale = Vector2.ONE * minf(k, fit)
+		_board.position = area.position + (area.size - _board.size * _board.scale) / 2.0
+		_reopen.position = Vector2((size.x - _reopen.size.x) / 2.0, inset.y + edge)
 	else:
 		_board.reset_size()
 		_board.scale = Vector2.ONE
 		_board.position = (size - _board.size) / 2.0
 		_reopen.position = Vector2((size.x - _reopen.size.x) / 2.0, inset.y + edge)
+
+
+## Optional game-provided area for the shared result HUD.
+func dock(area: Callable) -> void:
+	_dock_area = area
+	_shade.visible = false
+	_title.add_theme_color_override("font_color", XomDaoUi.LACQUER)

@@ -52,6 +52,8 @@ export default async function run(t) {
   const downloaded = await host.evaluate(() => window.xomdao.state().downloaded);
   if (!(downloaded > 0)) throw new Error('The Caro pack was not downloaded');
 
+  await host.screenshot({ path: t.shot('2a-paper-board-desktop.png') });
+
   // Host is X and plays along row 4 from the left edge (the board grows 3 columns left); the
   // guest starts on the bottom edge (3 rows more below).
   const moves = [
@@ -74,8 +76,40 @@ export default async function run(t) {
   await godotText(guest, 'ResultTitle', /^Khách \d+ thắng!$/);
   const { result } = await room(host);
   if (result.rewards?.[0]?.amount !== 20) throw new Error('The winner got no 20 coins');
+  // Wait for the board glide and result reveal, then check that the HUD leaves all cells visible.
+  await host.waitForTimeout(1000);
+  await guest.waitForTimeout(1000);
+  for (const page of [host, guest]) {
+    const layout = await page.evaluate(() => ({
+      panel: window.xomdao.rect('ResultBoard'),
+      menu: window.xomdao.rect('Menu'),
+      first: window.xomdao.rect('Cell_-3_0'),
+      last: window.xomdao.rect('Cell_8_11'),
+      view: { width: innerWidth, height: innerHeight },
+    }));
+    if (
+      layout.first.x < layout.menu.x + layout.menu.width &&
+      layout.first.y < layout.menu.y + layout.menu.height
+    )
+      throw new Error('The menu covers the final board');
+    if (layout.last.x + layout.last.width >= layout.panel.x)
+      throw new Error('The result HUD covers the final board');
+    if (layout.first.x < 0 || layout.last.y + layout.last.height > layout.view.height)
+      throw new Error('The final paper board is clipped');
+    if (
+      layout.panel.x + layout.panel.width > layout.view.width ||
+      layout.panel.y + layout.panel.height > layout.view.height
+    )
+      throw new Error('The result panel is clipped');
+  }
   await host.screenshot({ path: t.shot('4-result-desktop.png') });
   await guest.screenshot({ path: t.shot('5-result-phone.png') });
+
+  await tap(host, 'ViewBoard');
+  await host.waitForTimeout(800);
+  await tap(host, 'ShowResult');
+  await host.waitForTimeout(800);
+  await godotText(host, 'ResultTitle', 'Bạn thắng!');
 
   // Rematch: a fresh board, then the host leaves through the menu and the guest is the host.
   await tap(host, 'Again');
@@ -84,7 +118,10 @@ export default async function run(t) {
     return r.status === 'playing' && r.view.board.cells.every((c) => c === null);
   });
   await tap(host, 'Menu');
+  // Let the shared menu and confirmation finish their opening motion before the next tap.
+  await host.waitForTimeout(350);
   await tap(host, 'Leave');
+  await host.waitForTimeout(350);
   await tap(host, 'ConfirmLeave');
   await onScene(host, 'lobby');
   await onScene(guest, 'room');

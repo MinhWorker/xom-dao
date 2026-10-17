@@ -483,6 +483,7 @@ describe('Cờ tỷ phú Classic', () => {
   it('pays remaining cash to the fee collector and returns other assets to the bank after bankruptcy', () => {
     const game = at(37);
     game.state.properties[37]!.owner = 1;
+    game.state.properties[3]!.owner = 0;
     game.state.players[0]!.cash = 1;
     game.state.players[0]!.freeCards.push('chance');
     game.send('a', 'roll');
@@ -490,7 +491,8 @@ describe('Cờ tỷ phú Classic', () => {
     game.send('a', 'bankrupt');
     expect(game.state.players[0]).toMatchObject({ bankrupt: true, cash: 0, freeCards: [] });
     expect(game.state.players[1]?.cash).toBe(1001);
-    expect(game.state.properties[37]).toMatchObject({ owner: null, mortgaged: false });
+    expect(game.state.properties[3]).toMatchObject({ owner: null, mortgaged: false });
+    expect(game.state.properties[37]).toMatchObject({ owner: 1, mortgaged: false });
     expect(game.state.players[1]?.freeCards).toEqual([]);
   });
 
