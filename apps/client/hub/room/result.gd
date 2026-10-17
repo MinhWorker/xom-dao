@@ -1,6 +1,7 @@
 class_name HubResult
 extends Control
-## The end of a game, over the board: how it ended and the game's own figures (its
+## The end of a game, over the board or docked in an optional game-provided area.
+## How it ended and the game's own figures (its
 ## `result_detail()`, after the time played), the ranks the game gave, each player's reward from
 ## the ledger (green up, red down), the balance on the top right that the coins fly into, and Chơi
 ## tiếp (a new game, same room), Về sảnh and Xem bàn (put the board away to look at the table;
@@ -8,6 +9,7 @@ extends Control
 
 signal again_pressed
 signal home_pressed
+signal board_visibility_changed(shown: bool)
 
 var money := HubMoneyRow.new()
 
@@ -21,6 +23,8 @@ var _reopen: XomDaoButton = XomDaoButton.create("Kết quả", XomDaoUi.Kind.GO)
 var _again: XomDaoButton = XomDaoButton.create("Chơi tiếp", XomDaoUi.Kind.GO)
 var _reward_at: Control
 var _settings: XomDaoSettings
+var _dock_area: Callable
+var _reveal: Tween
 
 
 ## The ranks of a finished game: 1 for the winners, 2 for the others; everyone 0 in a draw.
@@ -150,17 +154,25 @@ func show_result(
 		_ranks.add_child(row)
 	_again.visible = snapshot.host_id == me
 	money.show_balance(balance)
-	_board.open()
+	if _dock_area.is_valid():
+		_shade.visible = false
+		_board.modulate.a = 0.0
+		_reveal = create_tween()
+		_reveal.tween_property(_board, "modulate:a", 1.0, 0.35).set_delay(0.3)
+		XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
+	else:
+		_board.open()
 	_layout.call_deferred()
 
 
 ## `true` puts the board away to look at the table, with Kết quả to bring it back.
 func show_board(looking: bool) -> void:
-	_shade.visible = not looking
+	_shade.visible = not looking and not _dock_area.is_valid()
 	_board.visible = not looking
 	money.visible = not looking
 	_reopen.visible = looking
 	XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
+	board_visibility_changed.emit(not looking)
 	_layout.call_deferred()
 
 
@@ -223,7 +235,7 @@ func _row(player: XomDaoPlayerInfo, rank: int, amount: int, me: String) -> Contr
 		"crown" if rank == 1 else "",
 		XomDaoUi.GOLD_DARK if rank == 1 else XomDaoUi.HUD
 	)
-	place.custom_minimum_size.x = 150.0
+	place.custom_minimum_size.x = 110.0 if _dock_area.is_valid() else 150.0
 	place.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(place)
 	var avatar := XomDaoAvatar.new()
@@ -235,7 +247,7 @@ func _row(player: XomDaoPlayerInfo, rank: int, amount: int, me: String) -> Contr
 	label.text = "Bạn" if player.id == me else player.name
 	label.add_theme_font_override("font", XomDaoUi.display_font(800))
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.custom_minimum_size.x = 200.0
+	label.custom_minimum_size.x = 100.0 if _dock_area.is_valid() else 200.0
 	row.add_child(label)
 	var delta := XomDaoDelta.create(amount)
 	delta.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -263,6 +275,19 @@ func _layout() -> void:
 	money.scale = Vector2.ONE * k
 	money.position = Vector2(size.x - inset.x - edge - money.size.x * k, inset.y + edge)
 	_board.reset_size()
-	_board.position = (size - _board.size) / 2.0
+	if _dock_area.is_valid():
+		var area: Rect2 = _dock_area.call()
+		var fit: float = minf(area.size.x / _board.size.x, area.size.y / _board.size.y)
+		_board.scale = Vector2.ONE * minf(k, fit)
+		_board.position = area.position + (area.size - _board.size * _board.scale) / 2.0
+	else:
+		_board.position = (size - _board.size) / 2.0
 	_reopen.reset_size()
 	_reopen.position = Vector2((size.x - _reopen.size.x) / 2.0, inset.y + edge)
+
+
+## Optional game-provided area; keep the final board visible alongside the shared rewards HUD.
+func dock(area: Callable) -> void:
+	_dock_area = area
+	_shade.visible = false
+	_title.add_theme_color_override("font_color", XomDaoUi.LACQUER)

@@ -116,7 +116,8 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 - **Snapshots** carry `round` and `last` (the last event). `ctx.lastResult` is how the room's
   previous game ended.
 - **Tables**: the hub draws the ☰ menu, the room, the result and Luật; the game's Godot table
-  draws only its board, from `client.snapshot`. Follow `docs/experience.md` (layouts, HUD) and
+  draws only its board, from `client.snapshot`. Optional `result_area() -> Rect2` docks the shared
+  result HUD beside the board; `set_result_visible(shown: bool)` follows Xem bàn / Kết quả. Follow `docs/experience.md` (layouts, HUD) and
   `docs/ui-guide.md` (landscape frame, sizes), and build every button and panel from the UI kit in
   `apps/client/addons/xomdao_sdk/ui/` (`apps/client/AGENTS.md`).
 - **`testGame`** takes a plugin or a `Game`. It offers:

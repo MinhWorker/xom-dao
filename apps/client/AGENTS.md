@@ -58,6 +58,9 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   option is picked, or the one at index `default`), and `result_detail() -> Dictionary`, what
   the result board adds under its title: `{reason: String, rows: [[label, value], …]}` after the
   hub's own Thời gian row.
+  Optional `result_area() -> Rect2` docks the shared result HUD in that game-local area without
+  a screen shade. Pair it with `set_result_visible(shown: bool) -> void` to move the board when
+  Xem bàn / Kết quả toggles the HUD. Other games keep the centred result overlay.
   A game's `music/` folder (`res://content/<id>/music/`) is its background music: the hub's
   `HubMusic` plays a random track while the game is on, at the settings' music volume.
   The hub draws the ☰ menu, the room, the result (Xem bàn puts it away to look at the final board, Kết quả brings it back) and Luật (the game's RULES.md, which
