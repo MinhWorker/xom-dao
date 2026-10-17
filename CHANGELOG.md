@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.25.0](https://github.com/MinhWorker/xom-dao/compare/v0.24.0...v0.25.0) (2026-10-17)
+
+
+### Features
+
+* **client:** streamline hub navigation and improve profile account UI ([#170](https://github.com/MinhWorker/xom-dao/issues/170)) ([bcdb398](https://github.com/MinhWorker/xom-dao/commit/bcdb3985c52d37e988e0d1c0f2b76f809fd4e2cd))
+* **client:** support fixed mobile aspect ratio presets ([#168](https://github.com/MinhWorker/xom-dao/issues/168)) ([856ff60](https://github.com/MinhWorker/xom-dao/commit/856ff60028502bc7424d3fe15a7bb19085629bf2))
+* refresh island hub and Monopoly experience ([#173](https://github.com/MinhWorker/xom-dao/issues/173)) ([5613f1a](https://github.com/MinhWorker/xom-dao/commit/5613f1aa13f368b55fcd009b57a27d54bef3d80e))
+* **tic-tac-toe:** restyle Caro with paper and ink ([#172](https://github.com/MinhWorker/xom-dao/issues/172)) ([86879e1](https://github.com/MinhWorker/xom-dao/commit/86879e131be19435c4989e4b201c392a8dd66972))
+
 ## [0.24.0](https://github.com/MinhWorker/xom-dao/compare/v0.23.0...v0.24.0) (2026-10-11)
 
 
