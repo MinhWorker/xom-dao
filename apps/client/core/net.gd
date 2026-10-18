@@ -30,3 +30,44 @@ static func _ws(url: String) -> String:
 	if url.begins_with("ws"):
 		return url
 	return url.trim_suffix("/").replace("http", "ws") + "/ws"
+
+
+## Reloads the page, clearing Service Worker and Cache Storage on the web so stale builds
+## don't loop on "Đã có bản mới".
+func reload_fresh() -> void:
+	if OS.has_feature("web"):
+		(
+			JavaScriptBridge
+			. eval(
+				"""
+			(function() {
+				var reloaded = false;
+				var reload = function() {
+					if (reloaded) return;
+					reloaded = true;
+					window.location.reload();
+				};
+				var clearAndReload = async function() {
+					try {
+						if ('serviceWorker' in navigator) {
+							var registrations = await navigator.serviceWorker.getRegistrations();
+							await Promise.all(registrations.map(function(r) { return r.unregister(); }));
+						}
+						if ('caches' in window) {
+							var keys = await caches.keys();
+							await Promise.all(keys.map(function(k) { return caches.delete(k); }));
+						}
+					} catch (e) {
+						console.error(e);
+					}
+					reload();
+				};
+				clearAndReload();
+				setTimeout(reload, 800);
+			})();
+		""",
+				true
+			)
+		)
+	else:
+		get_tree().reload_current_scene()
