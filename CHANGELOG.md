@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/MinhWorker/xom-dao/compare/v0.25.0...v0.26.0) (2026-10-18)
+
+
+### Features
+
+* improve Monopoly HUD experience and add avatar customization items ([#174](https://github.com/MinhWorker/xom-dao/issues/174)) ([5157646](https://github.com/MinhWorker/xom-dao/commit/51576468a6f05eddb82bfa78bd0436b529e5a948))
+
 ## [0.25.0](https://github.com/MinhWorker/xom-dao/compare/v0.24.0...v0.25.0) (2026-10-17)
 
 
