@@ -509,7 +509,7 @@
 
 			const engine = new Engine(GODOT_CONFIG);
 
-			(function () {
+			((() => {
 				const statusOverlay = document.getElementById('status');
 				const statusProgress = document.getElementById('status-progress');
 				const statusLabel = document.getElementById('status-label');
@@ -591,7 +591,7 @@
 				} else {
 					setStatusMode('progress');
 					engine.startGame({
-						'onProgress': function (current, total) {
+						'onProgress': (current, total) => {
 							if (Number.isFinite(current) && current >= 0 && Number.isFinite(total) && total > 0) {
 								const isDownloaded = current >= total;
 								const percent = Math.min(100, Math.floor((current / total) * 100));
@@ -611,7 +611,27 @@
 						setStatusMode('hidden');
 					}, displayFailureNotice);
 				}
-			}());
+
+				if ('serviceWorker' in navigator) {
+					navigator.serviceWorker.getRegistration().then((reg) => {
+						if (!reg) return;
+						reg.update().catch(() => {});
+						if (reg.waiting) {
+							reg.waiting.postMessage('claim');
+						}
+						reg.addEventListener('updatefound', () => {
+							const worker = reg.installing;
+							if (worker) {
+								worker.addEventListener('statechange', () => {
+									if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+										worker.postMessage('claim');
+									}
+								});
+							}
+						});
+					}).catch(() => {});
+				}
+			})());
 		</script>
 	</body>
 </html>

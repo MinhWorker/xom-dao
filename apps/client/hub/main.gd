@@ -156,16 +156,18 @@ func _show_update() -> void:
 	column.add_child(label)
 	var reload: XomDaoButton = XomDaoButton.create("Tải lại", XomDaoUi.Kind.GO)
 	reload.name = "Reload"
-	reload.pressed.connect(_reload_page)
+	reload.pressed.connect(
+		func() -> void:
+			reload.disabled = true
+			label.text = "Đang tải lại…"
+			_reload_page()
+	)
 	column.add_child(reload)
 	_set_screen("status", center)
 
 
 func _reload_page() -> void:
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("location.reload()", true)
-	else:
-		get_tree().reload_current_scene()
+	Net.reload_fresh()
 
 
 ## Nobody is logged in: the login board over the loading screen's pictures, until they are.
