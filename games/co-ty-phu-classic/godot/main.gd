@@ -8,6 +8,8 @@ const BoardSurface := preload("res://content/co-ty-phu-classic/board_surface.gd"
 const PawnMotion := preload("res://content/co-ty-phu-classic/pawn_motion.gd")
 const Actions := preload("res://content/co-ty-phu-classic/actions.gd")
 const Victory := preload("res://content/co-ty-phu-classic/victory.gd")
+const TileHud := preload("res://content/co-ty-phu-classic/tile_hud.gd")
+const DiceHotkey := preload("res://content/co-ty-phu-classic/dice_hotkey.gd")
 const SOUNDS := (
 	"auction.wav bankrupt.wav build.wav buy.wav card-flip.wav coin.wav dice.wav jail.wav plane.wav"
 	+ " release.wav rent.wav step.wav turn.wav win.mp3 item-receive.mp3 trade-request.mp3"
@@ -15,7 +17,7 @@ const SOUNDS := (
 const INKS: Array[Color] = [Color("#DF6554"), Color("#5793D3"), Color("#60AF72"), Color("#E6BE52")]
 const PAWNS: Array[String] = ["red", "blue", "green", "yellow"]
 const SEEN := Rect2(0.07, 0.048, 0.86, 0.822)
-const COLUMN := 276.0
+const SIDE_HUD_WIDTH := 276.0
 const STEP_SECONDS := 0.14
 const FLY_SECONDS := 0.7
 const GOLD := Color("#FFE2A0")
@@ -23,7 +25,10 @@ const FIELD_INK := Color("#2F4A3A")
 var _client: XomDaoClient
 var _snapshot_at: int = 0
 var _snapshot: XomDaoRoomSnapshot
+## Latest authoritative rules snapshot; actions use this even while older UI is animating.
 var _view: Dictionary = {}
+## The snapshot currently committed to the visible table after its animation jobs finish.
+var _presented_view: Dictionary = {}
 var _me: int = -1
 
 var _table := Control.new()
@@ -67,6 +72,7 @@ var _field_ink: Control = preload("res://content/co-ty-phu-classic/field_ink.gd"
 var _field := Rect2()
 var _surface: Control = BoardSurface.new()
 var _exchange: Control = preload("res://content/co-ty-phu-classic/turn_exchange.gd").new()
+var _tile_hud: Control = TileHud.new()
 
 
 func sandbox_options() -> Dictionary:
@@ -119,6 +125,8 @@ func _ready() -> void:
 	add_child(_marks)
 	add_child(_surface)
 	add_child(_exchange)
+	_tile_hud.name = "TileHud"
+	add_child(_tile_hud)
 	for i: int in Rules.SQUARES.size():
 		var square := Control.new()
 		square.name = "Square_%d" % i
@@ -210,6 +218,7 @@ func _ready() -> void:
 	_game_hud = [
 		_surface,
 		_exchange,
+		_tile_hud,
 		_row,
 		_card,
 		_ledger_open,
@@ -283,11 +292,13 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	if players.size() != _slots.size():
 		_build(players.size(), view)
 	if _view.is_empty():
-		_view = view
+		_view = view.duplicate(true)
+		_presented_view = _view.duplicate(true)
+		_marks.call("set_view", _presented_view)
 		_place_all()
 		_refresh()
 		if view.get("winner") != null:
-			_enqueue(_win)
+			_enqueue(_win.bind(_view.duplicate(true)))
 		return
 	var before: Dictionary = _view
 	if before.get("winner") != null and view.get("winner") == null:
@@ -296,13 +307,13 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		_turn_pawn.hide()
 	if BoardSurface.event_changed(before.get("specialEvent"), view.get("specialEvent")):
 		_readied = -1
-	_view = view
-	_refresh_marks()
+	_view = view.duplicate(true)
 	_sent = false
-	_animate(before, view)
-	_ledger.call("refresh", _view, _me, _names(), _slots, _running or _sent)
-	if not _running:
-		_refresh()
+	if before == _view:
+		if not _running:
+			_refresh()
+		return
+	_animate(before, _view)
 
 
 func _build(count: int, view: Dictionary) -> void:
@@ -319,6 +330,7 @@ func _build(count: int, view: Dictionary) -> void:
 		slot.name = "Seat_%d" % seat
 		slot.set("accent", INKS[seat % INKS.size()])
 		_table.add_child(slot)
+		slot.hide()
 		_table.move_child(slot, _card.get_index())
 		_slots.append(slot)
 		var pawn: TextureRect = preload("res://content/co-ty-phu-classic/pawn_piece.gd").new()
@@ -344,16 +356,7 @@ func _seat_name(seat: int) -> String:
 
 
 func _player(seat: int) -> Dictionary:
-	return _view["players"][seat]
-
-
-func _deed(i: int) -> Dictionary:
-	return _view["properties"][i]
-
-
-func _owner(i: int) -> int:
-	var owner: Variant = _deed(i).get("owner")
-	return -1 if owner == null else int(owner)
+	return _presented_view["players"][seat]
 
 
 ## Queue the dice, clockwise paths or airport transport, then the remaining transfers.
@@ -411,12 +414,14 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 			if seat == _me:
 				_enqueue(_gate_job.bind(true))
 			_enqueue(_fly.bind(seat, to, "jail"))
-		elif bool(was["jailed"]) and not bool(now["jailed"]) and steps == 0 and seat != _me:
-			_enqueue(_sfx_job.bind("release"))
+		elif bool(was["jailed"]) and not bool(now["jailed"]) and steps == 0:
+			if seat != _me:
+				_enqueue(_sfx_job.bind("release"))
 		elif (
 			steps > 0
 			and not (
-				before.get("specialEvent") is Dictionary
+				str(before["phase"]) == "event"
+				and before.get("specialEvent") is Dictionary
 				and before["specialEvent"].get("kind") == "airport"
 			)
 		):
@@ -445,9 +450,10 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 	if houses_now > houses_before:
 		_enqueue(_sfx_job.bind("build"))
 	if view.get("winner") != null and before.get("winner") == null:
-		_enqueue(_win)
+		_enqueue(_win.bind(view.duplicate(true)))
 	elif int(view["turn"]) != turn and int(view["turn"]) == _me:
 		_enqueue(_sfx_job.bind("turn"))
+	_enqueue(_present_view.bind(view.duplicate(true)))
 
 
 func _enqueue(job: Callable) -> void:
@@ -466,6 +472,14 @@ func _run() -> void:
 			return
 	_running = false
 	_place_all()
+	_refresh()
+
+
+func _present_view(view: Dictionary) -> void:
+	_presented_view = view
+	for seat: int in _cash.size():
+		_cash[seat] = int(_player(seat)["cash"])
+	_marks.call("set_view", _presented_view)
 	_refresh()
 
 
@@ -501,8 +515,8 @@ func _jail_spotlight(seat: int) -> void:
 	await _gate.call("spotlight", foot, _board.size.x * 0.075)
 
 
-func _win() -> void:
-	var seat: int = int(_view["winner"])
+func _win(view: Dictionary) -> void:
+	var seat: int = int(view["winner"])
 	_can_roll = false
 	_sfx("win")
 	await _victory.call(
@@ -518,12 +532,10 @@ func _win() -> void:
 	)
 
 
-## The hub shows the result after the camera has settled on the winning pawn.
 func wait_for_result_panel() -> void:
 	await _victory.call("wait_for_panel")
 
 
-## Xem bàn restores the overview; Kết quả brings the winner back into focus.
 func set_result_view(looking: bool) -> void:
 	_victory.call("set_board_view", looking)
 
@@ -551,13 +563,13 @@ func declare_bankruptcy() -> bool:
 	return accepted
 
 
-## Start rewards belong to the arrival hop, before the rest of the clockwise path.
 func _walk(seat: int, from: int, steps: int, reward: Array = []) -> void:
+	_tile_hud.call("movement_started", seat, _me)
 	for k: int in steps:
 		var square: int = (from + k + 1) % 40
 		_shown[seat] = square
 		var pawn: TextureRect = _pawns[seat]
-		var target: Vector2 = _pawn_position(seat, square)
+		var target: Vector2 = _pawn_position(seat, square, false)
 		_sfx("step")
 		await PawnMotion.move(self, pawn, target, STEP_SECONDS, 0.045)
 		if not is_inside_tree():
@@ -565,14 +577,16 @@ func _walk(seat: int, from: int, steps: int, reward: Array = []) -> void:
 		if square == 0 and not reward.is_empty():
 			await _money(reward)
 	_place_pawns()
+	_tile_hud.call("movement_stopped", seat, _presented_view, _shown, _names(), _me)
 
 
 ## The airport carries the pawn; jail retains its separate transport.
 func _fly(seat: int, to: int, sound: String, reward: Array = []) -> void:
+	_tile_hud.call("movement_started", seat, _me)
 	_sfx(sound)
 	_shown[seat] = to
 	var pawn: TextureRect = _pawns[seat]
-	var target: Vector2 = _pawn_position(seat, to)
+	var target: Vector2 = _pawn_position(seat, to, sound == "jail")
 	if sound == "plane":
 		await _throw.call(
 			"fly", pawn, target, _money.bind(reward) if not reward.is_empty() else Callable()
@@ -581,9 +595,9 @@ func _fly(seat: int, to: int, sound: String, reward: Array = []) -> void:
 		await PawnMotion.move(self, pawn, target, FLY_SECONDS, 0.65)
 	if is_inside_tree():
 		_place_pawns()
+		_tile_hud.call("movement_stopped", seat, _presented_view, _shown, _names(), _me)
 
 
-## Count both endpoints before applying the external HUD cash effect.
 func _money(transfers: Array) -> void:
 	_sfx(Rules.money_sound(transfers))
 	for transfer: Dictionary in transfers:
@@ -642,6 +656,12 @@ func _on_dice_input(event: InputEvent) -> void:
 		_on_action("Roll", "roll")
 
 
+func _unhandled_key_input(event: InputEvent) -> void:
+	if _view.get("winner") == null and DiceHotkey.should_roll(event, _can_roll):
+		get_viewport().set_input_as_handled()
+		_on_action("Roll", "roll")
+
+
 func _on_action(button: String, event: String) -> void:
 	if _client == null or _sent or _view.get("winner") != null:
 		return
@@ -681,34 +701,32 @@ func _on_ledger_action(event: String, payload: Dictionary) -> void:
 
 
 func _refresh() -> void:
-	if _view.is_empty() or not is_inside_tree():
+	if _presented_view.is_empty() or not is_inside_tree():
 		return
 	if not _running:
 		for seat: int in _cash.size():
 			_cash[seat] = int(_player(seat)["cash"])
 		_ready_event()
+	_tile_hud.call("follow", _presented_view, _shown, _names(), _me)
 	_show_slots()
 	_show_panel()
 	_show_actions()
 	_show_card()
-	var confirming: bool = str(_view["phase"]) == "event" and not _running
+	var confirming: bool = str(_presented_view["phase"]) == "event" and not _running
 	_field_ink.set("confirmation", confirming)
 	_field_ink.set("heading", _card_title.text)
 	_field_ink.set("description", _card_text.text)
 	for die: TextureRect in _dice:
 		die.visible = (
-			_view.get("winner") == null
-			and (str(_view["phase"]) != "event" or not str(_throw.get("_motion")).is_empty())
+			_presented_view.get("winner") == null
+			and (
+				str(_presented_view["phase"]) != "event"
+				or not str(_throw.get("_motion")).is_empty()
+			)
 		)
 	_throw.visible = not _ledger.visible
-	_refresh_marks()
+	_marks.call("set_focus", _focus)
 	_layout()
-
-
-func _refresh_marks() -> void:
-	_marks.set("view", _view)
-	_marks.set("focus", _focus)
-	_marks.queue_redraw()
 
 
 func _ready_event() -> void:
@@ -724,8 +742,8 @@ func _ready_event() -> void:
 
 func _show_slots() -> void:
 	var timer: XomDaoRoomTimer = _snapshot.timer
-	var winner: Variant = _view.get("winner")
-	var acting: int = Rules.decision_seat(_view)
+	var winner: Variant = _presented_view.get("winner")
+	var acting: int = Rules.decision_seat(_presented_view)
 	for seat: int in _slots.size():
 		var slot: XomDaoPlayerSlot = _slots[seat]
 		var player: Dictionary = _player(seat)
@@ -752,7 +770,7 @@ func _show_slots() -> void:
 		slot.modulate.a = 0.45 if bool(player["bankrupt"]) else 1.0
 		_pawns[seat].visible = not bool(player["bankrupt"])
 		var on_turn: bool = winner == null and seat == acting
-		if on_turn and timer != null and timer.ms > 0.0:
+		if on_turn and not _running and timer != null and timer.ms > 0.0:
 			slot.start_turn(
 				timer.ms / 1000.0,
 				maxf(0.0, (timer.ms - timer.left + Time.get_ticks_msec() - _snapshot_at) / 1000.0)
@@ -765,10 +783,10 @@ func _show_slots() -> void:
 
 ## Fixed viewer cards and bank seal; the acting seat only changes the highlight.
 func _show_panel() -> void:
-	var seat: int = Rules.decision_seat(_view)
-	if _view.get("winner") != null:
-		seat = int(_view["winner"])
-	_exchange.call("refresh", seat, _names(), _cash, _textures, _slots, _me, _view)
+	var seat: int = Rules.decision_seat(_presented_view)
+	if _presented_view.get("winner") != null:
+		seat = int(_presented_view["winner"])
+	_exchange.call("refresh", seat, _names(), _cash, _textures, _slots, _me, _presented_view)
 	_turn_pawn.texture = _textures[seat % 4]
 	_turn_name.text = _seat_name(seat)
 	_turn_cash.text = XomDaoUi.money(_cash[seat]) + " ₫"
@@ -778,24 +796,23 @@ func _show_actions() -> void:
 	_can_roll = false
 	for name_of: String in _buttons:
 		(_buttons[name_of] as Control).visible = false
-	if _view.get("winner") != null:
+	if _presented_view.get("winner") != null:
 		_notice.text = ""
 		_status.text = ""
 		_ledger_open.hide()
 		_ledger.hide()
 		_throw.set("can_roll", false)
 		return
-	var phase: String = _view["phase"]
-	_notice.text = "" if _running else str(_view.get("notice", ""))
-	_status.text = "" if _running else Texts.status(_view, _me, _names())
-	var dice: Variant = _view.get("dice")
+	_notice.text = "" if _running else str(_presented_view.get("notice", ""))
+	_status.text = "" if _running else Texts.status(_presented_view, _me, _names())
+	var dice: Variant = _presented_view.get("dice")
 	if dice is Array and not _running:
 		for k: int in 2:
 			_dice[k].set("value", clampi(int(dice[k]), 1, 6))
-	_ledger_open.visible = not _view.is_empty()
-	_ledger.call("refresh", _view, _me, _names(), _slots, _running or _sent)
+	_ledger_open.visible = not _presented_view.is_empty()
+	_ledger.call("refresh", _presented_view, _me, _names(), _slots, _running or _sent)
 	if not (_running or _sent or _ledger.visible):
-		_offer_all(Actions.phase_actions(_view, _me))
+		_offer_all(Actions.phase_actions(_presented_view, _me))
 	_throw.set("can_roll", _can_roll)
 	if _can_roll:
 		_status.text = "Chạm xúc xắc để gieo"
@@ -820,13 +837,12 @@ func _offer_all(actions: Array) -> void:
 func _show_card() -> void:
 	for action: Array in Actions.CARD_BUTTONS:
 		(_buttons[str(action[0])] as Control).visible = false
-	if _view.get("winner") != null:
+	if _presented_view.get("winner") != null:
 		_card.hide()
 		return
-	var event: Variant = _view.get("specialEvent")
-	var trade: Variant = _view.get("trade")
+	var event: Variant = _presented_view.get("specialEvent")
 	_card.visible = true
-	if event is Dictionary and str(_view["phase"]) == "event" and not _running:
+	if event is Dictionary and str(_presented_view["phase"]) == "event" and not _running:
 		_show_event(event)
 	else:
 		_card.visible = false
@@ -835,8 +851,8 @@ func _show_card() -> void:
 func _show_event(event: Dictionary) -> void:
 	_card.hide()
 	_card_title.text = BoardSurface.title(event)
-	_card_text.text = str(_view.get("notice", ""))
-	if int(_view["turn"]) == _me and not _sent:
+	_card_text.text = BoardSurface.description(event, str(_presented_view.get("notice", "")))
+	if int(_presented_view["turn"]) == _me and not _sent:
 		_offer("Confirm")
 
 
@@ -858,10 +874,8 @@ func _quad(i: int) -> PackedVector2Array:
 	return out
 
 
-func _pawn_position(seat: int, square: int) -> Vector2:
-	return PieceProjection.pawn_position(
-		seat, square, _board, _pawns[seat].size, bool(_player(seat)["jailed"])
-	)
+func _pawn_position(seat: int, square: int, jailed: bool) -> Vector2:
+	return PieceProjection.pawn_position(seat, square, _board, _pawns[seat].size, jailed)
 
 
 func _place_all() -> void:
@@ -871,13 +885,13 @@ func _place_all() -> void:
 
 
 func _place_pawns() -> void:
-	if _pawns.is_empty() or _view.is_empty():
+	if _pawns.is_empty() or _presented_view.is_empty():
 		return
 	var height: float = _board.size.y * 0.040
 	for seat: int in _pawns.size():
 		var pawn: TextureRect = _pawns[seat]
 		pawn.size = Vector2(height * 0.75, height)
-		pawn.position = _pawn_position(seat, _shown[seat])
+		pawn.position = _pawn_position(seat, _shown[seat], bool(_player(seat)["jailed"]))
 	# Lower pawns stand in front.
 	var order: Array[int] = []
 	for seat: int in _pawns.size():
@@ -903,7 +917,7 @@ func _layout() -> void:
 	var bottom: float = size.y - edge
 
 	# The board: its drawn part as big as the room left of the column allows, clear of ☰.
-	var room_right: float = right - COLUMN - 12.0
+	var room_right: float = right - SIDE_HUD_WIDTH - 12.0
 	var ratio: float = Rules.IMAGE_RATIO
 	var width: float = minf((room_right - left) / SEEN.size.x, (bottom - top) / SEEN.size.y * ratio)
 	var seen_w: float = width * SEEN.size.x
@@ -979,20 +993,8 @@ func _layout() -> void:
 
 	_ledger_open.size = Vector2(112, 112)
 	_ledger_open.position = Vector2(right - 112, top)
+	_tile_hud.call("layout_on_board", _board)
 	_throw.queue_redraw()
 
-	# The slots: a column on the right, yours at the bottom, the others above in turn order.
-	var count: int = _slots.size()
-	var y: float = bottom
-	for k: int in count:
-		var seat: int = (maxi(_me, 0) - k + count) % count if _me >= 0 else count - 1 - k
-		var slot: XomDaoPlayerSlot = _slots[seat]
-		slot.reset_size()
-		slot.z_index = 0
-		# Draw the local card last among the cards, beneath modal panels.
-		_table.move_child(slot, _card.get_index() - 1 - k)
-		slot.rotation = deg_to_rad(0.0 if k == 0 else (-1.3 if k % 2 else 1.3))
-		slot.position = Vector2(right - slot.size.x - (6.0 if k % 2 else 0.0), y - slot.size.y)
-		y -= slot.size.y - 10.0
 	if not _running:
 		_place_pawns()

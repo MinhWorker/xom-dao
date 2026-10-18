@@ -19,3 +19,4 @@ packages/shared/src/generated/
 .dev/
 # Pinned toolchains (Godot, gdtoolkit, bpy), installed by npm run setup:godot / setup:blender
 .tools/
+codex-session-*.md

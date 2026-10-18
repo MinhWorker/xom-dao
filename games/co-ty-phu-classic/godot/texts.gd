@@ -4,6 +4,8 @@ extends RefCounted
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
 const START_COIN := preload("res://content/co-ty-phu-classic/art/hud-money.svg")
 const START_STAR := preload("res://addons/xomdao_sdk/ui/icons/star.svg")
+const MONEY_GAIN_INK := Color("#FFD34E")
+const MONEY_LOSS_INK := Color("#F05A43")
 const SPECIAL_TEXT: Dictionary = {
 	"start": "Đi qua nhận 200.",
 	"tax": "Nộp %s hoặc 10%% tiền mặt, lấy số lớn hơn.",
@@ -46,7 +48,10 @@ static func square(view: Dictionary, i: int, names: Array[String]) -> String:
 	var lines: Array[String] = []
 	var deed: Dictionary = view["properties"][i]
 	var owner: int = -1 if deed.get("owner") == null else int(deed["owner"])
-	lines.append("Giá %s ₫" % XomDaoUi.money(Rules.price(i)))
+	if kind == "station" and owner < 0:
+		lines.append("Góp đầu %s ₫" % XomDaoUi.money(Rules.price(i)))
+	else:
+		lines.append("Giá mua %s ₫" % XomDaoUi.money(Rules.deed_price(view["properties"], i)))
 	match kind:
 		"street":
 			var ladder: Array = square["rent"]
@@ -137,7 +142,7 @@ static func floater(text: String, color: Color) -> Label:
 static func float_money_change(layer: Control, pawn: Control, amount: int, seat: int) -> void:
 	if amount == 0:
 		return
-	var label: Label = floater(XomDaoUi.delta(amount), XomDaoUi.delta_color(amount))
+	var label: Label = floater(XomDaoUi.delta(amount), money_change_color(amount))
 	label.add_theme_font_size_override("font_size", 30)
 	label.add_theme_constant_override("outline_size", 6)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -166,6 +171,10 @@ static func float_money_change(layer: Control, pawn: Control, amount: int, seat:
 	)
 	tween.tween_property(label, "modulate:a", 0.0, 0.4).set_delay(0.65)
 	tween.chain().tween_callback(label.queue_free)
+
+
+static func money_change_color(amount: int) -> Color:
+	return MONEY_GAIN_INK if amount > 0 else MONEY_LOSS_INK
 
 
 ## Scatter coins and stars around a pawn when it receives a Start reward.

@@ -19,7 +19,7 @@ const BUTTON_SOCIAL := preload("res://content/co-ty-phu-classic/art/board-button
 const BUTTON_SOCIAL_PRESSED := preload(
 	"res://content/co-ty-phu-classic/art/board-button-social-pressed.webp"
 )
-const REVEAL_CENTER := Vector2(0.5, 0.5)
+const REVEAL_CENTER := Vector2(0.5, 0.58)
 const REVEAL_ZOOM := 1.35
 const PRIORITY: Dictionary = {
 	"Confirm": 100,
@@ -89,6 +89,42 @@ static func title(event: Dictionary) -> String:
 		"nearest":
 			return "Ghé bến xe" if card["target"] == "station" else "Ghé tiện ích"
 	return "Quà bất ngờ" if int(card.get("amount", 0)) > 0 else "Khoản chi"
+
+
+static func description(event: Dictionary, notice: String) -> String:
+	var kind: String = str(event.get("kind", ""))
+	if kind == "tax":
+		return "Cần nộp %s ₫." % XomDaoUi.money(int(event.get("amount", 0)))
+	if kind == "jail" or kind == "airport":
+		return ""
+	if kind != "card":
+		return notice
+	var card: Dictionary = event["card"]
+	match str(card.get("kind", "")):
+		"cash":
+			var amount: int = int(card.get("amount", 0))
+			return (
+				"Nhận %s ₫" % XomDaoUi.money(amount)
+				if amount > 0
+				else "Nộp %s ₫" % XomDaoUi.money(-amount)
+			)
+		"free":
+			return "Giữ lại đến khi sử dụng."
+		"jail":
+			return ""
+		"nearest":
+			return "Phí thuê tại ô đó được nhân đôi."
+		"shortage":
+			return (
+				"Thuê Điện lực ×2 trong vòng bàn kế tiếp."
+				if int(card.get("square", 12)) == 12
+				else "Thuê Cấp nước ×2 trong vòng bàn kế tiếp."
+			)
+		"repairs":
+			return "Tính theo số nhà và khách sạn đang sở hữu."
+		"move":
+			return "Nhận 200 ₫ khi qua Xuất phát." if int(card.get("target", -1)) == 0 else ""
+	return notice
 
 
 func _ready() -> void:

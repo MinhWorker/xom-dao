@@ -29,6 +29,7 @@ export interface ProfileChange {
 
 /** How a player shows to others, as equipped from Túi đồ (each field left out stays). */
 export interface Looks {
+  avatar?: Avatar;
   frame?: Frame;
   cardBack?: string;
 }
@@ -104,7 +105,7 @@ export class PgAccountsStore implements AccountsStore {
   }
 
   async setLooks(userId: string, looks: Looks) {
-    if (!looks.frame && !looks.cardBack) return this.userById(userId);
+    if (!looks.avatar && !looks.frame && !looks.cardBack) return this.userById(userId);
     const [row] = await this.db.update(users).set(looks).where(eq(users.id, userId)).returning();
     return row ? toUser(row) : null;
   }
@@ -154,10 +155,10 @@ export class MemoryAccountsStore implements AccountsStore {
     return found ? { ...found.user } : null;
   }
 
-  async setLooks(userId: string, { frame, cardBack }: Looks) {
+  async setLooks(userId: string, { avatar, frame, cardBack }: Looks) {
     const found = this.users.get(userId);
     if (!found) return null;
-    Object.assign(found.user, frame && { frame }, cardBack && { cardBack });
+    Object.assign(found.user, avatar && { avatar }, frame && { frame }, cardBack && { cardBack });
     return { ...found.user };
   }
 }

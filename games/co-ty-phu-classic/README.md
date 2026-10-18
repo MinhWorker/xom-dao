@@ -13,7 +13,8 @@ src/
   index.ts                     Đăng ký luật phía server
   game/                        Luật thuần, dữ liệu bàn, thẻ, máy và đồng hồ
 godot/
-  player_card.gd, card_cash.gd  Thẻ giấy hoa văn, avatar, tiền đếm; thời gian chuyển lên viền thẻ trong bàn
+  player_card.gd, card_cash.gd  Trạng thái avatar, tiền và đồng hồ ghế cho tờ tiền trên bàn
+  tile_hud.gd                  Thông tin ô dưới quân người xem, in nghiêng theo mặt bàn
   background.gd                Video nền phố ven đảo phát lặp, giữ tỷ lệ nguồn
   board_surface.gd             Hai chồng bài, rút/lật thẻ, cặp nút gắn trên mặt bàn
   turn_exchange.gd             Bảng tờ tiền theo POV và đường giao dịch phát sáng
@@ -37,7 +38,7 @@ sources/                       Script kết xuất và nguồn ảnh
 | Mua/xây/thế chấp/trao đổi | `src/game/CoTyPhuClassicGame.ts` |
 | Thuế, di chuyển, tiền thuê và hiệu lực thẻ | `src/game/rules.ts` |
 | Nội dung thẻ | `src/game/cards.ts` |
-| Bố cục, hoạt ảnh, nút và gửi thao tác | `godot/main.gd` |
+| Bố cục, hoạt ảnh, mốc trình bày và gửi thao tác | `godot/main.gd` |
 | Nút nào hiện trong lượt và trên thẻ ô đất | `godot/actions.gd` |
 | Dải màu chủ đất, nhà/khách sạn, đất thế chấp, góp bến xe, ô đang chọn, tên và giá in trên ô | `godot/marks.gd` |
 | Bảng đề nghị trao đổi | `godot/exchange_page.gd` |
@@ -49,18 +50,33 @@ sources/                       Script kết xuất và nguồn ảnh
 Test đặt cạnh file được kiểm tra với đuôi `.test.ts`; test GUT ở `godot/test/`. Tọa độ bàn
 được tạo bởi Blender; chỉnh script kết xuất rồi tạo lại ảnh và tọa độ cùng nhau.
 
+Kịch bản trình duyệt duy nhất cho một game là Monopoly này:
+`npm run e2e -- --only godot-co-ty-phu-classic` (cần bản debug và `npm run dev`).
+
 ## Bàn chơi
 
-Bố cục **Bàn** ([experience.md](../../docs/experience.md)): bàn 2.5D lớn ở giữa, ô người chơi xếp
-thành chồng thẻ giấy so le bên phải. Phần trên trong bàn là bố cục tờ tiền: thẻ POV cố định
+Bố cục **Bàn** ([experience.md](../../docs/experience.md)): bàn 2.5D lớn ở giữa; dải bên phải là
+HUD thông tin nối tiếp mặt bàn theo cùng phép chiếu phối cảnh, hiện ô người xem vừa dừng, tên màu
+theo chủ, giá mua và tiền thuê theo hàng nhãn trái / số phải; các dòng chữ thuần được căn giữa.
+Khi quân người xem đang đi, HUD giữ nguyên khung và hiện hoạt ảnh một nhân vật 2D màu mực đang chạy;
+nội dung ô chỉ đổi sau khi quân dừng. HUD bến xe liệt kê người góp, số lượt và tổng tiền đã góp.
+Trên máy tính, nhấn Space để gieo xúc xắc khi đến lượt. Phần trên trong
+bàn là bố cục tờ tiền: thẻ POV cố định
 bên trái, ngân hàng ở giữa và các thẻ đối thủ xếp bên phải, nối bằng đường khắc giao dịch. Ô xanh giữa bàn chứa thông báo, xúc xắc và các nút của lượt: Nộp 50 /
 Dùng thẻ khi ở tù, Mua / Bỏ qua, Góp / Từ bỏ ở bến xe, Xây / Hết lượt, Trả
 nợ / Phá sản. Cơ hội và Khí vận có hai chồng bài ở hai mép trong bàn: lá trên cùng bay ra, lật hiện tên sự kiện rồi biến mất. Bước xác nhận ẩn xúc xắc và in tiêu đề/mô tả trực tiếp lên mặt bàn, không có panel nền. Thao tác thế chấp, chuộc và bán nhà được quản lý tập trung trong Sổ cái. Nút tròn hình sổ ở góc trên phải mở overlay Tài sản/Trao đổi. Chọn avatar để xem từng người,
 chọn thẻ đất để quản lý, hoặc chuyển sang hai khay trao đổi để đặt thẻ và tiền. Không có đấu giá
-tài sản cá nhân; luật góp tiền bến xe giữ nguyên. Ô chưa có chủ hiện giá mua, ô đã mua hiện mức
-tiền thuê. Với đất phố, hai ô liền nhau cùng bộ (bỏ qua ô đặc biệt ở giữa) hiện tiền thuê kèm
-đuôi ×2; đủ bộ hiện đuôi ×3. Tab người chơi trong Sổ cái có viền trang trí theo màu quân của từng
-người.
+tài sản cá nhân; mức góp bến xe bắt đầu từ 50 và tăng gấp đôi theo luật trong `RULES.md`. Ô chưa có chủ
+hiện giá mua; bến xe hiện mức góp đầu. Ô đã mua hiện tiền thuê. Đất phố chỉ nhân ×3 khi đủ bộ màu;
+điện và nước hiện biểu tượng xúc xắc cùng hệ số thuê. Tab người chơi trong Sổ cái có viền trang trí theo màu quân của từng
+người. Khi dừng trên ô đất phố mình sở hữu, nút **Bảng giá xây** ở cuối HUD mở ngăn kéo trượt
+theo cùng mặt nghiêng, cho biết chi phí xây và tiền thuê từ đất trống tới khách sạn; bậc hiện tại
+được làm sáng. Ô đang thế chấp hoặc chủ đang ở tù vẫn hiện bậc giá, kèm trạng thái tạm ngừng thu.
+
+Máy chủ vẫn gửi trạng thái luật hoàn chỉnh ngay khi xử lý xong thao tác. Bàn giữ riêng trạng thái
+luật mới nhất để kiểm tra thao tác và trạng thái đang trình bày để vẽ; mỗi snapshot chỉ được trình
+bày sau khi hàng đợi xúc xắc, di chuyển, sự kiện và giao dịch của nó chạy xong. Vì vậy màu chủ đất,
+ô đích, đấu giá, trạng thái tù và tiền thuê đổi cùng nhịp với quân cờ.
 
 Vị trí nghỉ của xúc xắc cố định trên mặt bàn, không phụ thuộc nút hiện bên dưới. Vùng chạm mở rộng bao gồm các mặt bên và khoảng sát quanh xúc xắc. Chữ thông báo lớn hơn, bỏ dấu chấm kết câu khi in; thông báo thường vẫn nằm dưới xúc xắc về chiều sâu. Riêng xác nhận sự kiện ẩn xúc xắc để mô tả dễ đọc. Cặp nút trên bàn có vị trí cố định, mặt mỏng và góc bo nhẹ, đổi chữ/màu theo trạng thái; không đẩy các thành phần khác khi số nút thay đổi.
 
@@ -69,8 +85,8 @@ Mỗi ô in tên (đất đã bán in tên bằng màu chủ) và, với ô đ�
 bay khi ra sân bay hay vào tù; khi giao dịch bắt đầu, số tiền ròng mỗi người nhận hoặc trả nổi
 cạnh quân cờ. Thưởng ở Xuất phát bắn xu và sao vàng lên quanh quân cờ. Khi vào tù, hai cánh
 cửa thép đóng sập trên bàn; nếu người chơi dừng ở ô Vào tù, ánh đèn sân khấu rọi xuống quân cờ
-trước khi quân bay vào tù; khi ra tù, cửa mở. Màu ô đất của máy chơi cùng đổi ngay khi máy mua được đất,
-không chờ hết chuỗi hoạt ảnh trong lượt. Khi có người thắng, thao tác trên bàn bị khóa; camera tiến
+trước khi quân bay vào tù; khi ra tù, cửa mở. Màu ô đất đổi sau khi quân vừa mua đã đến nơi. Khi có
+người thắng, thao tác trên bàn bị khóa; camera tiến
 vào quân thắng, quân nhảy và pháo hoa nổ. HUD của bàn ẩn đi, bảng tổng kết trượt vào bên phải trong
 khung hình, ghi Số vòng và Tổng tài sản. Chọn Xem bàn để thu bảng và nhìn toàn bàn; Kết quả đưa camera
 trở lại quân thắng.
@@ -198,6 +214,8 @@ học trong suốt lượt tung, chỉ đổi hướng để số máy chủ n�
 
 Nền phố ven đảo về đêm dùng ảnh AI 16:9 `assets/night-waterfront.webp`.
 [Ảnh đầu vào và prompt image → video idle](sources/night-waterfront-video.md): camera cố định, chỉ gợn nước, phản chiếu đèn và lá cây chuyển động nhẹ. Clip do chủ dự án cung cấp đã được chuyển thành video Theora 720p, 15 fps, không âm thanh; điểm nối vòng lặp được trộn mềm. `background.gd` phát lặp phía sau bàn và giữ tỷ lệ hình ở màn rộng.
+
+Ảnh tĩnh nằm dưới video làm lớp dự phòng; nếu trình duyệt chặn phát tự động, video bắt đầu ở lần chạm hoặc nhấp đầu tiên.
 
 Thẻ người chơi dùng avatar/khung và vương miện nhỏ của SDK cho chủ phòng. Viền sáng quét theo người đang tới lượt.
 Khi tiền thay đổi, số có dấu `+`/`-` hiện lệch phía trên, bay nhập vào số dư; sau đó số dư đếm nhanh trong 0,48 giây.

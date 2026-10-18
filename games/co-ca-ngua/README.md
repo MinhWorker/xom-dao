@@ -35,7 +35,6 @@ npm run dev
 npm run blender -- co-ca-ngua
 npm run check
 npm run godot:check
-npm run e2e -- --only godot-co-ca-ngua
 npm run shots -- --path '/?play=co-ca-ngua'
 ```
 

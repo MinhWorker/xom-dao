@@ -43,7 +43,7 @@ func refresh(view: Dictionary, me: int, names: Array[String], partner: int, bloc
 
 
 func choose(side: int, square: int) -> void:
-	draft.call("choose", side, square)
+	draft.call("choose", side, square, _view.get("properties", []))
 	_redraw()
 
 

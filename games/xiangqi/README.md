@@ -23,8 +23,8 @@ Test nằm cạnh phần logic với đuôi `.test.ts`.
 
 Chạy `npm run godot:export -- --debug` và `npm run dev` ở gốc repo rồi mở
 http://localhost:5033/?play=xiangqi (chơi với máy trên server thật). Kiểm tra bằng
-`npm run check` và `npm run godot:check`; kịch bản trình duyệt ở
-`scripts/e2e/scenarios/godot-xiangqi.mjs`. Hướng dẫn SDK và Dev Console:
+`npm run check`, `npm run godot:check` và `npm run shots -- --path '/?play=xiangqi'`.
+Hướng dẫn SDK và Dev Console:
 [tạo game](../../docs/making-a-game.md).
 
 Bàn có cảnh đình, bàn, đường kẻ, chữ 楚河 漢界, quân và bóng, vòng chiếu tướng nhấp nháy, cột

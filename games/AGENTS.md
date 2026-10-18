@@ -6,7 +6,7 @@ Where to look:
 - **Examples**:
   - `scripts/templates/` holds the starters `new:game` / `new:event` fill in: `game/` (rules,
     bot), `event/` (over `game/`), `godot/<layout>/main.gd` (Bàn, Hành động, event),
-    `godot/test/`, `e2e/`.
+    `godot/test/`, and `e2e/` for events.
   - `games/tic-tac-toe` (Caro) adds room options (rows on the room's plate) and a computer player.
   - `games/tien-len` is the fullest Godot table (cards, effects, sounds, art).
 - **Skills** in `.claude/skills/`: `new-content` (a game or event from a brief), `make-asset`,
@@ -31,8 +31,8 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 
 | Command | What it does |
 | --- | --- |
-| `npm run new:game -- <id> "Tên" --genre <g> [--layout ban\|hanh-dong]` | A working game (status `wip`): rules + bot + tests, a Godot table in that layout + GUT test, RULES.md, README, stand-in card, `scripts/e2e/scenarios/godot-<id>.mjs`. Then `npm run godot:check` writes the `.uid` files to commit |
-| `npm run new:event -- <id> "Tên" [--opens YYYY-MM-DD] [--closes YYYY-MM-DD]` | The same for an event (`su-kien`, Hành động layout, dates default to today + 4 weeks, reward tiers) |
+| `npm run new:game -- <id> "Tên" --genre <g> [--layout ban\|hanh-dong]` | A working game (status `wip`): rules + bot + tests, a Godot table in that layout + GUT test, RULES.md, README, stand-in card. Then `npm run godot:check` writes the `.uid` files to commit |
+| `npm run new:event -- <id> "Tên" [--opens YYYY-MM-DD] [--closes YYYY-MM-DD]` | The same for an event (`su-kien`, Hành động layout, dates default to today + 4 weeks, reward tiers, browser scenario) |
 | `npm run new -- logic <id> [Name]` | Write a `Game` (+ test) from `scripts/templates/` (leave out `<id>` inside `games/<id>/`) |
 | `npm run new -- options <id>` | Write `src/game/options.ts` (the room's options); its rows in the room come from `room_setup()` in `godot/main.gd` |
 | `/?play=<id>` | Sandbox (debug builds: dev and PR previews): a real room with the computer in the other seats (`sandbox_options()`) |
@@ -64,10 +64,11 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 - A game's Godot code reaches only its own folder and `res://addons/xomdao_sdk/`
   (`godot:check` enforces it; see `apps/client/AGENTS.md`).
 - Every `Game` has tests with `testGame` (`src/game/<Name>Game.test.ts`).
-- A game's browser test in the Godot client is `scripts/e2e/scenarios/godot-<id>.mjs` with
-  `export const games = ['<id>']` (the generator writes one). CI's `godot` job runs every
-  `godot-*` scenario. A scenario that moves the event clock (`dev:clock`) exports
-  `lock = 'clock'` so such scenarios run one at a time.
+- The per-game browser scenario is reserved for `co-ty-phu-classic` (Monopoly), at
+  `scripts/e2e/scenarios/godot-co-ty-phu-classic.mjs`. New games use TypeScript tests and GUT;
+  the generator does not add per-game E2E scenarios. Shared client flows and event scenarios
+  remain in `scripts/e2e/scenarios/`, and CI runs the whole suite. A scenario that moves the event
+  clock (`dev:clock`) exports `lock = 'clock'` so such scenarios run one at a time.
 - When a mechanic or piece of data would help other games too, add it to the SDK instead of the
   game. Examples: a system event, a `ctx` property, a view helper, a test helper.
 - Changing an SDK API means, in the same change:

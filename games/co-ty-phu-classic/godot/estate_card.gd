@@ -127,6 +127,8 @@ func _draw() -> void:
 
 	# Bottom price row with golden coin & bold price
 	var amount: int = 200 if square == -2 else Rules.price(square)
+	if square >= 0 and str(cell["kind"]) == "station":
+		amount = int(deed.get("acquisitionCost", Rules.STATION_INITIAL_CONTRIBUTION))
 	var coin_w: float = 24.0
 	var coin_h: float = 19.0
 	var price_y: float = size.y - 28.0

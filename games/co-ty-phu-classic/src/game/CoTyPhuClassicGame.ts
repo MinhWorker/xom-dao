@@ -20,14 +20,11 @@ import {
   type Options,
   SPECIAL_EVENT_TIMEOUT,
   STARTING_CASH,
-  STATION_CONTRIBUTION_STEP,
   type State,
   type View,
 } from './model.js';
 import {
   awaitSpecialEvent,
-  bankHotels,
-  bankHouses,
   bankrupt,
   charge,
   copy,
@@ -35,6 +32,7 @@ import {
   mortgageAmount,
   move,
   next,
+  nextStationContribution,
   redeemAmount,
   resolveSpecialEvent,
   settleStations,
@@ -398,7 +396,7 @@ export class CoTyPhuClassicGame extends Game<State, Options, View> {
     if (s.auction!.leader === ctx.player.seat)
       ctx.reject('Cần người khác góp giá trước khi bạn góp tiếp tại bến này');
     if (
-      amount !== s.auction!.highest + STATION_CONTRIBUTION_STEP ||
+      amount !== nextStationContribution(s.auction!.highest) ||
       amount > s.players[ctx.player.seat]!.cash
     )
       ctx.reject('Giá đấu phải cao hơn và trong số tiền bạn có');
@@ -473,8 +471,6 @@ export class CoTyPhuClassicGame extends Game<State, Options, View> {
       ctx.reject('Chỉ xây một lần khi quay lại ô đất của mình');
     if (deed.mortgaged) ctx.reject('Đất này đang thế chấp');
     if (deed.houses >= 5) ctx.reject('Đã có khách sạn');
-    if (deed.houses === 4 ? bankHotels(s) < 1 : bankHouses(s) < 1)
-      ctx.reject('Ngân hàng đã hết nhà hoặc khách sạn');
     const price = cell.houseCost!;
     if (s.players[ctx.player.seat]!.cash < price) ctx.reject('Không đủ tiền xây');
     transferMoney(s, ctx.player.seat, null, price, `Xây ở ${cell.name}`);
@@ -491,8 +487,6 @@ export class CoTyPhuClassicGame extends Game<State, Options, View> {
     const cell = BOARD[square]!;
     if (deed.mortgaged) ctx.reject('Phải chuộc tài sản trước khi bán công trình');
     if (!deed.houses) ctx.reject('Ô này không có nhà');
-    if (deed.houses === 5 && bankHouses(s) < 4)
-      ctx.reject('Ngân hàng thiếu 4 nhà để đổi khách sạn');
     deed.houses--;
     transferMoney(s, null, ctx.player.seat, cell.houseCost! / 2, `Bán nhà ở ${cell.name}`);
     s.notice = `Bán nhà ở ${cell.name}, nhận ${cell.houseCost! / 2}.`;

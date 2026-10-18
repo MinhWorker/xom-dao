@@ -1,8 +1,9 @@
 import { testGame } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
 import plugin from '../index.js';
+import { CHANCE, CHEST } from './cards.js';
 import { BOARD, groupSquares, UTILITY_SQUARES } from './model.js';
-import { assetValue, move, rent } from './rules.js';
+import { assetValue, deedPrice, mortgageAmount, move, rent, resolveSpecialEvent } from './rules.js';
 
 const game = () => testGame(plugin, ['a', 'b', 'c']);
 
@@ -31,7 +32,7 @@ describe('utilities and monopoly', () => {
     },
   );
 
-  it('doubles adjacent pairs and triples complete sets at every building level', () => {
+  it('only triples rent for a complete set at every building level', () => {
     const g = game();
     const squares = groupSquares(BOARD[1]!.group!);
     for (const square of squares) g.state.properties[square]!.owner = 0;
@@ -44,7 +45,7 @@ describe('utilities and monopoly', () => {
       expect(g.state.players[1]!.cash).toBe(10000 - charge);
     }
     g.state.properties[3]!.owner = 1;
-    expect(rent(g.state, 1, 7)).toBe(BOARD[1]!.rent![5]! * 2);
+    expect(rent(g.state, 1, 7)).toBe(BOARD[1]!.rent![5]!);
     g.state.players[0]!.jailed = true;
     expect(rent(g.state, 1, 7)).toBe(0);
   });
@@ -58,7 +59,21 @@ describe('utilities and monopoly', () => {
     expect(assetValue(g.state, 0)).toBe(1580);
   });
 
-  it('applies pair and full-set rent across an intervening chance square', () => {
+  it('uses the winning contribution as a station purchase and mortgage value', () => {
+    const g = game();
+    g.state.properties[5] = {
+      owner: 0,
+      houses: 0,
+      mortgaged: false,
+      acquisitionCost: 400,
+    };
+    expect(BOARD[5]).not.toHaveProperty('price');
+    expect(deedPrice(g.state, 5)).toBe(400);
+    expect(mortgageAmount(g.state, 5)).toBe(200);
+    expect(assetValue(g.state, 0)).toBe(1400);
+  });
+
+  it('applies full-set rent across an intervening chance square, not a pair bonus', () => {
     const g = game();
     for (const square of [6, 8, 9]) g.state.properties[square]!.owner = 0;
     expect([6, 8, 9].map((square) => rent(g.state, square, 7))).toEqual([84, 96, 105]);
@@ -69,7 +84,28 @@ describe('utilities and monopoly', () => {
     expect(g.state.specialEvent?.kind).toBe('card');
     expect(g.state.players[1]!.cash).toBe(916);
     g.state.properties[9]!.owner = 2;
-    expect([6, 8, 9].map((square) => rent(g.state, square, 7))).toEqual([56, 64, 35]);
+    expect([6, 8, 9].map((square) => rent(g.state, square, 7))).toEqual([28, 32, 35]);
+  });
+
+  it('does not charge a utility owner on a doubled nearest-utility card', () => {
+    const g = game();
+    const nearestUtility = CHANCE.findIndex(
+      (card) => card.kind === 'nearest' && card.target === 'utility',
+    );
+    g.state.properties[12]!.owner = 0;
+    g.state.properties[28]!.owner = 0;
+    g.state.chance = [nearestUtility];
+    move(g.state, 0, 7, false, 6);
+    resolveSpecialEvent(g.state, () => 0);
+    expect(g.state.players[0]!.position).toBe(12);
+    expect(g.state.players[0]!.cash).toBe(1000);
+    expect(g.state.transfers).toEqual([]);
+
+    g.state.chance = [nearestUtility];
+    g.state.turn = 1;
+    move(g.state, 1, 7, false, 6);
+    resolveSpecialEvent(g.state, () => 0);
+    expect(g.state.transfers.at(-1)).toMatchObject({ from: 1, to: 0, amount: 120 });
   });
 });
 
@@ -106,6 +142,30 @@ describe('jail ticket exchange', () => {
     g.send('b', 'accept-trade');
     expect(g.state.players[0]!.freeCards).toEqual(['chest']);
     expect(g.state.players.map((p) => p.cash)).toEqual([800, 1200, 1000]);
+  });
+
+  it('keeps each get-out-of-jail ticket out of its deck until used', () => {
+    const g = game();
+    const chanceTicket = CHANCE.findIndex((card) => card.kind === 'free');
+    const chestTicket = CHEST.findIndex((card) => card.kind === 'free');
+
+    g.state.chance = [chanceTicket];
+    move(g.state, 0, 7, false, 7);
+    resolveSpecialEvent(g.state, () => 0);
+    g.state.chest = [chestTicket];
+    g.state.turn = 1;
+    move(g.state, 1, 17, false, 7);
+    resolveSpecialEvent(g.state, () => 0);
+    expect(g.state.players.flatMap((player) => player.freeCards)).toHaveLength(2);
+    expect(g.state.chance).toEqual([]);
+    expect(g.state.chest).toEqual([]);
+
+    g.state.players[0]!.cash = 0;
+    g.state.debt = { amount: 1, creditor: null, reason: 'Nợ', after: 'end' };
+    g.state.phase = 'debt';
+    g.send('a', 'bankrupt');
+    expect(g.state.players[0]!.freeCards).toEqual([]);
+    expect(g.state.chance).toEqual([]);
   });
 
   it('rejects a missing ticket, wrong price, insufficient cash and stale inventory', () => {

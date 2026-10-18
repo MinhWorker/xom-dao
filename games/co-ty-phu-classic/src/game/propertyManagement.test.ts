@@ -2,7 +2,7 @@ import { testGame } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
 import plugin from '../index.js';
 import { botMove } from './bot.js';
-import { bankHotels, bankHouses, copy, mortgageStatus, move } from './rules.js';
+import { copy, mortgageStatus, move } from './rules.js';
 
 const ids = ['a', 'b', 'c', 'd'];
 const fixture = () => testGame(plugin, ids);
@@ -191,19 +191,15 @@ describe('mortgaging several deeds with their buildings', () => {
     expect(game.state.properties[3]).toMatchObject({ houses: 5, mortgaged: false });
   });
 
-  it('returns mortgaged buildings to the bank only when the loan expires', () => {
+  it('retains mortgaged buildings until the loan expires', () => {
     const game = fixture();
     Object.assign(game.state.properties[1]!, { owner: 0, houses: 2 });
     Object.assign(game.state.properties[3]!, { owner: 0, houses: 5 });
     game.send('a', 'mortgage', { squares: [1, 3] });
-    expect(bankHouses(game.state)).toBe(30);
-    expect(bankHotels(game.state)).toBe(11);
     for (let i = 0; i < 3; i++) returnToBorrower(game);
     expect(game.state.properties[1]!.houses).toBe(2);
     expect(game.state.properties[3]!.houses).toBe(5);
     end(game);
-    expect(bankHouses(game.state)).toBe(32);
-    expect(bankHotels(game.state)).toBe(12);
     for (const square of [1, 3]) {
       expect(game.state.properties[square]).toMatchObject({
         owner: null,

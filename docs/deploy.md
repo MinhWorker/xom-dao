@@ -17,11 +17,13 @@
 
 ## E2E
 
-Mỗi kịch bản là một file `scripts/e2e/scenarios/godot-*.mjs`, chơi bản debug của client Godot
-qua cầu nối test `window.xomdao` và tự tạo tài khoản, phòng riêng. Nhờ đó các kịch bản chạy song
-song được. CI chạy hết mọi kịch bản; kịch bản lỗi được chạy lại một lần, nếu lần sau qua thì CI
-vẫn xanh nhưng hiện cảnh báo "Flaky e2e". Một kịch bản chạy quá 10 phút bị tính là lỗi. Server
-trong CI đặt `BOT_DELAY_MS=200`: máy đi gần như ngay, không nghỉ 0,7 giây như khi người thật chơi.
+Mỗi kịch bản là một file `scripts/e2e/scenarios/godot-*.mjs`, chạy bản debug của client Godot qua
+cầu nối `window.xomdao`. Các luồng dùng tài khoản và phòng riêng nên có thể chạy song song. Suite
+giữ các luồng chung của client, kịch bản sự kiện và một kịch bản chơi trọn game cho Cờ tỷ phú
+Classic (Monopoly). Game khác được kiểm tra bằng unit test TypeScript và GUT. CI chạy hết suite;
+kịch bản lỗi được chạy lại một lần, nếu lần sau qua thì CI vẫn xanh nhưng hiện cảnh báo "Flaky
+e2e". Một kịch bản chạy quá 10 phút bị tính là lỗi. Server trong CI đặt `BOT_DELAY_MS=200`:
+máy đi gần như ngay, không nghỉ 0,7 giây như khi người thật chơi.
 
 Trên máy mình, `npm run e2e -- --changed origin/main` chỉ chạy kịch bản liên quan đến file đã
 đổi (`--list` in ra danh sách đó):
@@ -34,8 +36,8 @@ Trên máy mình, `npm run e2e -- --changed origin/main` chỉ chạy kịch b�
 - Đổi bất cứ thứ gì khác (client, server, SDK, `packages/shared`, `scripts/e2e.mjs`,
   `scripts/e2e/godot.mjs`, dependency…): chạy hết.
 
-Thêm game mới: viết một kịch bản `scripts/e2e/scenarios/godot-<id>.mjs` có `export const games =
-['<id>']` (`npm run new:game` đã viết sẵn). CI tự nhận nó, không cần sửa `ci.yml`.
+Thêm game mới không cần thêm E2E riêng. `npm run new:game` tạo unit test TypeScript và test GUT.
+Kịch bản chơi trọn game hiện được giữ cho `co-ty-phu-classic`; kịch bản sự kiện do `new:event` tạo.
 
 ## Phiên bản
 

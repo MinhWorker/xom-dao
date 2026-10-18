@@ -7,11 +7,17 @@ import {
   type Options,
   type SpecialEventEffect,
   STATION_BASE_FEE,
+  STATION_INITIAL_CONTRIBUTION,
   type State,
   UTILITY_SQUARES,
 } from './model.js';
 
 export type Context = GameContext<State, Options>;
+
+/** First station contribution is 50; every later contribution doubles the previous one. */
+export function nextStationContribution(highest: number) {
+  return highest > 0 ? highest * 2 : STATION_INITIAL_CONTRIBUTION;
+}
 
 export const copy = (state: State): State => ({
   ...state,
@@ -73,16 +79,24 @@ export function expireMortgages(s: State, borrower: number, forced = false): str
     deed.owner = null;
     deed.houses = 0;
     deed.mortgaged = false;
+    deed.acquisitionCost = undefined;
     deed.mortgage = undefined;
     expired.push(BOARD[square]!.name);
   }
   return expired;
 }
 
-/** Buildings stay on the deed and are pledged at their full original construction cost. */
+/** The acquired deed and its buildings are pledged at half their purchase/construction cost. */
+export function deedPrice(s: Pick<State, 'properties'>, square: number) {
+  const cell = BOARD[square]!;
+  if (cell.kind === 'station')
+    return s.properties[square]!.acquisitionCost ?? STATION_INITIAL_CONTRIBUTION;
+  return cell.price ?? 0;
+}
+
 export function mortgageAmount(s: Pick<State, 'properties'>, square: number) {
   const cell = BOARD[square]!;
-  return (cell.price! + s.properties[square]!.houses * (cell.houseCost ?? 0)) / 2;
+  return (deedPrice(s, square) + s.properties[square]!.houses * (cell.houseCost ?? 0)) / 2;
 }
 
 export function redeemAmount(s: Pick<State, 'properties'>, square: number) {
@@ -120,20 +134,8 @@ export function rentMultiplier(
   const group = BOARD[square]?.group;
   if (!group) return 1;
   const squares = groupSquares(group);
-  if (ownsGroup(s, owner, square)) return squares.length;
-
-  const position = squares.indexOf(square);
-  const neighbors = [squares[position - 1], squares[position + 1]];
-  const hasAdjacentProperty = neighbors.some(
-    (neighbor) => neighbor !== undefined && s.properties[neighbor]?.owner === owner,
-  );
-  return hasAdjacentProperty ? 2 : 1;
+  return ownsGroup(s, owner, square) ? squares.length : 1;
 }
-
-export const bankHouses = (s: Pick<State, 'properties'>) =>
-  32 - s.properties.reduce((sum, p) => sum + (p.houses === 5 ? 0 : p.houses), 0);
-export const bankHotels = (s: Pick<State, 'properties'>) =>
-  12 - s.properties.filter((p) => p.houses === 5).length;
 
 export function rent(
   s: Pick<State, 'properties' | 'players'> & Partial<Pick<State, 'round' | 'shortages'>>,
@@ -146,9 +148,9 @@ export function rent(
   if (deed.owner === null || deed.mortgaged || s.players[deed.owner]?.jailed) return 0;
   if (cell.kind === 'station') {
     const count = [5, 15, 25, 35].filter((i) => s.properties[i]?.owner === deed.owner).length;
-    return STATION_BASE_FEE * count;
+    return STATION_BASE_FEE * count * multiplier;
   }
-  if (cell.kind === 'utility') return roll * utilityMultiplier(s, square);
+  if (cell.kind === 'utility') return roll * utilityMultiplier(s, square) * multiplier;
   return (cell.rent?.[deed.houses] ?? 0) * rentMultiplier(s, deed.owner, square);
 }
 
@@ -304,7 +306,7 @@ export function utilityMultiplier(
   return (both ? 10 : 4) * (shortage ? 2 : 1);
 }
 
-/** Gross assets at original deed/building prices, less outstanding mortgage redemption. */
+/** Gross assets at deed acquisition/building prices, less outstanding mortgage redemption. */
 export function assetValue(s: Pick<State, 'players' | 'properties'>, seat: number) {
   return (
     s.players[seat]!.cash +
@@ -314,7 +316,7 @@ export function assetValue(s: Pick<State, 'players' | 'properties'>, seat: numbe
         deed.owner !== seat
           ? sum
           : sum +
-            BOARD[square]!.price! +
+            deedPrice(s, square) +
             deed.houses * (BOARD[square]!.houseCost ?? 0) -
             (deed.mortgaged ? redeemAmount(s, square) : 0),
       0,
@@ -404,12 +406,13 @@ export function settleStations(s: State) {
     if (winner === undefined) continue;
     const resume = s.phase;
     s.properties[auction.square]!.owner = winner;
-    charge(s, winner, BOARD[auction.square]!.price!, null, `Mua ${BOARD[auction.square]!.name}`);
+    s.properties[auction.square]!.acquisitionCost = auction.highest;
+    charge(s, winner, auction.highest, null, `Mua ${BOARD[auction.square]!.name}`);
     if (s.debt) {
       s.debt.after = resume;
       return;
     }
-    s.notice = `${BOARD[auction.square]!.name} bán giá ${BOARD[auction.square]!.price}.`;
+    s.notice = `${BOARD[auction.square]!.name} bán giá ${auction.highest}.`;
   }
 }
 
@@ -435,10 +438,6 @@ export function bankrupt(
     if (deed.owner === seat && deed.houses)
       transferMoney(s, null, seat, (deed.houses * BOARD[i]!.houseCost!) / 2, 'Thanh lý nhà');
   }
-  for (const deck of p.freeCards) {
-    const cards = deck === 'chance' ? CHANCE : CHEST;
-    s[deck].push(cards.findIndex((card) => card.kind === 'free'));
-  }
   const recipient = creditor !== null && !s.players[creditor]!.bankrupt ? creditor : null;
   const creditorPayment = Math.min(cashBeforeBankruptcy, debtAmount);
   if (recipient !== null && creditorPayment > 0)
@@ -449,6 +448,7 @@ export function bankrupt(
     deed.owner = null;
     deed.houses = 0;
     deed.mortgaged = false;
+    deed.acquisitionCost = undefined;
     deed.mortgage = undefined;
   }
   p.freeCards = [];

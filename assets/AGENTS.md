@@ -31,7 +31,8 @@
     generated art.
   - `node scripts/avatars.mjs frames` recolors `frame-gold` into the other frames;
     `node scripts/avatars.mjs emoji <dir>` makes the animal avatars from Microsoft's Fluent Emoji 3D
-    (MIT, credited in LICENSE-ASSETS.md). Add a new id to both the script and `account.ts`.
+    (MIT, credited in LICENSE-ASSETS.md). Add avatar ids to `AVATARS` and the generation script;
+    add frame ids to `FRAMES` in `account.ts` and the script's `FRAMES` map.
 
 ## Codex images
 

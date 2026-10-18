@@ -5,7 +5,7 @@
 // Needs a server with XOMDAO_DEV=1 (`npm run dev` sets it). Never opens a visible window.
 //
 //   npm run e2e [webUrl]                 every scenario, default http://localhost:5033
-//   npm run e2e -- --only godot-caro     some scenarios (comma separated; godot-* = every godot-…)
+//   npm run e2e -- --only godot-co-ty-phu-classic  some scenarios (comma separated; godot-* = every godot-…)
 //   npm run e2e -- --changed origin/main only the scenarios the changes since that ref touch
 //   npm run e2e -- --list [...]          print the picked scenario names as JSON, run nothing
 //   --skip a,b   leave these scenarios out (godot-* works here too)

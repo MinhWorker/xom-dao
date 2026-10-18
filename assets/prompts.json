@@ -253,6 +253,42 @@
       "transparent": false,
       "maxSize": 1920,
       "prompt": "Use case: stylized-concept. Create a wide LANDSCAPE 16:9 image-to-video source frame for the card-game island (Bài) of Xóm Đảo. Reference image 1 is the approved card island: preserve its island identity, three-quarter orthographic camera angle, Vietnamese village pavilion with terracotta roof, oversized fan of ivory playing cards as the central landmark, bamboo, leafy trees, blue cloth banner, warm lanterns, stone courtyard, limestone rock underside, hanging vines, and left-side turquoise stream with a short waterfall and visible foamy ending. Reference image 2 establishes the polished hand-painted 2.5D material detail, daylight and landscape composition used by its sibling islands. Render crisp richly detailed foliage, stone and wood, natural full colors, warm upper-left sunlight, soft rounded dimensional forms. Keep the cards upright, stationary and distinct, with simple red heart/diamond and black spade/club suit markings. No readable words or numbers required.\n\nOutput one wide landscape 16:9 composition. Center the entire compact island without stretching its proportions. Its complete height including tallest foliage, hanging vines, entire rocky underside and waterfall ending should occupy only 72 percent of frame height. At least 14 percent empty magenta above and below, and very generous empty magenta on both sides. Make entire island inside the frame. Keep every extremity visible. Perfectly flat solid unlit #FF00FF background to every edge. Exclude the first reference's airborne leaves, sparkles and background artifacts. All leaves remain attached. All light, glow and shadows confined to objects on the island. No sky, clouds, horizon, floor, black bars, gradients, floating particles, interface, labels, border or watermark. Still source frame for a calm idle loop, entire island fixed in place."
+    },
+    "emote-happy": {
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "One centered square sticker of the shared small round ivory sea otter mascot, with rounded ears, warm brown eyes, a teal khăn-rằn neckerchief and caramel paws. Expression: bright eyes, a broad open smile and both paws lifted in a friendly greeting. Polished stylized 3D cartoon game art, chunky rounded shapes, clean edges, restrained cel shading, warm upper-left light, cheerful Vietnamese mobile board-game hub style. Head and upper body visible, clear at small UI sizes. Genuine transparent background; no frame, extra objects, text, letters, numbers or watermark."
+    },
+    "emote-love": {
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "One centered square sticker of the shared small round ivory sea otter mascot, with rounded ears, warm brown eyes, a teal khăn-rằn neckerchief and caramel paws. Expression: soft happy smile, pink heart-shaped pupils and paws forming a small heart at chest level. Polished stylized 3D cartoon game art, chunky rounded shapes, clean edges, restrained cel shading, warm upper-left light, cheerful Vietnamese mobile board-game hub style. Head and upper body visible, clear at small UI sizes. Genuine transparent background; no frame, extra objects, text, letters, numbers or watermark."
+    },
+    "emote-wow": {
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "One centered square sticker of the shared small round ivory sea otter mascot, with rounded ears, warm brown eyes, a teal khăn-rằn neckerchief and caramel paws. Expression: very wide round eyes, a tiny round O-shaped mouth and both paws lifted to its cheeks. Polished stylized 3D cartoon game art, chunky rounded shapes, clean edges, restrained cel shading, warm upper-left light, cheerful Vietnamese mobile board-game hub style. Head and upper body visible, clear at small UI sizes. Genuine transparent background; no frame, extra objects, text, letters, numbers or watermark."
+    },
+    "emote-sad": {
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "One centered square sticker of the shared small round ivory sea otter mascot, with rounded ears, warm brown eyes, a teal khăn-rằn neckerchief and caramel paws. Expression: eyebrows tilted upward in the middle, glossy eyes with one large tear on each cheek, small downturned mouth, paws held together gently. Polished stylized 3D cartoon game art, chunky rounded shapes, clean edges, restrained cel shading, warm upper-left light, cheerful Vietnamese mobile board-game hub style. Head and upper body visible, clear at small UI sizes. Genuine transparent background; no frame, extra objects, text, letters, numbers or watermark."
+    },
+    "emote-angry": {
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "One centered square sticker of the shared small round ivory sea otter mascot, with rounded ears, warm brown eyes, a teal khăn-rằn neckerchief and caramel paws. Expression: strongly knitted brows, puffed cheeks, a small determined frown and one paw raised in a tiny fist; cute and harmless. Polished stylized 3D cartoon game art, chunky rounded shapes, clean edges, restrained cel shading, warm upper-left light, cheerful Vietnamese mobile board-game hub style. Head and upper body visible, clear at small UI sizes. Genuine transparent background; no frame, extra objects, text, letters, numbers or watermark."
+    },
+    "emote-laugh": {
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "One centered square sticker of the shared small round ivory sea otter mascot, with rounded ears, warm brown eyes, a teal khăn-rằn neckerchief and caramel paws. Expression: joyfully squeezed crescent eyes, a broad open laughing smile, tiny tears of laughter at the outer eyes and both paws on its belly. Polished stylized 3D cartoon game art, chunky rounded shapes, clean edges, restrained cel shading, warm upper-left light, cheerful Vietnamese mobile board-game hub style. Head and upper body visible, clear at small UI sizes. Genuine transparent background; no frame, extra objects, text, letters, numbers or watermark."
+    },
+    "icon-round": {
+      "path": "apps/client/icon-round.webp",
+      "transparent": false,
+      "maxSize": 512,
+      "prompt": "Square application icon for Xóm Đảo. A large circular badge showing a compact floating green island with a cozy terracotta-roof house, one broad leafy tree, a small turquoise waterfall and a few colored game tokens. Preserve a polished, cheerful 3D cartoon game illustration with rounded forms and crisp detail. The circular badge is centered and fills most of the square. The corners outside the circle are solid black (#000000), with no text, lettering, border, extra objects or watermark."
     }
   }
 }

@@ -334,6 +334,7 @@ func _show_home() -> void:
 	home.top.money.settings_pressed.connect(_menu.open_settings)
 	home.back_pressed.connect(_back_to_lobby)
 	home.equip_requested.connect(_equip.bind(home))
+	home.name_change_requested.connect(_change_name.bind(home))
 	home.account_pressed.connect(_show_account)
 	await _fill_home(home, "")
 
@@ -423,6 +424,28 @@ func _equip(item_id: String, home: HubHome) -> void:
 	XomDaoUi.play(self, XomDaoUi.SOUND_TAP)
 	if is_instance_valid(home):
 		await _fill_home(home, "")
+
+
+## A player can change the display name whenever they like; the server refreshes their room too.
+func _change_name(name: String, home: HubHome) -> void:
+	if _client.user == null:
+		if is_instance_valid(home):
+			home.name_change_failed("Không tìm thấy tài khoản")
+		return
+	var reply: Dictionary = await _client.request(
+		XomDaoProtocol.PROFILE_UPDATE,
+		{"name": name, "avatar": _client.user.avatar, "frame": _client.user.frame}
+	)
+	if reply.get("ok") != true:
+		var message: String = str(reply.get("error", "Không đổi được tên"))
+		if is_instance_valid(home):
+			home.name_change_failed(message)
+		_say(message)
+		return
+	_client.user = XomDaoUser.from_dict(reply["user"])
+	if is_instance_valid(home):
+		home.name_change_succeeded(_client.user.name)
+		XomDaoToast.show_on(self, "Đã đổi tên", "check-circle")
 
 
 ## Chợ: the items for sale; Mua pays through the ledger on the server.

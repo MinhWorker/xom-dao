@@ -3,7 +3,7 @@ extends RefCounted
 ## Generated from packages/shared/src/protocol.ts by npm run gen:protocol. Do not edit.
 ## Requests (`{ id, event, data }` on /ws) and the events the server pushes (`{ event, data }`).
 
-const VERSION := 8
+const VERSION := 10
 const MISMATCH := "protocol-mismatch"
 const COIN := "core:coin"
 
@@ -37,11 +37,13 @@ const ROOM_READY := "room:ready"
 const GAME_START := "game:start"
 const GAME_MOVE := "game:move"
 const GAME_RESTART := "game:restart"
+const EMOTE_SEND := "emote:send"
 
 ## Events the server pushes.
 const ROOM_STATE := "room:state"
 const LOBBY_ROOMS := "lobby:rooms"
 const ROOM_CLOSED := "room:closed"
+const ROOM_EMOTE := "room:emote"
 const REWARD := "reward"
 const ACHIEVEMENT := "achievement"
 
@@ -70,6 +72,7 @@ static var _events: Dictionary = {
 	"room:state": XomDaoRoomSnapshot,
 	"lobby:rooms": XomDaoLobbyRooms,
 	"room:closed": XomDaoRoomClosed,
+	"room:emote": XomDaoRoomEmote,
 	"reward": XomDaoRewardNotice,
 	"achievement": XomDaoAchievementNotice,
 }

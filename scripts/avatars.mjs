@@ -43,6 +43,9 @@ const FRAMES = {
   ruby: { hue: -45, saturation: 1.2, brightness: 0.9 },
   amethyst: { hue: 225, saturation: 0.9, brightness: 0.95 },
   rose: { hue: -70, saturation: 0.6, brightness: 1.05 },
+  coral: { hue: -95, saturation: 1.1, brightness: 1.0 },
+  turquoise: { hue: 145, saturation: 1.05, brightness: 0.98 },
+  obsidian: { hue: 30, saturation: 0.18, brightness: 0.52 },
 };
 
 /** Every picture is SIZE square; an avatar is a disc of radius DISC, the frame's ring covers its edge. */

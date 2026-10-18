@@ -2,21 +2,26 @@ class_name HubHome
 extends Control
 ## Nhà (docs/experience.md): a player's four pages, picked from a stack of tabs down the left side
 ## (HubHomeTab): Hồ sơ, Túi đồ, Thành tích and Lịch sử (your own Nhà only). The page fills a paper
-## plate on the right. Hồ sơ shows their avatar in the frame they wear, their name, level and its
-## progress, games played and won, and what they wear. Túi đồ is a grid of same-size cells
-## (HubBagCell) under a row of kinds in the top right corner (Tất cả, Khung, Lưng bài); a tap on a
-## cell slides a drawer in from the right with the item's picture, name and kind and, in your own
-## Nhà, what you can do with it (Dùng for something to wear). Thành tích is a grid of tiles and
+## plate on the right. Hồ sơ shows their avatar in the frame they wear, their name (editable at any
+## time), level and its progress, games played and won, and what they wear. Túi đồ is a grid of
+## same-size cells
+## (HubBagCell) under a row of kinds in the top right corner (Tất cả, Ảnh đại diện, Khung, Lưng
+## bài, Biểu cảm); a tap on a cell slides a drawer in from the right with the item's picture, name
+## and kind.
+## In your own Nhà, it offers Dùng for something to wear. Thành tích is a grid of tiles and
 ## Lịch sử a list of finished games; all scroll down.
 ##
 ## Named nodes for tests: Tab_<id> (ho-so, tui-do, thanh-tich, lich-su), Match_<i>, HomePlate,
-## HomeName, HomeAvatar, HomeLevel, HomeXp, HomePlayed, HomeWon, HomeRate, HomeCardBack, HomeFrame,
-## Shelf, ShelfEmpty, BagKinds, Item_<key>, ItemDrawer, ItemName, ItemKind, Equip_<key>,
+## HomeName, EditName, NameInput, SaveName, CancelName, HomeAvatar, HomeLevel, HomeXp, HomePlayed,
+## HomeWon, HomeRate, HomeCardBack, HomeFrame, Shelf, ShelfEmpty, BagKinds, Item_<key>, ItemDrawer,
+## ItemName, ItemKind, Equip_<key>,
 ## DrawerClose, AccountButton.
 
 signal back_pressed
 ## Dùng on an item of Túi đồ (your own Nhà only).
 signal equip_requested(item_id: String)
+## A player changed their display name on Hồ sơ.
+signal name_change_requested(name: String)
 ## Tài khoản at the bottom of the left rail (your own Nhà only).
 signal account_pressed
 
@@ -33,7 +38,13 @@ const ROUND := 28.0
 const PAD := 24.0
 const AVATAR := 208.0
 ## The kinds of Túi đồ, left to right: [slot ("" for every item), label].
-const KINDS: Array[Array] = [["", "Tất cả"], ["frame", "Khung"], ["card-back", "Lưng bài"]]
+const KINDS: Array[Array] = [
+	["", "Tất cả"],
+	["avatar", "Ảnh đại diện"],
+	["frame", "Khung"],
+	["card-back", "Lưng bài"],
+	["emote", "Biểu cảm"]
+]
 const DRAWER_W := 300.0
 
 var top: HubTopBar
@@ -55,11 +66,19 @@ var _tabs := VBoxContainer.new()
 var _plate := Control.new()
 var _page := Control.new()
 var _avatar := XomDaoAvatar.new()
-var _name_row := HBoxContainer.new()
+var _edit_looks: XomDaoButton = XomDaoButton.create("Đổi diện mạo", XomDaoUi.Kind.INFO)
+var _name_row := VBoxContainer.new()
+var _identity_line := HBoxContainer.new()
 var _name := Label.new()
+var _edit_name := Button.new()
+var _name_input := LineEdit.new()
+var _save_name := Button.new()
+var _cancel_name := Button.new()
+var _name_error := Label.new()
 var _username := Label.new()
 var _copy := Button.new()
 var _username_raw: String = ""
+var _name_saving: bool = false
 var _level: XomDaoChip = XomDaoChip.create("Cấp 1", "star", XomDaoUi.HONEY_DARK)
 var _xp := ProgressBar.new()
 var _xp_text := Label.new()
@@ -158,6 +177,7 @@ func show_profile(profile: XomDaoProfile, items: Array[XomDaoShopItem]) -> void:
 	_profile = profile
 	_items = items
 	_name.text = profile.name
+	_name_input.text = profile.name
 	_username_raw = profile.username
 	if _username_raw == "" and editable and Net.client != null and Net.client.user != null:
 		_username_raw = Net.client.user.username
@@ -204,12 +224,59 @@ func _build_profile() -> void:
 	_plate.add_child(_page)
 	_avatar.name = "HomeAvatar"
 	_page.add_child(_avatar)
+	_edit_looks.name = "EditLooks"
+	_edit_looks.pad = 8.0
+	_edit_looks.add_theme_font_size_override("font_size", 26)
+	_edit_looks.visible = editable
+	_edit_looks.pressed.connect(_open_looks)
+	_page.add_child(_edit_looks)
 	_name_row.name = "HomeNameRow"
-	_name_row.add_theme_constant_override("separation", 10)
+	_name_row.add_theme_constant_override("separation", 4)
 	_page.add_child(_name_row)
+	_identity_line.name = "IdentityLine"
+	_identity_line.add_theme_constant_override("separation", 8)
+	_identity_line.custom_minimum_size.y = 56.0
+	_name_row.add_child(_identity_line)
 	_name.name = "HomeName"
 	_name.theme_type_variation = "TitleLabel"
-	_name_row.add_child(_name)
+	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_identity_line.add_child(_name)
+	_edit_name.name = "EditName"
+	_style_identity_icon(_edit_name, "pencil-simple", "Đổi tên")
+	_edit_name.visible = editable
+	_edit_name.pressed.connect(_begin_name_edit)
+	_identity_line.add_child(_edit_name)
+	_name_input.name = "NameInput"
+	_name_input.max_length = 20
+	_name_input.placeholder_text = "Tên trong game"
+	_name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name_input.custom_minimum_size.y = 52.0
+	_name_input.add_theme_font_size_override("font_size", 26)
+	var input_style: StyleBoxFlat = XomDaoUi.box(Color("#FFFDF7"), Color("#C8B693"), 2, 14.0)
+	input_style.content_margin_left = 14.0
+	input_style.content_margin_right = 14.0
+	var input_focus: StyleBoxFlat = XomDaoUi.box(Color("#FFFDF7"), XomDaoUi.HONEY_DARK, 2, 14.0)
+	input_focus.content_margin_left = 14.0
+	input_focus.content_margin_right = 14.0
+	_name_input.add_theme_stylebox_override("normal", input_style)
+	_name_input.add_theme_stylebox_override("focus", input_focus)
+	_name_input.add_theme_color_override("font_color", XomDaoUi.INK)
+	_name_input.add_theme_color_override("font_placeholder_color", Color(XomDaoUi.INK, 0.4))
+	_name_input.add_theme_color_override("caret_color", XomDaoUi.LACQUER)
+	_name_input.visible = false
+	_name_input.text_submitted.connect(func(_text: String) -> void: _submit_name())
+	_identity_line.add_child(_name_input)
+	_save_name.name = "SaveName"
+	_style_identity_icon(_save_name, "check-circle", "Lưu tên")
+	_save_name.visible = false
+	_save_name.pressed.connect(_submit_name)
+	_identity_line.add_child(_save_name)
+	_cancel_name.name = "CancelName"
+	_style_identity_icon(_cancel_name, "x", "Hủy đổi tên")
+	_cancel_name.visible = false
+	_cancel_name.pressed.connect(_cancel_name_edit)
+	_identity_line.add_child(_cancel_name)
 	_username.name = "HomeUsername"
 	var font := FontVariation.new()
 	font.base_font = XomDaoUi.display_font(700)
@@ -218,8 +285,10 @@ func _build_profile() -> void:
 	_username.add_theme_font_size_override("font_size", 28)
 	_username.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.55))
 	_username.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_username.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_username.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_username.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_name_row.add_child(_username)
+	_identity_line.add_child(_username)
 	_copy.name = "HomeCopyUsername"
 	_copy.icon = XomDaoUi.icon("copy")
 	_copy.expand_icon = true
@@ -243,7 +312,13 @@ func _build_profile() -> void:
 	_copy.add_theme_color_override("icon_pressed_color", XomDaoUi.CREAM)
 	_copy.button_down.connect(XomDaoUi.bounce.bind(_copy))
 	_copy.pressed.connect(_on_copy_username)
-	_name_row.add_child(_copy)
+	_identity_line.add_child(_copy)
+	_name_error.name = "NameError"
+	_name_error.add_theme_font_size_override("font_size", 20)
+	_name_error.add_theme_color_override("font_color", XomDaoUi.DOWN_ON_PAPER)
+	_name_error.custom_minimum_size.y = 36.0
+	_name_error.visible = false
+	_name_row.add_child(_name_error)
 	_level.name = "HomeLevel"
 	_page.add_child(_level)
 	_xp.name = "HomeXp"
@@ -398,9 +473,16 @@ func _show_history() -> void:
 
 func _wears(item: XomDaoShopItem) -> bool:
 	return (
-		(item.slot == "frame" and item.look == _profile.frame)
+		(item.slot == "avatar" and item.look == _profile.avatar)
+		or (item.slot == "frame" and item.look == _profile.frame)
 		or (item.slot == "card-back" and item.look == _profile.card_back)
 	)
+
+
+## Opens Túi đồ so the player can choose another avatar or frame.
+func _open_looks() -> void:
+	select("tui-do")
+	_kinds.choose(0)
 
 
 ## Opens the drawer on an item of Túi đồ; the same item again, or "", shuts it.
@@ -441,7 +523,7 @@ func _fill_drawer() -> void:
 		if str(entry[0]) == item.slot:
 			kind = str(entry[1])
 	_drawer_kind.text = kind
-	var wearable: bool = item.slot == "frame" or item.slot == "card-back"
+	var wearable: bool = item.slot in ["avatar", "frame", "card-back"]
 	var worn: bool = _wears(item)
 	if wearable and editable:
 		var button: XomDaoButton = XomDaoButton.create(
@@ -460,10 +542,13 @@ func _fill_drawer() -> void:
 
 ## The drawer: a darker sheet of paper on the plate's right side, the item big on it.
 func _build_drawer() -> void:
-	_kinds = XomDaoChoice.create(["Tất cả", "Khung", "Lưng bài"])
+	_kinds = XomDaoChoice.create(["Tất cả", "Ảnh đại diện", "Khung", "Lưng bài", "Biểu cảm"])
 	_kinds.name = "BagKinds"
 	_kinds.compact = true
 	_kinds.changed.connect(func(_index: int) -> void: _show_tab_page())
+	for i: int in KINDS.size():
+		var slot: String = str(KINDS[i][0])
+		_kinds.get_child(i).name = "BagKind_" + (slot if slot != "" else "all")
 	_plate.add_child(_kinds)
 	_drawer.name = "ItemDrawer"
 	_drawer.clip_contents = true
@@ -590,23 +675,126 @@ func _on_copy_username() -> void:
 	XomDaoToast.show_on(self, "Đã sao chép #%s" % _username_raw.trim_prefix("#"), "check-circle")
 
 
+func _style_identity_icon(button: Button, icon_name: String, hint: String) -> void:
+	button.text = ""
+	button.icon = XomDaoUi.icon(icon_name)
+	button.expand_icon = true
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	button.tooltip_text = hint
+	button.custom_minimum_size = Vector2(40.0, 40.0)
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.add_theme_stylebox_override(
+		"normal", XomDaoUi.box(Color(XomDaoUi.PAPER_DARK, 0.5), Color.TRANSPARENT, 0, 10.0)
+	)
+	button.add_theme_stylebox_override(
+		"hover", XomDaoUi.box(XomDaoUi.PAPER_DARK, XomDaoUi.HONEY, 1, 10.0)
+	)
+	button.add_theme_stylebox_override(
+		"pressed", XomDaoUi.box(XomDaoUi.HONEY_DARK, Color.TRANSPARENT, 0, 10.0)
+	)
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.add_theme_color_override("icon_normal_color", Color(XomDaoUi.INK, 0.75))
+	button.add_theme_color_override("icon_hover_color", XomDaoUi.INK)
+	button.add_theme_color_override("icon_pressed_color", XomDaoUi.CREAM)
+	button.add_theme_color_override("icon_disabled_color", Color(XomDaoUi.INK, 0.4))
+	button.button_down.connect(XomDaoUi.bounce.bind(button))
+
+
+func _begin_name_edit() -> void:
+	if not editable or _profile == null:
+		return
+	_name_input.text = _profile.name
+	_name_error.text = ""
+	_name_saving = false
+	_name_input.editable = true
+	_save_name.disabled = false
+	_cancel_name.disabled = false
+	_name.visible = false
+	_edit_name.visible = false
+	_name_input.visible = true
+	_save_name.visible = true
+	_cancel_name.visible = true
+	_name_error.visible = false
+	_name_input.grab_focus()
+	_name_input.select_all()
+
+
+func _submit_name() -> void:
+	if _name_saving:
+		return
+	var value: String = _name_input.text.strip_edges()
+	if value.is_empty():
+		name_change_failed("Bạn cần nhập tên")
+		return
+	if _profile != null and value == _profile.name:
+		_cancel_name_edit()
+		return
+	_name_error.visible = false
+	_name_saving = true
+	_name_input.editable = false
+	_save_name.disabled = true
+	_cancel_name.disabled = true
+	name_change_requested.emit(value)
+
+
+func set_name_saving(saving: bool) -> void:
+	_name_saving = saving
+	_name_input.editable = not saving
+	_save_name.disabled = saving
+	_cancel_name.disabled = saving
+
+
+func name_change_failed(message: String) -> void:
+	set_name_saving(false)
+	_name_error.text = message
+	_name_error.visible = true
+
+
+func name_change_succeeded(name: String) -> void:
+	if _profile != null:
+		_profile.name = name
+	_name.text = name
+	_name_input.text = name
+	_avatar.initial = name
+	_cancel_name_edit()
+
+
+func _cancel_name_edit() -> void:
+	_name_input.text = _profile.name if _profile != null else _name.text
+	_name_saving = false
+	_name_input.editable = true
+	_save_name.disabled = false
+	_cancel_name.disabled = false
+	_name.visible = true
+	_edit_name.visible = editable
+	_name_input.visible = false
+	_save_name.visible = false
+	_cancel_name.visible = false
+	_name_error.visible = false
+
+
 func _layout_profile(room: Vector2) -> void:
 	_avatar.size = Vector2.ONE * AVATAR
 	_avatar.position = Vector2(8.0, 8.0)
+	_edit_looks.position = Vector2(8.0, AVATAR + 16.0)
+	_edit_looks.size = Vector2(AVATAR, 88.0)
 	var x: float = AVATAR + 40.0
 	var wide: float = room.x - x
 	_name_row.position = Vector2(x, 0.0)
-	_name_row.size = Vector2(wide, 60.0)
+	_name_row.size = Vector2(wide, 96.0)
 	_level.reset_size()
-	_level.position = Vector2(x, 72.0)
+	_level.position = Vector2(x, 108.0)
 	var bar_left: float = x + _level.size.x + 14.0
-	_xp.position = Vector2(bar_left, 72.0 + (_level.size.y - 20.0) / 2.0)
+	_xp.position = Vector2(bar_left, 108.0 + (_level.size.y - 20.0) / 2.0)
 	_xp.size = Vector2(room.x - bar_left, 20.0)
 	_xp_text.position = Vector2(bar_left, _xp.position.y + 24.0)
 	_xp_text.size = Vector2(_xp.size.x, 28.0)
-	_totals.position = Vector2(x, 72.0 + _level.size.y + 44.0)
+	_totals.position = Vector2(x, 108.0 + _level.size.y + 44.0)
 	_totals.size = Vector2(wide, 0.0)
 	_totals.reset_size()
 	_totals.size.x = wide
-	_worn.position = Vector2(8.0, maxf(AVATAR + 36.0, _totals.position.y + _totals.size.y + 28.0))
+	_worn.position = Vector2(x, _totals.position.y + _totals.size.y + 28.0)
 	_worn.reset_size()

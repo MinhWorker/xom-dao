@@ -121,6 +121,40 @@ describe('WebSocket transport', () => {
     minh.ws.close();
   });
 
+  it('broadcasts owned emotes to the room and refuses unavailable or unknown ones', async () => {
+    const lan = await connect();
+    const minh = await connect();
+    const a = await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
+    await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
+    const playerId = (a.user as { id: string }).id;
+
+    const { roomCode } = await lan.request('room:create', { gameId: 'tic-tac-toe' });
+    await minh.request('room:join', { roomCode: roomCode as string, role: 'player' });
+    expect(await lan.request('emote:send', { emote: 'happy' })).toEqual({ ok: true });
+    await settle();
+    const expected = { playerId, emote: 'happy' };
+    expect(lan.pushed.filter((message) => message.event === 'room:emote').at(-1)?.data).toEqual(
+      expected,
+    );
+    expect(minh.pushed.filter((message) => message.event === 'room:emote').at(-1)?.data).toEqual(
+      expected,
+    );
+    expect(await lan.request('emote:send', { emote: 'happy' })).toEqual({
+      ok: false,
+      error: 'Chờ một chút rồi gửi lại biểu cảm',
+    });
+    expect(await minh.request('emote:send', { emote: 'love' })).toEqual({
+      ok: false,
+      error: 'Bạn chưa có biểu cảm này',
+    });
+    expect(await minh.request('emote:send', { emote: 'missing' })).toEqual({
+      ok: false,
+      error: 'Biểu cảm không hợp lệ',
+    });
+    lan.ws.close();
+    minh.ws.close();
+  });
+
   it('answers unknown events without closing', async () => {
     const { ws, request } = await connect();
     await request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Hoa' });

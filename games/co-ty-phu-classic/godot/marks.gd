@@ -46,6 +46,16 @@ func _ready() -> void:
 	add_child(_print_surface)
 
 
+func set_view(next: Dictionary) -> void:
+	view = next.duplicate(true)
+	queue_redraw()
+
+
+func set_focus(square: int) -> void:
+	focus = square
+	queue_redraw()
+
+
 func _draw_layer(frame_name: String, square: int, tint: Color = Color.WHITE) -> void:
 	var entry: Dictionary = _frames[frame_name]
 	var frame: Dictionary = entry["frame"]

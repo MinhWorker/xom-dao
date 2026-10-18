@@ -37,7 +37,7 @@ Chủ dự án: "Làm sự kiện câu cá Trung Thu"
   3. Art      prompt / Blender → bake                          npm run gen:asset, npm run blender
   4. Godot    godot/ scene + script                            npm run godot:check
   5. Tự xem   ảnh chụp trên khổ điện thoại                      npm run shots
-  6. Tự chơi  e2e qua cầu nối test                              npm run e2e
+  6. Tự chơi  luồng client và E2E phù hợp                     npm run e2e
   7. PR       bản xem trước trên Vercel → chơi thử bằng điện thoại → merge
 ```
 
@@ -115,7 +115,7 @@ Nếu tốc độ tải hoặc Safari iOS không đạt, dừng lại và xem l�
       chơi, thẻ trò, ô lựa chọn, thông báo nhanh, chấm đỏ, menu ☰, âm thanh giao diện; màn gallery
       `?gallery=<trang>` để chụp và duyệt
 - [ ] Art hub theo `docs/art-direction.md`
-- [x] `npm run new:game` tạo cả luật TS, thư mục `godot/`, kịch bản e2e, RULES.md
+- [x] `npm run new:game` tạo luật TS, thư mục `godot/`, test, RULES.md
 
 **Xong khi:** ở sảnh chọn Caro, bấm CHƠI, chơi với bot, thắng thì được cộng tiền và thấy số dư mới.
 

@@ -4,8 +4,8 @@
 đều có khung gỗ, chữ ít và không có chỗ cho thông tin thật. Tài liệu này ghi lại những gì game
 mobile đang chạy thật làm, để [experience.md](experience.md) bám theo.
 
-Ảnh chụp màn hình là của các hãng game, **không đưa vào repo**. Chủ dự án có bản lưu trên máy ở
-`.claude/references/ui/`; người khác xem theo link nguồn bên dưới.
+Ảnh chụp màn hình là của các hãng game, **không lưu trong repo hoặc máy làm việc**. Có thể xem
+theo các link nguồn bên dưới.
 
 ## Nguồn
 

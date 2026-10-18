@@ -54,8 +54,8 @@ miễn phí thoải mái, ghi nguồn khi tiện. Chỉ đừng lấy tài nguy�
 ## Làm một game
 
 `npm run new:game -- <id> "Tên" --genre <bai|co>` tạo một game nhỏ chạy được trong `games/<id>/`,
-có bàn chơi trong client Godot và kịch bản e2e; `npm run new:event` làm như vậy cho một sự kiện
-(`npm run new` thêm từng file từ mẫu). Mọi thứ về game nằm trong thư mục đó, nên nhiều người có
-thể làm game cùng lúc mà không đụng nhau. Chơi thử một mình ở
+có luật và test, bàn chơi trong client Godot cùng GUT. `npm run new:event` tạo thêm kịch bản e2e
+cho luồng sự kiện. `npm run new` thêm từng file từ mẫu. Mọi thứ về game nằm trong thư mục đó, nên
+nhiều người có thể làm game cùng lúc mà không đụng nhau. Chơi thử một mình ở
 `http://localhost:5033/?play=<id>` sau `npm run godot:export -- --debug`. Xem
 [docs/making-a-game.md](docs/making-a-game.md).

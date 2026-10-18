@@ -181,9 +181,11 @@ func test_trade_selects_cards_resets_and_clears_after_a_declined_offer() -> void
 		"from": 1, "to": 0, "give": 6, "take": 1, "giveCash": 0, "takeCash": 0, "resume": "roll"
 	}
 	table.call("_show", _snapshot(pending))
+	await wait_until(func() -> bool: return not bool(table.get("_running")), 2.0)
 	assert_not_null(_node(table, "Accept"))
 	assert_true(bool(draft.get("pending")))
 	table.call("_show", _snapshot(view))
+	await wait_until(func() -> bool: return not bool(table.get("_running")), 2.0)
 	assert_false(bool(draft.get("pending")))
 	assert_eq(draft.get("give"), -1)
 	assert_eq(draft.get("take"), -1)
@@ -277,3 +279,12 @@ func test_trade_prices_autofill_for_sales_purchases_swaps_and_selection_changes(
 	draft.call("reset")
 	assert_eq(draft.get("give_cash"), 0)
 	assert_eq(draft.get("take_cash"), 0)
+
+
+func test_station_trade_quote_uses_the_winning_contribution() -> void:
+	var view := _view()
+	view["properties"][5]["owner"] = 0
+	view["properties"][5]["acquisitionCost"] = 400
+	var draft: RefCounted = Draft.new()
+	draft.call("choose", 0, 5, view["properties"])
+	assert_eq(draft.get("take_cash"), 400)

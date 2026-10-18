@@ -91,8 +91,8 @@ phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ t
   trong sương và banner là Chợ.
 - **Chợ**: bố cục mở rộng được hai chiều. Hàng tab loại hàng ở trên (Khung, Lưng bài; thêm loại thì
   thêm tab sang ngang), cột lọc bên trái (Tất cả, Chưa có, Đã có; thêm nhóm thì thêm ô xuống dưới),
-  còn lại là lưới thẻ món hàng cuộn dọc, số cột theo bề rộng. Mỗi thẻ có tên, hình, giá và "Mua";
-  món đã mua hiện "Đã có".
+  còn lại là lưới thẻ món hàng cuộn dọc, số cột theo bề rộng. Mỗi thẻ có tên, hình; nút mua hiện
+  icon xu kèm giá; món đã mua hiện "Đã có".
   Thiếu xu thì báo "Không đủ xu"; bấm hai lần chỉ trả tiền một lần.
 - **Bến**: gõ mã phòng rồi "Vào", hoặc chọn một phòng đang mở của trò đang chọn.
 - **Trong ván** chỉ có nút ☰ (rời phòng có hỏi lại khi đang giữa ván, luật, cài đặt, biểu cảm).
@@ -114,14 +114,24 @@ Link:
 và `/ws` tới server, nên sau `npm run godot:export -- --debug` chỉ cần mở trang đó. Xuất lại là
 thấy bản mới.
 
+Màn khởi động web được thiết kế trong `web-shell.html`: đảo nổi, nền biển và thanh tải đồng bộ với
+Xóm Đảo. Phần trăm là số byte Godot đã tải trên tổng số byte cần tải; khi máy chủ không cho biết
+tổng dung lượng, thanh chạy dạng chờ và hiện dấu ba chấm. Đạt 100% nghĩa là tải xong các tệp, còn
+Godot vẫn cần khởi động trò chơi; dòng trạng thái chuyển sang “Đang khởi động trò chơi…” trong lúc
+chờ. Màn này tự ẩn khi `startGame` hoàn tất.
+
+Khi mở bản PWA đã cài trên điện thoại, màn khởi chạy do hệ điều hành dựng từ tên, biểu tượng và
+màu nền trong export preset. Màn HTML tải ở trên xuất hiện sau đó và có thể tùy chỉnh riêng.
+
+Trên máy tính, nhấn F11 để bật hoặc tắt fullscreen của trình duyệt; shell chuyển phím này cho trình
+duyệt thay vì để canvas Godot giữ lại.
+
 Bản debug có cầu nối test `window.xomdao` cho e2e và `npm run shots`: `scene()`, `tree()`,
 `text(tên)`, `rect(tên)`, `click(tên)`, `state()` (xem đầu `core/test_bridge.gd`). Node nào test
 cần bấm hay đọc đều có tên, ví dụ ô Caro là `Cell_<x>_<y>`.
 
 - `npm run e2e -- --only godot-lobby`: từ sảnh bấm CHƠI, thắng máy, số dư tăng; bạn vào bằng link.
-- `npm run e2e -- --only godot-caro`: hai người chơi Caro qua mã phòng ở Bến, thêm một ván sandbox.
-- `npm run e2e -- --only godot-tien-len`: ba vòng Tiến Lên với ba máy trong sandbox, chọn bài bằng
-  chuột thật, tới bảng kết quả.
+- `npm run e2e -- --only godot-co-ty-phu-classic`: chơi một ván Cờ tỷ phú Classic (Monopoly).
 - `npm run shots -- --path '/?play=tic-tac-toe'`: ảnh chụp trên các cỡ điện thoại.
 - `npm run shots -- --screen select` (hoặc `rules`): màn chọn trò và bảng luật trên các cỡ máy.
 - `npm run e2e -- --only godot-select`: vuốt chạm native trên dãy thẻ, đổi thể loại, chạm thẻ vào phòng, luật phân trang.

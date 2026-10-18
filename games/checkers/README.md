@@ -58,8 +58,8 @@ Tài nguyên theo [giấy phép của dự án](../../LICENSE-ASSETS.md).
 ## Phát triển
 
 Chạy `npm run godot:export -- --debug` và `npm run dev`, rồi chơi thử
-http://localhost:5033/?play=checkers. Kiểm tra bằng `npm run check`, `npm run godot:check`,
-`npm run e2e -- --only godot-checkers` và `npm run shots -- --path '/?play=checkers'`.
+http://localhost:5033/?play=checkers. Kiểm tra bằng `npm run check`, `npm run godot:check` và
+`npm run shots -- --path '/?play=checkers'`.
 Test gồm nước khai cuộc, ăn tùy chọn, ăn liên tiếp, phong Vua, Vua đi và ăn xa, hoà và máy chơi;
 test GUT ở `godot/test/`.
 

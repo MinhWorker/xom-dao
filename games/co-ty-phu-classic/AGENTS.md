@@ -4,8 +4,11 @@ Read `../AGENTS.md` for the shared game/SDK rules. The Vietnamese component map 
 
 - `src/game/`: authoritative pure rules, board/pricing data (`model.ts`), cards, bot and turn clock.
   Tests stay next to the implementation they exercise.
-- `godot/main.gd`: the table in the Bàn layout (board, players' column, the green field's notice,
-  dice and actions); `godot/marks.gd` draws the owner bands, houses, mortgages
+- `godot/main.gd`: the table in the Bàn layout (board, tile HUD, the green field's notice, dice
+  and actions). `_view` is the latest authoritative snapshot; `_presented_view` is committed
+  at the end of its queued animations. UI reads the presented snapshot, while commands validate
+  against the latest snapshot. Preserve this boundary when adding visual state; `godot/marks.gd`
+  draws the owner bands, houses, mortgages
   and station contributions over the board, plus every square's name and each deed's price.
   Owner strips and buildings come from `godot/art/deed-layers.webp` and its JSON atlas/board rects.
   Buildings have four owner-color variants. `tile_ink.gd` draws upright surface-projected
@@ -33,13 +36,20 @@ Read `../AGENTS.md` for the shared game/SDK rules. The Vietnamese component map 
   `HOMOGRAPHY`, the turn plaque and field). Keep the rules in sync when `BOARD` changes.
 - `godot/deed_sets.gd` groups adjacent deeds by set and owner for static two-deed/full-set frames.
   Set colors stay fixed; ownership changes update the symbol, owner strip and buildings together.
-- `godot/player_card.gd` composes SDK player-slot widgets as overlapping paper cards; the local
-  card is lowest on screen and drawn after the other cards. Its patterned frame uses the seat
-  colour; `card_glint.gdshader` highlights the acting seat. `card_cash.gd` merges a signed delta
-  into the ink balance before counting; `_money` waits for this sequence before the next job.
-  Load actual avatar pictures via
-  `XomDaoLooks.avatar`. Dice rest coordinates depend only on the board plane. Event ink is the
-  first child of the dice controller, underneath its 3D stage, without changing text placement.
+- `godot/player_card.gd` holds the SDK player-slot state used by the banknote and ledger; its
+  side cards stay hidden. `card_glint.gdshader` highlights the acting seat on the banknote.
+  `card_cash.gd` merges a signed delta into the ink balance before counting; `_money` waits for
+  this sequence before the next job. Load actual avatar pictures via `XomDaoLooks.avatar`.
+  `godot/tile_hud.gd` extends the board's projected plane into the right sidebar for the local
+  pawn's square summary. Numeric rows align labels left and values right; text-only rows center.
+  During local movement, keep the HUD visible and animate an ink-colored 2D runner in its panel;
+  refresh the square details only after the pawn settles. Dice rest coordinates depend only on the
+  board plane. Event ink is the first child of the dice controller, underneath its 3D
+  stage, without changing text placement.
+  HUD SVGs drawn smaller on this projected plane need `mipmaps/generate=true` in their `.svg.import`
+  files. `TEXTURE_FILTER_LINEAR_WITH_MIPMAPS` only samples mip levels; it does not generate them.
+  Godot's default SVG import disables mipmaps, which makes minified icons look pixelated. The HUD
+  icon filtering test guards this import setting.
 - `godot/visual_review.tscn` runs the real table offline with local-player snapshots: empty,
   ownership colors, transfer, mortgages, sets, foreclosure and station coin stacks.
   Its top-right buttons switch snapshots and preview a throw.
@@ -93,7 +103,7 @@ It composes `estate_page.gd` (grouped deeds and management), `exchange_page.gd` 
 and `trade_draft.gd` (one draft, cleared after every resolved proposal). Main tabs are vertical;
 player tabs are horizontal. Browse remains available off-turn; mutations use existing server
 permissions. There is no personal asset auction event or seller path: auction state/bid/pass
-are exclusively the unchanged station contribution mechanic. Keep on-screen copy minimal.
+are exclusively the station contribution mechanic defined in `RULES.md`. Keep on-screen copy minimal.
 
 Ledger assets are purpose-specific SVGs: deed-paper, ledger-paper, bookmarks, offer-mat,
 cash-pile and reset. Keep these distinct from action button skins. TradeDraft quotes face-value

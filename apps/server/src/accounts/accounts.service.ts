@@ -3,13 +3,13 @@ import { promisify } from 'node:util';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   type AuthResponse,
-  AVATARS,
   DEFAULT_FRAME,
   displayNameSchema,
   firstIssue,
   loginSchema,
   profileSchema,
   registerSchema,
+  STARTER_AVATARS,
   type User,
 } from '@xomdao/shared';
 import type { AccountsStore, Looks } from './accounts.store.js';
@@ -71,7 +71,7 @@ export class AccountsService {
         username,
         passwordHash,
         name: name.data,
-        avatar: AVATARS[randomInt(AVATARS.length)] ?? 'boy',
+        avatar: STARTER_AVATARS[randomInt(STARTER_AVATARS.length)] ?? 'boy',
         frame: DEFAULT_FRAME,
       });
       if (user) return this.startSession(user);
@@ -112,7 +112,7 @@ export class AccountsService {
   }
 
   /**
-   * Changes how the player shows (their frame, card back). Only Túi đồ calls this, after
+   * Changes how the player shows (their avatar, frame or card back). Only Túi đồ calls this, after
    * checking they own the item.
    */
   async setLooks(userId: string, looks: Looks): Promise<User> {

@@ -38,6 +38,11 @@ export const AVATARS = [
 ] as const;
 export type Avatar = (typeof AVATARS)[number];
 
+/** Avatar choices every new account starts with. Other pictures are sold in Chợ. */
+export const STARTER_AVATARS = ['boy', 'girl', 'cat'] as const satisfies readonly Avatar[];
+export const DEFAULT_AVATAR: Avatar = 'boy';
+const STARTER_AVATAR_SET: ReadonlySet<string> = new Set(STARTER_AVATARS);
+
 /** Rings drawn around any avatar (`frame-<id>.webp`), picked separately from it. */
 export const FRAMES = [
   'gold',
@@ -48,9 +53,14 @@ export const FRAMES = [
   'ruby',
   'amethyst',
   'rose',
+  'coral',
+  'turquoise',
+  'obsidian',
 ] as const;
 export type Frame = (typeof FRAMES)[number];
 export const DEFAULT_FRAME: Frame = 'gold';
+export const STARTER_FRAMES = ['gold', 'silver', 'bronze'] as const satisfies readonly Frame[];
+const STARTER_FRAME_SET: ReadonlySet<string> = new Set(STARTER_FRAMES);
 
 /** Letters and digits only. Stored lowercase, so "Minh" and "minh" are the same account. */
 export const usernameSchema = z
@@ -74,13 +84,21 @@ export const displayNameSchema = z
 
 export const avatarSchema = z.enum(AVATARS);
 export const frameSchema = z.enum(FRAMES);
+export const starterAvatarSchema = avatarSchema.refine(
+  (avatar) => STARTER_AVATAR_SET.has(avatar),
+  'Ảnh đại diện này chưa có, hãy chọn ảnh miễn phí',
+);
+export const starterFrameSchema = frameSchema.refine(
+  (frame) => STARTER_FRAME_SET.has(frame),
+  'Khung này chưa có, hãy chọn khung miễn phí',
+);
 
 export const registerSchema = z.object({
   username: usernameSchema,
   password: passwordSchema,
   name: displayNameSchema,
-  avatar: avatarSchema,
-  frame: frameSchema.default(DEFAULT_FRAME),
+  avatar: starterAvatarSchema,
+  frame: starterFrameSchema.default(DEFAULT_FRAME),
 });
 
 export const loginSchema = z.object({

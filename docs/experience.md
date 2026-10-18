@@ -239,12 +239,15 @@ tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến c
   đang chọn có nền vàng. Bên phải là một tấm giấy lớn hiện trang đang chọn. (Ảnh concept trên là
   bố cục cũ.)
 - **Hồ sơ**: ảnh đại diện lớn trong khung đang dùng, tên, chip cấp với thanh tiến độ, ba ô số (số
-  ván, số thắng, tỉ lệ thắng), và khung, lưng bài đang dùng.
+  ván, số thắng, tỉ lệ thắng), và khung, lưng bài đang dùng. Tên trong game và username nằm cùng
+  một hàng; biểu tượng bút mở sửa tên, biểu tượng dấu tích lưu, dấu x hủy. Có thể thay tên trong
+  game bất cứ lúc nào (từ 1 đến 20 ký tự). Nút **Đổi diện mạo** mở Túi đồ để chọn ảnh đại diện
+  hoặc khung khác.
 - **Lịch sử** là danh sách các ván đã xong, mới nhất ở trên: kết quả (Thắng, Thua, Hoà), tên trò,
   chơi với ai, cách đây bao lâu và ván kéo dài bao lâu. Chỉ Nhà của chính bạn có trang này. Xếp
   hạng xem ở Đình.
 - **Túi đồ** là lưới các ô vuông bằng nhau, mỗi ô chỉ có hình vật phẩm; món đang dùng có dấu tích
-  xanh. Góc trên phải là hàng **loại**: Tất cả, Khung, Lưng bài. Chạm một ô thì một **ngăn kéo**
+  xanh. Góc trên phải là hàng **loại**: Tất cả, Ảnh đại diện, Khung, Lưng bài, Biểu cảm. Chạm một ô thì một **ngăn kéo**
   trượt ra từ bên phải, ghi hình lớn, tên và loại của món đó, cùng nút hành động hợp với nó: đồ
   trang trí có **Dùng** (hoặc "Đang dùng"). Chạm lại ô đó hoặc nút ✕ để đóng. Ở Nhà người khác
   ngăn kéo chỉ để xem. Vật phẩm nào cũng có biểu tượng vuông, nền trong suốt, để đặt được vào ô.
@@ -262,6 +265,15 @@ tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến c
   cũ cũng phải tạo tài khoản; dữ liệu của tài khoản khách cũ không chuyển sang.
 - Nút **Tài khoản** nằm dưới các thẻ bên trái (chỉ ở Nhà của mình): hiện tên đăng nhập và nút
   **Đăng xuất**, bấm xong thì quay lại bảng Vào Xóm Đảo.
+
+## Chợ: đồ trang trí
+
+- Chợ bán ảnh đại diện, khung, lưng bài và biểu cảm bằng xu. Ba ảnh đại diện khởi đầu và biểu cảm
+  Vui vẻ miễn phí; các món còn lại có giá riêng.
+- Nút mua hiện icon xu kèm giá. Hàng có thể lọc theo **Tất cả**, **Chưa có** và **Đã có**. Món đã có
+  không thể mua lần nữa; sau khi mua, món xuất hiện trong Túi đồ. Ảnh đại diện, khung và lưng bài
+  có thể trang bị; biểu cảm
+  được gửi trong ván và mỗi game tự vẽ theo bàn chơi của mình.
 - Khi máy chủ đang ngủ (gói miễn phí), màn đầu ghi "Đang đánh thức máy chủ" và thử lại tới hai
   phút. Khi máy chủ đã lên bản protocol mới, màn đầu ghi "Đã có bản mới" kèm nút **Tải lại**.
 
@@ -325,7 +337,8 @@ Một trò hay sự kiện **phải**:
 - [ ] Theo một bố cục mẫu trong ván (**Bàn** hoặc **Hành động**); để trống ô của nút ☰.
 - [ ] Trả thứ hạng khi hết ván và để phần khung hiện kết quả, phần thưởng.
 - [ ] Vừa cả bốn khung cố định 1280–1600 × 720, bàn chơi trong lõi 960 × 720; vùng chạm ≥ 88, chữ ≥ 24.
-- [ ] Có ảnh chụp trên các máy (`npm run shots`) và kịch bản e2e.
+- [ ] Có ảnh chụp trên các máy (`npm run shots`); test luật TypeScript và GUT đều qua. Kịch bản
+      chơi trọn game trên trình duyệt hiện dành cho Cờ tỷ phú Classic (Monopoly).
 
 Một trò hay sự kiện **không được**:
 
