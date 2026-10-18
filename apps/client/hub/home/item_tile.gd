@@ -1,6 +1,7 @@
 class_name HubItemTile
 extends PanelContainer
-## One item on Nhà's shelf or at Chợ: its picture (a frame, a card back), its name, and a row
+## One item on Nhà's shelf or at Chợ: its picture (an avatar, frame, card back or emote), its
+## name, and a row
 ## below for the screen's own chip or button. Named `Item_<slot>-<look>` ("Item_frame-jade").
 
 const SIZE := Vector2(180.0, 236.0)

@@ -77,8 +77,8 @@ Tài nguyên theo [giấy phép của dự án](../../LICENSE-ASSETS.md).
 ## Phát triển
 
 Chạy `npm run godot:export -- --debug` và `npm run dev` từ gốc repo, chơi thử
-http://localhost:5033/?play=chess. Kiểm tra bằng `npm run check`, `npm run godot:check`,
-`npm run e2e -- --only godot-chess` và `npm run shots -- --path '/?play=chess'`.
+http://localhost:5033/?play=chess. Kiểm tra bằng `npm run check`, `npm run godot:check` và
+`npm run shots -- --path '/?play=chess'`.
 Test logic có perft khai cuộc, Kiwipete, tàn cuộc và phong cấp; chiếu hết, hết nước, lặp thế,
 50 nước, xin hoà và máy chơi; test GUT ở `godot/test/`.
 

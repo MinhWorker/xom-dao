@@ -44,13 +44,13 @@ mắt mình và ước lượng vùng chắc bằng các ván ngẫu nhiên. Ch�
 
 `src/index.ts` đăng ký game phía server. `assets/` chứa hình và âm thanh cỡ đầy đủ (bàn chép bản
 cần dùng vào `godot/`); `sources/` chứa script và prompt tạo tài nguyên.
-Test nằm cạnh phần logic với đuôi `.test.ts`; e2e ở `scripts/e2e/scenarios/godot-go.mjs`.
+Test luật nằm cạnh phần logic với đuôi `.test.ts`; test bàn chơi GUT nằm trong `godot/test/`.
 
 ## Phát triển
 
 Chạy `npm run godot:export -- --debug` và `npm run dev` ở gốc repo rồi mở
-http://localhost:5033/?play=go. Kiểm tra bằng `npm run check`, `npm run godot:check`,
-`npm run e2e -- --only godot-go` và `npm run shots -- --path '/?play=go'`.
+http://localhost:5033/?play=go. Kiểm tra bằng `npm run check`, `npm run godot:check` và
+`npm run shots -- --path '/?play=go'`.
 Hướng dẫn SDK: [tạo game](../../docs/making-a-game.md).
 
 Điểm được đi lấy từ `moves` trong view của server (chỉ có khi tới lượt mình), số đếm lấy từ

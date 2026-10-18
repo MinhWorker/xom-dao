@@ -42,6 +42,14 @@ func test_two_clients_play_caro_by_room_code() -> void:
 	assert_eq(seen.last.player, lan.player_id)
 	assert_eq(seen.view["turn"], minh.player_id)
 
+	var emotes: Array[XomDaoRoomEmote] = []
+	minh.emote_received.connect(func(emote: XomDaoRoomEmote) -> void: emotes.append(emote))
+	assert_eq(await lan.owned_emotes(), ["happy"], "the client lists owned emotes")
+	assert_true(await lan.send_emote("happy"), "Lan sends a free emote")
+	await wait_until(func() -> bool: return emotes.size() == 1, 3.0)
+	assert_eq(emotes[0].player_id, lan.player_id)
+	assert_eq(emotes[0].emote, "happy")
+
 
 func test_wrong_token_is_refused() -> void:
 	if _url == "":

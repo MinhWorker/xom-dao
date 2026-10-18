@@ -30,6 +30,20 @@ static func card_back(id: String) -> Texture2D:
 	return load(path)
 
 
-## The picture of an item for a shelf or a shop: its frame or card back ({slot, look}).
+## A shared emote sticker by its look id ("happy", "love"…). Unknown ids return null.
+static func emote(id: String) -> Texture2D:
+	var path: String = _DIR + "emote-%s.webp" % id
+	return load(path) if id != "" and ResourceLoader.exists(path) else null
+
+
+## The picture of an item for a shelf or a shop: its avatar, frame, card back, or emote.
 static func preview(slot: String, look: String) -> Texture2D:
-	return card_back(look) if slot == "card-back" else frame(look)
+	match slot:
+		"avatar":
+			return avatar(look)
+		"card-back":
+			return card_back(look)
+		"emote":
+			return emote(look)
+		_:
+			return frame(look)

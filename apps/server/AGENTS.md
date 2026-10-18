@@ -81,16 +81,21 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 
 ## Inventory and Shop
 
-- Items are data in `packages/shared/src/items.ts` (`core:frame-<look>`,
-  `core:card-back-<look>`). Append new ones; never reuse or rename an id. Price 0 = everyone has
+- Items are data in `packages/shared/src/items.ts` (`core:avatar-<look>`,
+  `core:frame-<look>`, `core:card-back-<look>`, `core:emote-<look>`). Append new ones; never reuse or rename an id. Price 0 = everyone has
   it, so free items are never stored.
 - `InventoryService` owns `inventory_items` (user, item). `inventory:get { userId? }` returns a
-  `Profile` (yours, or anyone's, read-only); `inventory:equip { itemId }` sets `users.frame` or
-  `users.card_back` through `AccountsService.setLooks`, then the gateway refreshes the user's
-  rooms so everyone sees the new look. `profile:update` also refuses a frame you don't own.
+  `Profile` (yours, or anyone's, read-only); `inventory:equip { itemId }` sets `users.avatar`,
+  `users.frame` or `users.card_back` through `AccountsService.setLooks`, then the gateway refreshes
+  the user's rooms so everyone sees the new look. `profile:update` also refuses an avatar or frame
+  you don't own. The avatar items that were selectable before the shop was added are granted to
+  existing accounts by migration `0007_avatar_items`; the equipped avatar is also preserved on first inventory read.
 - `ShopService.buy` charges through `LedgerService.apply` with key `shop:<user>:<item>`, so a
   repeated buy is never charged twice; `insufficient` becomes "Không đủ xu", owned "Bạn đã có
   món này".
+- `emote:send { emote }` accepts an owned emote look, enforces a short per-account cooldown, and
+  pushes `room:emote { playerId, emote }` to the room. Emotes are not equipped; each game's Godot
+  table chooses their position, animation and lifetime.
 - `dev:coins { amount }` (dev mode only) adds coins, for tests and the sandbox.
 
 ## Events

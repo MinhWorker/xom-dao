@@ -36,6 +36,19 @@ describe('AccountsService', () => {
     await expect(accounts.register({ ...minh, password: '123' })).rejects.toThrow('ít nhất 6');
   });
 
+  it('starts with free avatar and frame choices only', async () => {
+    const accounts = newService();
+    await expect(accounts.register({ ...minh, avatar: 'fox' })).rejects.toThrow(
+      'Ảnh đại diện này chưa có',
+    );
+    await expect(accounts.register({ ...minh, frame: 'jade' })).rejects.toThrow(
+      'Khung này chưa có',
+    );
+    await expect(accounts.register(minh)).resolves.toMatchObject({
+      user: { avatar: 'boy', frame: 'gold' },
+    });
+  });
+
   it('refuses a wrong password or unknown user with the same message', async () => {
     const accounts = newService();
     await accounts.register(minh);

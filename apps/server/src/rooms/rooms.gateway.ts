@@ -3,6 +3,7 @@ import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/com
 import { ConsoleError, type ConsoleIssue } from '@xomdao/sdk';
 import {
   COIN,
+  itemFor,
   type JoinedRoom,
   type RoomRole,
   type ServerToClientEvents,
@@ -68,6 +69,7 @@ const BOT_DELAY_MS = Number(process.env.BOT_DELAY_MS) || 700;
  * empty seats (QUICK_WAIT_MS overrides it).
  */
 const QUICK_WAIT_MS = Number(process.env.QUICK_WAIT_MS) || 6000;
+const EMOTE_COOLDOWN_MS = 700;
 
 /**
  * Translates client requests into RoomsService calls. Each handler's return value is sent back as
@@ -86,6 +88,8 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   private readonly gameTimers = new Map<string, NodeJS.Timeout>();
   /** Quick-match rooms waiting for people before the computer fills them, by room code. */
   private readonly quickTimers = new Map<string, NodeJS.Timeout>();
+  /** Per-account cooldowns for room emotes, stored as their expiry time. */
+  private readonly emoteCooldowns = new Map<string, number>();
   /** Logged-in clients (`WsGateway`). */
   private readonly connected = new Set<Client>();
   private pruner?: NodeJS.Timeout;
@@ -200,6 +204,14 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
         !(await this.inventory.ownsLook(me.id, 'frame', frame))
       ) {
         throw new InventoryError('Bạn chưa có khung này');
+      }
+      const avatar = (req as { avatar?: unknown } | null)?.avatar;
+      if (
+        typeof avatar === 'string' &&
+        avatar !== me.avatar &&
+        !(await this.inventory.ownsLook(me.id, 'avatar', avatar))
+      ) {
+        throw new InventoryError('Bạn chưa có ảnh đại diện này');
       }
       return { user: this.changed(await this.accounts.updateProfile(me.id, req)) };
     });
@@ -377,6 +389,36 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     return this.handle(() => {
       const { roomCode, playerId } = this.requireSeat(socket);
       this.broadcast(this.rooms.move(roomCode, playerId, req?.move));
+      return {};
+    });
+  }
+
+  @On('emote:send')
+  sendEmote(socket: Client, req: { emote?: unknown }) {
+    return this.handle(async () => {
+      const { roomCode, playerId } = this.requireSeat(socket);
+      const room = this.rooms.roomOf(playerId);
+      if (!room || room.code !== roomCode) throw new RoomError('Bạn chưa ở trong phòng này');
+
+      const emote = typeof req?.emote === 'string' ? req.emote : '';
+      const item = itemFor('emote', emote);
+      if (!item) throw new InventoryError('Biểu cảm không hợp lệ');
+      if (!(await this.inventory.owns(playerId, item.id)))
+        throw new InventoryError('Bạn chưa có biểu cảm này');
+
+      const now = Date.now();
+      const expiresAt = this.emoteCooldowns.get(playerId) ?? 0;
+      if (expiresAt > now) throw new RoomError('Chờ một chút rồi gửi lại biểu cảm');
+      const nextExpiry = now + EMOTE_COOLDOWN_MS;
+      this.emoteCooldowns.set(playerId, nextExpiry);
+      const cleanup = setTimeout(() => {
+        if (this.emoteCooldowns.get(playerId) === nextExpiry) this.emoteCooldowns.delete(playerId);
+      }, EMOTE_COOLDOWN_MS);
+      cleanup.unref();
+
+      for (const client of this.clients()) {
+        if (client.data.roomCode === roomCode) client.emit('room:emote', { playerId, emote });
+      }
       return {};
     });
   }

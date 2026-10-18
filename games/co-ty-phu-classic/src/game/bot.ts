@@ -1,10 +1,17 @@
 import type { GameEvent } from '@xomdao/sdk';
-import { BOARD, isDeed, STATION_CONTRIBUTION_STEP, type State } from './model.js';
-import { bankHotels, bankHouses, redeemAmount } from './rules.js';
+import { BOARD, isDeed, STATION_INITIAL_CONTRIBUTION, type State } from './model.js';
+import { nextStationContribution, redeemAmount } from './rules.js';
 
 const event = (name: string, payload?: object): GameEvent => ({ event: name, payload });
-const deedValue = (square: number | null) =>
-  square === null ? 0 : (BOARD[square]?.price ?? 0) * 1.1;
+const deedValue = (state: State, square: number | null) => {
+  if (square === null) return 0;
+  const cell = BOARD[square];
+  const price =
+    cell?.kind === 'station'
+      ? (state.properties[square]?.acquisitionCost ?? STATION_INITIAL_CONTRIBUTION)
+      : (cell?.price ?? 0);
+  return price * 1.1;
+};
 
 /** One legal decision per server tick. Every active phase has an exit. */
 export function botMove(state: State, seat: number): GameEvent | null {
@@ -14,16 +21,16 @@ export function botMove(state: State, seat: number): GameEvent | null {
   if (state.phase === 'trade') {
     const trade = state.trade;
     if (trade?.to !== seat) return null;
-    const offered = deedValue(trade.give) + trade.giveCash + (trade.giveCard ? 200 : 0);
-    const requested = deedValue(trade.take) + trade.takeCash + (trade.takeCard ? 200 : 0);
+    const offered = deedValue(state, trade.give) + trade.giveCash + (trade.giveCard ? 200 : 0);
+    const requested = deedValue(state, trade.take) + trade.takeCash + (trade.takeCard ? 200 : 0);
     return event(offered >= requested ? 'accept-trade' : 'decline-trade');
   }
 
   if (state.phase === 'auction') {
     const auction = state.auction;
     if (!auction || auction.bidder !== seat) return null;
-    const contribution = auction.highest + STATION_CONTRIBUTION_STEP;
-    const limit = Math.min(me.cash - 100, Math.floor(BOARD[auction.square]!.price! * 0.9));
+    const contribution = nextStationContribution(auction.highest);
+    const limit = me.cash - 100;
     return limit >= contribution ? event('bid', { amount: contribution }) : event('pass');
   }
 
@@ -37,11 +44,7 @@ export function botMove(state: State, seat: number): GameEvent | null {
   if (state.phase === 'debt') {
     if (me.cash >= state.debt!.amount) return event('pay-debt');
     const house = state.properties.findIndex(
-      (property) =>
-        property.owner === seat &&
-        !property.mortgaged &&
-        property.houses > 0 &&
-        (property.houses !== 5 || bankHouses(state) >= 4),
+      (property) => property.owner === seat && !property.mortgaged && property.houses > 0,
     );
     if (house >= 0) return event('sell-house', { square: house });
     const mortgage = state.properties.findIndex(
@@ -63,7 +66,7 @@ export function botMove(state: State, seat: number): GameEvent | null {
       if (property.owner !== seat || cell.kind !== 'street' || property.houses >= 5) return false;
       if (state.buildable !== square || me.position !== square || property.mortgaged) return false;
       if (me.cash < cell.houseCost! + 200) return false;
-      return property.houses === 4 ? bankHotels(state) > 0 : bankHouses(state) > 0;
+      return true;
     });
     if (build >= 0) return event('build', { square: build });
     if (state.phase === 'end') return event('end-turn');

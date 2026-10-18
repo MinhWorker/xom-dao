@@ -22,7 +22,7 @@ import { ITEM_SLOTS } from './items.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 8;
+export const PROTOCOL_VERSION = 10;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
@@ -89,6 +89,8 @@ export const GameResultSchema = z.object({
 });
 
 export const LastMove = z.object({ seq: z.int(), player: z.string(), move: z.unknown() });
+/** One player's room emote; the game client chooses how and where to draw it. */
+export const RoomEmote = z.object({ playerId: z.string(), emote: z.string() });
 export const RoomTimer = z.object({ event: z.string(), ms: z.number(), left: z.number() });
 export const Played = z.object({ ms: z.number(), running: z.boolean() });
 
@@ -481,6 +483,8 @@ export const requests = {
   /** `move` is `{ event, payload }`: one of the game's events. */
   'game:move': { req: z.object({ move: z.unknown() }), res: Empty },
   'game:restart': { req: Empty, res: Empty },
+  /** Send an owned emote to everyone currently in your room. */
+  'emote:send': { req: z.object({ emote: z.string() }), res: Empty },
 };
 
 /** What the server pushes. */
@@ -489,6 +493,8 @@ export const events = {
   'lobby:rooms': LobbyRooms,
   /** The room was disbanded (no players left); everyone still inside is sent out. */
   'room:closed': RoomClosed,
+  /** A player sent an owned emote; the game's table draws it. */
+  'room:emote': RoomEmote,
   /** A game you played ended and paid you (once per game, within its `meta.rewardCap`). */
   reward: RewardNotice,
   /** A game you played got you achievements; their rewards are paid. */
@@ -508,6 +514,7 @@ export const types = {
   Reward,
   GameResult: GameResultSchema,
   LastMove,
+  RoomEmote,
   RoomTimer,
   Played,
   RoomSnapshot,

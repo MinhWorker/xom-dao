@@ -27,7 +27,7 @@ Thêm file logic từ mẫu: `npm run new -- logic __ID__ [Tên]` (luật) hoặ
 
 - `npm run godot:export -- --debug`, `npm run dev`, rồi mở
   http://localhost:5033/?play=__ID__ để chơi với máy.
-- Kịch bản e2e: `npm run e2e -- --only godot-__ID__`.
+- Kiểm tra luật bằng `npm run check`, bàn chơi bằng `npm run godot:check`.
 
 ## Ghi công
 

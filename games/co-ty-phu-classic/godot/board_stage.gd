@@ -18,6 +18,9 @@ var _pawns: Array[Node3D] = []
 var _dice: Array[Node3D] = []
 var _pawn_shadows: Array[MeshInstance3D] = []
 var _die_shadows: Array[MeshInstance3D] = []
+var _force_render: bool = true
+var _stage_visible: bool = false
+var _aircraft_visible: bool = false
 
 
 func _ready() -> void:
@@ -26,7 +29,7 @@ func _ready() -> void:
 	_viewport.own_world_3d = true
 	_viewport.handle_input_locally = false
 	_viewport.msaa_3d = Viewport.MSAA_4X
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_viewport.size = Vector2i(1400, 1200)
 	add_child(_viewport)
 	_viewport.add_child(_world)
@@ -90,48 +93,90 @@ func _shadow() -> MeshInstance3D:
 
 
 func _process(_delta: float) -> void:
-	_viewport.render_target_update_mode = (
-		SubViewport.UPDATE_ALWAYS if is_visible_in_tree() else SubViewport.UPDATE_DISABLED
-	)
-	if not is_visible_in_tree() or host == null:
+	if not is_visible_in_tree():
+		_stage_visible = false
+		_force_render = true
+		_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		return
+	if not _stage_visible:
+		_force_render = true
+	_stage_visible = true
+	if host == null:
+		_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return
 	var board: Control = host.get("board")
 	if board == null or board.size.x <= 0.0:
+		_force_render = true
+		_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return
 	var density: float = clampf(board.size.x * 1.5 / BoardProjection.CROP.size.x, 0.5, 2.0)
-	_viewport.size = Vector2i((BoardProjection.RENDER_SIZE * density).round())
+	var changed: bool = false
+	var target_size := Vector2i((BoardProjection.RENDER_SIZE * density).round())
+	if _viewport.size != target_size:
+		_viewport.size = target_size
+		changed = true
 	var actual: Vector2 = Vector2(_viewport.size) / BoardProjection.RENDER_SIZE
-	_atlas.region = Rect2(
-		BoardProjection.CROP.position * actual, BoardProjection.CROP.size * actual
-	)
-	_surface.position = board.position
-	_surface.size = board.size
-	_sync_pawns(board)
-	_sync_dice(board)
+	var region := Rect2(BoardProjection.CROP.position * actual, BoardProjection.CROP.size * actual)
+	if _atlas.region != region:
+		_atlas.region = region
+		changed = true
+	if _surface.position != board.position:
+		_surface.position = board.position
+	if _surface.size != board.size:
+		_surface.size = board.size
+	if _sync_pawns(board):
+		changed = true
+	if _sync_dice(board):
+		changed = true
+	if aircraft.visible:
+		changed = true
+	if _aircraft_visible != aircraft.visible:
+		changed = true
+	_aircraft_visible = aircraft.visible
+	if changed or _force_render:
+		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+		_force_render = false
+	else:
+		_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 
-func _sync_pawns(board: Control) -> void:
+func _sync_pawns(board: Control) -> bool:
+	var changed: bool = false
 	var anchors: Array = host.get("pawns")
 	for seat: int in 4:
 		var active: bool = seat < anchors.size() and (anchors[seat] as Control).visible
-		_pawns[seat].visible = active
-		_pawn_shadows[seat].visible = active
+		if _pawns[seat].visible != active:
+			_pawns[seat].visible = active
+			changed = true
+		if _pawn_shadows[seat].visible != active:
+			_pawn_shadows[seat].visible = active
+			changed = true
 		if not active:
 			continue
 		var anchor: Control = anchors[seat]
 		var foot: Vector2 = anchor.position + Vector2(anchor.size.x / 2.0, anchor.size.y * 0.92)
 		var ground: Vector3 = BoardProjection.world(board, foot)
 		var height: float = anchor.get("elevation")
-		_pawns[seat].position = ground + Vector3.UP * height
-		_contact(_pawn_shadows[seat], ground, 0.065, height)
+		var pawn_position := ground + Vector3.UP * height
+		if _pawns[seat].position != pawn_position:
+			_pawns[seat].position = pawn_position
+			changed = true
+		if _contact(_pawn_shadows[seat], ground, 0.065, height):
+			changed = true
+	return changed
 
 
-func _sync_dice(board: Control) -> void:
+func _sync_dice(board: Control) -> bool:
+	var changed: bool = false
 	var anchors: Array = host.get("dice")
 	for k: int in mini(2, anchors.size()):
 		var anchor: Control = anchors[k]
-		_dice[k].visible = anchor.visible
-		_die_shadows[k].visible = anchor.visible
+		if _dice[k].visible != anchor.visible:
+			_dice[k].visible = anchor.visible
+			changed = true
+		if _die_shadows[k].visible != anchor.visible:
+			_die_shadows[k].visible = anchor.visible
+			changed = true
 		var foot: Vector2 = anchor.get("ground")
 		var ground: Vector3 = BoardProjection.world(board, foot)
 		var edge: float = ground.distance_to(
@@ -144,19 +189,34 @@ func _sync_dice(board: Control) -> void:
 			* BoardProjection.face_up(int(anchor.get("value")))
 		)
 		var support: float = edge * BoardProjection.clearance(orientation)
-		_dice[k].transform = (
+		var die_transform := (
 			Transform3D(orientation, ground + Vector3.UP * (support + height))
 			. scaled_local(Vector3.ONE * edge)
 		)
-		_contact(_die_shadows[k], ground, edge * 0.83, height)
+		if _dice[k].transform != die_transform:
+			_dice[k].transform = die_transform
+			changed = true
+		if _contact(_die_shadows[k], ground, edge * 0.83, height):
+			changed = true
+	return changed
 
 
-func _contact(shadow: MeshInstance3D, ground: Vector3, radius: float, height: float) -> void:
-	shadow.position = ground + Vector3.UP * 0.001
-	shadow.scale = Vector3.ONE * radius * (1.0 + height * 0.8)
-	(shadow.material_override as ShaderMaterial).set_shader_parameter(
-		"opacity", 0.30 / (1.0 + height * 3.0)
-	)
+func _contact(shadow: MeshInstance3D, ground: Vector3, radius: float, height: float) -> bool:
+	var changed: bool = false
+	var shadow_position := ground + Vector3.UP * 0.001
+	var shadow_scale := Vector3.ONE * radius * (1.0 + height * 0.8)
+	var opacity: float = 0.30 / (1.0 + height * 3.0)
+	if shadow.position != shadow_position:
+		shadow.position = shadow_position
+		changed = true
+	if shadow.scale != shadow_scale:
+		shadow.scale = shadow_scale
+		changed = true
+	var material := shadow.material_override as ShaderMaterial
+	if material.get_shader_parameter("opacity") != opacity:
+		material.set_shader_parameter("opacity", opacity)
+		changed = true
+	return changed
 
 
 func fly(board: Control, pawn: Control, target: Vector2, landed: Callable = Callable()) -> void:

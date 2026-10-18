@@ -28,6 +28,8 @@ signal room_changed(room_code: String)
 signal rewarded(notice: XomDaoRewardNotice)
 ## A game you played got you achievements (their rewards are already in `balances`).
 signal achieved(notice: XomDaoAchievementNotice)
+## A player in your room sent an owned emote; each game's table decides how to draw it.
+signal emote_received(emote: XomDaoRoomEmote)
 ## Any pushed event, as XomDaoProtocol.parse_event makes it (lobby:rooms, room:closed…).
 signal event_received(event: String, data: Variant)
 ## A request failed: the server's message (Vietnamese), or "offline".
@@ -159,6 +161,24 @@ func send(event: String, payload: Dictionary = {}) -> bool:
 	return not (await _ok(XomDaoProtocol.GAME_MOVE, {"move": move})).is_empty()
 
 
+## Sends one of your emotes by its look id (for example "happy").
+func send_emote(emote: String) -> bool:
+	return not (await _ok(XomDaoProtocol.EMOTE_SEND, {"emote": emote})).is_empty()
+
+
+## The look ids of your emote items, in the shared catalog's order.
+func owned_emotes() -> Array[String]:
+	var reply: Dictionary = await _ok(XomDaoProtocol.INVENTORY_GET)
+	if reply.is_empty():
+		return []
+	var profile := XomDaoProfile.from_dict(reply)
+	var looks: Array[String] = []
+	for item_id: String in profile.owned:
+		if item_id.begins_with("core:emote-"):
+			looks.append(item_id.trim_prefix("core:emote-"))
+	return looks
+
+
 ## Sends any request and returns the server's raw reply (`{ "ok": true, ... }` or
 ## `{ "ok": false, "error": ... }`).
 func request(event: String, data: Dictionary = {}) -> Dictionary:
@@ -244,6 +264,8 @@ func _receive(text: String) -> void:
 	elif data is XomDaoAchievementNotice:
 		balances = data.balances
 		achieved.emit(data)
+	elif data is XomDaoRoomEmote:
+		emote_received.emit(data)
 	event_received.emit(event, data)
 
 

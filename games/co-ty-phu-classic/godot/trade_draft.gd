@@ -18,7 +18,7 @@ func reset() -> void:
 	take_cash = 0
 
 
-func choose(side: int, square: int) -> void:
+func choose(side: int, square: int, properties: Array = []) -> void:
 	if pending:
 		return
 	if square == -2:
@@ -38,15 +38,21 @@ func choose(side: int, square: int) -> void:
 	else:
 		take = -1 if take == square else square
 
-	quote()
+	quote(properties)
 
 
-func quote() -> void:
-	var value: int = (
-		(Rules.price(take) if take >= 0 else 0) - (Rules.price(give) if give >= 0 else 0)
-	)
+func quote(properties: Array = []) -> void:
+	var give_value: int = _deed_price(properties, give) if give >= 0 else 0
+	var take_value: int = _deed_price(properties, take) if take >= 0 else 0
+	var value: int = take_value - give_value
 	give_cash = maxi(0, value)
 	take_cash = maxi(0, -value)
+
+
+func _deed_price(properties: Array, square: int) -> int:
+	return (
+		Rules.deed_price(properties, square) if square < properties.size() else Rules.price(square)
+	)
 
 
 func observe(trade: Variant) -> void:

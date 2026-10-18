@@ -2,8 +2,9 @@ class_name HubShop
 extends Control
 ## Chợ (docs/experience.md): the items for sale (not the free ones), each with its price and
 ## Mua, or "Đã có". Laid out to grow both ways:
-## - a row of tabs under the top bar, one per kind of item (`TABS`: Khung, Lưng bài) — more
-##   kinds add tabs sideways;
+## - a row of tabs under the top bar, one per kind of item (`TABS`: Ảnh đại diện, Khung, Lưng bài,
+##   Biểu cảm)
+##   — more kinds add tabs sideways;
 ## - a column of filters on the left (`FILTERS`: Tất cả, Chưa có, Đã có) — more groups add
 ##   rows downwards;
 ## - a grid of item cards (HubShopCard) that fills the rest and scrolls down.
@@ -14,7 +15,9 @@ signal back_pressed
 signal buy_requested(item_id: String)
 
 ## The kinds of item: slot, label.
-const TABS: Array = [["frame", "Khung"], ["card-back", "Lưng bài"]]
+const TABS: Array = [
+	["avatar", "Ảnh đại diện"], ["frame", "Khung"], ["card-back", "Lưng bài"], ["emote", "Biểu cảm"]
+]
 ## The filters: id, label, icon.
 const FILTERS: Array = [
 	["all", "Tất cả", "storefront"],
@@ -242,13 +245,36 @@ func _card(item: XomDaoShopItem) -> HubShopCard:
 		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		card.foot.add_child(chip)
 		return card
-	var buy: XomDaoButton = XomDaoButton.create(
-		"Mua %s" % XomDaoUi.money(item.price), XomDaoUi.Kind.CONFIRM
-	)
-	buy.name = "Buy_" + HubItemTile.key_of(item.id)
+	var key: String = HubItemTile.key_of(item.id)
+	var buy: XomDaoButton = XomDaoButton.create("", XomDaoUi.Kind.CONFIRM)
+	buy.name = "Buy_" + key
 	buy.pad = 12.0
 	buy.custom_minimum_size = Vector2(HubShopCard.SIZE.x - 24.0, 60.0)
-	buy.add_theme_font_size_override("font_size", 28)
+	var price_row := HBoxContainer.new()
+	price_row.name = "PriceContent_" + key
+	price_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	price_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	price_row.add_theme_constant_override("separation", 8)
+	price_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var coin := XomDaoResourceIcon.new()
+	coin.name = "Coin_" + key
+	coin.custom_minimum_size = Vector2(36.0, 36.0)
+	price_row.add_child(coin)
+	var price := Label.new()
+	price.name = "Price_" + key
+	price.text = XomDaoUi.money(item.price)
+	var confirm_colors: Array[Color] = XomDaoUi.kind_colors(XomDaoUi.Kind.CONFIRM)
+	price.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	price.add_theme_font_override("font", XomDaoUi.display_font(800))
+	price.add_theme_font_size_override("font_size", 28)
+	price.add_theme_color_override("font_color", XomDaoUi.CREAM)
+	price.add_theme_color_override(
+		"font_outline_color", Color(confirm_colors[1].darkened(0.25), 0.85)
+	)
+	price.add_theme_constant_override("outline_size", 4)
+	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	price_row.add_child(price)
+	buy.add_child(price_row)
 	if item.price > _coins:
 		buy.modulate = Color(1, 1, 1, 0.6)
 	buy.pressed.connect(func() -> void: buy_requested.emit(item.id))

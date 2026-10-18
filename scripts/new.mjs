@@ -6,8 +6,8 @@
 //   npm run new -- options <game>                 src/game/options.ts: the room's options
 //
 // A game or event is a small working one: rules + tests (src/), its Godot table in a sample
-// layout (godot/: Bàn or Hành động, docs/experience.md) with GUT tests, an e2e scenario
-// (scripts/e2e/scenarios/godot-<id>.mjs), RULES.md, a README and a stand-in card picture.
+// layout (godot/: Bàn or Hành động, docs/experience.md) with GUT tests, RULES.md, a README and a
+// stand-in card picture. Events also get an E2E scenario for their clock and reward flow.
 //
 // For one file, run from inside games/<id>/ and <game> can be left out. Name defaults to the
 // game's name in PascalCase. Existing files are never overwritten.
@@ -92,8 +92,8 @@ function newGame(event, id, name = id) {
   if (!isId(id)) fail('Give the game an id like "tien-len".');
   const target = join(root, 'games', id);
   if (existsSync(target)) fail(`games/${id} already exists`);
-  const scenario = join(root, 'scripts/e2e/scenarios', `godot-${id}.mjs`);
-  if (existsSync(scenario)) fail(`${relative(root, scenario)} already exists`);
+  const scenario = event ? join(root, 'scripts/e2e/scenarios', `godot-${id}.mjs`) : null;
+  if (scenario && existsSync(scenario)) fail(`${relative(root, scenario)} already exists`);
   const values = { __ID__: id, __NAME__: name, __Name__: pascal(id) };
   if (event) {
     values.__GENRE__ = EVENT_GENRE;
@@ -131,7 +131,7 @@ function newGame(event, id, name = id) {
   write(join(godot, 'main.gd'), `godot/${event ? 'event' : flags.layout}/main.gd`, values);
   write(join(godot, 'main.tscn'), 'godot/main.tscn', values);
   write(join(godot, 'test/test_main.gd'), `godot/test/${event ? 'event' : 'table'}.gd`, values);
-  write(scenario, `e2e/${event ? 'event' : 'table'}.mjs`, values);
+  if (scenario) write(scenario, 'e2e/event.mjs', values);
 
   // Links the new workspace package and regenerates the game list.
   const run = (command, list) => {
@@ -156,13 +156,13 @@ Created games/${id}/ (status: 'wip', locked on the production site until you set
   src/index.ts   its meta: genre, card, ${event ? 'dates and reward tiers' : 'room options'}
   godot/main.gd   its table in the Godot client (${values.__LAYOUT__} layout)
   RULES.md   its rules for players, in Vietnamese
-  scripts/e2e/scenarios/godot-${id}.mjs   its browser test
+  ${event ? `scripts/e2e/scenarios/godot-${id}.mjs   event browser test` : ''}
 
   npm run godot:check   GDScript checks and GUT tests (writes .uid files: commit them)
   npm run check   lint, type checks and tests
   npm run godot:export -- --debug, then npm run dev (restart it if it was running) and open
     http://localhost:5033/?play=${id}   to try it alone
-  npm run e2e -- --only godot-${id}
+  ${event ? `npm run e2e -- --only godot-${id}` : ''}
 `);
 }
 

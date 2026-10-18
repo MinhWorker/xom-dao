@@ -4,6 +4,7 @@ extends Control
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
 const Coins := preload("res://content/co-ty-phu-classic/station_coins.gd")
 const Details := preload("res://content/co-ty-phu-classic/special_details.gd")
+const DIE := preload("res://content/co-ty-phu-classic/art/tile-dice.svg")
 const SYMBOLS: Dictionary = {
 	"start": preload("res://content/co-ty-phu-classic/art/tile-start.svg"),
 	"airport": preload("res://content/co-ty-phu-classic/art/tile-airport.svg"),
@@ -133,7 +134,8 @@ static func rows(i: int) -> Dictionary:
 			"width": span.x * 0.90,
 			"label_height": span.y * 0.25,
 			"label_size": 22.0,
-			"symbol_size": minf(span.x, span.y) * 0.43
+			"symbol_size": minf(span.x, span.y) * 0.43,
+			"span": span
 		}
 	if not Rules.is_deed(i) and SYMBOLS.has(symbol_kind(i)):
 		if symbol_kind(i) == "chest":
@@ -143,7 +145,8 @@ static func rows(i: int) -> Dictionary:
 				"width": span.x * 0.58,
 				"label_height": span.y * 0.70,
 				"label_size": 24.0,
-				"symbol_size": minf(span.x * 0.26, span.y * 0.68)
+				"symbol_size": minf(span.x * 0.26, span.y * 0.68),
+				"span": span
 			}
 		return {
 			"label": Vector2(0.5, 0.25),
@@ -151,7 +154,8 @@ static func rows(i: int) -> Dictionary:
 			"width": span.x * 0.84,
 			"label_height": span.y * 0.30,
 			"label_size": 22.0,
-			"symbol_size": minf(span.x * 0.76, span.y * 0.50)
+			"symbol_size": minf(span.x * 0.76, span.y * 0.50),
+			"span": span
 		}
 
 	var column: bool = (i > 10 and i < 20) or i > 30
@@ -162,6 +166,17 @@ static func rows(i: int) -> Dictionary:
 	var y: float = 0.28 if i < 10 else 0.23
 	if column:
 		y = 0.25
+	var symbol_at := Vector2(x - 0.17 if column else x, 0.65 if column else (0.45 if top else 0.53))
+	var number_at := Vector2(x + 0.14 if column else x, 0.65 if column else (0.68 if top else 0.76))
+	var number_width: float = span.x * (0.30 if column else 0.83)
+	var symbol_size: float = minf(
+		span.x * (0.64 if top else 0.74), span.y * (0.46 if column else 0.38)
+	)
+	if column and symbol_kind(i) in ["power", "water"]:
+		symbol_at = Vector2(x - 0.22, 0.65)
+		number_at = Vector2(x + 0.18, 0.65)
+		number_width = span.x * 0.46
+		symbol_size = minf(span.x * 0.40, span.y * 0.32)
 	if symbol_kind(i) == "station":
 		return {
 			"label": Vector2(x, y),
@@ -171,17 +186,19 @@ static func rows(i: int) -> Dictionary:
 			"label_size": minf(22.0, span.y * 0.25),
 			"number_width": span.x * (0.30 if column else 0.83),
 			"number_size": minf(24.0, span.y * 0.20),
-			"symbol_size": minf(span.x * 0.64, span.y * (0.34 if column else 0.28))
+			"symbol_size": minf(span.x * 0.64, span.y * (0.34 if column else 0.28)),
+			"span": span
 		}
 	return {
 		"label": Vector2(x, y),
-		"symbol": Vector2(x - 0.17 if column else x, 0.65 if column else (0.45 if top else 0.53)),
-		"number": Vector2(x + 0.14 if column else x, 0.65 if column else (0.68 if top else 0.76)),
+		"symbol": symbol_at,
+		"number": number_at,
 		"width": span.x * (0.60 if column else 0.83),
 		"label_size": minf(22.0, span.y * (0.29 if column else 0.25)),
-		"number_width": span.x * (0.30 if column else 0.83),
+		"number_width": number_width,
 		"number_size": minf(22.0 if top else 29.0, span.y * (0.38 if column else 0.28)),
-		"symbol_size": minf(span.x * (0.64 if top else 0.74), span.y * (0.46 if column else 0.38))
+		"symbol_size": symbol_size,
+		"span": span
 	}
 
 
@@ -223,14 +240,17 @@ func _draw() -> void:
 				layout["label_size"],
 				ink
 			)
-			_line(
-				i,
-				deed_amount_text(i),
-				layout["number"],
-				layout["number_width"],
-				layout["number_size"],
-				INK
-			)
+			if kind in ["power", "water"] and deed.get("owner") != null:
+				_draw_utility_multiplier(i, layout)
+			else:
+				_line(
+					i,
+					deed_amount_text(i),
+					layout["number"],
+					layout["number_width"],
+					layout["number_size"],
+					INK
+				)
 		else:
 			var box: Rect2 = host.call("name_box", i)
 			var span: Vector2 = plane_size(i)
@@ -276,6 +296,8 @@ func deed_amount_text(i: int) -> String:
 	var deed: Dictionary = view["properties"][i]
 	if deed.get("owner") == null:
 		return compact_number(Rules.price(i))
+	if symbol_kind(i) in ["power", "water"]:
+		return "×%d" % Rules.utility_multiplier(view, i)
 
 	var rent: int = Rules.rent(view, i)
 	var multiplier: int = Rules.rent_multiplier(view, i)
@@ -283,3 +305,55 @@ func deed_amount_text(i: int) -> String:
 		var base_rent: int = int(float(rent) / float(multiplier))
 		return "%s×%d" % [compact_number(base_rent), multiplier]
 	return compact_number(rent)
+
+
+static func utility_indicator_layout(layout: Dictionary) -> Dictionary:
+	var center: Vector2 = layout["number"]
+	var span_x: float = float(layout["span"].x) if layout.has("span") else 100.0
+	var width_uv: float = float(layout["number_width"]) / span_x
+	var left_uv: float = center.x - width_uv * 0.5
+	var right_uv: float = center.x + width_uv * 0.5
+	var icon_width_uv: float = width_uv * 0.36
+	var gap_uv: float = width_uv * 0.08
+	var icon_left_uv: float = left_uv
+	var icon_right_uv: float = left_uv + icon_width_uv
+	var text_left_uv: float = icon_right_uv + gap_uv
+	var text_right_uv: float = right_uv
+	var icon_center_uv: float = (icon_left_uv + icon_right_uv) * 0.5
+	var text_center_uv: float = (text_left_uv + text_right_uv) * 0.5
+	return {
+		"left": left_uv,
+		"right": right_uv,
+		"icon_left": icon_left_uv,
+		"icon_right": icon_right_uv,
+		"icon_center": icon_center_uv,
+		"icon_width": icon_width_uv * span_x,
+		"text_left": text_left_uv,
+		"text_right": text_right_uv,
+		"text_center": text_center_uv,
+		"text_width": (text_right_uv - text_left_uv) * span_x,
+	}
+
+
+func _draw_utility_multiplier(i: int, layout: Dictionary) -> void:
+	var number: Vector2 = layout["number"]
+	var indicator: Dictionary = utility_indicator_layout(layout)
+	var texture_size: Vector2 = Vector2(DIE.get_size())
+	var frame: Transform2D = surface_transform(i, Vector2(indicator["icon_center"], number.y), size)
+	var icon_size: float = minf(
+		float(layout["number_size"]) * 0.72,
+		float(indicator["icon_width"]) * frame.x.length() * 0.88
+	)
+	var scale_x: float = icon_size / (texture_size.x * maxf(frame.x.length(), 0.001))
+	var scale_y: float = icon_size / (texture_size.y * maxf(frame.y.length(), 0.001))
+	draw_set_transform_matrix(frame.scaled_local(Vector2(scale_x, scale_y)))
+	draw_texture_rect(DIE, Rect2(-texture_size / 2.0, texture_size), false, Color.WHITE)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
+	_line(
+		i,
+		"×%d" % Rules.utility_multiplier(view, i),
+		Vector2(indicator["text_center"], number.y),
+		float(indicator["text_width"]),
+		float(layout["number_size"]) * 0.82,
+		INK
+	)

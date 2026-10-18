@@ -83,6 +83,8 @@ func spotlight(at: Vector2, radius: float) -> void:
 func _draw() -> void:
 	if _spotlight_power > 0.0:
 		_draw_spotlight()
+	if closure <= 0.001:
+		return
 	var half: float = size.x / 2.0
 	var gap: float = half * (1.0 - closure)
 	_door(-gap, half, 0)
@@ -93,26 +95,39 @@ func _draw_spotlight() -> void:
 	var power: float = clampf(_spotlight_power, 0.0, 1.0)
 	var center: Vector2 = _spotlight_at
 	var radius: float = _spotlight_radius
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.015, 0.025, 0.06, 0.34 * power))
-	var beam := PackedVector2Array(
-		[
-			Vector2(center.x - radius * 0.12, -size.y * 0.06),
-			Vector2(center.x + radius * 0.12, -size.y * 0.06),
-			center + Vector2(radius, radius * 0.24),
-			center + Vector2(-radius, radius * 0.24),
-		]
-	)
-	draw_colored_polygon(beam, Color(1.0, 0.91, 0.68, 0.13 * power))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.015, 0.025, 0.06, 0.48 * power))
+	var source := Vector2(center.x, -size.y * 0.08)
+	for layer: int in 3:
+		var spread: float = float(layer + 1)
+		var beam := PackedVector2Array(
+			[
+				Vector2(source.x - radius * 0.035 * spread, source.y),
+				Vector2(source.x + radius * 0.035 * spread, source.y),
+				center + Vector2(radius * (0.20 + spread * 0.22), 0.0),
+				center - Vector2(radius * (0.20 + spread * 0.22), 0.0),
+			]
+		)
+		var alpha: float = [0.09, 0.075, 0.06][layer] * power
+		draw_colored_polygon(beam, Color(1.0, 0.84, 0.48, alpha))
 	draw_line(
-		Vector2(center.x, -size.y * 0.06),
-		center,
-		Color(1.0, 0.93, 0.72, 0.2 * power),
-		maxf(1.0, size.x * 0.0015),
+		source, center, Color(1.0, 0.95, 0.76, 0.34 * power), maxf(1.0, size.x * 0.0022), true
+	)
+	draw_circle(source, radius * 0.13, Color(1.0, 0.96, 0.78, 0.38 * power))
+	draw_circle(source, radius * 0.25, Color(1.0, 0.87, 0.55, 0.14 * power))
+	draw_set_transform(center, 0.0, Vector2(1.65, 0.55))
+	draw_circle(Vector2.ZERO, radius * 0.82, Color(1.0, 0.73, 0.28, 0.24 * power))
+	draw_circle(Vector2.ZERO, radius * 0.48, Color(1.0, 0.91, 0.62, 0.30 * power))
+	draw_arc(
+		Vector2.ZERO,
+		radius * 0.96,
+		0.0,
+		TAU,
+		48,
+		Color(1.0, 0.87, 0.52, 0.42 * power),
+		maxf(1.0, radius * 0.035),
 		true
 	)
-	draw_set_transform(center, 0.0, Vector2(1.55, 0.58))
-	draw_circle(Vector2.ZERO, radius, Color(1.0, 0.82, 0.38, 0.19 * power))
-	draw_circle(Vector2.ZERO, radius * 0.62, Color(1.0, 0.93, 0.67, 0.14 * power))
+	draw_set_transform(Vector2.ZERO)
 	draw_arc(
 		Vector2.ZERO,
 		radius * 0.94,

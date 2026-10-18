@@ -1,6 +1,10 @@
 extends GutTest
 ## Cờ tỷ phú Classic's table against made-up room snapshots (no server).
 
+const TileHud := preload("res://content/co-ty-phu-classic/tile_hud.gd")
+const BoardSurface := preload("res://content/co-ty-phu-classic/board_surface.gd")
+const DiceHotkey := preload("res://content/co-ty-phu-classic/dice_hotkey.gd")
+
 
 func _snapshot(view: Dictionary) -> XomDaoRoomSnapshot:
 	var people: Array = [
@@ -79,6 +83,14 @@ func _view(extra: Dictionary = {}) -> Dictionary:
 	return view
 
 
+func _rules_script() -> GDScript:
+	return load("res://content/co-ty-phu-classic/rules.gd")
+
+
+func _marks_script() -> GDScript:
+	return load("res://content/co-ty-phu-classic/marks.gd")
+
+
 func _table(view: Dictionary) -> Control:
 	var client: XomDaoClient = add_child_autofree(XomDaoClient.new())
 	client.player_id = "me"
@@ -122,6 +134,22 @@ func test_your_turn_offers_the_dice_and_jail_ways_out() -> void:
 	assert_false(_node(table, "UseCard").visible)
 
 
+func test_space_is_a_roll_hotkey_only_for_a_fresh_press_when_roll_is_allowed() -> void:
+	var space := InputEventKey.new()
+	space.keycode = KEY_SPACE
+	space.pressed = true
+	assert_true(DiceHotkey.should_roll(space, true))
+	assert_false(DiceHotkey.should_roll(space, false))
+	space.echo = true
+	assert_false(DiceHotkey.should_roll(space, true), "Key repeat does not send another roll")
+	space.echo = false
+	space.pressed = false
+	assert_false(DiceHotkey.should_roll(space, true), "Releasing Space does not roll")
+	space.pressed = true
+	space.keycode = KEY_ENTER
+	assert_false(DiceHotkey.should_roll(space, true), "Only Space is a dice shortcut")
+
+
 func test_buying_phase_and_square_touch_does_not_open_card() -> void:
 	var view := _view({"phase": "buy", "pending": 6, "dice": [2, 4]})
 	view["players"][0]["position"] = 6
@@ -132,6 +160,50 @@ func test_buying_phase_and_square_touch_does_not_open_card() -> void:
 	assert_true(_node(table, "Skip").visible)
 	_tap(_node(table, "Square_1"))
 	assert_false(_node(table, "Card").visible)
+
+
+func test_build_is_offered_after_doubles_on_your_own_street() -> void:
+	var view := _view({"phase": "roll", "dice": [3, 3], "doubles": 1, "buildable": 1})
+	view["players"][0]["position"] = 1
+	view["properties"][1]["owner"] = 0
+	var rules: GDScript = _rules_script()
+	var squares: Array = rules.get("SQUARES")
+	for i: int in 40:
+		if squares[i]["kind"] == "street" and i != 1:
+			view["properties"][i]["houses"] = 4
+	var table := _table(view)
+	assert_true(_node(table, "Build").visible)
+	assert_false((_node(table, "Build") as Button).disabled)
+	assert_eq(_text(table, "Build"), "Xây nhà 100")
+	assert_true(bool(table.get("_can_roll")))
+
+
+func test_right_sidebar_shows_the_tile_hud_instead_of_player_cards() -> void:
+	var table := _table(_view())
+	assert_false(_node(table, "Seat_0").visible)
+	assert_false(_node(table, "Seat_1").visible)
+	var tile_hud: Control = _node(table, "TileHud")
+	assert_true(tile_hud.visible)
+	assert_eq(int(tile_hud.get("current_square")), 0)
+	assert_eq(tile_hud.get("details")["name"], "Xuất phát")
+
+
+func test_tile_hud_summarizes_owner_price_rent_and_monopoly_progress() -> void:
+	var view := _view()
+	view["properties"][1]["owner"] = 0
+	view["properties"][2]["owner"] = 0
+	view["properties"][3]["owner"] = 1
+	var names: Array[String] = ["Bạn", "Máy 1", "Máy 2"]
+	var details: Dictionary = TileHud.summary(view, 1, names, 0)
+	var marks: GDScript = _marks_script()
+	assert_eq(details["name"], "Phú Quốc")
+	assert_eq(details["price"], 200)
+	assert_eq(details["rent"], 20)
+	assert_eq(details["owner_name"], "Bạn")
+	assert_eq(details["group_name"], "Nâu")
+	assert_eq(details["group_count"], 2)
+	assert_eq(details["group_size"], 3)
+	assert_eq(details["title_ink"], marks.call("owner_ink", 0))
 
 
 func test_a_drawn_card_waits_for_you() -> void:
@@ -149,7 +221,7 @@ func test_a_drawn_card_waits_for_you() -> void:
 	assert_false(_node(table, "Card").visible)
 	assert_false(_node(table, "Die_0").visible)
 	assert_eq(_text(table, "CardTitle"), "Cổ tức")
-	assert_eq(_text(table, "CardText"), "Nhận cổ tức 100.")
+	assert_eq(_text(table, "CardText"), "Nhận 100 ₫")
 	assert_true(_node(table, "Confirm").visible)
 	assert_false(bool(table.get("_can_roll")))
 
@@ -169,20 +241,27 @@ func test_debt_offers_bankruptcy_when_short() -> void:
 
 
 func test_a_station_contribution() -> void:
+	var rules: GDScript = _rules_script()
+	assert_eq(rules.call("bid_amount", _view({"auction": {"highest": 0}})), 50)
+	assert_eq(rules.call("bid_amount", _view({"auction": {"highest": 50}})), 100)
+	assert_eq(rules.call("bid_amount", _view({"auction": {"highest": 100}})), 200)
 	var auction: Dictionary = {
 		"square": 5, "highest": 50, "leader": 1, "passed": [], "bids": [0, 50, 0], "bidder": 0
 	}
 	var view := _view({"phase": "auction", "auction": auction, "pending": 5})
 	view["players"][0]["position"] = 5
 	var table := _table(view)
-	assert_eq(_text(table, "Bid"), "Góp 50")
+	assert_eq(_text(table, "Bid"), "Góp 100")
 	assert_false((_node(table, "Bid") as Button).disabled)
 	assert_eq(_text(table, "Pass"), "Từ bỏ")
 	assert_eq(_text(table, "Status"), "Bến Bắc: 50 ₫")
+	auction["highest"] = 100
+	table = _table(view)
+	assert_eq(_text(table, "Bid"), "Góp 200")
 
 
 func test_names_fit_on_their_squares() -> void:
-	var marks: GDScript = load("res://content/co-ty-phu-classic/marks.gd")
+	var marks: GDScript = _marks_script()
 	var font: Font = XomDaoUi.display_font(800)
 	var short: Dictionary = marks.call("fit_name", "Huế", font, Vector2(200.0, 40.0), 18)
 	assert_eq(short["lines"], ["Huế"])
@@ -197,7 +276,7 @@ func test_names_fit_on_their_squares() -> void:
 
 
 func test_assets_and_what_mortgaging_brings() -> void:
-	var rules: GDScript = load("res://content/co-ty-phu-classic/rules.gd")
+	var rules: GDScript = _rules_script()
 	var view := _view()
 	view["properties"][1]["owner"] = 0
 	view["properties"][1]["houses"] = 2
@@ -206,8 +285,8 @@ func test_assets_and_what_mortgaging_brings() -> void:
 	view["properties"][9]["mortgaged"] = true
 	view["players"][0]["freeCards"] = ["chance"]
 	assert_eq(rules.call("mortgage_squares", view["properties"], 0), [1, 5] as Array[int])
-	# 1000 cash + 200 ticket + (200 + 2 × 100) + 200 + 350 − ceil(175 × 1.1)
-	assert_eq(rules.call("asset_value", view, 0), 1000 + 200 + 400 + 200 + 350 - 193)
+	# 1000 cash + 200 ticket + (200 + 2 × 100) + 50 + 350 − ceil(175 × 1.1)
+	assert_eq(rules.call("asset_value", view, 0), 1000 + 200 + 400 + 50 + 350 - 193)
 
 
 func test_the_dice_paths_end_still() -> void:
@@ -249,7 +328,7 @@ func test_idle_dice_do_not_move_with_buttons_or_notice_length() -> void:
 	await get_tree().process_frame
 	table.call("_layout")
 	var rest: Vector2 = _node(table, "Die_0").position
-	var view: Dictionary = table.get("_view")
+	var view: Dictionary = table.get("_presented_view")
 	for phase: String in ["buy", "end", "roll"]:
 		view["phase"] = phase
 		view["pending"] = 6
@@ -260,16 +339,16 @@ func test_idle_dice_do_not_move_with_buttons_or_notice_length() -> void:
 		assert_eq(_node(table, "Die_0").position, rest, phase)
 
 
-func test_local_card_is_lowest_and_in_front_and_uses_avatar() -> void:
+func test_hidden_player_slots_keep_avatar_data_for_banknote() -> void:
 	var table := _table(_view())
 	await get_tree().process_frame
 	table.call("_layout")
 	var mine: Control = _node(table, "Seat_0")
 	var others: Control = _node(table, "Seat_1")
-	assert_gt(mine.position.y, others.position.y)
-	assert_gt(mine.get_index(), others.get_index())
+	assert_false(mine.visible)
+	assert_false(others.visible)
 	assert_true(bool(mine.get("local_player")))
-	assert_not_null((_node(table, "Seat_1") as XomDaoPlayerSlot).picture)
+	assert_not_null(others.get("picture"))
 	var ink: Control = table.get("_field_ink")
 	var thrower: Control = table.get("_throw")
 	assert_eq(ink.get_parent(), thrower)
@@ -291,7 +370,7 @@ func test_primary_board_action_keeps_its_slot_across_phases() -> void:
 	table.call("_layout")
 	var buy: Control = _node(table, "Buy")
 	var at: Vector2 = buy.position
-	var view: Dictionary = table.get("_view")
+	var view: Dictionary = table.get("_presented_view")
 	view["phase"] = "end"
 	table.call("_refresh")
 	await get_tree().process_frame
@@ -302,17 +381,16 @@ func test_primary_board_action_keeps_its_slot_across_phases() -> void:
 
 
 func test_ready_echo_does_not_repeat_a_reveal_but_a_new_event_does() -> void:
-	var surface: GDScript = load("res://content/co-ty-phu-classic/board_surface.gd")
 	var before: Dictionary = {"kind": "airport", "id": 3, "ready": false}
 	var echo: Dictionary = before.duplicate()
 	echo["ready"] = true
-	assert_false(bool(surface.call("event_changed", before, echo)))
-	assert_true(bool(surface.call("event_changed", before, {"kind": "card", "id": 3})))
+	assert_false(BoardSurface.event_changed(before, echo))
+	assert_true(BoardSurface.event_changed(before, {"kind": "card", "id": 3}))
 
 
 func test_event_snapshot_keeps_dice_visible_until_queued_roll_finishes() -> void:
 	var table := _table(_view())
-	var view: Dictionary = table.get("_view")
+	var view: Dictionary = table.get("_presented_view")
 	view["phase"] = "event"
 	table.set("_running", true)
 	table.call("_roll", [3, 4], 0)

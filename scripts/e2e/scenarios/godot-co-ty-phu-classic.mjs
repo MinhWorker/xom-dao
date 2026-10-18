@@ -22,12 +22,13 @@ export default async function run(t) {
   await cmd(
     page,
     [
-      ...[1, 3].flatMap((i) => [
+      ...[1, 2, 3].flatMap((i) => [
         `state set properties.${i}.owner ${me}`,
         `state set properties.${i}.houses 0`,
         `state set properties.${i}.mortgaged false`,
       ]),
       `state set properties.6.owner ${(me + 1) % 4}`,
+      `state set players.${me}.position 1`,
       `state set turn ${me}`,
       'state set phase "end"',
       'state set specialEvent null',
@@ -38,6 +39,14 @@ export default async function run(t) {
       'state set buildable null',
     ].join('; '),
   );
+  await page.waitForFunction(() => window.xomdao.rect('BuildPriceDrawerButton')?.width > 0, null, {
+    timeout: 60_000,
+  });
+  await tap(page, 'BuildPriceDrawerButton');
+  await page.waitForTimeout(450);
+  await page.screenshot({ path: t.shot('0-build-price-drawer.png') });
+  await tap(page, 'BuildPriceDrawerButton');
+  await page.waitForTimeout(350);
   await page.waitForFunction(() => window.xomdao.rect('LedgerOpen'), null, { timeout: 60000 });
   await tap(page, 'LedgerOpen');
   await tap(page, 'Estate_1');

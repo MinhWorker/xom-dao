@@ -29,7 +29,8 @@ hub/                main.gd routes the screens: lobby (island ring + HUD), selec
   touch_cancel.gd   DOM touchcancel capture for web gestures (before Godot releases the touch)
   ben/ room/        Bến; waiting room (seat cards, option rows), result, paged Luật board
   home/ shop/       Nhà (HubHome: tabs stacked down the left beside one page, someone else's
-                    read-only) and Chợ (HubShop)
+                    read-only; avatar and frame equipment lives in Túi đồ) and Chợ (HubShop:
+                    avatars, frames, card backs, emotes)
   gallery/          Every UI kit component on 4 pages: ?gallery=<page> or `-- --gallery=<page>`
 addons/xomdao_sdk/  The only API a game's Godot code uses: XomDaoFrame, XomDaoClient (client.gd)
   ui/               The shared UI kit (theme, widgets, fonts, Phosphor icons, UI sounds)
@@ -82,8 +83,9 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   `scripts/e2e/godot.mjs` wraps it for scenarios (`tap` clicks with the real mouse).
 - The server connection is `XomDaoClient` (WebSocket + JSON on `/ws`): `connect_to_server`,
   `login_guest` / `login` / `login_token`, `create_room`, `quick_match(game_id)`, `join_room(code)`, `leave_room`,
-  `start_game`, `send(event, payload)`, `request(event, data)`; signals `state_changed`,
-  `room_changed`, `rewarded`, `event_received`, `error`, `connected`, `disconnected`. It
+  `start_game`, `send(event, payload)`, `owned_emotes()`, `send_emote(look)`, `request(event, data)`; signals
+  `state_changed`, `room_changed`, `rewarded`, `emote_received`, `event_received`, `error`,
+  `connected`, `disconnected`. It
   reconnects and resumes by itself. Its header is the API reference.
 - Protocol classes come from zod (`packages/shared/src/protocol.ts`): change the schema, then run
   `npm run gen:protocol`. JSON keys stay camelCase; fields are snake_case.
@@ -103,6 +105,9 @@ export_presets.cfg  The Web preset: single-threaded, PWA
     (`default_bus_layout.tres`): a game sets `bus = XomDaoSettings.SFX_BUS` on its players.
   Each script's header shows its use. Add a new component to the gallery
   (`hub/gallery/gallery.gd`) and check it there.
+  - `client.owned_emotes()` lists the emote look ids you own. `XomDaoLooks.emote(look)` loads a
+    shared sticker; games receive `XomDaoRoomEmote` on `client.emote_received` and choose how to
+    draw it, while `client.send_emote(look)` sends one.
 - Look at a gallery page without a browser:
   `xvfb-run -a npm run godot -- --rendering-driver opengl3 --resolution 1280x720 -- --gallery=2 --save=/tmp/g2.png`.
   For real phone sizes, serve `dist/` after `godot:export` and run
@@ -123,9 +128,10 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 | `npm run godot:measure` | Download size and time to playable, first and repeat visit, on a throttled phone profile (`-- --server <url>` of a running server; `--cpu`, `--net`). Release build for sizes, debug build for every timing. Numbers go in `docs/adr/0001-godot-client.md` |
 
 In the browser: `npm run dev` serves `dist/` at http://localhost:5033/ (`scripts/web.mjs`; export
-again to see changes) and forwards `/api` and `/ws`. `npm run e2e -- --only godot-caro` and
-`npm run shots -- --path '/?play=tic-tac-toe'` need a debug export there. CI's `godot` job runs
-smoke and every e2e scenario against it. Vercel builds the client (`tools/godot/vercel.mjs`:
+again to see changes) and forwards `/api` and `/ws`. `npm run e2e -- --only godot-co-ty-phu-classic`
+and `npm run shots -- --path '/?play=tic-tac-toe'` need a debug export there. CI's `godot` job runs
+smoke and every shared flow, event, and Monopoly scenario against it. Vercel builds the client
+(`tools/godot/vercel.mjs`:
 release on production, debug on previews) and serves it at `/`; old `/godot/…` links redirect
 there.
 

@@ -45,11 +45,10 @@ npm run godot:export -- --debug
 npm run dev
 npm run check
 npm run godot:check
-npm run e2e -- --only godot-bom-nguyen-to
 ```
 
-Sandbox: `http://localhost:5033/?play=bom-nguyen-to` (một máy dễ, trên server thật). Kịch bản
-trình duyệt nằm ở `scripts/e2e/scenarios/godot-bom-nguyen-to.mjs`.
+Sandbox: `http://localhost:5033/?play=bom-nguyen-to` (một máy dễ, trên server thật). Chụp các cỡ
+màn hình bằng `npm run shots -- --path '/?play=bom-nguyen-to'`.
 
 ## Hình và âm thanh
 

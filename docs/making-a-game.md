@@ -1,6 +1,6 @@
 # Làm một game
 
-Một game là một thư mục, `games/<id>/`, cộng kịch bản e2e của nó. Bạn không phải sửa gì khác:
+Một game là một thư mục `games/<id>/`. Bạn không phải sửa gì khác:
 ứng dụng tự tìm mọi thư mục trong `games/`.
 
 ```
@@ -16,7 +16,7 @@ từ hôm nay trong 4 tuần, nếu không chỉ định ngày. Cả hai viết 
 - luật TypeScript và test (`src/`), `RULES.md`, README và tranh thẻ tạm (`assets/island.webp`);
 - bàn chơi trong client Godot (`godot/`) theo một bố cục mẫu: **Bàn** (mặc định) hoặc
   **Hành động** (`--layout hanh-dong`; sự kiện luôn dùng Hành động), kèm test GUT;
-- kịch bản e2e `scripts/e2e/scenarios/godot-<id>.mjs` chơi hết một ván trên khổ điện thoại.
+- `new:event` còn tạo kịch bản e2e cho luồng sự kiện; `new:game` không tạo kịch bản e2e riêng.
 
 `npm run godot:check` lần đầu để Godot viết các file `.uid`; commit chúng cùng game. Rồi biến
 game mẫu thành game của bạn từng bước một, lúc nào cũng giữ cho nó chơi được.
@@ -25,8 +25,9 @@ game mẫu thành game của bạn từng bước một, lúc nào cũng giữ c
   http://localhost:5033/?play=my-game: một phòng thật với máy ngồi các ghế còn lại.
 - **Chơi thật:** mở http://localhost:5033/, chọn đảo và thẻ của game; mở thêm một cửa sổ
   ẩn danh để làm người chơi còn lại.
-- **Kịch bản e2e:** `npm run e2e -- --only godot-my-game` (cần bản debug và `npm run dev`). CI
-  chạy mọi kịch bản `godot-*`.
+- **Kiểm tra:** `npm run check`, `npm run godot:check` và `npm run shots`. Kịch bản chơi trọn một
+  game trên trình duyệt hiện được giữ cho Cờ tỷ phú Classic (Monopoly); CI vẫn chạy các luồng
+  chung của client và kịch bản sự kiện.
 
 Nếu `package-lock.json` bị xung đột khi bạn merge `main` vào nhánh của mình, chạy `npm install`.
 
@@ -50,7 +51,7 @@ Một game có hai phần nói chuyện với nhau qua sự kiện:
                                       view(ctx, người xem)              vẽ snapshot.view
 ```
 
-Mẫu tối thiểu nằm trong `scripts/templates/` (`game/`, `event/`, `godot/`, `e2e/`). Ví dụ hoàn
+Mẫu tối thiểu nằm trong `scripts/templates/` (`game/`, `event/`, `godot/`; `e2e/` chỉ dành cho sự kiện). Ví dụ hoàn
 chỉnh: `games/tic-tac-toe` (Caro: tuỳ chọn phòng, người chơi máy) và
 `games/tien-len` (Tiến Lên trong Godot: bài, hiệu ứng, âm thanh).
 
@@ -106,8 +107,8 @@ thích, chỉ việc điền vào. Chạy từ thư mục gốc của repo kèm 
 | --- | --- |
 | `npm run new -- logic <id> [Tên]` | `src/game/<Tên>Game.ts` (một `Game`) và file test |
 | `npm run new -- options <id>` | `src/game/options.ts` (tuỳ chọn phòng) |
-| `npm run new:game -- <id> "Tên" --genre <g> [--layout ban\|hanh-dong]` | cả một game: luật, test, `godot/`, e2e, RULES.md, README |
-| `npm run new:event -- <id> "Tên" [--opens …] [--closes …]` | cả một sự kiện, như trên, thêm ngày mở/đóng và dải thưởng |
+| `npm run new:game -- <id> "Tên" --genre <g> [--layout ban\|hanh-dong]` | cả một game: luật, test, `godot/`, RULES.md, README |
+| `npm run new:event -- <id> "Tên" [--opens …] [--closes …]` | cả một sự kiện, như trên, thêm ngày mở/đóng, dải thưởng và kịch bản e2e |
 
 Lệnh in ra dòng cần thêm vào `index.ts` để dùng file mới. Các mẫu nằm trong
 `scripts/templates/`.
@@ -134,6 +135,11 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
   `load("res://content/<id>/art/<tên>.webp")`. Nhạc nền: đặt file nhạc vào `godot/music/`; hub
   phát ngẫu nhiên một bài khi game đang chơi. Mỗi `AudioStreamPlayer` của game đặt
   `bus = XomDaoSettings.SFX_BUS` để theo nút bật/tắt và âm lượng hiệu ứng trong Cài đặt.
+- **Emote dùng chung**: vật phẩm `emote` có `look` như `happy`, `love`, `wow`, `sad`, `angry`,
+  `laugh`. `await client.owned_emotes()` trả về các `look` người chơi sở hữu. Gửi bằng
+  `await client.send_emote(look)`, rồi nghe `client.emote_received` (`XomDaoRoomEmote` gồm
+  `player_id` và `emote`). Dùng `XomDaoLooks.emote(look)` để lấy ảnh. Game tự quyết định vị trí,
+  hoạt ảnh và thời gian hiện; sự kiện này không sửa state hay luật ván.
 - Hub vẽ nút ☰, phòng chờ, bảng kết quả (có **Xem bàn** để xem bàn cuối, **Kết quả** để mở lại)
   và bảng Luật (đọc `RULES.md`). Game để trống ô vuông
   88 × 88 ở góc trên trái cho nút ☰ và chỉ vẽ bàn chơi.
@@ -146,8 +152,8 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
   `XomDaoSettings.current().margin`.
 - Script của game chỉ dùng thư mục của nó (`res://content/<id>/`) và `res://addons/xomdao_sdk/`;
   `npm run godot:check` kiểm tra điều này, định dạng, lint và chạy test GUT.
-- Đặt tên mọi node mà test bấm hoặc đọc (`Add_1`, `Seat_0`, `Status`): test GUT tìm theo tên,
-  kịch bản e2e bấm qua `window.xomdao` (`scripts/e2e/godot.mjs`).
+- Đặt tên node mà test GUT bấm hoặc đọc (`Add_1`, `Seat_0`, `Status`). Các luồng client và
+  Monopoly dùng cầu nối `window.xomdao` (`scripts/e2e/godot.mjs`).
 
 `apps/client/AGENTS.md` (tiếng Anh) có đủ quy tắc của client; các mẫu bố cục nằm trong
 `scripts/templates/godot/`, ví dụ đầy đủ là `games/tien-len/godot/`.

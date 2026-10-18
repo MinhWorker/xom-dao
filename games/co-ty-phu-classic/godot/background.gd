@@ -31,6 +31,15 @@ func _ready() -> void:
 	_layout()
 
 
+func _input(event: InputEvent) -> void:
+	if _video.is_playing():
+		return
+	if event is InputEventMouseButton and event.pressed:
+		_video.play()
+	elif event is InputEventScreenTouch and event.pressed:
+		_video.play()
+
+
 func _layout() -> void:
 	if _camera_cover:
 		_layout_camera_cover()

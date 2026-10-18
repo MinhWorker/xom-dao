@@ -36,6 +36,8 @@ export interface Property {
   /** 0–4 houses; 5 is a hotel. */
   houses: number;
   mortgaged: boolean;
+  /** Winning station contribution, used as its acquired value after the auction. */
+  acquisitionCost?: number;
   /** Original borrower and deadline, measured in their own turns (not dice rolls). */
   mortgage?: { borrower: number; deadline: number; principal: number };
 }
@@ -68,7 +70,7 @@ export interface Auction {
 /** Deposits and withdrawals persist between visits to this station. */
 export type StationAuction = Omit<Auction, 'bidder'>;
 
-export const STATION_CONTRIBUTION_STEP = 50;
+export const STATION_INITIAL_CONTRIBUTION = 50;
 export const STATION_BASE_FEE = 50;
 
 export interface Debt {
@@ -159,7 +161,7 @@ const street = (name: string, group: Group, price: number): Square => ({
   houseCost: price / 2,
   rent: [0.1, 0.4, 1.1, 3, 4, 5].map((rate) => Math.round(price * rate)),
 });
-const station = (name: string): Square => ({ name, kind: 'station', price: 200 });
+const station = (name: string): Square => ({ name, kind: 'station' });
 const utility = (name: string): Square => ({ name, kind: 'utility', price: 150 });
 
 /** Clockwise from Start: six streets per side, with two Chance and two Chest squares. */
@@ -218,7 +220,7 @@ export const GROUP_COLORS: Record<Group, number> = {
   'xanh-dam': 0x176578,
 };
 
-export const isDeed = (square: Square): square is Square & { price: number } =>
+export const isDeed = (square: Square): square is Square & { kind: DeedKind } =>
   square.kind === 'street' || square.kind === 'station' || square.kind === 'utility';
 
 export const groupSquares = (group: Group): number[] =>

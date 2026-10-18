@@ -35,6 +35,7 @@ static func phase_actions(view: Dictionary, me: int) -> Array:
 	match str(view["phase"]):
 		"roll":
 			out.append(["Roll", "", true])
+			out.append_array(_build(view, me, cash))
 			if bool(player["jailed"]):
 				out.append(["Bail", "Nộp %d" % Rules.BAIL, cash >= Rules.BAIL])
 				if not (player["freeCards"] as Array).is_empty():
@@ -59,9 +60,9 @@ static func phase_actions(view: Dictionary, me: int) -> Array:
 static func _auction(view: Dictionary, me: int, cash: int) -> Array:
 	var auction: Dictionary = view["auction"]
 	var amount: int = Rules.bid_amount(view)
-	var step: String = "Góp %s" % XomDaoUi.money(Rules.STATION_STEP)
+	var contribution: String = "Góp %s" % XomDaoUi.money(amount)
 	var leading: bool = auction.get("leader") != null and int(auction["leader"]) == me
-	return [["Bid", step, not leading and cash >= amount], ["Pass", "Từ bỏ", true]]
+	return [["Bid", contribution, not leading and cash >= amount], ["Pass", "Từ bỏ", true]]
 
 
 static func _build(view: Dictionary, me: int, cash: int) -> Array:
@@ -76,10 +77,9 @@ static func _build(view: Dictionary, me: int, cash: int) -> Array:
 		return []
 	if int(deed["owner"]) != me:
 		return []
-	var bank: int = Rules.bank_hotels(properties) if houses == 4 else Rules.bank_houses(properties)
 	var cost: int = int(Rules.SQUARES[i]["houseCost"])
 	var what: String = "khách sạn" if houses == 4 else "nhà"
-	return [["Build", "Xây %s %s" % [what, XomDaoUi.money(cost)], bank > 0 and cash >= cost]]
+	return [["Build", "Xây %s %s" % [what, XomDaoUi.money(cost)], cash >= cost]]
 
 
 ## Bán nhà, Chuộc and Thế chấp for your own deed `i`, when the rules allow them now.
@@ -96,8 +96,7 @@ static func deed_actions(view: Dictionary, me: int, i: int) -> Array:
 	var houses: int = int(deed["houses"])
 	if houses > 0 and not bool(deed["mortgaged"]):
 		var back: int = int(Rules.SQUARES[i]["houseCost"] / 2)
-		var swap: bool = houses < 5 or Rules.bank_houses(properties) >= 4
-		out.append(["SellHouse", "Bán nhà +%s" % XomDaoUi.money(back), swap])
+		out.append(["SellHouse", "Bán nhà +%s" % XomDaoUi.money(back), true])
 	if Rules.decision_seat(view) != me:
 		return out
 	if bool(deed["mortgaged"]):

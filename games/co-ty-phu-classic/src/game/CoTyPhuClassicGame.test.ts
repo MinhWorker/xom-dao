@@ -2,7 +2,7 @@ import { seededRng, testGame } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
 import plugin from '../index.js';
 import { AUCTION_TURN_MS, BOARD, SPECIAL_EVENT_TIMEOUT } from './model.js';
-import { bankHotels, bankHouses, move, rent } from './rules.js';
+import { move, rent } from './rules.js';
 import { decisionSeat } from './turnClock.js';
 
 /** The first dice after both decks are shuffled with seed 1. */
@@ -358,7 +358,7 @@ describe('Cờ tỷ phú Classic', () => {
     expect(game.state.buildable).toBeNull();
   });
 
-  it('upgrades independently to a hotel across five visits and honors bank supply', () => {
+  it('upgrades independently to a hotel across five visits without bank stock limits', () => {
     const game = at(1);
     game.state.properties[1]!.owner = 0;
     game.send('a', 'roll');
@@ -367,12 +367,8 @@ describe('Cờ tỷ phú Classic', () => {
       game.send('a', 'build', { square: 1 });
       expect(game.state.properties[1]!.houses).toBe(level);
     }
-    expect(bankHouses(game.state)).toBe(32);
-    expect(bankHotels(game.state)).toBe(11);
     game.send('a', 'sell-house', { square: 1 });
     expect(game.state.properties[1]!.houses).toBe(4);
-    expect(bankHouses(game.state)).toBe(28);
-    expect(bankHotels(game.state)).toBe(12);
     move(game.state, 0, 1, false, 7);
     game.state.properties
       .filter((_, i) => BOARD[i]!.kind === 'street' && i !== 1)
@@ -380,7 +376,8 @@ describe('Cờ tỷ phú Classic', () => {
       .forEach((p) => {
         p.houses = 5;
       });
-    expect(game.error('a', 'build', { square: 1 })).toBe('Ngân hàng đã hết nhà hoặc khách sạn');
+    game.send('a', 'build', { square: 1 });
+    expect(game.state.properties[1]!.houses).toBe(5);
   });
 
   it.each([1, 5])(
@@ -431,20 +428,17 @@ describe('Cờ tỷ phú Classic', () => {
     expect(game.state.properties[1]!.houses).toBe(2);
   });
 
-  it('keeps a return visit available while the bank has no houses', () => {
+  it('allows building even when every other street already has a hotel', () => {
     const game = at(1);
     game.state.properties[1]!.owner = 0;
     const occupied = game.state.properties
       .filter((_, i) => BOARD[i]!.kind === 'street' && i !== 1)
-      .slice(0, 8);
+      .slice();
     occupied.forEach((p) => {
       p.owner = 1;
-      p.houses = 4;
+      p.houses = 5;
     });
     game.send('a', 'roll');
-    expect(game.error('a', 'build', { square: 1 })).toBe('Ngân hàng đã hết nhà hoặc khách sạn');
-    const available = game.state.properties.findIndex((p) => p.owner === 1 && p.houses === 4);
-    game.send('b', 'sell-house', { square: available });
     game.send('a', 'build', { square: 1 });
     expect(game.state.properties[1]!.houses).toBe(1);
   });
