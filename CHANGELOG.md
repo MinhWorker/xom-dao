@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.1](https://github.com/MinhWorker/xom-dao/compare/v0.26.0...v0.26.1) (2026-10-18)
+
+
+### Bug fixes
+
+* **client:** purge service worker cache when reloading stale build ([#176](https://github.com/MinhWorker/xom-dao/issues/176)) ([b9a8c60](https://github.com/MinhWorker/xom-dao/commit/b9a8c60e95dce579687cf8e0a2d752cff2e6d41f))
+
 ## [0.26.0](https://github.com/MinhWorker/xom-dao/compare/v0.25.0...v0.26.0) (2026-10-18)
 
 
