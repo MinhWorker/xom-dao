@@ -68,6 +68,53 @@ func _text(table: Control, name_of: String) -> String:
 	return (table.find_child(name_of, true, false) as Label).text
 
 
+func test_emote_picker_title_does_not_overlap_close_button_with_one_emote() -> void:
+	var frame := Control.new()
+	frame.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	frame.size = Vector2(1280.0, 720.0)
+	add_child_autofree(frame)
+	var picker := BattleshipEmotePicker.new()
+	frame.add_child(picker)
+	var avatar := Control.new()
+	avatar.position = Vector2(40.0, 500.0)
+	avatar.size = Vector2(96.0, 96.0)
+	frame.add_child(avatar)
+	var owned: Array[String] = ["happy"]
+	picker.set("_owned", owned)
+	picker.call("_rebuild")
+	picker.toggle(avatar)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.35).timeout
+
+	var board: XomDaoBoard = picker.find_child("EmotePanel", true, false)
+	var title: Label = board.get("_title")
+	var font: Font = title.get_theme_font("font")
+	var title_width: float = (
+		font.get_string_size(title.text, HORIZONTAL_ALIGNMENT_CENTER, -1, XomDaoUi.TITLE).x
+	)
+	var title_left: float = title.global_position.x + (title.size.x - title_width) / 2.0
+	var title_right: float = title_left + title_width
+	var close_rect: Rect2 = board.close_button.get_global_rect()
+	assert_true(
+		title_right <= close_rect.position.x or title_left >= close_rect.end.x,
+		(
+			"The emote title stays clear of the close mark when only one emote is owned "
+			+ (
+				"(panel %s, title %s..%s, close %s)"
+				% [board.size, title_left, title_right, close_rect]
+			)
+		)
+	)
+	var grid: GridContainer = board.find_child("Emotes", true, false)
+	var sticker: Control = grid.get_child(0)
+	var sticker_center: float = sticker.get_global_rect().get_center().x
+	var panel_center: float = board.get_global_rect().get_center().x
+	assert_almost_eq(
+		sticker_center, panel_center, 1.0, "A single emote stays centered in the wider picker"
+	)
+
+
 func test_fleet_rules() -> void:
 	assert_eq(Rules.cell_name(14), "E2")
 	assert_eq(Rules.ship_at(0, 8, 3, false), [])

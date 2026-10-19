@@ -44,6 +44,12 @@ func bottom() -> float:
 	return XomDaoFrame.safe_inset(self).y + _settings.margin + HEIGHT * _settings.ui_scale
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and back.is_visible_in_tree():
+		back.pressed.emit()
+		get_viewport().set_input_as_handled()
+
+
 func _layout() -> void:
 	var inset: Vector2 = XomDaoFrame.safe_inset(self)
 	var edge: float = _settings.margin

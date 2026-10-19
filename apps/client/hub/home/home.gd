@@ -8,8 +8,8 @@ extends Control
 ## (HubBagCell) under a row of kinds in the top right corner (Tất cả, Ảnh đại diện, Khung, Lưng
 ## bài, Biểu cảm); a tap on a cell slides a drawer in from the right with the item's picture, name
 ## and kind.
-## In your own Nhà, it offers Dùng for something to wear. Thành tích is a grid of tiles and
-## Lịch sử a list of finished games; all scroll down.
+## In your own Nhà, it offers Dùng for something to wear. Thành tích is grouped by game with
+## icon-only logo filters and a vertical progress list; Lịch sử is a list of finished games.
 ##
 ## Named nodes for tests: Tab_<id> (ho-so, tui-do, thanh-tich, lich-su), Match_<i>, HomePlate,
 ## HomeName, EditName, NameInput, SaveName, CancelName, HomeAvatar, HomeLevel, HomeXp, HomePlayed,
@@ -37,6 +37,7 @@ const GAP := 20.0
 const ROUND := 28.0
 const PAD := 24.0
 const AVATAR := 208.0
+const HISTORY_LIMIT := 20
 ## The kinds of Túi đồ, left to right: [slot ("" for every item), label].
 const KINDS: Array[Array] = [
 	["", "Tất cả"],
@@ -93,6 +94,16 @@ var _heading := Label.new()
 var _scroll := ScrollContainer.new()
 var _grid := HFlowContainer.new()
 var _empty := Label.new()
+var _achievement_page := Control.new()
+var _achievement_count := Label.new()
+var _achievement_progress := ProgressBar.new()
+var _achievement_filter_scroll := ScrollContainer.new()
+var _achievement_filters := HBoxContainer.new()
+var _achievement_scroll := ScrollContainer.new()
+var _achievement_list := VBoxContainer.new()
+var _achievement_empty := Label.new()
+var _achievement_filter_buttons: Dictionary = {}
+var _achievement_filter: String = "all"
 var _kinds: XomDaoChoice
 ## The item whose drawer is open ("" for none).
 var _picked: String = ""
@@ -142,6 +153,7 @@ func _init(settings: XomDaoSettings = null, own: bool = true) -> void:
 	add_child(_plate)
 	_build_profile()
 	_build_grid()
+	_build_achievement_page()
 	_build_drawer()
 	resized.connect(_layout)
 	_settings.changed.connect(_layout)
@@ -161,6 +173,7 @@ func select(id: String) -> void:
 			_heading.text = button.label
 	_page.visible = id == "ho-so"
 	_kinds.visible = id == "tui-do"
+	_achievement_page.visible = id == "thanh-tich"
 	if id != "tui-do":
 		_pick("")
 	_heading.visible = id != "ho-so"
@@ -393,6 +406,7 @@ func _build_profile() -> void:
 func _build_grid() -> void:
 	_heading.theme_type_variation = "TitleLabel"
 	_heading.add_theme_font_size_override("font_size", 38)
+	_heading.add_theme_color_override("font_color", XomDaoUi.INK)
 	_plate.add_child(_heading)
 	_scroll.name = "ShelfScroll"
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -407,6 +421,50 @@ func _build_grid() -> void:
 	_empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_empty.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.7))
 	_plate.add_child(_empty)
+
+
+## Thành tích: compact overall progress, game logos as filters, and full-width rows below them.
+func _build_achievement_page() -> void:
+	_achievement_page.name = "AchievementPage"
+	_achievement_page.visible = false
+	_plate.add_child(_achievement_page)
+	_achievement_count.name = "AchievementCount"
+	_achievement_count.theme_type_variation = "SmallLabel"
+	_achievement_count.add_theme_font_override("font", XomDaoUi.display_font(800))
+	_achievement_count.add_theme_font_size_override("font_size", 20)
+	_achievement_count.add_theme_color_override("font_color", XomDaoUi.INK)
+	_achievement_count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_achievement_page.add_child(_achievement_count)
+	_achievement_progress.name = "AchievementOverallProgress"
+	_achievement_progress.show_percentage = false
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color(XomDaoUi.PAPER_DARK, 0.72)
+	track.set_corner_radius_all(7)
+	_achievement_progress.add_theme_stylebox_override("background", track)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = XomDaoUi.GOLD
+	fill.set_corner_radius_all(7)
+	_achievement_progress.add_theme_stylebox_override("fill", fill)
+	_achievement_page.add_child(_achievement_progress)
+	_achievement_filter_scroll.name = "AchievementFiltersScroll"
+	_achievement_filter_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_achievement_filter_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_achievement_page.add_child(_achievement_filter_scroll)
+	_achievement_filters.name = "AchievementFilters"
+	_achievement_filters.add_theme_constant_override("separation", 10)
+	_achievement_filter_scroll.add_child(_achievement_filters)
+	_achievement_scroll.name = "AchievementScroll"
+	_achievement_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_achievement_page.add_child(_achievement_scroll)
+	_achievement_list.name = "AchievementList"
+	_achievement_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_achievement_list.add_theme_constant_override("separation", 10)
+	_achievement_scroll.add_child(_achievement_list)
+	_achievement_empty.name = "AchievementEmpty"
+	_achievement_empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_achievement_empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_achievement_empty.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.7))
+	_achievement_page.add_child(_achievement_empty)
 
 
 ## These tiles in the grid, or `empty` when there are none.
@@ -424,7 +482,9 @@ func _show_tiles(tiles: Array[Control], empty: String = "") -> void:
 func _show_tab_page() -> void:
 	if tab == "thanh-tich":
 		_show_achievements()
-	elif tab == "lich-su":
+		return
+	_achievement_page.visible = false
+	if tab == "lich-su":
 		_show_history()
 	elif _profile != null:
 		var slot: String = str(KINDS[_kinds.selected][0])
@@ -444,24 +504,124 @@ func _show_tab_page() -> void:
 		_fill_drawer()
 
 
-## Reached first, then the rest in their order (the hub's own, then each game's).
+## Game logos act as the category labels; the individual rows need no type text.
 func _show_achievements() -> void:
-	var tiles: Array[Control] = []
-	if _stats != null:
-		for reached: bool in [true, false]:
-			for info: XomDaoAchievementInfo in _stats.achievements:
-				if info.unlocked == reached:
-					tiles.append(HubAchievementTile.create(info, str(_games.get(info.game_id, ""))))
-	_show_tiles(tiles, "Đang tải")
+	_scroll.visible = false
+	_empty.visible = false
+	_achievement_page.visible = true
+	_achievement_filter_buttons.clear()
+	for child: Node in _achievement_filters.get_children():
+		_achievement_filters.remove_child(child)
+		child.queue_free()
+	for child: Node in _achievement_list.get_children():
+		_achievement_list.remove_child(child)
+		child.queue_free()
+	if _stats == null:
+		_achievement_count.text = "0 / 0 đã đạt"
+		_achievement_progress.max_value = 1.0
+		_achievement_progress.value = 0.0
+		_achievement_filter = "all"
+		_achievement_empty.text = "Đang tải"
+		_achievement_empty.visible = true
+		_achievement_scroll.visible = false
+		_achievement_filter_scroll.visible = false
+		return
+	var categories: Array[String] = ["all"]
+	var totals: Dictionary = {"all": _stats.achievements.size()}
+	var reached: Dictionary = {"all": 0}
+	for info: XomDaoAchievementInfo in _stats.achievements:
+		var category: String = "core" if info.game_id == "" else info.game_id
+		if not totals.has(category):
+			categories.append(category)
+			totals[category] = 0
+			reached[category] = 0
+		totals[category] = int(totals[category]) + 1
+		if info.unlocked:
+			reached[category] = int(reached[category]) + 1
+			reached["all"] = int(reached["all"]) + 1
+	var all_total: int = int(totals.get("all", 0))
+	var all_reached: int = int(reached.get("all", 0))
+	_achievement_count.text = (
+		"%s / %s đã đạt" % [XomDaoUi.money(all_reached), XomDaoUi.money(all_total)]
+	)
+	_achievement_progress.max_value = maxi(1, all_total)
+	_achievement_progress.value = all_reached
+	if not categories.has(_achievement_filter):
+		_achievement_filter = "all"
+	for category: String in categories:
+		var title: String = "Tất cả"
+		var texture: Texture2D = XomDaoUi.icon("trophy")
+		if category == "core":
+			title = "Xóm Đảo"
+			texture = XomDaoUi.icon("house")
+		elif category != "all":
+			title = str(_games.get(category, category))
+			texture = HubAchievementFilter.logo_for_game(category)
+		var filter := HubAchievementFilter.create(
+			category,
+			texture,
+			title,
+			int(reached.get(category, 0)),
+			int(totals.get(category, 0)),
+			category == _achievement_filter
+		)
+		filter.name = "AchievementFilter_" + category
+		filter.pressed.connect(_select_achievement_filter.bind(category))
+		_achievement_filters.add_child(filter)
+		_achievement_filter_buttons[category] = filter
+	_achievement_filter_scroll.visible = not categories.is_empty()
+	_achievement_scroll.visible = not _stats.achievements.is_empty()
+	_achievement_empty.visible = _stats.achievements.is_empty()
+	_achievement_empty.text = "Chưa có thành tích"
+	if not _stats.achievements.is_empty():
+		_show_achievement_rows()
+	_layout()
 
 
-## Your finished games, newest first, one row each.
+func _select_achievement_filter(category: String) -> void:
+	_achievement_filter = category
+	for key: Variant in _achievement_filter_buttons:
+		var filter: HubAchievementFilter = _achievement_filter_buttons[key]
+		filter.active = str(key) == category
+	_show_achievement_rows()
+
+
+func _show_achievement_rows() -> void:
+	for child: Node in _achievement_list.get_children():
+		_achievement_list.remove_child(child)
+		child.queue_free()
+	if _stats == null:
+		return
+	for unlocked: bool in [true, false]:
+		for info: XomDaoAchievementInfo in _stats.achievements:
+			var category: String = "core" if info.game_id == "" else info.game_id
+			if info.unlocked != unlocked:
+				continue
+			if _achievement_filter != "all" and category != _achievement_filter:
+				continue
+			var game_name: String = (
+				"Xóm Đảo" if info.game_id == "" else str(_games.get(info.game_id, info.game_id))
+			)
+			var row := HubAchievementTile.create(info, game_name)
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_achievement_list.add_child(row)
+	_achievement_list.queue_sort()
+
+
+## Your 20 most recent finished games, newest first, one row each.
 func _show_history() -> void:
 	var rows: Array[Control] = []
 	var now: float = Time.get_unix_time_from_system() * 1000.0
 	if _matches != null:
-		for i: int in _matches.size():
-			var record: XomDaoMatchRecord = _matches[i]
+		var recent: Array[XomDaoMatchRecord] = []
+		for item: Variant in _matches:
+			if item is XomDaoMatchRecord:
+				recent.append(item as XomDaoMatchRecord)
+		recent.sort_custom(
+			func(a: XomDaoMatchRecord, b: XomDaoMatchRecord) -> bool: return a.ended_at > b.ended_at
+		)
+		for i: int in mini(recent.size(), HISTORY_LIMIT):
+			var record: XomDaoMatchRecord = recent[i]
 			var row: HubMatchRow = HubMatchRow.create(
 				record, str(_games.get(record.game_id, record.game_id)), now
 			)
@@ -648,6 +808,20 @@ func _layout() -> void:
 	_layout_profile(inner.size)
 	_heading.position = inner.position
 	_heading.size = Vector2(inner.size.x, 48.0)
+	_achievement_page.position = inner.position
+	_achievement_page.size = inner.size
+	_achievement_count.position = Vector2(0.0, 52.0)
+	_achievement_count.size = Vector2(minf(210.0, inner.size.x * 0.42), 30.0)
+	_achievement_progress.position = Vector2(_achievement_count.size.x + 12.0, 60.0)
+	_achievement_progress.size = Vector2(
+		maxf(0.0, inner.size.x - _achievement_count.size.x - 12.0), 16.0
+	)
+	_achievement_filter_scroll.position = Vector2(0.0, 92.0)
+	_achievement_filter_scroll.size = Vector2(inner.size.x, 76.0)
+	_achievement_scroll.position = Vector2(0.0, 174.0)
+	_achievement_scroll.size = Vector2(inner.size.x, maxf(0.0, inner.size.y - 174.0))
+	_achievement_empty.position = _achievement_scroll.position
+	_achievement_empty.size = _achievement_scroll.size
 	_kinds.reset_size()
 	_kinds.position = Vector2(inner.end.x - _kinds.size.x, inner.position.y - 6.0)
 	# The drawer comes out of the right edge and the grid makes room for it.

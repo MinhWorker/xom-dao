@@ -97,6 +97,16 @@ func test_turning_the_ring_changes_the_selected_island() -> void:
 			assert_lt(island.position.y + island.size.y, front.position.y + front.size.y + 0.01)
 
 
+func test_escape_opens_the_profile_from_the_lobby() -> void:
+	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
+	watch_signals(lobby)
+	var escape := InputEventAction.new()
+	escape.action = "ui_cancel"
+	escape.pressed = true
+	lobby._unhandled_input(escape)
+	assert_signal_emitted_with_parameters(lobby, "place_pressed", ["nha"])
+
+
 func test_a_swipe_turns_and_a_tap_on_the_front_opens() -> void:
 	var ring: HubIslandRing = add_child_autofree(HubIslandRing.new())
 	ring.size = Vector2(800, 400)

@@ -401,8 +401,18 @@ func _build_card() -> void:
 
 func _on_profile_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		XomDaoUi.play(self, XomDaoUi.SOUND_TAP)
-		place_pressed.emit("nha")
+		_open_profile()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and is_visible_in_tree():
+		_open_profile()
+		get_viewport().set_input_as_handled()
+
+
+func _open_profile() -> void:
+	XomDaoUi.play(self, XomDaoUi.SOUND_TAP)
+	place_pressed.emit("nha")
 
 
 func _on_card_input(event: InputEvent) -> void:

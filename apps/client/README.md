@@ -27,6 +27,7 @@ Godot bản khác sẽ ghi lại `project.godot` và các scene.
 | `addons/xomdao_sdk/` | API duy nhất phần Godot của trò được dùng: `XomDaoFrame`, `XomDaoClient` (kết nối server) |
 | `addons/xomdao_sdk/ui/` | Bộ thành phần giao diện chung: theme, nút, bảng, hàng tiền, ô người chơi, thẻ trò, ô lựa chọn, thông báo nhanh, menu ☰, lá bài và chiếu cho trò bài, font, icon, âm thanh |
 | `hub/gallery/` | Màn gallery liệt kê mọi thành phần: mở bằng `?gallery=<trang>` (trang 1 tới 4) |
+| `dev/` | Host của visual workbench; không đưa vào bản xuất web |
 | `addons/xomdao_sdk/generated/` | Class protocol sinh từ schema zod bằng `npm run gen:protocol`; không sửa tay |
 | `content/<id>` | Symlink tới `games/<id>/godot` (`npm run godot:link` tạo, git bỏ qua) |
 | `test/` | Test GUT của lõi |
@@ -45,6 +46,32 @@ chạm, mở bảng và xu đều nằm trong đó. Chất lượng hình mới 
 
 Xem mọi thành phần ở màn gallery: `?gallery=1` tới `?gallery=4` trên bản web, hoặc
 `npm run godot -- -- --gallery=2`.
+
+## Visual workbench
+
+Workbench mở một scene preview trong cửa sổ Godot riêng, đánh số từ 0. Đặt fixture, ví dụ
+games/<id>/godot/preview.tscn, cạnh scene đối tượng; fixture tự chứa sân khấu, camera/ánh sáng và
+bố cục để xem độc lập với màn chơi. Lệnh animation hỗ trợ AnimationPlayer và AnimatedSprite2D.
+Cửa sổ giữ nguyên trong lúc agent sửa; `capture` nạp lại scene trong chính cửa sổ đó trước khi
+chụp ảnh.
+
+```sh
+npm run godot:preview -- open 0 res://content/<game>/path/to/preview.tscn
+npm run godot:preview -- list
+npm run godot:preview -- inspect 0
+npm run godot:preview -- capture 0
+npm run godot:preview -- capture-sequence 0 --animation idle --duration 1.2 --frames 6
+npm run godot:preview -- play 0 idle
+npm run godot:preview -- pause 0
+npm run godot:preview -- seek 0 0.5
+npm run godot:preview -- resume 0
+npm run godot:preview -- close 0
+```
+
+`capture` lưu ảnh vào `.shots/preview-<index>.png`; `capture-sequence` lưu contact sheet vào
+`.shots/preview-<index>-sequence.png`. Mở nhiều scene cùng lúc bằng index khác nhau. Nếu thay đổi
+ảnh hoặc tài nguyên cần import, thêm `--import` vào `open`, `refresh`, `capture` hoặc
+`capture-sequence`. Khi sửa GDScript/scene, `capture` mặc định nạp lại scene.
 
 ## Kết nối server
 
@@ -78,8 +105,9 @@ phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ t
   thanh home ở mọi mật độ màn hình.
 - **Nhà**: thẻ hồ sơ (ảnh đại diện với khung đang dùng, cấp và thanh kinh nghiệm, số ván và số ván
   thắng, lưng bài) và kệ có tab Túi đồ, Thành tích, Xếp hạng. Túi đồ có món đã mua trước, rồi món
-  ai cũng có; "Dùng" để đeo. Thành tích đã đạt đứng trước; Xếp hạng có một ô "Hạng N" cho mỗi
-  bảng. Chạm một người trong phòng chờ là xem Nhà của họ, chỉ đọc. Nút **Tài khoản** ở Nhà của
+  ai cũng có; "Dùng" để đeo. Thành tích có tổng tiến độ, bộ lọc bằng logo đơn sắc của Xóm Đảo và
+  từng trò, cùng danh sách các hàng thành tích đã đạt đứng trước; Xếp hạng có một ô "Hạng N" cho
+  mỗi bảng. Chạm một người trong phòng chờ là xem Nhà của họ, chỉ đọc. Nút **Tài khoản** ở Nhà của
   mình để đăng nhập, tạo tài khoản hoặc đăng xuất ([experience.md](../../docs/experience.md)).
 - **Đình**: bảng xếp hạng với tab Cả xóm (theo kinh nghiệm) và từng trò (theo số ván thắng); hàng
   của bạn tô màu, nằm dưới danh sách nếu bạn ngoài top. Hết ván, thành tích vừa đạt hiện thành
@@ -98,6 +126,8 @@ phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ t
 - **Trong ván** chỉ có nút ☰ (rời phòng có hỏi lại khi đang giữa ván, luật, cài đặt, biểu cảm).
 - **Kết quả**: thứ hạng, phần thưởng từng người (tăng xanh, giảm đỏ), xu bay vào số dư; "Chơi
   tiếp" và "Về sảnh".
+- **Esc** ở Sảnh mở Hồ sơ; các màn có nút ← kích hoạt nút đó. Esc đóng lớp phủ đang mở, mở hoặc
+  đóng menu ☰ trong ván; ở màn kết quả, Esc quay lại kết quả khi đang xem bàn hoặc về sảnh.
 
 Trò đang chọn được nhớ theo tài khoản trên máy này. Lần đầu vào trò, client tải gói `.pck` của
 trò đó (`ContentLoader`) và giữ nó trong `user://` cho lần sau.

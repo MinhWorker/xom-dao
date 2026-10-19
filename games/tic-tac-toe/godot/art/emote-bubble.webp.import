@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dmdvggelg8ctp"
-path="res://.godot/imported/piece-x.webp-fa1be33b175e557b4442521346f17ad3.ctex"
+uid="uid://b1it0m3qdrxd"
+path="res://.godot/imported/emote-bubble.webp-d8ce7c48f76a3f579aa270e7745f3f5b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://content/tic-tac-toe/art/piece-x.webp"
-dest_files=["res://.godot/imported/piece-x.webp-fa1be33b175e557b4442521346f17ad3.ctex"]
+source_file="res://content/tic-tac-toe/art/emote-bubble.webp"
+dest_files=["res://.godot/imported/emote-bubble.webp-d8ce7c48f76a3f579aa270e7745f3f5b.ctex"]
 
 [params]
 

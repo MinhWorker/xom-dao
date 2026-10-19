@@ -31,10 +31,14 @@ khả năng nhất. Máy chỉ biết những gì người chơi biết (ô đã
 ## Bàn chơi
 
 `godot/main.gd` dựng bàn theo bố cục **Bàn**: biển lớn ở giữa, cột người chơi bên trái (biển của
-bạn thu nhỏ giữa hai ô người chơi khi vào trận), trạng thái, phát bắn vừa rồi, hạm đội đối phương
-và các nút bên phải. Xếp tàu: kéo thả tàu với ô đích xanh/đỏ, chạm chọn, chạm lần nữa để xoay,
-chạm ô trống để dời; **Xếp lại**, **Sẵn sàng**. Vào trận chạm ô biển đối phương để bắn; trượt có
-cột nước, trúng có chớp lửa, **Đầu hàng** hỏi lại một lần. `godot/sea.gd` vẽ một vùng biển,
+bạn thu nhỏ giữa hai ô người chơi khi vào trận), thẻ hải chiến gọn bên phải báo lượt, phát bắn vừa
+rồi và hạm đội đối phương bằng hình tàu; cụm **Mệnh lệnh** nằm gọn ở đáy phải. Ảnh đại diện và
+khung lấy từ hồ sơ người chơi. Chạm avatar của mình để mở bảng emote của SDK trong
+`godot/emote_picker.gd`; biểu cảm đã chọn hiện trên bong bóng giấy dó có đuôi cạnh avatar người
+gửi. Xếp tàu: kéo thả tàu với
+ô đích xanh/đỏ, chạm chọn, chạm lần nữa để xoay, chạm ô trống để dời; **Xếp lại**, **Sẵn sàng**.
+Vào trận chạm ô biển đối phương để bắn; trượt có cột nước, trúng có chớp lửa, **Đầu hàng** hỏi lại
+một lần. `godot/sea.gd` vẽ một vùng biển,
 `godot/rules.gd` kiểm tra vị trí tàu (chép từ `rules.ts`); hình ở `godot/art/`, âm thanh ở
 `godot/sounds/`, nhạc ở `godot/music/`; test: `godot/test/`.
 
@@ -66,11 +70,12 @@ nhẹ.
 Đảo quân cảng tạo bằng image generation của Codex, lấy đảo Tiến Lên và Bài Cào làm mẫu:
 chất liệu 3D mềm, ánh sáng ấm, cỏ xanh, dây leo và khối đá lơ lửng thuôn nhọn. Prompt ở
 `sources/prompts.json`; ảnh WebP cắt khoảng trống trong suốt và có cạnh dài nhất 640 px,
-cùng chuẩn với các đảo khác. Khi tạo lại bằng `npm run gen:asset`, PNG gốc được lưu vào
-`sources/island.png` (Git LFS).
+cùng chuẩn với các đảo khác. PNG gốc nằm ở `sources/island.png` và `sources/emote-bubble.png`
+(Git LFS).
 
 Các hình trên bàn và âm thanh là tác phẩm gốc tạo bằng code trong `sources/render_assets.py`.
-Asset phát hành theo giấy phép MIT của repo, không dùng mẫu tải ngoài.
+Bong bóng emote được tạo riêng bằng ImageGen, prompt tại `sources/prompts.json`. Asset phát hành
+theo giấy phép MIT của repo, không dùng mẫu tải ngoài.
 Hình WebP có nền trong suốt (trừ biển), hiệu ứng WAV mono 16-bit 44,1 kHz, nhạc MP3 128 kbps.
 Bàn dùng bản sao trong `godot/art/`, `godot/sounds/` và `godot/music/`. Tạo lại từ thư mục gốc (cần `npm install`, Python 3 và ffmpeg):
 
@@ -79,5 +84,5 @@ python3 games/battleship/sources/render_assets.py
 npm run assets -- battleship
 ```
 
-Tạo lại đảo bằng image generation: `npm run gen:asset -- battleship/island`.
+Tạo lại đảo và bong bóng bằng image generation: `npm run gen:asset -- battleship/island battleship/emote-bubble`.
 Script Python chỉ tạo hình trên bàn và âm thanh, không ghi đè đảo.

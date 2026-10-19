@@ -64,10 +64,28 @@ func test_nha_shows_the_level_and_reached_achievements_first() -> void:
 	assert_true((home.find_child("Tab_ho-so", true, false) as HubHomeTab).selected)
 	(home.find_child("Tab_thanh-tich", true, false) as Button).pressed.emit()
 	await wait_process_frames(1)
-	var row: Node = home.find_child("Shelf", true, false)
+	var row: Node = home.find_child("AchievementList", true, false)
 	var names: Array = row.get_children().map(func(n: Node) -> String: return str(n.name))
 	assert_eq(names, ["Achievement_tien-len-chop", "Achievement_core-played-10"])
-	assert_not_null(row.get_child(0).find_child("Reached", true, false))
+	var total: Label = home.find_child("AchievementCount", true, false)
+	assert_eq(total.text, "1 / 2 đã đạt")
+	var completed: HubAchievementTile = row.get_child(0)
+	assert_eq((completed.find_child("AchievementReached", true, false) as Label).text, "Đã đạt")
+	var logo: TextureRect = completed.find_child("GameLogo", true, false)
+	assert_eq(logo.texture.resource_path, "res://hub/select/logo/tien-len.svg")
+	assert_true(logo.material is ShaderMaterial)
+	var game_filter: HubAchievementFilter = home.find_child(
+		"AchievementFilter_tien-len", true, false
+	)
+	assert_eq(game_filter.tooltip_text, "Tiến Lên")
+	game_filter.pressed.emit()
+	await wait_process_frames(1)
+	assert_eq(
+		(home.find_child("AchievementList", true, false) as VBoxContainer).get_children().map(
+			func(n: Node) -> String: return str(n.name)
+		),
+		["Achievement_tien-len-chop"]
+	)
 
 
 func test_nha_lists_your_finished_games_newest_first() -> void:

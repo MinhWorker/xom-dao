@@ -50,6 +50,7 @@ var _buying: bool = false
 ## An event:claim is on its way.
 var _claiming: bool = false
 var _opening_rules: bool = false
+var _loading_emotes: bool = false
 ## The screen on now (the lobby, the waiting room…).
 var _current: Control
 ## The curtain between two screens, and the screens it is about to take away.
@@ -78,6 +79,7 @@ func _ready() -> void:
 	_menu.leave_requested.connect(_leave_game)
 	_menu.leave_confirmed.connect(_confirm_leave)
 	_menu.rules_requested.connect(func() -> void: _show_rules(_client.snapshot.game_id))
+	_menu.emote_chosen.connect(_client.send_emote)
 	add_child(_menu)
 	add_child(_music)
 	add_child(_transition)
@@ -87,6 +89,8 @@ func _ready() -> void:
 	_client.rewarded.connect(_on_rewarded)
 	_client.achieved.connect(_on_achieved)
 	_client.event_received.connect(_on_event)
+	_client.connected.connect(_load_owned_emotes)
+	_client.error.connect(_say)
 	_client.disconnected.connect(func() -> void: _say("Mất kết nối, đang nối lại"))
 	_show_status("Đang kết nối")
 	await _start()
@@ -113,7 +117,7 @@ func _start() -> void:
 		else:
 			_show_gate()
 		return
-	_client.error.connect(_say)
+	await _load_owned_emotes()
 	_coins = _balance()
 	var reply: Dictionary = await _client.request(XomDaoProtocol.CATALOG_GET)
 	if reply.get("ok") != true:
@@ -708,6 +712,16 @@ func _set_options(options: Dictionary) -> void:
 		_say(str(ack.get("error", "Không đổi được")))
 	if _shown == "room":
 		_refresh()
+
+
+func _load_owned_emotes() -> void:
+	if _loading_emotes or _client == null or _menu == null:
+		return
+	_loading_emotes = true
+	var owned: Array[String] = await _client.owned_emotes()
+	if is_instance_valid(_menu):
+		_menu.emote_looks = owned
+	_loading_emotes = false
 
 
 func _show_game(snapshot: XomDaoRoomSnapshot) -> void:

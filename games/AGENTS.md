@@ -35,7 +35,9 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 | `npm run new:event -- <id> "Tên" [--opens YYYY-MM-DD] [--closes YYYY-MM-DD]` | The same for an event (`su-kien`, Hành động layout, dates default to today + 4 weeks, reward tiers, browser scenario) |
 | `npm run new -- logic <id> [Name]` | Write a `Game` (+ test) from `scripts/templates/` (leave out `<id>` inside `games/<id>/`) |
 | `npm run new -- options <id>` | Write `src/game/options.ts` (the room's options); its rows in the room come from `room_setup()` in `godot/main.gd` |
+| `npm run godot:export -- --debug --game <id>` | Refresh one game's pack in a matching existing debug web build; use a full export after changing the shared client |
 | `/?play=<id>` | Sandbox (debug builds: dev and PR previews): a real room with the computer in the other seats (`sandbox_options()`) |
+| `npm run godot:preview -- open <index> res://content/<id>/preview.tscn` | Open a persistent, isolated visual preview; use `capture` or `capture-sequence` to review object and animation changes without starting a game room |
 
 ## Rules
 

@@ -18,10 +18,15 @@ signal leave_confirmed(game_action: bool)
 signal rules_requested
 signal emote_chosen(emote: String)
 
-## Emotes offered in the menu, by id; each is a Phosphor icon of the same name.
-const EMOTES: Array[String] = [
-	"smiley", "smiley-wink", "smiley-sad", "smiley-angry", "thumbs-up", "hands-clapping"
-]
+## Labels for the shared emote looks that can be equipped in the player's inventory.
+const EMOTE_LABELS: Dictionary = {
+	"happy": "Vui vẻ",
+	"love": "Thương mến",
+	"wow": "Ngạc nhiên",
+	"sad": "Buồn bã",
+	"angry": "Bực mình",
+	"laugh": "Cười lớn",
+}
 const SCALE_LABELS: Array[String] = ["Vừa", "Lớn"]
 const MARGIN_LABELS: Array[String] = ["Hẹp", "Vừa", "Rộng"]
 const QUALITY_LABELS: Array[String] = ["Thấp", "Vừa", "Cao"]
@@ -38,10 +43,17 @@ var sfx_switch: XomDaoIconButton = XomDaoIconButton.create("speaker-high")
 var ui_scale: XomDaoChoice = XomDaoChoice.create(SCALE_LABELS)
 var margin: XomDaoChoice = XomDaoChoice.create(MARGIN_LABELS)
 var quality: XomDaoChoice = XomDaoChoice.create(QUALITY_LABELS)
+var emote_looks: Array[String] = ["happy"]:
+	set(value):
+		emote_looks = value
+		_rebuild_emotes()
 
 var _settings: XomDaoSettings
 var _shade := ColorRect.new()
+var _confirm_shade: ColorRect
 var _side := VBoxContainer.new()
+var _emote_grid := GridContainer.new()
+var _emote_holder := CenterContainer.new()
 var _tabs: Array[Button] = []
 var _pages: Array[Control] = []
 var _tab: int = 0
@@ -88,6 +100,7 @@ func confirm_leave(
 	title: String, message: String, confirm_label: String, game_action: bool = false
 ) -> void:
 	close()
+	dismiss_confirmation()
 	var confirm: XomDaoBoard = XomDaoBoard.create(title, true)
 	confirm.name = "ConfirmLeaveBoard"
 	confirm.custom_minimum_size = Vector2(minf(size.x - 48.0, 540.0), 0.0)
@@ -96,6 +109,7 @@ func confirm_leave(
 	shade.color = Color(XomDaoUi.INK, 0.45)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(shade)
+	_confirm_shade = shade
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.add_child(center)
@@ -110,17 +124,17 @@ func confirm_leave(
 	confirm.content.add_child(buttons)
 	var stay: XomDaoButton = XomDaoButton.create("Ở lại", XomDaoUi.Kind.BACK)
 	stay.name = "Stay"
-	stay.pressed.connect(shade.queue_free)
+	stay.pressed.connect(dismiss_confirmation)
 	buttons.add_child(stay)
 	var leave: XomDaoButton = XomDaoButton.create(confirm_label, XomDaoUi.Kind.DANGER)
 	leave.name = "ConfirmLeave"
 	leave.pressed.connect(
 		func() -> void:
-			shade.queue_free()
+			dismiss_confirmation()
 			leave_confirmed.emit(game_action)
 	)
 	buttons.add_child(leave)
-	confirm.closed.connect(shade.queue_free)
+	confirm.closed.connect(dismiss_confirmation)
 	confirm.open()
 
 
@@ -133,6 +147,29 @@ func _show() -> void:
 func close() -> void:
 	if board.visible:
 		board.close()
+
+
+func dismiss_confirmation() -> bool:
+	if not is_instance_valid(_confirm_shade):
+		return false
+	_confirm_shade.queue_free()
+	_confirm_shade = null
+	return true
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_cancel"):
+		return
+	if dismiss_confirmation():
+		get_viewport().set_input_as_handled()
+		return
+	if is_open():
+		close()
+		get_viewport().set_input_as_handled()
+		return
+	if button.visible:
+		button.pressed.emit()
+		get_viewport().set_input_as_handled()
 
 
 func _on_closed() -> void:
@@ -224,17 +261,42 @@ func _build_board() -> void:
 	rules.pressed.connect(_rules)
 	side.add_child(rules)
 	side.add_child(XomDaoDivider.create())
-	var emotes := GridContainer.new()
-	emotes.name = "Emotes"
-	emotes.columns = 3
-	emotes.add_theme_constant_override("h_separation", 8)
-	emotes.add_theme_constant_override("v_separation", 8)
-	for emote: String in EMOTES:
-		var pick: XomDaoIconButton = XomDaoIconButton.create(emote)
-		pick.name = emote
-		pick.pressed.connect(_emote.bind(emote))
-		emotes.add_child(pick)
-	side.add_child(emotes)
+	_emote_grid.name = "Emotes"
+	_emote_grid.add_theme_constant_override("h_separation", 8)
+	_emote_grid.add_theme_constant_override("v_separation", 8)
+	_emote_holder.add_child(_emote_grid)
+	side.add_child(_emote_holder)
+	_rebuild_emotes()
+
+
+func _rebuild_emotes() -> void:
+	if not is_instance_valid(_emote_grid):
+		return
+	for child: Node in _emote_grid.get_children():
+		_emote_grid.remove_child(child)
+		child.queue_free()
+	_emote_grid.columns = maxi(1, mini(3, emote_looks.size()))
+	for look: String in emote_looks:
+		var sticker: Texture2D = XomDaoLooks.emote(look)
+		if sticker == null:
+			continue
+		var pick: XomDaoIconButton = XomDaoIconButton.create("")
+		pick.name = "Emote_%s" % look
+		pick.icon = sticker
+		pick.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		var icon_pad: float = 12.0
+		for state: String in ["normal", "hover", "pressed", "disabled", "hover_pressed"]:
+			var icon_style := StyleBoxEmpty.new()
+			icon_style.set_content_margin_all(icon_pad)
+			icon_style.content_margin_top = icon_pad - XomDaoIconButton.DEPTH / 2.0
+			icon_style.content_margin_bottom = icon_pad + XomDaoIconButton.DEPTH / 2.0
+			pick.add_theme_stylebox_override(state, icon_style)
+		for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
+			pick.add_theme_color_override(state, Color.WHITE)
+		pick.tooltip_text = str(EMOTE_LABELS.get(look, look))
+		pick.pressed.connect(_emote.bind(look))
+		_emote_grid.add_child(pick)
+	_emote_holder.visible = not emote_looks.is_empty()
 
 
 ## One tab's rows, [[label, control], …], with a wave between them.
