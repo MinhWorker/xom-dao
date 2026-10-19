@@ -13,18 +13,17 @@ const gameAt = (square: number, cash = 1000) => {
 };
 
 describe('PvP turn clock', () => {
-  it('automatically rolls, buys and ends an inactive player’s turn', () => {
-    const game = gameAt(3);
+  it('declines an unpurchased station when an inactive player times out', () => {
+    const game = gameAt(5);
     expect(game.timer).toEqual({ event: 'turn-timeout', ms: 15000 });
     game.fireTimer();
     expect(game.state.phase).toBe('buy');
     expect(game.state.lastAutoAction).toMatchObject({ seat: 0, event: 'roll' });
     game.fireTimer();
-    expect(game.state.properties[3]!.owner).toBe(0);
-    expect(game.state.phase).toBe('end');
-    game.fireTimer();
+    expect(game.state.properties[5]!.owner).toBeNull();
     expect(game.state.turn).toBe(1);
     expect(game.state.phase).toBe('roll');
+    expect(game.state.lastAutoAction).toMatchObject({ seat: 0, event: 'end-turn' });
     expect(game.timer).toEqual({ event: 'turn-timeout', ms: 15000 });
     expect(game.error('a', 'turn-timeout')).toBeTruthy();
   });
@@ -35,7 +34,6 @@ describe('PvP turn clock', () => {
     game.fireTimer();
     expect(game.state.phase).toBe('roll');
     expect(game.state.turn).toBe(1);
-    expect(game.state.auction).toBeNull();
     expect(game.state.properties[8]!.owner).toBeNull();
     expect(game.state.lastAutoAction).toMatchObject({ seat: 0, event: 'end-turn' });
   });

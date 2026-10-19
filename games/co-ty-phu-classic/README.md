@@ -14,7 +14,11 @@ src/
   game/                        Luật thuần, dữ liệu bàn, thẻ, máy và đồng hồ
 godot/
   player_card.gd, card_cash.gd  Trạng thái avatar, tiền và đồng hồ ghế cho tờ tiền trên bàn
-  tile_hud.gd                  Thông tin ô dưới quân người xem, in nghiêng theo mặt bàn
+  tile_hud.gd                  HUD ô dưới quân hoặc ô được chọn; thế chấp từ HUD
+  tile_hud_button.gd           Nút HUD với tooltip mực sáng
+  tile_selection.gd            Chọn ô bất kỳ trên bàn, bỏ chọn khi quân di chuyển
+  tile_action_confirm.gd       Xác nhận thế chấp từ Tile HUD
+  tile_action_draw.gd          Vẽ nút thao tác từ SVG phẳng và icon tương phản
   background.gd                Video nền phố ven đảo phát lặp, giữ tỷ lệ nguồn
   board_surface.gd             Hai chồng bài, rút/lật thẻ, cặp nút gắn trên mặt bàn
   turn_exchange.gd             Bảng tờ tiền theo POV và đường giao dịch phát sáng
@@ -40,7 +44,7 @@ sources/                       Script kết xuất và nguồn ảnh
 | Nội dung thẻ | `src/game/cards.ts` |
 | Bố cục, hoạt ảnh, mốc trình bày và gửi thao tác | `godot/main.gd` |
 | Nút nào hiện trong lượt và trên thẻ ô đất | `godot/actions.gd` |
-| Dải màu chủ đất, nhà/khách sạn, đất thế chấp, góp bến xe, ô đang chọn, tên và giá in trên ô | `godot/marks.gd` |
+| Dải màu chủ đất, nhà/khách sạn, đất thế chấp, ô đang chọn, tên và giá in trên ô | `godot/marks.gd` |
 | Bảng đề nghị trao đổi | `godot/exchange_page.gd` |
 | Bảng thế chấp nhiều ô | `godot/estate_page.gd` |
 | Đường bay của xúc xắc, cửa tù, màn chiến thắng | `godot/dice.gd`, `godot/gate.gd`, `godot/victory.gd` |
@@ -56,18 +60,24 @@ Kịch bản trình duyệt duy nhất cho một game là Monopoly này:
 ## Bàn chơi
 
 Bố cục **Bàn** ([experience.md](../../docs/experience.md)): bàn 2.5D lớn ở giữa; dải bên phải là
-HUD thông tin nối tiếp mặt bàn theo cùng phép chiếu phối cảnh, hiện ô người xem vừa dừng, tên màu
+HUD thông tin nối tiếp mặt bàn theo cùng phép chiếu phối cảnh, hiện ô người xem vừa dừng hoặc ô
+được chọn trên bàn, tên màu
 theo chủ, giá mua và tiền thuê theo hàng nhãn trái / số phải; các dòng chữ thuần được căn giữa.
+Ô có câu thoại, meme hoặc lối chơi chữ đã có dấu vết được đặt trong ngoặc kép, in nghiêng và làm mờ
+dưới tên; câu dài tự xuống dòng ở cỡ chữ dễ đọc. Ô chưa tìm được câu phù hợp để trống.
 Khi quân người xem đang đi, HUD giữ nguyên khung và hiện hoạt ảnh một nhân vật 2D màu mực đang chạy;
-nội dung ô chỉ đổi sau khi quân dừng. HUD bến xe liệt kê người góp, số lượt và tổng tiền đã góp.
+nội dung ô chỉ đổi sau khi quân dừng. HUD bến xe hiển thị giá mua 200 và tiền thuê theo dạng
+50 × số bến cùng chủ khi có từ hai bến. Thuế hiện số phải nộp cùng cách tính; hai ô tiện ích in
+biểu tượng hai xúc xắc và hệ số thuê. Tile HUD dùng hai nút SVG đúng tỷ lệ, mặt xanh biển phẳng,
+góc bo nhẹ, viền và mép dưới tối; chữ và icon màu kem có độ tương phản cao. Tooltip dùng nền xanh
+ngọc và chữ màu kem.
 Trên máy tính, nhấn Space để gieo xúc xắc khi đến lượt. Phần trên trong
 bàn là bố cục tờ tiền: thẻ POV cố định
 bên trái, ngân hàng ở giữa và các thẻ đối thủ xếp bên phải, nối bằng đường khắc giao dịch. Ô xanh giữa bàn chứa thông báo, xúc xắc và các nút của lượt: Nộp 50 /
-Dùng thẻ khi ở tù, Mua / Bỏ qua, Góp / Từ bỏ ở bến xe, Xây / Hết lượt, Trả
-nợ / Phá sản. Cơ hội và Khí vận có hai chồng bài ở hai mép trong bàn: lá trên cùng bay ra, lật hiện tên sự kiện rồi biến mất. Bước xác nhận ẩn xúc xắc và in tiêu đề/mô tả trực tiếp lên mặt bàn, không có panel nền. Thao tác thế chấp, chuộc và bán nhà được quản lý tập trung trong Sổ cái. Nút tròn hình sổ ở góc trên phải mở overlay Tài sản/Trao đổi. Chọn avatar để xem từng người,
-chọn thẻ đất để quản lý, hoặc chuyển sang hai khay trao đổi để đặt thẻ và tiền. Không có đấu giá
-tài sản cá nhân; mức góp bến xe bắt đầu từ 50 và tăng gấp đôi theo luật trong `RULES.md`. Ô chưa có chủ
-hiện giá mua; bến xe hiện mức góp đầu. Ô đã mua hiện tiền thuê. Đất phố chỉ nhân ×3 khi đủ bộ màu;
+Dùng thẻ khi ở tù, Mua / Bỏ qua, Xây / Hết lượt, Trả nợ / Phá sản. Cơ hội và Khí vận có hai chồng bài ở hai mép trong bàn: lá trên cùng bay ra, lật hiện tên sự kiện rồi biến mất. Bước xác nhận ẩn xúc xắc và in tiêu đề/mô tả trực tiếp lên mặt bàn, không có panel nền. Chạm một ô để xem tài sản; bấm lại ô đó hoặc di chuyển quân để trở về ô của người chơi. Tile HUD dùng biểu tượng ngân hàng cho thế chấp và hỏi xác nhận trước khi gửi; có thể chuộc ô đủ điều kiện ngay tại đây. Sổ cái hỗ trợ quản lý nhiều ô và bán nhà. Nút tròn hình sổ ở góc trên phải mở overlay Tài sản/Trao đổi. Chọn avatar để xem từng người,
+chọn thẻ đất để quản lý, hoặc chuyển sang hai khay trao đổi để đặt thẻ và tiền. Ô chưa có chủ
+hiện giá mua; bến xe có giá niêm yết 200. Ô đã mua hiện tiền thuê, bến xe giữ phí nền 50 và ghi
+hệ số số bến cùng chủ khi sở hữu từ hai bến. Đất phố chỉ nhân ×3 khi đủ bộ màu;
 điện và nước hiện biểu tượng xúc xắc cùng hệ số thuê. Tab người chơi trong Sổ cái có viền trang trí theo màu quân của từng
 người. Khi dừng trên ô đất phố mình sở hữu, nút **Bảng giá xây** ở cuối HUD mở ngăn kéo trượt
 theo cùng mặt nghiêng, cho biết chi phí xây và tiền thuê từ đất trống tới khách sạn; bậc hiện tại
@@ -76,9 +86,9 @@ theo cùng mặt nghiêng, cho biết chi phí xây và tiền thuê từ đất
 Máy chủ vẫn gửi trạng thái luật hoàn chỉnh ngay khi xử lý xong thao tác. Bàn giữ riêng trạng thái
 luật mới nhất để kiểm tra thao tác và trạng thái đang trình bày để vẽ; mỗi snapshot chỉ được trình
 bày sau khi hàng đợi xúc xắc, di chuyển, sự kiện và giao dịch của nó chạy xong. Vì vậy màu chủ đất,
-ô đích, đấu giá, trạng thái tù và tiền thuê đổi cùng nhịp với quân cờ.
+ô đích, quyền sở hữu, trạng thái tù và tiền thuê đổi cùng nhịp với quân cờ.
 
-Vị trí nghỉ của xúc xắc cố định trên mặt bàn, không phụ thuộc nút hiện bên dưới. Vùng chạm mở rộng bao gồm các mặt bên và khoảng sát quanh xúc xắc. Chữ thông báo lớn hơn, bỏ dấu chấm kết câu khi in; thông báo thường vẫn nằm dưới xúc xắc về chiều sâu. Riêng xác nhận sự kiện ẩn xúc xắc để mô tả dễ đọc. Cặp nút trên bàn có vị trí cố định, mặt mỏng và góc bo nhẹ, đổi chữ/màu theo trạng thái; không đẩy các thành phần khác khi số nút thay đổi.
+Vị trí nghỉ của xúc xắc cố định trên mặt bàn, không phụ thuộc nút hiện bên dưới. Vùng chạm mở rộng bao gồm các mặt bên và khoảng sát quanh xúc xắc. Chữ thông báo lớn hơn, bỏ dấu chấm kết câu khi in và chuẩn hóa dấu câu khi ghép số tiền; thông báo thường vẫn nằm dưới xúc xắc về chiều sâu. Riêng xác nhận sự kiện ẩn xúc xắc để mô tả dễ đọc. Cặp nút trên bàn có vị trí cố định, mặt mỏng và góc bo nhẹ, đổi chữ/màu theo trạng thái; không đẩy các thành phần khác khi số nút thay đổi.
 
 Mỗi ô in tên (đất đã bán in tên bằng màu chủ) và, với ô đất, giá. Xúc xắc bay theo một trong bốn
 đường, xoay và đổi mặt rồi dừng ở mặt server gieo, ô xanh hiện tổng (3 + 4 = 7). Quân đi từng ô,
@@ -150,7 +160,7 @@ npm run godot -- res://content/co-ty-phu-classic/visual_review.tscn
 ```
 
 Nút ở trên phải đổi giữa bàn trống, màu chủ sở hữu, đổi chủ, thế chấp, hai ô/đủ bộ, thu hồi và
-góp vốn bến xe. Nút Tung thử chạy hoạt cảnh xúc xắc rồi cho quân đỏ đi theo tổng số gieo.
+giá bến xe. Nút Tung thử chạy hoạt cảnh xúc xắc rồi cho quân đỏ đi theo tổng số gieo.
 Cảnh Đổi chủ chuyển bộ Phú Quốc–Lào Cai–Việt Trì từ đỏ sang xanh dương, Bến Bắc sang xanh lá
 và Điện lực sang đỏ; badge, biểu tượng và công trình đổi màu, còn dải bộ giữ nguyên.
 Đây là bàn xem với tư cách khán giả; chơi thật qua sandbox như phần Phát triển.
@@ -187,12 +197,9 @@ sân bay có huy hiệu trời đêm và vệt bay; xuất phát có vệt mũi 
 tù có đèn đỏ/xanh; Cơ hội có sao lấp lánh, Khí vận hé nắp, Thuế có nhịp đồng xu và bến xe có
 vệt chuyển động. Các nhịp được lệch nhau để chữ và màu chủ sở hữu vẫn rõ.
 
-Góp vốn bến xe hiển thị tối đa bốn chồng xu màu người chơi trong bốn vị trí cố định ở chân ô,
-chiếu đúng mặt tile. Mỗi xu biểu thị một lần góp thành công, không phải một mức tiền cố định;
-người rút vốn mất chồng của mình, chốt bến thì các chồng biến mất. Trạng thái cũ chưa lưu số lần
-chỉ hiển thị một xu cho khoản vốn đang có; các lượt góp mới được đếm từ đó.
+Giá bến xe 200 được in trên thẻ ô và hiện trong HUD khi dừng tại bến.
 
-Mở `godot/visual_review.tscn`, chuyển tới **Góp vốn bến xe** để xem cả bốn hướng và bấm **Tung thử**
+Mở `godot/visual_review.tscn`, chuyển tới **Giá mua bến xe** để xem cả bốn hướng và bấm **Tung thử**
 để xem các kiểu tung mà không cần máy chủ.
 
 ### Quân cờ và xúc xắc Blender
@@ -223,7 +230,7 @@ Số dư luôn màu mực; số thay đổi và ánh nháy nhẹ dùng xanh khi 
 
 Bảng thông tin trong lòng bàn có bố cục như tờ tiền, chiếu theo mặt bàn. Ở giữa là dấu ngân hàng; thẻ lớn bên trái luôn là người đang xem, ba thẻ nhỏ bên phải giữ thứ tự ghế của những người còn lại. Người tới lượt có viền vàng sáng; thẻ không đổi chỗ theo lượt. Người xem ván chưa có ghế dùng ghế đầu tiên làm điểm nhìn cố định.
 
-Thẻ lớn không ghi tên hay “Bạn”: phần đầu là chân dung có khung màu ghế và ô tiền nền tối, có biểu tượng tiền đứng trước số dư. Các thẻ đối thủ giữ tên và dùng cùng ngôn ngữ khung khắc, tiền nền tối; mọi số dư đều có biểu tượng tiền đứng trước. Chân dung có khung màu ghế, viền thẻ cắt góc, các số liệu nằm trong ô riêng và trạng thái có huy hiệu riêng. Bên dưới thẻ lớn là bốn ô số liệu bằng biểu tượng: đất, nhà, khách sạn, bến xe sở hữu, kể cả khi bằng 0. Hàng trạng thái chỉ hiện các biểu tượng đang có hiệu lực: góp vốn bến xe, ở tù kèm số lượt còn lại, sở hữu điện/nước, vé ra tù kèm số vé. Khi hết hiệu lực, biểu tượng và số đi kèm cùng ẩn; các biểu tượng khác giữ nguyên vị trí. Một khách sạn được đếm riêng, không tính thành năm nhà.
+Thẻ lớn không ghi tên hay “Bạn”: phần đầu là chân dung có khung màu ghế và ô tiền nền tối, có biểu tượng tiền đứng trước số dư. Các thẻ đối thủ giữ tên và dùng cùng ngôn ngữ khung khắc, tiền nền tối; mọi số dư đều có biểu tượng tiền đứng trước. Chân dung có khung màu ghế, viền thẻ cắt góc, các số liệu nằm trong ô riêng và trạng thái có huy hiệu riêng. Bên dưới thẻ lớn là bốn ô số liệu bằng biểu tượng: đất, nhà, khách sạn, bến xe sở hữu, kể cả khi bằng 0. Hàng trạng thái chỉ hiện các biểu tượng đang có hiệu lực: ở tù kèm số lượt còn lại, sở hữu điện/nước, vé ra tù kèm số vé. Khi hết hiệu lực, biểu tượng và số đi kèm cùng ẩn; các biểu tượng khác giữ nguyên vị trí. Một khách sạn được đếm riêng, không tính thành năm nhà.
 
 `banknote_model.gd` tổng hợp số liệu/trạng thái và giữ thứ tự POV. `turn_exchange.gd` vẽ các đường khắc nối mỗi thẻ với ngân hàng; giao dịch chỉ làm sáng đường của bên gửi và bên nhận, kể cả giữa hai thẻ bên phải. Số dư hai bên đếm cùng nhịp; ngân hàng không có số dư. Các giao dịch được phát lần lượt theo dữ liệu máy chủ, sau đó các thẻ HUD bên ngoài chạy hiệu ứng số dư tương ứng.
 
@@ -254,14 +261,11 @@ Camera của máy bay trùng với camera quân cờ. Chuyển vào tù vẫn d�
 
 `godot/ledger.gd` thay hai nút Tài sản/Trao đổi bằng một nút tròn hình sổ, mở overlay toàn cảnh.
 Tab chính xếp dọc bên trái; avatar người chơi xếp ngang phía trên. `estate_page.gd` gom thẻ
-đất theo bộ, hiển thị công trình, thế chấp và phần góp bến xe; chọn thẻ để quản lý hoặc chọn
+đất theo bộ, hiển thị công trình và thế chấp; chọn thẻ để quản lý hoặc chọn
 nhiều thẻ thế chấp. `estate_card.gd` vẽ các vật thể từ màu bộ, icon và tiền của bộ UI chung.
 `exchange_page.gd` có hai khay nhận thẻ bằng chạm hoặc kéo thả; `money_pad.gd` nhập tiền bằng
 bàn phím số. `trade_draft.gd` giữ đúng một đề nghị, khóa khi đang chờ và làm trống khi kết thúc.
 Chữ trên giao diện chỉ gồm tên, số và nhãn thao tác ngắn.
-
-Máy chủ không còn event `auction` hoặc phiên bán tài sản cá nhân; các sự kiện `bid`/`pass`
-và phase `auction` chỉ phục vụ luật bến xe. Không thay đổi cách góp, hoàn tiền hoặc chốt bến.
 
 Giá đề nghị tự điền theo giá niêm yết: mua/bán một thẻ điền toàn bộ giá, đổi hai thẻ điền
 phần chênh lệch vào bên cần bù tiền. Người chơi vẫn sửa được số tiền; thay lựa chọn thẻ sẽ tính

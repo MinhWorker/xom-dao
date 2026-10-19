@@ -7,17 +7,11 @@ import {
   type Options,
   type SpecialEventEffect,
   STATION_BASE_FEE,
-  STATION_INITIAL_CONTRIBUTION,
   type State,
   UTILITY_SQUARES,
 } from './model.js';
 
 export type Context = GameContext<State, Options>;
-
-/** First station contribution is 50; every later contribution doubles the previous one. */
-export function nextStationContribution(highest: number) {
-  return highest > 0 ? highest * 2 : STATION_INITIAL_CONTRIBUTION;
-}
 
 export const copy = (state: State): State => ({
   ...state,
@@ -29,23 +23,6 @@ export const copy = (state: State): State => ({
   chance: [...state.chance],
   chest: [...state.chest],
   shortages: state.shortages.map((event) => ({ ...event })),
-  stationAuctions: Object.fromEntries(
-    Object.entries(state.stationAuctions).map(([square, auction]) => [
-      square,
-      {
-        ...auction,
-        passed: [...auction.passed],
-        bids: [...auction.bids],
-        contributions: auction.contributions && [...auction.contributions],
-      },
-    ]),
-  ),
-  auction: state.auction && {
-    ...state.auction,
-    passed: [...state.auction.passed],
-    bids: [...state.auction.bids],
-    contributions: state.auction.contributions && [...state.auction.contributions],
-  },
   debt: state.debt && { ...state.debt },
   trade: state.trade && { ...state.trade },
 });
@@ -79,24 +56,25 @@ export function expireMortgages(s: State, borrower: number, forced = false): str
     deed.owner = null;
     deed.houses = 0;
     deed.mortgaged = false;
-    deed.acquisitionCost = undefined;
     deed.mortgage = undefined;
     expired.push(BOARD[square]!.name);
   }
   return expired;
 }
 
-/** The acquired deed and its buildings are pledged at half their purchase/construction cost. */
+/** The listed deed purchase price, excluding buildings. */
 export function deedPrice(s: Pick<State, 'properties'>, square: number) {
   const cell = BOARD[square]!;
-  if (cell.kind === 'station')
-    return s.properties[square]!.acquisitionCost ?? STATION_INITIAL_CONTRIBUTION;
   return cell.price ?? 0;
 }
 
 export function mortgageAmount(s: Pick<State, 'properties'>, square: number) {
-  const cell = BOARD[square]!;
-  return (deedPrice(s, square) + s.properties[square]!.houses * (cell.houseCost ?? 0)) / 2;
+  return Math.round(deedPrice(s, square) / 2);
+}
+
+/** The bank buys each building level back for half its build price, rounded to whole currency. */
+export function buildingSalePrice(buildCost: number) {
+  return Math.round(buildCost / 2);
 }
 
 export function redeemAmount(s: Pick<State, 'properties'>, square: number) {
@@ -106,7 +84,9 @@ export function redeemAmount(s: Pick<State, 'properties'>, square: number) {
 
 export function mortgageSquares(s: Pick<State, 'properties'>, seat: number) {
   return s.properties.flatMap((deed, square) =>
-    deed.owner === seat && !deed.mortgaged && isDeed(BOARD[square]!) ? [square] : [],
+    deed.owner === seat && !deed.mortgaged && deed.houses === 0 && isDeed(BOARD[square]!)
+      ? [square]
+      : [],
   );
 }
 
@@ -168,6 +148,10 @@ export function transferMoney(
   s.transfers.push({ from, to, amount, reason });
 }
 
+function noticeWithDetail(reason: string, detail: string) {
+  return `${reason.trim().replace(/[.!?]+$/, '')}: ${detail}`;
+}
+
 export function charge(
   s: State,
   payer: number,
@@ -180,11 +164,11 @@ export function charge(
     s.debt = { amount, creditor, reason, after: s.after };
     if (payer !== s.turn) s.debt.payer = payer;
     s.phase = 'debt';
-    s.notice = `${reason}: cần trả ${amount}. Bán nhà hoặc thế chấp để trả nợ.`;
+    s.notice = noticeWithDetail(reason, `cần trả ${amount}. Bán nhà hoặc thế chấp để trả nợ.`);
     return;
   }
   transferMoney(s, payer, creditor, amount, reason);
-  s.notice = `${reason}: −${amount}`;
+  s.notice = noticeWithDetail(reason, `−${amount}`);
 }
 
 export function jail(s: State, seat: number) {
@@ -254,6 +238,15 @@ export function resolveSpecialEvent(s: State, rng: () => number) {
   }
   if (event.kind === 'jail') {
     jail(s, seat);
+    s.notice = event.reason;
+    return;
+  }
+  if (event.kind === 'release') {
+    s.players[seat]!.jailed = false;
+    s.players[seat]!.jailRolls = 0;
+    s.phase = 'roll';
+    s.after = 'end';
+    s.doubles = 0;
     s.notice = event.reason;
     return;
   }
@@ -334,21 +327,8 @@ export function land(s: State, seat: number, roll: number, multiplier = 1) {
   if (isDeed(cell)) {
     const owner = s.properties[square]!.owner;
     if (owner === null) {
-      if (cell.kind === 'station') {
-        s.stationAuctions[square] ??= {
-          square,
-          highest: 0,
-          leader: null,
-          passed: [],
-          bids: s.players.map(() => 0),
-          contributions: s.players.map(() => 0),
-        };
-        const auction = s.stationAuctions[square]!;
-        if (auction.passed.includes(seat) || auction.leader === seat) return;
-        s.auction = { ...auction, bidder: seat };
-      }
       s.pending = square;
-      s.phase = cell.kind === 'station' ? 'auction' : 'buy';
+      s.phase = 'buy';
     } else if (owner === seat && cell.kind === 'street' && !s.players[seat]!.jailed) {
       s.buildable = square;
     } else if (owner !== seat) {
@@ -372,47 +352,8 @@ export function land(s: State, seat: number, roll: number, multiplier = 1) {
 export function finishIfLast(s: State, ctx: Context) {
   const survivors = active(s);
   if (survivors.length === 1) {
-    for (const auction of Object.values(s.stationAuctions)) {
-      auction.bids.forEach((amount, seat) => {
-        transferMoney(s, null, seat, amount, 'Hoàn tiền đấu giá');
-      });
-    }
-    s.stationAuctions = {};
     s.winner = survivors[0]!;
     ctx.finish([ctx.players[survivors[0]!]!.id]);
-  }
-}
-
-/** Resolve between decisions, so a winner's debt cannot overwrite another landing. */
-export function settleStations(s: State) {
-  if (s.winner !== null || (s.phase !== 'roll' && s.phase !== 'end')) return;
-  const settlements = Object.values(s.stationAuctions)
-    .map((auction) => ({
-      auction,
-      remaining: active(s).filter((seat) => !auction.passed.includes(seat)),
-    }))
-    .filter(({ remaining }) => remaining.length <= 1);
-  // All qualifying deposits become spendable before any purchase can create debt.
-  for (const { auction } of settlements) {
-    auction.bids.forEach((amount, seat) => {
-      transferMoney(s, null, seat, amount, 'Hoàn tiền đấu giá');
-      auction.bids[seat] = 0;
-      if (auction.contributions) auction.contributions[seat] = 0;
-    });
-  }
-  for (const { auction, remaining } of settlements) {
-    delete s.stationAuctions[auction.square];
-    const winner = remaining[0];
-    if (winner === undefined) continue;
-    const resume = s.phase;
-    s.properties[auction.square]!.owner = winner;
-    s.properties[auction.square]!.acquisitionCost = auction.highest;
-    charge(s, winner, auction.highest, null, `Mua ${BOARD[auction.square]!.name}`);
-    if (s.debt) {
-      s.debt.after = resume;
-      return;
-    }
-    s.notice = `${BOARD[auction.square]!.name} bán giá ${auction.highest}.`;
   }
 }
 
@@ -425,18 +366,17 @@ export function bankrupt(
 ) {
   const p = s.players[seat]!;
   const cashBeforeBankruptcy = p.cash;
-  for (const auction of Object.values(s.stationAuctions)) {
-    transferMoney(s, null, seat, auction.bids[seat]!, 'Hoàn tiền đấu giá');
-    auction.bids[seat] = 0;
-    if (auction.contributions) auction.contributions[seat] = 0;
-    if (!auction.passed.includes(seat)) auction.passed.push(seat);
-    if (auction.leader === seat) auction.leader = null;
-  }
   p.bankrupt = true;
   expireMortgages(s, seat, true);
   for (const [i, deed] of s.properties.entries()) {
     if (deed.owner === seat && deed.houses)
-      transferMoney(s, null, seat, (deed.houses * BOARD[i]!.houseCost!) / 2, 'Thanh lý nhà');
+      transferMoney(
+        s,
+        null,
+        seat,
+        deed.houses * buildingSalePrice(BOARD[i]!.houseCost!),
+        'Thanh lý nhà',
+      );
   }
   const recipient = creditor !== null && !s.players[creditor]!.bankrupt ? creditor : null;
   const creditorPayment = Math.min(cashBeforeBankruptcy, debtAmount);
@@ -448,14 +388,12 @@ export function bankrupt(
     deed.owner = null;
     deed.houses = 0;
     deed.mortgaged = false;
-    deed.acquisitionCost = undefined;
     deed.mortgage = undefined;
   }
   p.freeCards = [];
   p.cash = 0;
   if (s.turn === seat) s.specialEvent = null;
   s.trade = null;
-  s.auction = null;
   s.debt = null;
   s.pending = null;
   if (s.turn === seat) s.buildable = null;

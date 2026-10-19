@@ -69,8 +69,6 @@ func _view(extra: Dictionary = {}) -> Dictionary:
 		"dice": null,
 		"pending": null,
 		"buildable": null,
-		"auction": null,
-		"stationAuctions": {},
 		"debt": null,
 		"trade": null,
 		"notice": "Bắt đầu ván mới.",
@@ -243,7 +241,7 @@ func test_drag_targets_accept_only_the_corresponding_players_inventory() -> void
 	)
 
 
-func test_detail_actions_fit_inside_the_book_with_three_available_actions() -> void:
+func test_detail_actions_fit_inside_the_book_with_building_sale_and_build_actions() -> void:
 	var view := _view({"phase": "end", "buildable": 1})
 	view["players"][0]["position"] = 1
 	view["properties"][1] = {"owner": 0, "houses": 2, "mortgaged": false}
@@ -261,7 +259,7 @@ func test_detail_actions_fit_inside_the_book_with_three_available_actions() -> v
 		"Last action stays inside the book on a 16:9 frame"
 	)
 	assert_true(_node(table, "EstateSellHouse").visible)
-	assert_true(_node(table, "EstateMortgage").visible)
+	assert_null(_node(table, "EstateMortgage"))
 
 
 func test_trade_prices_autofill_for_sales_purchases_swaps_and_selection_changes() -> void:
@@ -281,10 +279,9 @@ func test_trade_prices_autofill_for_sales_purchases_swaps_and_selection_changes(
 	assert_eq(draft.get("take_cash"), 0)
 
 
-func test_station_trade_quote_uses_the_winning_contribution() -> void:
+func test_station_trade_quote_uses_its_fixed_purchase_price() -> void:
 	var view := _view()
 	view["properties"][5]["owner"] = 0
-	view["properties"][5]["acquisitionCost"] = 400
 	var draft: RefCounted = Draft.new()
 	draft.call("choose", 0, 5, view["properties"])
-	assert_eq(draft.get("take_cash"), 400)
+	assert_eq(draft.get("take_cash"), 200)

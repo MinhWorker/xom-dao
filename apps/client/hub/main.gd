@@ -511,11 +511,7 @@ func _show_select(genre_id: String) -> void:
 	select.progress_needed.connect(_fill_progress.bind(select))
 	select.join_pressed.connect(_quick_match)
 	select.claim_pressed.connect(_claim.bind(select))
-	select.join_room_requested.connect(
-		func(code: String) -> void:
-			if not await _client.join_room(code):
-				_say("Không tìm thấy phòng %s" % code)
-	)
+	select.join_room_requested.connect(func(code: String) -> void: await _client.join_room(code))
 	select.show_genre(_catalog, genre_id, _game_id)
 
 
@@ -558,11 +554,8 @@ func _show_ben() -> void:
 	_ben.top.money.show_balance(_coins)
 	_ben.top.money.settings_pressed.connect(_menu.open_settings)
 	_ben.back_pressed.connect(_back_to_lobby)
-	_ben.join_requested.connect(
-		func(code: String) -> void:
-			if not await _client.join_room(code):
-				_say("Không tìm thấy phòng %s" % code)
-	)
+	_ben.join_requested.connect(func(code: String) -> void: await _client.join_room(code))
+	_ben.watch_requested.connect(_client.join_room.bind("spectator"))
 	_ben.game_selected.connect(_on_ben_game_selected)
 
 	# Ensure a playable game is picked
@@ -790,6 +783,10 @@ func _show_result_after_intro(snapshot: XomDaoRoomSnapshot) -> void:
 
 func _show_result(snapshot: XomDaoRoomSnapshot) -> void:
 	_result = HubResult.new()
+	if _game.has_method("result_reopen_theme"):
+		var reopen_theme: Variant = _game.call("result_reopen_theme")
+		if reopen_theme is Dictionary:
+			_result.set_reopen_theme(reopen_theme as Dictionary)
 	if _game.has_method("result_area"):
 		_result.dock(Callable(_game, "result_area"))
 		if _game.has_method("set_result_visible"):

@@ -55,22 +55,19 @@ describe('utilities and monopoly', () => {
     g.state.properties[1] = { owner: 0, houses: 2, mortgaged: false };
     g.state.players[0]!.freeCards = ['chance'];
     expect(assetValue(g.state, 0)).toBe(1600);
+    g.send('a', 'sell-house', { square: 1 });
+    g.send('a', 'sell-house', { square: 1 });
     g.send('a', 'mortgage', { square: 1 });
-    expect(assetValue(g.state, 0)).toBe(1580);
+    expect(assetValue(g.state, 0)).toBe(1490);
   });
 
-  it('uses the winning contribution as a station purchase and mortgage value', () => {
+  it('uses the listed station price as its purchase, mortgage, and asset value', () => {
     const g = game();
-    g.state.properties[5] = {
-      owner: 0,
-      houses: 0,
-      mortgaged: false,
-      acquisitionCost: 400,
-    };
-    expect(BOARD[5]).not.toHaveProperty('price');
-    expect(deedPrice(g.state, 5)).toBe(400);
-    expect(mortgageAmount(g.state, 5)).toBe(200);
-    expect(assetValue(g.state, 0)).toBe(1400);
+    g.state.properties[5]!.owner = 0;
+    expect(BOARD[5]!.price).toBe(200);
+    expect(deedPrice(g.state, 5)).toBe(200);
+    expect(mortgageAmount(g.state, 5)).toBe(100);
+    expect(assetValue(g.state, 0)).toBe(1200);
   });
 
   it('applies full-set rent across an intervening chance square, not a pair bonus', () => {

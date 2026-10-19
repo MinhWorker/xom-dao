@@ -2,9 +2,10 @@ class_name HubBenRoomCard
 extends PanelContainer
 ## A room card on Bến's right list:
 ## displays a mini splash thumbnail of the game, the game title,
-## the room code badge, the host name, seats chip, and the "Vào" button.
+## the room code badge, the host name, seats chip, and the "Vào" or "Xem" button.
 
 signal join_pressed(code: String)
+signal watch_pressed(code: String)
 
 const SHADER: Shader = preload("res://hub/ben/ben_card.gdshader")
 
@@ -130,18 +131,27 @@ func _build() -> void:
 	seats_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bot_line.add_child(seats_chip)
 
-	if not summary.can_join:
-		var status_chip := XomDaoChip.create("Đang chơi", "clock", Color("#3D291F"))
+	var watching: bool = summary.status == "playing"
+	if watching or not summary.can_join:
+		var status_text: String = "Đang chơi" if watching else "Đủ ghế"
+		var status_icon: String = "clock"
+		if watching and summary.spectators > 0:
+			status_text = "%d xem" % summary.spectators
+			status_icon = "users"
+		var status_chip := XomDaoChip.create(status_text, status_icon, Color("#3D291F"))
 		status_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		bot_line.add_child(status_chip)
 
 	# Right Action Button
-	enter_btn = XomDaoButton.create("Vào", XomDaoUi.Kind.SOCIAL)
-	enter_btn.name = "Enter_" + summary.code
+	enter_btn = XomDaoButton.create("Xem" if watching else "Vào", XomDaoUi.Kind.SOCIAL)
+	enter_btn.name = ("Watch_" if watching else "Enter_") + summary.code
 	enter_btn.pad = 16.0
 	enter_btn.custom_minimum_size = Vector2(104.0, 56.0)
 	enter_btn.add_theme_font_size_override("font_size", 26)
-	enter_btn.disabled = not summary.can_join
+	enter_btn.disabled = not summary.can_join and not watching
 	enter_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	enter_btn.pressed.connect(func() -> void: join_pressed.emit(summary.code))
+	if watching:
+		enter_btn.pressed.connect(func() -> void: watch_pressed.emit(summary.code))
+	else:
+		enter_btn.pressed.connect(func() -> void: join_pressed.emit(summary.code))
 	row.add_child(enter_btn)

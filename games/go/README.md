@@ -14,10 +14,11 @@ Bảng Tạo phòng gồm **Đối thủ** (bạn bè hoặc máy), **Máy chơi
 
 ## Chơi
 
-Bố cục **Bàn** ([experience.md](../../docs/experience.md)): bàn gỗ ở giữa, cao gần trọn khung.
-Cột bên trái có hai người chơi (mình ở dưới, đối thủ dưới nút ☰ của hub), mỗi người một hộp quân
-và một nắp đựng quân đã bắt. Cột bên phải có trạng thái, số nước hoặc số đếm, và các nút Bỏ lượt,
-Đồng ý, Đánh tiếp, Đầu hàng.
+Bố cục **Bàn** ([experience.md](../../docs/experience.md)): bàn gỗ ở giữa, cao gần trọn khung,
+đặt trên mặt bàn gỗ sẫm có vân nhẹ, vignette và bóng đổ mềm. Máy cùng thẻ người chơi, hộp quân và
+nắp đựng quân đã bắt nằm bên trái. Bên phải là plaque lượt, thẻ của bạn, hộp quân và các nút Bỏ
+lượt, Đồng ý, Đánh tiếp, Đầu hàng. Thẻ gộp tên, ảnh đại diện và số ván thắng; huy hiệu số quân bắt
+được nằm trên nắp hộp. Người không tới lượt mờ đi.
 
 Tới lượt mình, quân sắp đặt đi theo chuột; khi ngón tay (hoặc chuột) giữ trên bàn, kính lúp hiện
 các giao điểm quanh đó, thả tay là đặt quân. Quân vừa đặt có vòng đỏ, điểm cướp có ô vuông. Quân
@@ -39,7 +40,7 @@ mắt mình và ước lượng vùng chắc bằng các ván ngẫu nhiên. Ch�
 | Đặt quân, bắt quân, cướp, đếm điểm và đoán quân chết | `src/game/rules.ts` |
 | Lượt, bỏ lượt, đồng ý, đánh tiếp và đầu hàng | `src/game/GoGame.ts` |
 | Máy chơi | `src/game/bot.ts` |
-| Bàn chơi: bàn, quân, kính lúp, đếm điểm, hộp và nắp, `room_setup()` và `result_detail()` | `godot/main.gd`, `godot/main.tscn` (test: `godot/test/`) |
+| Bàn chơi: mặt bàn, thẻ người chơi, bàn và quân, kính lúp, đếm điểm, hộp và nắp, `room_setup()` và `result_detail()` | `godot/main.gd`, `godot/player_card.gd`, `godot/player_avatar.gd`, `godot/art/table_surface.gdshader` (test: `godot/test/`) |
 | Hình, âm thanh và nhạc của bàn | `godot/art/`, `godot/sounds/`, `godot/music/` |
 
 `src/index.ts` đăng ký game phía server. `assets/` chứa hình và âm thanh cỡ đầy đủ (bàn chép bản
@@ -58,11 +59,12 @@ Hướng dẫn SDK: [tạo game](../../docs/making-a-game.md).
 
 ## Hình và âm thanh
 
-- Bàn gỗ kaya viền mỏng, quân đá phiến đen/đá trắng ngà mài bóng, nền vải và nút gỗ kết xuất bằng
-  Blender: `npm run blender -- go`. Helper chung ở `tools/blender/xomdao_bake/`;
-  cũng dùng được Python với bpy như [hướng dẫn](../../docs/making-a-game.md#kết-xuất-blender-và-normal-map). Góc nhìn thẳng từ trên
-  xuống, ánh sáng mềm từ trên trái. Nền vải liền mép là tile 256×256 POT lát kín màn hình;
-  tái tạo bằng `npm run blender -- go cloth`. Đường kẻ và chín sao vẽ bằng code để khớp giao điểm.
+- Bàn gỗ kaya viền mỏng, quân đá phiến đen/đá trắng ngà mài bóng, hộp quân và nút gỗ kết xuất
+  bằng Blender: `npm run blender -- go`. Helper chung ở `tools/blender/xomdao_bake/`; cũng dùng
+  được Python với bpy như [hướng dẫn](../../docs/making-a-game.md#kết-xuất-blender-và-normal-map).
+  Góc nhìn thẳng từ trên xuống, ánh sáng mềm từ trên trái. Mặt bàn gỗ sẫm có vân nhẹ và vignette
+  được vẽ bằng `godot/art/table_surface.gdshader`; bóng bàn và hộp quân được vẽ bằng code. Đường kẻ
+  và chín sao khớp giao điểm cũng vẽ bằng code.
 - Hộp và nắp mây đan được dựng riêng theo ảnh tham khảo, kết xuất trong suốt bằng
   `npm run blender -- go bowl bowl-lid`; chồng quân và bóng tròn vẽ bằng code.
 - Tranh đảo Cờ Vây (`island`) tạo bằng Image Gen; prompt ở `sources/prompts.json`. Sinh lại bằng `npm run gen:asset -- go/island`.

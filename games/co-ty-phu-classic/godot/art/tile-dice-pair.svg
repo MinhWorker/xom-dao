@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="260" viewBox="0 0 384 260">
+  <title>Hai viên xúc xắc màu mực</title>
+  <g transform="rotate(-12 114 127)">
+    <rect x="31" y="45" width="150" height="150" rx="32" fill="#234746" stroke="#183C3B" stroke-width="9"/>
+    <path d="M53 64h102" fill="none" stroke="#F7EED9" stroke-opacity=".42" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="76" cy="91" r="12" fill="#F7EED9"/>
+    <circle cx="135" cy="150" r="12" fill="#F7EED9"/>
+  </g>
+  <g transform="rotate(10 264 145)">
+    <rect x="188" y="69" width="153" height="153" rx="32" fill="#234746" stroke="#183C3B" stroke-width="9"/>
+    <path d="M212 88h104" fill="none" stroke="#F7EED9" stroke-opacity=".42" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="230" cy="112" r="11" fill="#F7EED9"/>
+    <circle cx="299" cy="112" r="11" fill="#F7EED9"/>
+    <circle cx="264" cy="145" r="11" fill="#F7EED9"/>
+    <circle cx="230" cy="179" r="11" fill="#F7EED9"/>
+    <circle cx="299" cy="179" r="11" fill="#F7EED9"/>
+  </g>
+</svg>

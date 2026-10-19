@@ -67,18 +67,20 @@ func _table(view: Dictionary, status: String = "playing") -> Control:
 
 
 func test_shows_the_stones_and_whose_turn() -> void:
-	var table := _table(_view(["me", "bot"], "b"))
+	var table := _table(_view(["me", "bot"], "b", {"prisoners": {"b": 2, "w": 1}}))
 	assert_not_null(table.find_child("Stone_72", true, false), "a black stone")
 	assert_not_null(table.find_child("Stone_288", true, false), "a white stone")
 	assert_null(table.find_child("Stone_0", true, false), "the corner is empty")
 	assert_eq((table.find_child("Status", true, false) as Label).text, "Lượt bạn")
 	assert_eq((table.find_child("Details", true, false) as Label).text, "Nước 2")
+	assert_eq((table.find_child("Seat_0", true, false) as GoPlayerCard).stats, "Thắng: 1")
+	assert_eq((table.find_child("PrisonerCount_0", true, false) as Label).text, "2")
 	assert_false((table.find_child("Pass", true, false) as Button).disabled)
 
 
 func test_white_waits_and_cannot_pass() -> void:
 	var table := _table(_view(["bot", "me"], "b", {"moves": []}))
-	assert_eq((table.find_child("Status", true, false) as Label).text, "Lượt Đen")
+	assert_eq((table.find_child("Status", true, false) as Label).text, "Lượt Máy")
 	assert_true((table.find_child("Pass", true, false) as Button).disabled)
 
 

@@ -200,6 +200,31 @@ func test_menu_opens_and_reports_choices() -> void:
 	assert_false(menu.dismiss_confirmation(), "Escape dismisses the confirmation")
 
 
+func test_bankruptcy_leave_title_keeps_clear_of_the_close_button() -> void:
+	var menu: XomDaoMenu = add_child_autofree(XomDaoMenu.new(_settings()))
+	menu.confirm_leave(
+		"Phá sản và rời phòng?",
+		"Tài sản sẽ về ngân hàng, số dư về 0 và bạn bị loại khỏi ván trước khi rời phòng.",
+		"Phá sản & rời",
+		true
+	)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var confirm: XomDaoBoard = menu.find_child("ConfirmLeaveBoard", true, false)
+	var title: Label = confirm.get("_title")
+	assert_true(confirm.close_button.visible)
+	assert_false(
+		title.get_global_rect().intersects(confirm.close_button.get_global_rect()),
+		"The confirmation title must reserve space for the close mark"
+	)
+	var title_font: Font = title.get_theme_font("font")
+	var title_size: int = title.get_theme_font_size("font_size")
+	var text_width: float = (
+		title_font.get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
+	)
+	assert_lte(text_width, title.size.x, "The full confirmation title stays on one line")
+
+
 func test_menu_changes_the_settings() -> void:
 	var settings: XomDaoSettings = _settings()
 	var menu: XomDaoMenu = add_child_autofree(XomDaoMenu.new(settings))

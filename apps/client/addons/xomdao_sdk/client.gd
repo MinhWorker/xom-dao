@@ -41,6 +41,7 @@ signal link_changed(open: bool)
 const OFFLINE := "offline"
 ## The server runs a newer protocol than this build: the page has to load the new one.
 const PROTOCOL_MISMATCH := "protocol-mismatch"
+const ROOM_PLAYING := "Ván đang chơi, bạn có thể vào xem"
 ## Waits between reconnect attempts grow up to this many seconds.
 const MAX_RETRY_SECONDS := 8.0
 
@@ -137,9 +138,19 @@ func quick_match(game_id: String) -> bool:
 	return _entered(await _ok(XomDaoProtocol.ROOM_QUICK, {"gameId": game_id}))
 
 
-## Joins a room by its code (any case), as a "player" or a "spectator".
+## Joins a room by its code (any case), as a "player" or a "spectator". If a player
+## cannot join because the game is already running, join as a spectator instead.
 func join_room(code: String, role: String = "player") -> bool:
-	var ack: Dictionary = await _ok(XomDaoProtocol.ROOM_JOIN, {"roomCode": code, "role": role})
+	var data := {"roomCode": code, "role": role}
+	var ack: Dictionary = await request(XomDaoProtocol.ROOM_JOIN, data)
+	if ack.get("ok") != true and role == "player" and ack.get("error") == ROOM_PLAYING:
+		data["role"] = "spectator"
+		ack = await request(XomDaoProtocol.ROOM_JOIN, data)
+	if ack.get("ok") != true:
+		last_error = str(ack.get("error", "?"))
+		error.emit(last_error)
+		return false
+	last_error = ""
 	return _entered(ack)
 
 

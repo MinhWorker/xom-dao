@@ -3,6 +3,8 @@ extends GutTest
 
 const Texts := preload("res://content/co-ty-phu-classic/texts.gd")
 const TileHud := preload("res://content/co-ty-phu-classic/tile_hud.gd")
+const Actions := preload("res://content/co-ty-phu-classic/actions.gd")
+const BoardSurface := preload("res://content/co-ty-phu-classic/board_surface.gd")
 
 
 func _snapshot(view: Dictionary) -> XomDaoRoomSnapshot:
@@ -70,8 +72,6 @@ func _view(extra: Dictionary = {}) -> Dictionary:
 		"dice": null,
 		"pending": null,
 		"buildable": null,
-		"auction": null,
-		"stationAuctions": {},
 		"debt": null,
 		"trade": null,
 		"notice": "Bắt đầu ván mới.",
@@ -113,7 +113,9 @@ func test_tile_hud_shows_a_running_ink_figure_until_the_local_pawn_stops() -> vo
 	var table := _table(_view())
 	var hud: Control = _node(table, "TileHud")
 	assert_eq(int(hud.get("current_square")), 0)
+	table.get("_tile_selection").call("set_focus", 18)
 	table.call("_walk", 0, 0, 2)
+	assert_eq(int(table.get("_focus")), -1, "Movement clears the selected square")
 	assert_true(hud.visible, "The tile HUD stays visible during the walk")
 	assert_true(bool(hud.get("_paused_for_motion")), "The HUD switches to its runner animation")
 	await wait_until(func() -> bool: return int(table.get("_shown")[0]) == 1, 1.0)
@@ -125,9 +127,35 @@ func test_tile_hud_shows_a_running_ink_figure_until_the_local_pawn_stops() -> vo
 	assert_eq(int(hud.get("current_square")), 2)
 
 
+func test_double_roll_finishes_before_the_jail_gate_opens() -> void:
+	var before := _view()
+	before["players"][0]["position"] = 10
+	before["players"][0]["jailed"] = true
+	var table := _table(before)
+	table.set("_running", true)
+	var after: Dictionary = before.duplicate(true)
+	after["dice"] = [3, 3]
+	after["phase"] = "end"
+	after["players"][0]["position"] = 16
+	after["players"][0]["jailed"] = false
+	after["players"][0]["jailRolls"] = 0
+	table.call("_animate", before, after)
+	var jobs: Array = table.get("_jobs")
+	assert_eq(jobs[0].get_method(), &"_roll", "The dice roll runs first")
+	assert_eq(jobs[1].get_method(), &"_gate_job", "The gate waits until the dice settle")
+	assert_eq(jobs[2].get_method(), &"_walk", "The pawn walks out after the gate opens")
+
+
 func test_floating_money_changes_use_gold_for_gains_and_red_orange_for_losses() -> void:
 	assert_eq(Texts.money_change_color(200), Color("#FFD34E"))
 	assert_eq(Texts.money_change_color(-50), Color("#F05A43"))
+
+
+func test_building_sale_action_rounds_to_a_whole_currency_unit() -> void:
+	var view := _view()
+	view["properties"][2] = {"owner": 0, "houses": 1, "mortgaged": false}
+	var actions: Array = Actions.deed_actions(view, 0, 2)
+	assert_eq(actions[0][1], "Bán nhà +38")
 
 
 func test_owned_street_opens_a_projected_build_price_drawer() -> void:
@@ -145,6 +173,23 @@ func test_owned_street_opens_a_projected_build_price_drawer() -> void:
 		[60, 240, 660, 1800, 2400, 3000],
 		"The displayed ladder includes the current complete-set multiplier"
 	)
+	var tile_action: XomDaoButton = _node(table, "TileActionButton")
+	assert_true(tile_action.visible, "The owner can sell a building from the focused deed HUD")
+	assert_eq(tile_action.text, "+50")
+	assert_eq(tile_action.tooltip_text, "Bán nhà")
+	assert_eq(hud.get("details")["tile_action_event"], "sell-house")
+	view["properties"][1]["houses"] = 0
+	var names: Array[String] = ["Minh", "Máy 1", "Máy 2"]
+	hud.call("refresh", view, 1, names, 0)
+	assert_eq(tile_action.text, "+100", "Mortgage follows the last building sale")
+	assert_eq(tile_action.tooltip_text, "Thế chấp")
+	tile_action.pressed.emit()
+	var confirmation: Control = _node(table, "MortgageConfirm")
+	assert_true(confirmation.visible)
+	assert_eq(_text(table, "MortgageConfirmTitle"), "Chắc chứ?")
+	assert_eq(_text(table, "MortgageConfirmMessage"), "Thế chấp Phú Quốc để nhận 100 ₫.")
+	_node(table, "CancelMortgage").pressed.emit()
+	assert_false(confirmation.visible, "Canceling does not submit the mortgage")
 	button.pressed.emit()
 	await wait_until(func() -> bool: return float(hud.get("_drawer_progress")) >= 0.99, 1.0)
 	assert_true(bool(hud.get("_drawer_open")))
@@ -152,6 +197,12 @@ func test_owned_street_opens_a_projected_build_price_drawer() -> void:
 	button.pressed.emit()
 	await wait_until(func() -> bool: return float(hud.get("_drawer_progress")) <= 0.01, 1.0)
 	assert_false(bool(hud.get("_drawer_open")))
+	view["properties"][1]["mortgaged"] = true
+	view["properties"][1]["mortgage"] = {"principal": 100}
+	hud.call("refresh", view, 1, names, 0)
+	assert_true(tile_action.visible, "A mortgaged deed offers redemption from its HUD")
+	assert_eq(tile_action.text, "Chuộc 110")
+	assert_false(tile_action.disabled)
 
 
 func test_build_price_button_is_hidden_for_a_street_owned_by_another_player() -> void:
@@ -298,39 +349,30 @@ func test_bot_ownership_waits_until_the_pawn_arrives() -> void:
 	assert_eq(marks_view["properties"][1]["owner"], 1, "The deed changes after the bot arrives")
 
 
-func test_auction_and_destination_wait_for_dice_and_movement() -> void:
+func test_station_purchase_and_destination_wait_for_dice_and_movement() -> void:
 	var before := _view()
 	var table := _table(before)
 	var after: Dictionary = before.duplicate(true)
-	after["phase"] = "auction"
+	after["phase"] = "buy"
 	after["pending"] = 5
 	after["dice"] = [2, 3]
 	after["players"][0]["position"] = 5
-	after["auction"] = {
-		"square": 5,
-		"highest": 0,
-		"leader": null,
-		"bidder": 0,
-		"passed": [],
-		"bids": [0, 0, 0],
-		"contributions": [0, 0, 0],
-	}
 	table.call("_show", _snapshot(after))
 	await wait_seconds(0.06)
 	assert_eq(
 		table.get("_presented_view")["phase"], "roll", "The new phase waits behind its animation"
 	)
 	assert_null(table.get("_marks").get("view")["pending"])
-	assert_false(_node(table, "Bid").visible, "Auction actions wait until arrival")
+	assert_false(_node(table, "Buy").visible, "Purchase action waits until arrival")
 	await wait_seconds(1.2)
 	assert_eq(
 		table.get("_presented_view")["phase"], "roll", "The destination stays hidden mid-roll"
 	)
 	assert_null(table.get("_marks").get("view")["pending"])
 	await wait_until(func() -> bool: return not bool(table.get("_running")), 6.0)
-	assert_eq(table.get("_presented_view")["phase"], "auction")
+	assert_eq(table.get("_presented_view")["phase"], "buy")
 	assert_eq(table.get("_marks").get("view")["pending"], 5)
-	assert_true(_node(table, "Bid").visible, "Auction actions appear after the pawn arrives")
+	assert_true(_node(table, "Buy").visible, "Purchase actions appear after the pawn arrives")
 
 
 func test_bot_purchase_snapshot_waits_behind_its_landing_animation() -> void:
@@ -402,6 +444,11 @@ func test_jail_rent_status_changes_after_the_pawn_enters_jail() -> void:
 
 
 func test_nearest_utility_card_walks_forward_across_start() -> void:
+	var event: Dictionary = {
+		"kind": "card",
+		"card": {"kind": "nearest", "target": "utility", "text": "Đến ô điện/nước gần nhất"}
+	}
+	assert_eq(BoardSurface.title(event), "Đến ô điện/nước gần nhất")
 	var before := _view(
 		{
 			"phase": "event",
@@ -412,7 +459,7 @@ func test_nearest_utility_card_walks_forward_across_start() -> void:
 				"ready": true,
 				"deck": "chance",
 				"roll": 4,
-				"card": {"kind": "nearest", "target": "utility", "text": "Đến tiện ích gần nhất"}
+				"card": {"kind": "nearest", "target": "utility", "text": "Đến ô điện/nước gần nhất"}
 			}
 		}
 	)

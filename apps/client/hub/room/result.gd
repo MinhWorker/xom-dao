@@ -162,8 +162,15 @@ func show_result(
 		_button_row.add_child(_again)
 	var winners: Array[String] = snapshot.result.winners if snapshot.result != null else []
 	var points: Dictionary = coins(snapshot, "event:point")
+	var participant: bool = false
+	for player: XomDaoPlayerInfo in _seated(snapshot):
+		if player.id == me:
+			participant = true
+			break
 	if event:
-		_title.text = "+%d điểm sự kiện" % int(points.get(me, 0))
+		_title.text = (
+			"+%d điểm sự kiện" % int(points.get(me, 0)) if participant else "Sự kiện kết thúc"
+		)
 	elif winners.is_empty():
 		_title.text = "Hoà"
 	elif winners.has(me):
@@ -268,6 +275,22 @@ func show_board(looking: bool) -> void:
 ## Whether the board is put away (Xem bàn).
 func looking() -> bool:
 	return _reopen.visible
+
+
+## A game's optional visual treatment for the shared button that reopens its result board.
+func set_reopen_theme(theme: Dictionary) -> void:
+	_reopen.body.visible = false
+	_reopen.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var stylebox: Variant = theme.get(state)
+		if stylebox is StyleBox:
+			_reopen.add_theme_stylebox_override(state, stylebox as StyleBox)
+	var label_color: Variant = theme.get("font_color", XomDaoUi.CREAM)
+	if label_color is Color:
+		for state: String in [
+			"font_color", "font_hover_color", "font_pressed_color", "font_disabled_color"
+		]:
+			_reopen.add_theme_color_override(state, label_color as Color)
 
 
 ## How it ended (the game's words) and the figures: the time played, then the game's rows.
@@ -390,19 +413,19 @@ func _layout() -> void:
 		)
 		if not _presenting:
 			_board.position = _panel_bounds.position - pivot_shift
-		_reopen.position = Vector2(right - _reopen.size.x, panel_top)
+		_reopen.position = Vector2(right - _reopen.size.x, bottom - _reopen.size.y)
 	elif _dock_area.is_valid():
 		_board.reset_size()
 		var area: Rect2 = _dock_area.call()
 		var fit: float = minf(area.size.x / _board.size.x, area.size.y / _board.size.y)
 		_board.scale = Vector2.ONE * minf(k, fit)
 		_board.position = area.position + (area.size - _board.size * _board.scale) / 2.0
-		_reopen.position = Vector2((size.x - _reopen.size.x) / 2.0, inset.y + edge)
+		_reopen.position = Vector2(right - _reopen.size.x, bottom - _reopen.size.y)
 	else:
 		_board.reset_size()
 		_board.scale = Vector2.ONE
 		_board.position = (size - _board.size) / 2.0
-		_reopen.position = Vector2((size.x - _reopen.size.x) / 2.0, inset.y + edge)
+		_reopen.position = Vector2(right - _reopen.size.x, bottom - _reopen.size.y)
 
 
 ## Optional game-provided area for the shared result HUD.

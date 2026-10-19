@@ -1,7 +1,7 @@
 import { seededRng, testGame } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
 import plugin from '../index.js';
-import { AUCTION_TURN_MS, BOARD, SPECIAL_EVENT_TIMEOUT } from './model.js';
+import { BOARD, SPECIAL_EVENT_TIMEOUT } from './model.js';
 import { move, rent } from './rules.js';
 import { decisionSeat } from './turnClock.js';
 
@@ -31,32 +31,45 @@ describe('Cờ tỷ phú Classic', () => {
   });
 
   it.each([0, 49, 1000])(
-    'releases an expired jail term without bail, even with %s cash',
+    'confirms an expired jail release before its normal roll, even with %s cash',
     (cash) => {
       const game = testGame(plugin, ['a', 'b']);
       const player = game.state.players[0]!;
       player.position = 10;
       player.jailed = true;
-      player.jailRolls = 2;
+      player.jailRolls = 3;
       player.cash = cash;
-      game.state.devDice = [2, 3];
-      game.send('a', 'roll');
+      game.state.turn = 1;
+      game.state.phase = 'end';
+      game.send('b', 'end-turn');
+
+      expect(game.state.phase).toBe('event');
+      expect(game.state.specialEvent).toMatchObject({ kind: 'release' });
+      expect(game.state.players[0]).toMatchObject({ jailed: true, position: 10, cash });
+      expect(game.error('a', 'pay-bail')).toBe('Thao tác chưa hợp lệ');
+      expect(game.error('a', 'use-card')).toBe('Thao tác chưa hợp lệ');
+
+      game.send('a', 'confirm-event');
       expect(game.state.players[0]).toMatchObject({
         jailed: false,
         jailRolls: 0,
-        position: 15,
+        position: 10,
         cash,
       });
+      expect(game.state.phase).toBe('roll');
       expect(game.state.debt).toBeNull();
       expect(game.state.transfers).toEqual([]);
       expect(game.state.after).toBe('end');
+
+      game.state.devDice = [2, 3];
+      game.send('a', 'roll');
+      expect(game.state.players[0]).toMatchObject({ jailed: false, position: 15, cash });
     },
   );
 
-  it('keeps the first two failed attempts in jail and only charges voluntary early bail', () => {
+  it('allows the third jail attempt after two failed rolls', () => {
     const game = testGame(plugin, ['a', 'b']);
-    game.state.players[0]!.position = 10;
-    game.state.players[0]!.jailed = true;
+    Object.assign(game.state.players[0]!, { position: 10, jailed: true });
     for (let attempt = 1; attempt <= 2; attempt++) {
       game.state.turn = 0;
       game.state.phase = 'roll';
@@ -69,7 +82,56 @@ describe('Cờ tỷ phú Classic', () => {
         cash: 1000,
       });
     }
+    expect(game.state.phase).toBe('end');
+    game.state.turn = 1;
+    game.state.phase = 'end';
+    game.send('b', 'end-turn');
+    expect(game.state.phase).toBe('roll');
+    expect(game.state.specialEvent).toBeNull();
+    expect(game.state.players[0]!.jailed).toBe(true);
+
+    game.state.devDice = [2, 3];
+    game.send('a', 'roll');
+    expect(game.state.players[0]).toMatchObject({
+      jailed: false,
+      jailRolls: 0,
+      position: 15,
+      cash: 1000,
+    });
+  });
+
+  it('charges voluntary early bail before a jail attempt', () => {
+    const game = testGame(plugin, ['a', 'b']);
+    Object.assign(game.state.players[0]!, { position: 10, jailed: true, cash: 49 });
+    expect(game.error('a', 'pay-bail')).toBe('Không đủ tiền bảo lãnh');
+    expect(game.state.players[0]!.jailed).toBe(true);
+    game.state.players[0]!.cash = 50;
+    game.send('a', 'pay-bail');
+    expect(game.state.players[0]).toMatchObject({ jailed: false, jailRolls: 0, cash: 0 });
+    expect(game.state.phase).toBe('roll');
+    expect(game.state.transfers).toHaveLength(1);
+  });
+
+  it('requires the third jail attempt without offering bail or a free card', () => {
+    const game = testGame(plugin, ['a', 'b']);
+    Object.assign(game.state.players[0]!, {
+      position: 10,
+      jailed: true,
+      jailRolls: 2,
+      freeCards: ['chance'],
+    });
+    game.state.turn = 0;
     game.state.phase = 'roll';
+    expect(game.error('a', 'pay-bail')).toBe('Đã hết lượt bảo lãnh ra tù');
+    expect(game.error('a', 'use-card')).toBe('Đã hết lượt dùng thẻ ra tù');
+    game.state.devDice = [2, 3];
+    game.send('a', 'roll');
+    expect(game.state.players[0]).toMatchObject({ jailed: false, position: 15 });
+  });
+
+  it('still allows early bail after one failed jail attempt', () => {
+    const game = testGame(plugin, ['a', 'b']);
+    Object.assign(game.state.players[0]!, { position: 10, jailed: true, jailRolls: 1 });
     game.state.players[0]!.cash = 49;
     expect(game.error('a', 'pay-bail')).toBe('Không đủ tiền bảo lãnh');
     expect(game.state.players[0]!.jailed).toBe(true);
@@ -132,6 +194,50 @@ describe('Cờ tỷ phú Classic', () => {
     game.fireTimer();
     expect(game.state.players[0]!.cash).toBe(800);
     expect(game.error('a', 'event-ready', { id })).toBe('Sự kiện đã thay đổi');
+  });
+
+  it('does not jail a player for only two consecutive doubles', () => {
+    const game = testGame(plugin, ['a', 'b']);
+    const player = game.state.players[0];
+    if (!player) throw new Error('Expected the current player');
+    player.position = 6;
+    game.state.devDice = [2, 2];
+    game.send('a', 'roll');
+    expect(game.state.doubles).toBe(1);
+    expect(game.state.players[0]).toMatchObject({ position: 10 });
+
+    game.state.devDice = [2, 2];
+    game.send('a', 'roll');
+
+    expect(game.state.doubles).toBe(2);
+    expect(game.state.players[0]).toMatchObject({ position: 14, jailed: false });
+    expect(game.state.specialEvent).toBeNull();
+  });
+
+  it('jails a player if the second double lands on the go-to-jail square', () => {
+    const game = testGame(plugin, ['a', 'b']);
+    const player = game.state.players[0];
+    if (!player) throw new Error('Expected the current player');
+    player.position = 26;
+    game.state.devDice = [1, 1];
+    game.send('a', 'roll');
+    expect(game.state.doubles).toBe(1);
+    expect(game.state.players[0]).toMatchObject({ position: 28 });
+    expect(game.state.phase).toBe('buy');
+
+    game.send('a', 'buy');
+    game.state.devDice = [1, 1];
+    game.send('a', 'roll');
+
+    expect(game.state.doubles).toBe(2);
+    expect(game.state.players[0]).toMatchObject({ position: 30, jailed: false });
+    expect(game.state.specialEvent).toMatchObject({
+      kind: 'jail',
+      reason: 'Bị đưa vào tù!',
+    });
+    game.send('a', 'confirm-event');
+
+    expect(game.state.players[0]).toMatchObject({ position: 10, jailed: true });
   });
 
   it('confirms repair charges and three consecutive doubles before applying them', () => {
@@ -326,16 +432,32 @@ describe('Cờ tỷ phú Classic', () => {
     expect(game.error('a', 'build', { square: 1 })).toBe(
       'Chỉ xây một lần khi quay lại ô đất của mình',
     );
+    expect(game.error('a', 'mortgage', { square: 1 })).toBe(
+      'Phải bán hết công trình trên ô đất trước khi thế chấp',
+    );
+    game.send('a', 'sell-house', { square: 1 });
     game.send('a', 'mortgage', { square: 1 });
-    expect(game.state.properties[1]!.houses).toBe(1);
+    expect(game.state.properties[1]!.houses).toBe(0);
     expect(rent(game.state, 1, 7)).toBe(0);
     game.send('a', 'redeem', { square: 1 });
-    expect(rent(game.state, 1, 7)).toBe(80);
-    game.send('a', 'sell-house', { square: 1 });
     expect(rent(game.state, 1, 7)).toBe(20);
     expect(game.error('a', 'build', { square: 1 })).toBe(
       'Chỉ xây một lần khi quay lại ô đất của mình',
     );
+  });
+
+  it('lets a player skip an optional build and keep the extra roll', () => {
+    const game = at(1);
+    game.state.players[0]!.position = 1;
+    game.state.properties[1]!.owner = 0;
+    game.state.phase = 'roll';
+    game.state.after = 'roll';
+    game.state.buildable = 1;
+
+    game.send('a', 'skip-build');
+
+    expect(game.state).toMatchObject({ turn: 0, phase: 'roll', buildable: null });
+    expect(game.error('a', 'skip-build')).toBe('Không có lượt xây cần bỏ qua');
   });
 
   it('does not grant building on purchase and expires a return visit at the next roll or turn', () => {

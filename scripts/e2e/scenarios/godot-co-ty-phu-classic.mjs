@@ -11,6 +11,16 @@ async function cmd(page, line) {
   if (!reply.ok) throw new Error(`Dev Console ${line}: ${reply.error}`);
 }
 
+async function tapSquare(page, square) {
+  const box = await (
+    await page.waitForFunction((name) => {
+      const rect = window.xomdao.rect(name);
+      return rect && rect.width > 0 ? rect : false;
+    }, `Square_${square}`)
+  ).jsonValue();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
+
 export default async function run(t) {
   const page = await openGodot(t, await t.page(DESKTOP), '?play=co-ty-phu-classic');
   await onScene(page, 'co-ty-phu-classic', 60_000);
@@ -32,16 +42,132 @@ export default async function run(t) {
       `state set turn ${me}`,
       'state set phase "end"',
       'state set specialEvent null',
-      'state set auction null',
       'state set debt null',
       'state set trade null',
       'state set pending null',
       'state set buildable null',
     ].join('; '),
   );
+  await cmd(
+    page,
+    [
+      `state set players.${me}.position 16`,
+      `state set properties.16.owner ${me}`,
+      'state set properties.16.houses 0',
+      'state set properties.16.mortgaged false',
+      `state set turn ${me}`,
+      'state set phase "roll"',
+      'state set doubles 1',
+      'state set dice [2,2]',
+      'state set buildable 16',
+    ].join('; '),
+  );
+  await page.waitForFunction(
+    () =>
+      window.xomdao.rect('SkipBuild')?.width > 0 &&
+      window.xomdao.text('Build') === 'Xây nhà 135' &&
+      window.xomdao.text('SkipBuild') === 'Bỏ qua',
+    null,
+    { timeout: 60_000 },
+  );
+  await page.screenshot({ path: t.shot('0-skip-build.png') });
+  await tap(page, 'SkipBuild');
+  await page.waitForFunction(() => {
+    const view = window.xomdao.state().room.view;
+    return view.phase === 'roll' && view.buildable === null;
+  });
+  await cmd(
+    page,
+    [
+      `state set players.${me}.position 1`,
+      'state set properties.16.owner null',
+      `state set phase "end"`,
+      'state set doubles 0',
+      'state set dice null',
+      'state set buildable null',
+    ].join('; '),
+  );
+  await cmd(
+    page,
+    [
+      `state set players.${me}.position 5`,
+      `state set turn ${me}`,
+      'state set phase "buy"',
+      'state set after "end"',
+      'state set pending 5',
+      'state set properties.5.owner null',
+    ].join('; '),
+  );
+  await page.waitForFunction(
+    () =>
+      window.xomdao.rect('Buy')?.width > 0 &&
+      window.xomdao.text('Buy') === 'Mua 200' &&
+      window.xomdao.rect('Skip')?.width > 0,
+    null,
+    { timeout: 60_000 },
+  );
+  await page.screenshot({ path: t.shot('0-station-buy.png') });
+  await tap(page, 'Buy');
+  await page.waitForFunction(
+    (seat) => window.xomdao.state().room.view.properties[5].owner === seat,
+    me,
+  );
+  await cmd(
+    page,
+    [
+      'state set phase "end"',
+      'state set pending null',
+      'state set properties.5.owner null',
+      'state set properties.2.houses 1',
+      `state set players.${me}.position 1`,
+    ].join('; '),
+  );
   await page.waitForFunction(() => window.xomdao.rect('BuildPriceDrawerButton')?.width > 0, null, {
     timeout: 60_000,
   });
+  await tapSquare(page, 2);
+  await page.waitForFunction(
+    () => {
+      const view = window.xomdao.state().room.view;
+      return (
+        view.properties[2].houses === 1 &&
+        window.xomdao.text('TileActionButton') === '+38' &&
+        window.xomdao.rect('TileActionButton')?.width > 0
+      );
+    },
+    null,
+    {
+      timeout: 60_000,
+    },
+  );
+  await page.screenshot({ path: t.shot('0-tile-hud-sell-house.png') });
+  await tap(page, 'TileActionButton');
+  await page.waitForFunction(() => window.xomdao.state().room.view.properties[2].houses === 0);
+  await page.waitForFunction(() => window.xomdao.text('TileActionButton') === '+75', null, {
+    timeout: 60_000,
+  });
+  await page.screenshot({ path: t.shot('0-tile-hud-mortgage.png') });
+  await tap(page, 'TileActionButton');
+  await godotText(page, 'MortgageConfirmTitle', 'Chắc chứ?');
+  await page.screenshot({ path: t.shot('0-tile-hud-confirm.png') });
+  await tap(page, 'ConfirmMortgage');
+  await page.waitForFunction(
+    (square) => window.xomdao.state().room.view.properties[square].mortgaged,
+    2,
+  );
+  await page.waitForFunction(() => window.xomdao.text('TileActionButton') === 'Chuộc 83', null, {
+    timeout: 60_000,
+  });
+  await page.screenshot({ path: t.shot('0-tile-hud-redeem.png') });
+  await tap(page, 'TileActionButton');
+  await page.waitForFunction(
+    (square) => !window.xomdao.state().room.view.properties[square].mortgaged,
+    2,
+  );
+  await page.waitForFunction(() => window.xomdao.rect('TileActionButton')?.width > 0);
+  await page.waitForTimeout(3500);
+  await tapSquare(page, 2);
+  await page.waitForFunction(() => window.xomdao.text('TileActionButton') === '+100');
   await tap(page, 'BuildPriceDrawerButton');
   await page.waitForTimeout(450);
   await page.screenshot({ path: t.shot('0-build-price-drawer.png') });
@@ -84,22 +210,66 @@ export default async function run(t) {
     [
       `state set players.${other[0]}.bankrupt true`,
       `state set players.${other[1]}.bankrupt true`,
+      `state set players.${other[2]}.bankrupt false`,
       `state set properties.3.owner ${me}`,
       'state set properties.3.houses 5',
       'state set properties.3.mortgaged false',
       `state set players.${other[2]}.position 1`,
       `state set players.${other[2]}.cash 10`,
       `state set players.${other[2]}.jailed false`,
-      // An owner in jail collects no rent: you may have been jailed in the turns above.
-      `state set players.${me}.jailed false`,
-      `state set players.${me}.jailRolls 0`,
+      `state set players.${me}.position 10`,
+      `state set players.${me}.jailed true`,
+      `state set players.${me}.jailRolls 2`,
+      `state set players.${me}.freeCards ["chance"]`,
       `state set turn ${other[2]}`,
-      'state set phase "roll"',
+      'state set phase "end"',
+      'state set after "end"',
       'state set specialEvent null',
-      'state set auction null',
       'state set debt null',
       'state set trade null',
       'state set pending null',
+      'state set buildable null',
+      'state set dice null',
+      'state set winner null',
+    ].join('; '),
+  );
+  await cmd(page, 'bot step');
+  await page.waitForFunction((seat) => {
+    const view = window.xomdao.state().room.view;
+    return view.phase === 'roll' && view.turn === seat && view.players[seat].jailed;
+  }, me);
+  await page.waitForFunction(
+    () =>
+      window.xomdao.rect('Die_0') && !window.xomdao.rect('Bail') && !window.xomdao.rect('UseCard'),
+  );
+  await godotText(page, 'Status', 'Chạm xúc xắc để gieo', 60_000);
+  await page.screenshot({ path: t.shot('3-jail-final-attempt.png') });
+  await cmd(page, 'dice 2 3');
+  await tap(page, 'Die_0');
+  await page.waitForFunction((seat) => {
+    const view = window.xomdao.state().room.view;
+    return (
+      view.dice?.[0] === 2 &&
+      view.dice?.[1] === 3 &&
+      !view.players[seat].jailed &&
+      view.players[seat].position === 15 &&
+      view.phase === 'buy'
+    );
+  }, me);
+  await godotText(page, 'Buy', 'Mua 200', 30_000);
+  await cmd(
+    page,
+    [
+      `state set players.${me}.jailed false`,
+      `state set players.${me}.jailRolls 0`,
+      `state set players.${me}.freeCards []`,
+      `state set turn ${other[2]}`,
+      'state set phase "roll"',
+      'state set specialEvent null',
+      'state set debt null',
+      'state set trade null',
+      'state set pending null',
+      'state set buildable null',
       'dice 1 1',
     ].join('; '),
   );

@@ -15,6 +15,7 @@ var title: String = "":
 		title = value
 		_title.text = value
 		_title.visible = value != ""
+		_layout_title()
 
 ## Where the board's content goes (a VBoxContainer on the paper).
 var content := VBoxContainer.new()
@@ -23,6 +24,7 @@ var content := VBoxContainer.new()
 var close_button := Button.new()
 
 var _title := Label.new()
+var _title_head: Control
 
 
 static func create(heading: String, closable: bool = false) -> XomDaoBoard:
@@ -43,9 +45,10 @@ func _init() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	add_child(column)
-	var head := Control.new()
-	head.custom_minimum_size.y = 72.0
-	column.add_child(head)
+	_title_head = Control.new()
+	_title_head.custom_minimum_size.y = 72.0
+	_title_head.resized.connect(_layout_title)
+	column.add_child(_title_head)
 	_title.add_theme_font_override("font", XomDaoUi.display_font(800))
 	_title.add_theme_font_size_override("font_size", XomDaoUi.TITLE)
 	_title.add_theme_color_override("font_color", XomDaoUi.CREAM)
@@ -53,8 +56,9 @@ func _init() -> void:
 	_title.add_theme_constant_override("outline_size", 10)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	head.add_child(_title)
+	_title_head.add_child(_title)
 	# The close mark: a pair of crossed chopsticks, nothing behind them.
 	close_button.name = "Close"
 	close_button.icon = preload("res://addons/xomdao_sdk/ui/chopsticks.svg")
@@ -77,7 +81,7 @@ func _init() -> void:
 	close_button.button_down.connect(XomDaoUi.bounce.bind(close_button))
 	close_button.button_down.connect(XomDaoUi.play.bind(close_button, XomDaoUi.SOUND_TAP))
 	close_button.pressed.connect(close)
-	head.add_child(close_button)
+	_title_head.add_child(close_button)
 	var paper := PanelContainer.new()
 	var inside: StyleBoxFlat = XomDaoUi.box(
 		XomDaoUi.PAPER, XomDaoUi.PAPER_DARK, XomDaoUi.BORDER, XomDaoUi.RADIUS - 8.0
@@ -88,10 +92,34 @@ func _init() -> void:
 	column.add_child(paper)
 	content.add_theme_constant_override("separation", 16)
 	paper.add_child(content)
+	resized.connect(_layout_title)
 
 
 func set_closable(closable: bool) -> void:
 	close_button.visible = closable
+	_layout_title()
+
+
+func _layout_title() -> void:
+	if _title_head == null or not is_instance_valid(_title_head):
+		return
+	var inset: float = XomDaoUi.TOUCH + 12.0 if close_button.visible else 12.0
+	_title.offset_left = inset
+	_title.offset_right = -inset
+	var head_width: float = _title_head.size.x
+	if head_width <= 0.0:
+		head_width = maxf(custom_minimum_size.x, 540.0)
+	var available_width: float = maxf(1.0, head_width - inset * 2.0)
+	if title.is_empty():
+		return
+	var font: Font = _title.get_theme_font("font")
+	var measured_width: float = (
+		font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, XomDaoUi.TITLE).x
+	)
+	var fitted_size: int = XomDaoUi.TITLE
+	if measured_width > available_width:
+		fitted_size = maxi(24, floori(XomDaoUi.TITLE * available_width / measured_width))
+	_title.add_theme_font_size_override("font_size", fitted_size)
 
 
 ## Shows the board with a slight sway (±2°, 300 ms) and the paper sound.

@@ -1,12 +1,20 @@
 extends Control
 ## A perspective-aligned deed summary for the square the viewer's pawn occupies.
 
+signal acted(event: String, payload: Dictionary)
+
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
 const Marks := preload("res://content/co-ty-phu-classic/marks.gd")
+const Actions := preload("res://content/co-ty-phu-classic/actions.gd")
 const Draw := preload("res://content/co-ty-phu-classic/surface_draw.gd")
-const BUILD_BUTTON := preload("res://content/co-ty-phu-classic/art/board-button-primary.webp")
-const BUILD_BUTTON_PRESSED := preload(
-	"res://content/co-ty-phu-classic/art/board-button-primary-pressed.webp"
+const TileActionConfirm := preload("res://content/co-ty-phu-classic/tile_action_confirm.gd")
+const TileActionDraw := preload("res://content/co-ty-phu-classic/tile_action_draw.gd")
+const TileHudButton := preload("res://content/co-ty-phu-classic/tile_hud_button.gd")
+const SpecialDescription := preload("res://content/co-ty-phu-classic/special_description.gd")
+const TileQuotes := preload("res://content/co-ty-phu-classic/tile_quotes.gd")
+const TILE_HUD_TOGGLE := preload("res://content/co-ty-phu-classic/art/tile-hud-toggle.svg")
+const TILE_HUD_TOGGLE_WIDE := preload(
+	"res://content/co-ty-phu-classic/art/tile-hud-toggle-wide.svg"
 )
 const HOUSE_ICON := preload("res://content/co-ty-phu-classic/art/hud-house.svg")
 const HOTEL_ICON := preload("res://content/co-ty-phu-classic/art/hud-hotel.svg")
@@ -22,6 +30,8 @@ const PANEL_LINE := Color("#A37E4D")
 const PANEL_TEXT := Color("#19383B")
 const PANEL_MUTED := Color("#526864")
 const BUILD_BUTTON_RECT := Rect2(Vector2(1.027, 0.8), Vector2(0.206, 0.064))
+const BUILD_BUTTON_COMPACT_RECT := Rect2(Vector2(1.203, 0.8), Vector2(0.045, 0.064))
+const MORTGAGE_BUTTON_RECT := Rect2(Vector2(1.02, 0.8), Vector2(0.18, 0.064))
 const DRAWER_RECT := Rect2(Vector2(1.018, 0.444), Vector2(0.224, 0.356))
 const DRAWER_COST_ROW_Y := 0.512
 const DRAWER_DIVIDER_Y := 0.532
@@ -56,14 +66,18 @@ var current_square: int = -1
 var details: Dictionary = {}
 var _display: Font
 var _body: Font
+var _quote_font: FontVariation
 var _board_extent := Vector2.ZERO
 var _draw_offset := Vector2.ZERO
 var _paused_for_motion: bool = false
 var _motion_time: float = 0.0
 var _build_button: XomDaoButton
+var _tile_action_button: XomDaoButton
+var _action_confirm: RefCounted = TileActionConfirm.new()
 var _drawer_open: bool = false
 var _drawer_progress: float = 0.0
 var _drawer_tween: Tween
+var _interaction_locked: bool = false
 
 
 func _ready() -> void:
@@ -72,22 +86,44 @@ func _ready() -> void:
 	var body: FontFile = XomDaoUi.body_font(true).duplicate() as FontFile
 	body.generate_mipmaps = true
 	_body = body
+	_quote_font = FontVariation.new()
+	_quote_font.base_font = body
+	_quote_font.variation_transform = Transform2D(
+		Vector2(1.0, 0.0), Vector2(-0.14, 1.0), Vector2.ZERO
+	)
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	set_process(false)
-	_build_button = XomDaoButton.create("^", XomDaoUi.Kind.CONFIRM)
+	_build_button = TileHudButton.new()
+	_build_button.text = "^"
+	_build_button.kind = XomDaoUi.Kind.CONFIRM
 	_build_button.name = "BuildPriceDrawerButton"
 	_build_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_button.modulate.a = 0.0
 	_build_button.custom_minimum_size = Vector2.ZERO
 	_build_button.add_theme_font_size_override("font_size", 1)
+	_build_button.tooltip_text = "Bảng giá xây"
 	_build_button.pressed.connect(_toggle_build_drawer)
 	add_child(_build_button)
+	_tile_action_button = TileHudButton.new()
+	_tile_action_button.kind = XomDaoUi.Kind.SOCIAL
+	_tile_action_button.name = "TileActionButton"
+	_tile_action_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	_tile_action_button.modulate.a = 0.0
+	_tile_action_button.custom_minimum_size = Vector2.ZERO
+	_tile_action_button.add_theme_font_size_override("font_size", 1)
+	_tile_action_button.pressed.connect(_tile_action_selected)
+	_action_confirm.connect("confirmed", _on_action_confirmed)
+	add_child(_tile_action_button)
 
 
-func refresh(view: Dictionary, square: int, names: Array[String], viewer: int) -> void:
+func refresh(
+	view: Dictionary, square: int, names: Array[String], viewer: int, can_act: bool = true
+) -> void:
+	if current_square != square:
+		_set_drawer_open(false, true)
 	current_square = square
-	details = summary(view, square, names, viewer)
-	_sync_build_button()
+	details = summary(view, square, names, viewer, can_act)
+	_sync_action_buttons()
 	queue_redraw()
 
 
@@ -102,39 +138,86 @@ func layout_on_board(board: Control) -> void:
 	_draw_offset = low
 	position = board.position + low
 	size = high - low
-	_layout_build_button()
+	_sync_action_buttons()
 	queue_redraw()
 
 
-func _layout_build_button() -> void:
-	if _build_button == null or _board_extent == Vector2.ZERO:
+func _layout_projected_button(button: Control, bounds: Rect2) -> void:
+	if button == null or _board_extent == Vector2.ZERO:
 		return
-	var points: PackedVector2Array = _quad(BUILD_BUTTON_RECT)
+	var points: PackedVector2Array = _quad(bounds)
 	var low := Vector2(INF, INF)
 	var high := Vector2(-INF, -INF)
 	for point: Vector2 in points:
 		low = low.min(point)
 		high = high.max(point)
-	_build_button.position = low
-	_build_button.size = high - low
+	button.position = low
+	button.size = high - low
 
 
-func _sync_build_button() -> void:
-	if _build_button == null:
+func _build_button_rect() -> Rect2:
+	return BUILD_BUTTON_COMPACT_RECT if _tile_action_button.visible else BUILD_BUTTON_RECT
+
+
+func _sync_action_buttons() -> void:
+	if _build_button == null or _tile_action_button == null:
 		return
-	var available: bool = (
+	var can_show_build_prices: bool = (
 		bool(details.get("can_show_build_prices", false)) and not _paused_for_motion
 	)
-	if not available and _drawer_open:
+	var action_label: String = str(details.get("tile_action_label", ""))
+	_tile_action_button.visible = not action_label.is_empty() and not _paused_for_motion
+	_tile_action_button.text = action_label
+	_tile_action_button.tooltip_text = (
+		{
+			"mortgage": "Thế chấp",
+			"redeem": "Chuộc",
+			"sell-house": "Bán nhà",
+		}
+		. get(str(details.get("tile_action_event", "")), "")
+	)
+	_tile_action_button.disabled = (
+		_interaction_locked or not bool(details.get("tile_action_enabled", false))
+	)
+	if not can_show_build_prices and _drawer_open:
 		_set_drawer_open(false, true)
-	_build_button.visible = available
+	_build_button.visible = can_show_build_prices
 	_build_button.text = "v" if _drawer_open else "^"
-	_layout_build_button()
+	_layout_projected_button(_tile_action_button, MORTGAGE_BUTTON_RECT)
+	_layout_projected_button(_build_button, _build_button_rect())
 
 
 func _toggle_build_drawer() -> void:
 	if bool(details.get("can_show_build_prices", false)):
 		_set_drawer_open(not _drawer_open)
+
+
+func _tile_action_selected() -> void:
+	if _interaction_locked or not _tile_action_button.visible or _tile_action_button.disabled:
+		return
+	var event: String = str(details.get("tile_action_event", ""))
+	if event == "mortgage":
+		_action_confirm.call(
+			"open_mortgage",
+			get_parent() as Control,
+			current_square,
+			str(details.get("name", "")),
+			str(details.get("tile_action_label", "")).trim_prefix("+")
+		)
+	elif not event.is_empty():
+		acted.emit(event, {"square": current_square})
+
+
+func _on_action_confirmed(event: String, payload: Dictionary) -> void:
+	acted.emit(event, payload)
+
+
+func set_interaction_locked(locked: bool) -> void:
+	_interaction_locked = locked
+	if _tile_action_button != null:
+		_tile_action_button.disabled = (
+			locked or not bool(details.get("tile_action_enabled", false))
+		)
 
 
 func _set_drawer_open(open: bool, immediate: bool = false) -> void:
@@ -168,7 +251,8 @@ func follow(
 	positions: Array[int],
 	names: Array[String],
 	viewer: int,
-	square_override: int = -1
+	square_override: int = -1,
+	can_act: bool = true
 ) -> void:
 	if _paused_for_motion:
 		return
@@ -182,7 +266,7 @@ func follow(
 	)
 	seat = clampi(seat, 0, positions.size() - 1)
 	var square: int = positions[seat] if square_override < 0 else square_override
-	refresh(view, square, names, seat)
+	refresh(view, square, names, seat, can_act)
 	show()
 
 
@@ -192,20 +276,25 @@ func movement_started(seat: int, viewer: int) -> void:
 	_set_drawer_open(false, true)
 	_paused_for_motion = true
 	_motion_time = 0.0
-	_sync_build_button()
+	_sync_action_buttons()
 	set_process(true)
 	show()
 	queue_redraw()
 
 
 func movement_stopped(
-	seat: int, view: Dictionary, positions: Array[int], names: Array[String], viewer: int
+	seat: int,
+	view: Dictionary,
+	positions: Array[int],
+	names: Array[String],
+	viewer: int,
+	can_act: bool = true
 ) -> void:
 	if seat != viewer and viewer >= 0:
 		return
 	_paused_for_motion = false
 	set_process(false)
-	follow(view, positions, names, viewer)
+	follow(view, positions, names, viewer, -1, can_act)
 
 
 func _process(delta: float) -> void:
@@ -216,7 +305,9 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-static func summary(view: Dictionary, square: int, names: Array[String], viewer: int) -> Dictionary:
+static func summary(
+	view: Dictionary, square: int, names: Array[String], viewer: int, can_act: bool = true
+) -> Dictionary:
 	if square < 0 or square >= Rules.SQUARES.size():
 		return {}
 	var cell: Dictionary = Rules.SQUARES[square]
@@ -254,51 +345,45 @@ static func summary(view: Dictionary, square: int, names: Array[String], viewer:
 			rent_ladder.append(int(base_rent) * multiplier)
 	var rent_note: String = "Tiền thuê hiện tại" if owner >= 0 else "Thuê cơ bản"
 	var rent_text: String = XomDaoUi.money(rent) + " ₫"
-	var station_turn: String = ""
-	var station_rows: Array[Dictionary] = []
+	if owner >= 0 and kind == "station":
+		var station_count: int = 0
+		for station_square: int in Rules.STATIONS:
+			var station_owner: Variant = properties[station_square].get("owner")
+			if station_owner != null and int(station_owner) == owner:
+				station_count += 1
+		if station_count > 1:
+			rent_text = "%s × %d ₫" % [XomDaoUi.money(Rules.STATION_FEE), station_count]
+	var tile_action_label: String = ""
+	var tile_action_event: String = ""
+	var tile_action_enabled: bool = false
+	if can_act and view.has_all(["phase", "turn", "players"]):
+		for action: Array in Actions.deed_actions(view, viewer, square):
+			var action_id: String = str(action[0])
+			if action_id in ["Mortgage", "Redeem", "SellHouse"]:
+				tile_action_label = str(action[1])
+				tile_action_event = (
+					{
+						"Mortgage": "mortgage",
+						"Redeem": "redeem",
+						"SellHouse": "sell-house",
+					}
+					. get(action_id, "")
+				)
+				if action_id == "Mortgage":
+					tile_action_label = tile_action_label.replace("Thế chấp ", "")
+				elif action_id == "SellHouse":
+					tile_action_label = tile_action_label.replace("Bán nhà ", "")
+				tile_action_enabled = bool(action[2])
+				break
 	var info_label: String = ""
 	var info_value: String = ""
-	var price_label: String = "Góp đầu" if kind == "station" and owner < 0 else "Giá mua"
+	var price_label: String = "Giá mua"
 	if owner < 0 and kind == "station":
 		rent_note = "Phí thuê"
 		rent_text = "%s ₫ mỗi bến" % XomDaoUi.money(Rules.STATION_FEE)
 	elif owner < 0 and kind == "utility":
 		rent_note = "Phí thuê"
 		rent_text = "×4 / ×10 xúc xắc"
-	if kind == "station":
-		var auctions: Dictionary = view.get("stationAuctions", {})
-		var station: Variant = auctions.get(str(square), auctions.get(square))
-		var active_auction: Variant = view.get("auction")
-		if active_auction is Dictionary and int(active_auction.get("square", -1)) == square:
-			station = active_auction
-			var bidder_value: Variant = active_auction.get("bidder")
-			var bidder: int = -1 if bidder_value == null else int(bidder_value)
-			if bidder >= 0:
-				station_turn = names[bidder] if bidder < names.size() else "Người %d" % (bidder + 1)
-		if station is Dictionary:
-			var bids: Array = station.get("bids", [])
-			var contributions: Array = station.get("contributions", [])
-			var leader_value: Variant = station.get("leader")
-			var leader: int = -1 if leader_value == null else int(leader_value)
-			for seat: int in mini(bids.size(), names.size()):
-				var amount: int = int(bids[seat])
-				if amount <= 0:
-					continue
-				var count: int = 1
-				if seat < contributions.size():
-					count = maxi(1, int(contributions[seat]))
-				(
-					station_rows
-					. append(
-						{
-							"seat": seat,
-							"name": names[seat],
-							"amount": amount,
-							"count": count,
-							"leading": seat == leader,
-						}
-					)
-				)
 	var owner_name: String = "Chưa có chủ"
 	if owner >= 0:
 		owner_name = names[owner] if owner < names.size() else "Người %d" % (owner + 1)
@@ -327,9 +412,14 @@ static func summary(view: Dictionary, square: int, names: Array[String], viewer:
 			var amount: int = maxi(int(cell.get("tax", 0)), floori(cash * 0.1))
 			info_label = "Thuế phải nộp"
 			info_value = XomDaoUi.money(amount) + " ₫"
+			description = (
+				"Nộp 10%% tiền mặt hiện có, tối thiểu %s ₫. Số tiền làm tròn xuống."
+				% XomDaoUi.money(int(cell.get("tax", 0)))
+			)
 	return {
 		"square": square,
 		"name": str(cell["name"]),
+		"quote": TileQuotes.for_square(square),
 		"kind": kind,
 		"kind_name": str(KIND_NAMES.get(kind, "Ô ĐẤT")),
 		"price_label": price_label,
@@ -341,9 +431,10 @@ static func summary(view: Dictionary, square: int, names: Array[String], viewer:
 		"rent_note": rent_note,
 		"rent_text": rent_text,
 		"rent_ladder": rent_ladder,
-		"station_turn": station_turn,
-		"station_rows": station_rows,
 		"rent_collectible": owner >= 0 and not mortgaged and not jailed_owner,
+		"tile_action_label": tile_action_label,
+		"tile_action_event": tile_action_event,
+		"tile_action_enabled": tile_action_enabled,
 		"owner": owner,
 		"owner_name": owner_name,
 		"mortgaged": mortgaged,
@@ -388,8 +479,8 @@ func _draw() -> void:
 		return
 	_draw_header()
 	_surface_line(
-		Vector2(PANEL_INNER.position.x + 0.016, 0.345),
-		Vector2(PANEL_INNER.end.x - 0.016, 0.345),
+		Vector2(PANEL_INNER.position.x + 0.016, 0.406),
+		Vector2(PANEL_INNER.end.x - 0.016, 0.406),
 		PANEL_LINE,
 		1.5
 	)
@@ -399,7 +490,9 @@ func _draw() -> void:
 		_draw_special()
 	if _drawer_progress > 0.001:
 		_draw_build_price_drawer()
-	if bool(details.get("can_show_build_prices", false)):
+	if _tile_action_button.visible:
+		_draw_tile_action_button()
+	if _build_button.visible:
 		_draw_build_price_button()
 
 
@@ -407,25 +500,41 @@ func _draw_header() -> void:
 	var center_x: float = PANEL_INNER.get_center().x
 	var width: float = PANEL_INNER.size.x - 0.04
 	var category: String = str(details["kind_name"]).to_upper()
-	_surface_text(category, Vector2(center_x, 0.232), 0.020, width, PANEL_MUTED)
+	_surface_text(category, Vector2(center_x, 0.220), 0.020, width, PANEL_MUTED)
 	var group_name: String = str(details["group_name"])
 	if not group_name.is_empty():
 		_surface_text(
 			group_name.to_upper(),
-			Vector2(center_x, 0.258),
+			Vector2(center_x, 0.246),
 			0.022,
 			width,
 			details["accent"].darkened(0.28)
 		)
 	_surface_text(
 		str(details["name"]),
-		Vector2(center_x, 0.303),
-		0.043,
+		Vector2(center_x, 0.278),
+		0.038,
 		width,
 		details["title_ink"],
 		HORIZONTAL_ALIGNMENT_CENTER,
 		_display
 	)
+	var quote: String = str(details.get("quote", ""))
+	if not quote.is_empty():
+		var quote_ink := PANEL_MUTED
+		quote_ink.a = 0.76
+		for line: Dictionary in SpecialDescription.layout_for_quote(
+			"“%s”" % quote, _quote_font, PANEL_INNER
+		):
+			_surface_text(
+				str(line["text"]),
+				line["at"],
+				float(line["height"]),
+				float(line["width"]),
+				quote_ink,
+				int(line["alignment"]),
+				_quote_font
+			)
 
 
 func _draw_property() -> void:
@@ -434,14 +543,14 @@ func _draw_property() -> void:
 	_value_row(
 		str(details["price_label"]),
 		XomDaoUi.money(int(details["price"])) + " ₫",
-		0.382,
+		0.428,
 		row_width,
 		PANEL_TEXT
 	)
-	_surface_text("CHỦ SỞ HỮU", Vector2(center_x, 0.423), 0.018, row_width, PANEL_MUTED)
+	_surface_text("CHỦ SỞ HỮU", Vector2(center_x, 0.469), 0.018, row_width, PANEL_MUTED)
 	_surface_text(
 		str(details["owner_name"]),
-		Vector2(center_x, 0.453),
+		Vector2(center_x, 0.499),
 		0.032,
 		row_width,
 		details["title_ink"] if int(details["owner"]) >= 0 else PANEL_TEXT,
@@ -449,17 +558,17 @@ func _draw_property() -> void:
 		_display
 	)
 	_surface_line(
-		Vector2(PANEL_INNER.position.x + 0.016, 0.485),
-		Vector2(PANEL_INNER.end.x - 0.016, 0.485),
+		Vector2(PANEL_INNER.position.x + 0.016, 0.531),
+		Vector2(PANEL_INNER.end.x - 0.016, 0.531),
 		PANEL_LINE,
 		1.0
 	)
 	if bool(details["mortgaged"]):
 		_surface_text(
-			"ĐANG THẾ CHẤP", Vector2(center_x, 0.520), 0.024, row_width, XomDaoUi.DOWN_ON_PAPER
+			"ĐANG THẾ CHẤP", Vector2(center_x, 0.566), 0.024, row_width, XomDaoUi.DOWN_ON_PAPER
 		)
 	elif bool(details["jailed_owner"]):
-		_surface_text("CHỦ ĐANG Ở TÙ", Vector2(center_x, 0.520), 0.024, row_width, Color("#80511F"))
+		_surface_text("CHỦ ĐANG Ở TÙ", Vector2(center_x, 0.566), 0.024, row_width, Color("#80511F"))
 	else:
 		var is_current_rent: bool = str(details["rent_note"]) == "Tiền thuê hiện tại"
 		var rent_label_size: float = 0.05 if is_current_rent else 0.021
@@ -469,7 +578,7 @@ func _draw_property() -> void:
 		_value_row(
 			str(details["rent_note"]),
 			str(details["rent_text"]),
-			0.520,
+			0.566,
 			row_width,
 			PANEL_TEXT,
 			rent_label_size,
@@ -481,74 +590,29 @@ func _draw_property() -> void:
 		_value_row(
 			"Bộ đất",
 			"%d / %d" % [details["group_count"], details["group_size"]],
-			0.575,
+			0.621,
 			row_width,
 			details["accent"]
 		)
-		_draw_group_marks(row_width)
+		_draw_group_marks(row_width, 0.648)
 		_surface_text(
 			"Của " + str(details["group_owner_name"]),
-			Vector2(center_x, 0.632),
+			Vector2(center_x, 0.678),
 			0.020,
 			row_width,
 			PANEL_MUTED
 		)
-	if str(details["kind"]) == "station":
-		_draw_station_status(row_width)
 	if int(details["house_cost"]) > 0:
 		_surface_line(
-			Vector2(PANEL_INNER.position.x + 0.016, 0.663),
-			Vector2(PANEL_INNER.end.x - 0.016, 0.663),
+			Vector2(PANEL_INNER.position.x + 0.016, 0.709),
+			Vector2(PANEL_INNER.end.x - 0.016, 0.709),
 			PANEL_LINE,
 			1.0
 		)
 		var houses: int = int(details["houses"])
-		_draw_building_level(houses, Vector2(center_x, 0.688), row_width)
+		_draw_building_level(houses, Vector2(center_x, 0.734), row_width)
 		_icon_value_row(
-			CONSTRUCTION_ICON, XomDaoUi.money(int(details["house_cost"])) + " ₫", 0.727, row_width
-		)
-
-
-func _draw_station_status(width: float) -> void:
-	var center_x: float = PANEL_INNER.get_center().x
-	_surface_line(
-		Vector2(PANEL_INNER.position.x + 0.016, 0.568),
-		Vector2(PANEL_INNER.end.x - 0.016, 0.568),
-		PANEL_LINE,
-		1.0
-	)
-	_surface_text("GÓP BẾN XE", Vector2(center_x, 0.589), 0.019, width, PANEL_MUTED)
-	var top: float = 0.615
-	var turn: String = str(details.get("station_turn", ""))
-	if not turn.is_empty():
-		_surface_text("Lượt: " + turn, Vector2(center_x, top), 0.019, width, PANEL_MUTED)
-		top += 0.029
-	var rows: Array = details.get("station_rows", [])
-	if rows.is_empty():
-		_surface_text("Chưa có khoản góp", Vector2(center_x, top + 0.012), 0.021, width, PANEL_TEXT)
-		return
-	for index: int in mini(rows.size(), 4):
-		var contribution: Dictionary = rows[index]
-		var y: float = top + index * 0.045
-		var half: float = width * 0.5
-		var leader: bool = bool(contribution["leading"])
-		var label: String = "%s · %d lượt" % [contribution["name"], contribution["count"]]
-		_surface_text(
-			label,
-			Vector2(center_x - half * 0.43, y),
-			0.019,
-			half * 0.82,
-			details["accent"] if leader else PANEL_TEXT,
-			HORIZONTAL_ALIGNMENT_LEFT
-		)
-		_surface_text(
-			XomDaoUi.money(int(contribution["amount"])) + " ₫",
-			Vector2(center_x + half * 0.49, y),
-			0.020,
-			half * 0.88,
-			PANEL_TEXT,
-			HORIZONTAL_ALIGNMENT_RIGHT,
-			_display
+			CONSTRUCTION_ICON, XomDaoUi.money(int(details["house_cost"])) + " ₫", 0.773, row_width
 		)
 
 
@@ -638,32 +702,42 @@ func _draw_runner_circle(at: Vector2, radius: float, ink: Color) -> void:
 
 func _draw_special() -> void:
 	var row_width: float = PANEL_INNER.size.x - 0.038
-	var center_x: float = PANEL_INNER.get_center().x
 	var info_label: String = str(details["info_label"])
 	var info_value: String = str(details["info_value"])
 	if not info_label.is_empty() and not info_value.is_empty():
-		_value_row(info_label, info_value, 0.410, row_width, PANEL_TEXT)
+		_value_row(info_label, info_value, 0.456, row_width, PANEL_TEXT)
 		_surface_line(
-			Vector2(PANEL_INNER.position.x + 0.016, 0.455),
-			Vector2(PANEL_INNER.end.x - 0.016, 0.455),
+			Vector2(PANEL_INNER.position.x + 0.016, 0.501),
+			Vector2(PANEL_INNER.end.x - 0.016, 0.501),
 			PANEL_LINE,
 			1.0
 		)
 	var description: String = str(details["description"])
 	if not description.is_empty():
-		_draw_paragraph(description, Vector2(center_x, 0.530), row_width, 0.030, 4)
+		for line: Dictionary in SpecialDescription.layout_for_hud(description, _body, PANEL_INNER):
+			_surface_text(
+				str(line["text"]),
+				line["at"],
+				float(line["height"]),
+				float(line["width"]),
+				PANEL_TEXT,
+				int(line["alignment"])
+			)
 
 
 func _draw_build_price_button() -> void:
-	var texture: Texture2D = BUILD_BUTTON_PRESSED if _build_button.is_pressed() else BUILD_BUTTON
-	var points: PackedVector2Array = _quad(BUILD_BUTTON_RECT)
+	var bounds: Rect2 = _build_button_rect()
+	var points: PackedVector2Array = _quad(bounds)
+	var button_asset: Texture2D = (
+		TILE_HUD_TOGGLE if _tile_action_button.visible else TILE_HUD_TOGGLE_WIDE
+	)
 	draw_polygon(
 		points,
-		PackedColorArray([Color.WHITE]),
+		PackedColorArray([TileActionDraw.tint(_build_button)]),
 		PackedVector2Array([Vector2.ZERO, Vector2.RIGHT, Vector2.ONE, Vector2.DOWN]),
-		texture
+		button_asset
 	)
-	var center: Vector2 = BUILD_BUTTON_RECT.get_center()
+	var center: Vector2 = bounds.get_center()
 	var left: Vector2
 	var tip: Vector2
 	var right: Vector2
@@ -677,6 +751,10 @@ func _draw_build_price_button() -> void:
 		right = center + Vector2(0.011, 0.004)
 	_surface_line(left, tip, XomDaoUi.CREAM, 3.0)
 	_surface_line(tip, right, XomDaoUi.CREAM, 3.0)
+
+
+func _draw_tile_action_button() -> void:
+	TileActionDraw.draw(self, _tile_action_button, details, MORTGAGE_BUTTON_RECT, _display)
 
 
 func _draw_build_price_drawer() -> void:
@@ -854,7 +932,7 @@ func _value_row(
 	)
 
 
-func _draw_group_marks(width: float) -> void:
+func _draw_group_marks(width: float, y: float = 0.602) -> void:
 	var owners: Array = details["group_owners"]
 	if owners.is_empty():
 		return
@@ -862,33 +940,10 @@ func _draw_group_marks(width: float) -> void:
 	var mark_width: float = (width - gap * (owners.size() - 1)) / owners.size()
 	var left: float = PANEL_INNER.get_center().x - width * 0.5
 	for i: int in owners.size():
-		var at := Rect2(Vector2(left + i * (mark_width + gap), 0.602), Vector2(mark_width, 0.012))
+		var at := Rect2(Vector2(left + i * (mark_width + gap), y), Vector2(mark_width, 0.012))
 		var owner: int = int(owners[i])
 		var fill: Color = INKS[owner % INKS.size()] if owner >= 0 else Color("#395B60")
 		_paint_surface(at, fill, PANEL_LINE)
-
-
-func _draw_paragraph(
-	value: String, at: Vector2, width: float, height: float, max_lines: int
-) -> void:
-	var lines: Array[String] = [""]
-	for word: String in value.split(" "):
-		var candidate: String = word if lines[-1].is_empty() else lines[-1] + " " + word
-		var measured: float = _body.get_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, -1, 64).x
-		if measured * height / 64.0 > width and not lines[-1].is_empty():
-			lines.append(word)
-		else:
-			lines[-1] = candidate
-	var count: int = mini(lines.size(), max_lines)
-	var step: float = height * 1.22 * minf(1.0, float(max_lines) / lines.size())
-	for i: int in count:
-		_surface_text(
-			lines[i],
-			at + Vector2(0.0, (i - (count - 1) * 0.5) * step),
-			step / 1.22,
-			width,
-			PANEL_TEXT
-		)
 
 
 func _surface_text(

@@ -8,17 +8,15 @@ Read `../AGENTS.md` for the shared game/SDK rules. The Vietnamese component map 
   and actions). `_view` is the latest authoritative snapshot; `_presented_view` is committed
   at the end of its queued animations. UI reads the presented snapshot, while commands validate
   against the latest snapshot. Preserve this boundary when adding visual state; `godot/marks.gd`
-  draws the owner bands, houses, mortgages
-  and station contributions over the board, plus every square's name and each deed's price.
+  draws the owner bands, houses and mortgages over the board, plus every square's name and each
+  deed's fixed listed price.
   Owner strips and buildings come from `godot/art/deed-layers.webp` and its JSON atlas/board rects.
   Buildings have four owner-color variants. `tile_ink.gd` draws upright surface-projected
   labels/prices and larger SVG symbols in three rows (two on the side columns, with
   fixed symbol/price slots); `special_ink.gdshader` and `special_details.gd` animate special
   symbols and corners.
-  `station_coins.gd` projects four fixed contribution stacks; each coin uses the server
-  contribution count, not the increasing deposit amount. `marks.gd` renders this ink in a
-  transparent 2× SubViewport;
-  the ink uses a private mipmapped font cache and mipmapped SVGs for minification.
+  `marks.gd` renders this ink in a transparent 2× SubViewport; the ink uses a private mipmapped
+  font cache and mipmapped SVGs for minification.
   Chance, chest and tax icons are large runtime SVGs too; side chest labels share a row with
   their icon. All surface icons, including corners, are runtime SVGs. Ownership tints deed SVGs;
   atlas symbol masks are legacy;
@@ -45,13 +43,17 @@ Read `../AGENTS.md` for the shared game/SDK rules. The Vietnamese component map 
   During local movement, keep the HUD visible and animate an ink-colored 2D runner in its panel;
   refresh the square details only after the pawn settles. Dice rest coordinates depend only on the
   board plane. Event ink is the first child of the dice controller, underneath its 3D
-  stage, without changing text placement.
+  stage, without changing text placement. Tile HUD buttons use separate proportioned
+  `tile-hud-action.svg`, `tile-hud-toggle.svg` and `tile-hud-toggle-wide.svg` skins with a shared
+  flat sea-blue face and dark lower lip, plus the bright custom tooltip in `tile_hud_button.gd`; do
+  not reuse the center-board action skins here. Their house icon lives in `tile-hud-house.svg` so
+  its cream fill stays visible.
   HUD SVGs drawn smaller on this projected plane need `mipmaps/generate=true` in their `.svg.import`
   files. `TEXTURE_FILTER_LINEAR_WITH_MIPMAPS` only samples mip levels; it does not generate them.
-  Godot's default SVG import disables mipmaps, which makes minified icons look pixelated. The HUD
-  icon filtering test guards this import setting.
+  Godot's default SVG import disables mipmaps, which makes minified icons look pixelated. The
+  projected HUD SVG filtering test guards this import setting.
 - `godot/visual_review.tscn` runs the real table offline with local-player snapshots: empty,
-  ownership colors, transfer, mortgages, sets, foreclosure and station coin stacks.
+  ownership colors, transfer, mortgages, sets, foreclosure and the fixed station purchase price.
   Its top-right buttons switch snapshots and preview a throw.
 
 `sources/render_board_25d.py` renders `assets/board-25d.webp`, writes `assets/board-geometry.json`
@@ -85,7 +87,7 @@ icons, circles and engraved paths use the board homography, never a screen-space
 zeroes remain; inactive statuses (including their counters) disappear without reflow. Transfers
 light only the involved seat paths and count both balances together; the bank has no balance.
 `_money` waits for this before the external HUD cash effect. The bake supplies a blank continuous
-header. `test_banknote.gd` covers POV, status lifetimes, buildings, contributions and transfers.
+header. `test_banknote.gd` covers POV, status lifetimes, buildings and transfers.
 
 `aircraft_flight.gd` animates the separate Blender `aircraft.glb` in the shared 3D stage:
 approach, pickup, carry, drop and departure. `sources/render_aircraft.py` authors this model.
@@ -102,8 +104,8 @@ It composes `estate_page.gd` (grouped deeds and management), `exchange_page.gd` 
 `estate_card.gd` (selectable/draggable kit-based objects), `money_pad.gd` (exact cash keypad),
 and `trade_draft.gd` (one draft, cleared after every resolved proposal). Main tabs are vertical;
 player tabs are horizontal. Browse remains available off-turn; mutations use existing server
-permissions. There is no personal asset auction event or seller path: auction state/bid/pass
-are exclusively the station contribution mechanic defined in `RULES.md`. Keep on-screen copy minimal.
+permissions. Unowned stations use the same direct-purchase phase as other deeds, at their fixed
+listed price. Keep the TypeScript and Godot board prices in sync, and keep on-screen copy minimal.
 
 Ledger assets are purpose-specific SVGs: deed-paper, ledger-paper, bookmarks, offer-mat,
 cash-pile and reset. Keep these distinct from action button skins. TradeDraft quotes face-value

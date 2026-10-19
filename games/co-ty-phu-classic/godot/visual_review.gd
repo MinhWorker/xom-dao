@@ -10,7 +10,7 @@ const SCENES: Array[String] = [
 	"Thế chấp",
 	"Hai ô và đủ bộ",
 	"Thu hồi",
-	"Góp vốn bến xe",
+	"Giá mua bến xe",
 	"Rút Khí vận",
 	"Rút Cơ hội",
 	"Thuế",
@@ -273,18 +273,9 @@ func _snapshot() -> XomDaoRoomSnapshot:
 	elif _scene == 5:
 		for square: int in [3, 12, 16, 24, 31, 37]:
 			properties[square] = {"owner": null, "houses": 0, "mortgaged": false}
-	var stations: Dictionary = {}
 	if _scene == 6:
 		for square: int in Rules.STATIONS:
 			properties[square]["owner"] = null
-			stations[str(square)] = {
-				"bids": [250, 100, 150, 500],
-				"contributions": [2, 1, 1, 3],
-				"highest": 350,
-				"leader": 3,
-				"passed": [],
-				"square": square
-			}
 	var result: XomDaoRoomSnapshot = (
 		XomDaoRoomSnapshot
 		. from_dict(
@@ -309,8 +300,6 @@ func _snapshot() -> XomDaoRoomSnapshot:
 					"dice": [3, 4],
 					"pending": null,
 					"buildable": null,
-					"auction": null,
-					"stationAuctions": stations,
 					"shortages": [],
 					"debt": null,
 					"trade": null,

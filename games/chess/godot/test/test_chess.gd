@@ -1,6 +1,9 @@
 extends GutTest
 ## Cờ Vua's table against made-up room snapshots (no server).
 
+const PROJECTION = preload("res://content/chess/projection.gd")
+const CHESS_INPUT = preload("res://content/chess/chess_input.gd")
+
 
 func _start() -> Array:
 	var board: Array = []
@@ -76,10 +79,11 @@ func _table(view: Dictionary, status: String = "playing") -> Control:
 func test_shows_the_pieces_and_whose_turn() -> void:
 	var table := _table(_view(["me", "bot"], "w", [{"from": 52, "to": 36}]))
 	assert_not_null(table.find_child("Piece_60", true, false), "the white king on e1")
+	assert_not_null(table.find_child("Shadow_60", true, false), "the white king's table shadow")
 	assert_not_null(table.find_child("Piece_4", true, false), "the black king on e8")
 	assert_null(table.find_child("Piece_36", true, false), "e4 is empty")
 	assert_eq((table.find_child("Status", true, false) as Label).text, "Tới lượt bạn")
-	assert_eq((table.find_child("MoveCount", true, false) as Label).text, "Nước 3")
+	assert_eq((table.find_child("MoveCount", true, false) as Label).text, "NƯỚC 03")
 	assert_not_null(table.find_child("Square_0", true, false), "every square is a button")
 
 
@@ -99,6 +103,23 @@ func test_a_piece_is_picked_and_dropped() -> void:
 	assert_eq(table.get("_picked"), 52, "the pawn is picked")
 	(table.find_child("Square_20", true, false) as Button).pressed.emit()
 	assert_eq(table.get("_picked"), -1, "a square it can't go to drops the pick")
+
+
+func test_the_top_of_a_piece_still_targets_its_square() -> void:
+	var table := _table(_view(["me", "bot"], "w", [{"from": 52, "to": 36}]))
+	await wait_frames(2)
+	var board: TextureRect = table.find_child("Board", true, false)
+	var point: Vector2 = PROJECTION.project_world_point(
+		Vector3(0.5875, -0.5375, 3.495), board.position, board.size
+	)
+	var letters: Dictionary = table.get("_letters")
+	var touch := InputEventScreenTouch.new()
+	touch.pressed = true
+	touch.position = point
+	var picked: int = CHESS_INPUT.square_for_event(
+		touch, letters.keys(), letters, false, board.position, board.size, false
+	)
+	assert_eq(picked, 52, "the pawn's raised silhouette still selects e2")
 
 
 func test_a_pawn_on_the_last_rank_asks_what_it_becomes() -> void:
@@ -122,7 +143,7 @@ func test_a_pawn_on_the_last_rank_asks_what_it_becomes() -> void:
 
 func test_check_shows_in_the_status_and_the_end_on_the_result_board() -> void:
 	var checked := _table(_view(["me", "bot"], "w", [{"from": 52, "to": 36}], {"check": true}))
-	assert_eq((checked.find_child("Status", true, false) as Label).text, "Tới lượt bạn · Chiếu!")
+	assert_eq((checked.find_child("Status", true, false) as Label).text, "Chiếu!")
 	var ended := _table(
 		_view(
 			["me", "bot"],
@@ -133,6 +154,12 @@ func test_check_shows_in_the_status_and_the_end_on_the_result_board() -> void:
 		"finished"
 	)
 	var detail: Dictionary = ended.call("result_detail")
-	assert_eq(detail["reason"], "Bạn thắng · Máy đầu hàng")
-	assert_eq(detail["rows"], [["Số lượt đi", "4"], ["Quân đã ăn", "Trắng 2 · Đen 1"]])
+	assert_eq(detail["reason"], "Máy đầu hàng")
+	assert_eq(detail["rows"], [["Số nước", "2"], ["Quân Trắng ăn", "2"], ["Quân Đen ăn", "1"]])
+	assert_eq(detail["layout"], "right", "the result board leaves the chess table visible")
+	var reopen_theme: Dictionary = ended.call("result_reopen_theme")
+	assert_eq(
+		(reopen_theme["normal"] as StyleBoxTexture).texture.resource_path,
+		"res://content/chess/art/royal-button.svg"
+	)
 	assert_false((ended.find_child("Resign", true, false) as Control).visible)

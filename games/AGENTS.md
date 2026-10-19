@@ -10,7 +10,8 @@ Where to look:
   - `games/tic-tac-toe` (Caro) adds room options (rows on the room's plate) and a computer player.
   - `games/tien-len` is the fullest Godot table (cards, effects, sounds, art).
 - **Skills** in `.claude/skills/`: `new-content` (a game or event from a brief), `make-asset`,
-  `phone-check`.
+  `phone-check`, `anti-slop-game-ui` (when designing, implementing or reviewing a game's board,
+  HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/engine.ts` (rules) and,
   for a game's Godot table, `apps/client/AGENTS.md` and the header of
   `apps/client/addons/xomdao_sdk/client.gd`.

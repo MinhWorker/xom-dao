@@ -5,7 +5,7 @@ extends RefCounted
 ## sources/render_board_25d.py writes with board-25d.webp.
 
 const STARTING_CASH := 1000
-const STATION_INITIAL_CONTRIBUTION := 50
+const STATION_PRICE := 200
 const STATION_FEE := 50
 const BAIL := 50
 const STATIONS: Array[int] = [5, 15, 25, 35]
@@ -37,7 +37,7 @@ const SQUARES: Array[Dictionary] = [
 		"houseCost": 90
 	},
 	{"name": "Thuế thu nhập", "kind": "tax", "tax": 100},
-	{"name": "Bến Bắc", "kind": "station"},
+	{"name": "Bến Bắc", "kind": "station", "price": STATION_PRICE},
 	{
 		"name": "Hạ Long",
 		"kind": "street",
@@ -89,7 +89,7 @@ const SQUARES: Array[Dictionary] = [
 		"rent": [24, 96, 264, 720, 960, 1200],
 		"houseCost": 120
 	},
-	{"name": "Bến Tây", "kind": "station"},
+	{"name": "Bến Tây", "kind": "station", "price": STATION_PRICE},
 	{
 		"name": "Thanh Hóa",
 		"kind": "street",
@@ -141,7 +141,7 @@ const SQUARES: Array[Dictionary] = [
 		"rent": [25, 100, 275, 750, 1000, 1250],
 		"houseCost": 125
 	},
-	{"name": "Bến Nam", "kind": "station"},
+	{"name": "Bến Nam", "kind": "station", "price": STATION_PRICE},
 	{
 		"name": "Kon Tum",
 		"kind": "street",
@@ -193,7 +193,7 @@ const SQUARES: Array[Dictionary] = [
 		"rent": [22, 88, 242, 660, 880, 1100],
 		"houseCost": 110
 	},
-	{"name": "Bến Đông", "kind": "station"},
+	{"name": "Bến Đông", "kind": "station", "price": STATION_PRICE},
 	{
 		"name": "Tp. HCM",
 		"kind": "street",
@@ -263,15 +263,10 @@ static func is_deed(i: int) -> bool:
 
 
 static func price(i: int) -> int:
-	if SQUARES[i]["kind"] == "station":
-		return STATION_INITIAL_CONTRIBUTION
 	return int(SQUARES[i].get("price", 0))
 
 
-## The station's auction contribution becomes its acquired price for mortgage and asset values.
-static func deed_price(properties: Array, i: int) -> int:
-	if SQUARES[i]["kind"] == "station":
-		return int(properties[i].get("acquisitionCost", STATION_INITIAL_CONTRIBUTION))
+static func deed_price(_properties: Array, i: int) -> int:
 	return price(i)
 
 
@@ -349,13 +344,11 @@ static func utility_multiplier(view: Dictionary, i: int) -> int:
 
 
 static func mortgage_amount(properties: Array, i: int) -> int:
-	var deed: Dictionary = properties[i]
-	return int(
-		(
-			(deed_price(properties, i) + int(deed["houses"]) * int(SQUARES[i].get("houseCost", 0)))
-			/ 2.0
-		)
-	)
+	return roundi(deed_price(properties, i) / 2.0)
+
+
+static func building_sale_price(build_cost: int) -> int:
+	return roundi(build_cost / 2.0)
 
 
 static func redeem_amount(properties: Array, i: int) -> int:
@@ -370,7 +363,12 @@ static func redeem_amount(properties: Array, i: int) -> int:
 static func mortgage_squares(properties: Array, seat: int) -> Array[int]:
 	var out: Array[int] = []
 	for i: int in properties.size():
-		if is_deed(i) and _owner(properties, i) == seat and not bool(properties[i]["mortgaged"]):
+		if (
+			is_deed(i)
+			and _owner(properties, i) == seat
+			and not bool(properties[i]["mortgaged"])
+			and int(properties[i].get("houses", 0)) == 0
+		):
 			out.append(i)
 	return out
 
@@ -407,20 +405,11 @@ static func mortgage_status(view: Dictionary, i: int) -> String:
 ## Whose decision the room waits on (`decisionSeat`).
 static func decision_seat(view: Dictionary) -> int:
 	var phase: String = view["phase"]
-	if phase == "auction" and view.get("auction") is Dictionary:
-		return int(view["auction"]["bidder"])
 	if phase == "trade" and view.get("trade") is Dictionary:
 		return int(view["trade"]["to"])
 	if phase == "debt" and view.get("debt") is Dictionary and view["debt"].get("payer") != null:
 		return int(view["debt"]["payer"])
 	return int(view["turn"])
-
-
-## What the Bid button offers: the next contribution at this station.
-static func bid_amount(view: Dictionary) -> int:
-	var auction: Dictionary = view["auction"]
-	var highest: int = int(auction["highest"])
-	return highest * 2 if highest > 0 else STATION_INITIAL_CONTRIBUTION
 
 
 ## Each seat's net change over a view's money transfers ({seat: amount}).

@@ -1,293 +1,68 @@
-import { seededRng, testGame } from '@xomdao/sdk';
+import { testGame } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
 import plugin from '../index.js';
 import { botMove } from './bot.js';
-import { CHANCE } from './cards.js';
-import { AUCTION_TURN_MS, BOARD, isDeed } from './model.js';
-import {
-  copy,
-  move,
-  nextStationContribution,
-  rent,
-  resolveSpecialEvent,
-  utilityMultiplier,
-} from './rules.js';
+import { CHANCE, CHEST } from './cards.js';
+import { BOARD, isDeed } from './model.js';
+import { move, rent, resolveSpecialEvent, utilityMultiplier } from './rules.js';
 
-const auction = () => {
+const stationGame = () => {
   const game = testGame(plugin, ['a', 'b', 'c']);
   game.state.after = 'end';
   move(game.state, 0, 5, false, 7);
   return game;
 };
 
-const visit = (game: ReturnType<typeof auction>, seat: number, square = 5) => {
-  game.state.turn = seat;
-  game.state.after = 'end';
-  move(game.state, seat, square, false, 7);
-};
-
-describe('station contributions on landing', () => {
-  it('doubles each contribution after the opening amount of 50', () => {
-    expect([0, 50, 100, 200].map(nextStationContribution)).toEqual([50, 100, 200, 400]);
+describe('station purchase on landing', () => {
+  it('lists each station at 200', () => {
+    expect([5, 15, 25, 35].map((square) => BOARD[square]!.price)).toEqual([200, 200, 200, 200]);
   });
 
-  it('has the bot offer the doubled next contribution', () => {
-    const game = auction();
-    game.state.auction = {
-      square: 5,
-      bidder: 1,
-      highest: 50,
-      leader: 0,
-      passed: [],
-      bids: [50, 0, 0],
-      contributions: [1, 0, 0],
-    };
-    expect(botMove(game.state, 1)).toMatchObject({ event: 'bid', payload: { amount: 100 } });
-  });
+  it('offers direct purchase for 200 when landing on an unowned station', () => {
+    const game = stationGame();
+    expect(game.state.phase).toBe('buy');
+    expect(game.state.pending).toBe(5);
+    expect(game.error('b', 'buy')).toBeTruthy();
 
-  it('refunds every simultaneously resolved station before checking purchase affordability', () => {
-    const game = testGame(plugin, ['a', 'b', 'c', 'd']);
-    game.state.players[0]!.cash = 0;
-    game.state.stationAuctions[5] = {
-      square: 5,
-      highest: 50,
-      leader: 0,
-      passed: [1, 3],
-      bids: [50, 0, 0, 0],
-    };
-    game.state.stationAuctions[15] = {
-      square: 15,
-      highest: 150,
-      leader: 0,
-      passed: [1, 3],
-      bids: [300, 0, 0, 0],
-    };
-    game.state.turn = 3;
-    game.state.phase = 'end';
-    game.leave('c');
-    expect(game.state.players[0]!.cash).toBe(150);
-    expect(game.state.properties[5]).toMatchObject({ owner: 0, acquisitionCost: 50 });
-    expect(game.state.properties[15]).toMatchObject({ owner: 0, acquisitionCost: 150 });
-    expect(game.state.debt).toBeNull();
-    expect(game.state.turn).toBe(3);
+    game.send('a', 'buy');
+
+    expect(game.state.properties[5]!.owner).toBe(0);
+    expect(game.state.players[0]!.cash).toBe(800);
+    expect(game.state.transfers).toContainEqual({
+      from: 0,
+      to: null,
+      amount: 200,
+      reason: 'Mua Bến Bắc',
+    });
     expect(game.state.phase).toBe('end');
   });
 
-  it('only lets the visitor contribute once, then resumes the turn and persists the deposit', () => {
-    const game = auction();
-    expect(game.error('a', 'buy')).toBeTruthy();
-    expect(game.error('b', 'bid', { amount: 50 })).toBeTruthy();
-    expect(game.error('b', 'pass')).toBeTruthy();
-    expect(game.error('a', 'bid', { amount: 10 })).toBeTruthy();
-    game.send('a', 'bid', { amount: 50 });
-    const previous = game.state;
-    expect(previous.phase).toBe('end');
-    expect(previous.auction).toBeNull();
-    expect(previous.pending).toBeNull();
-    expect(previous.players[0]!.cash).toBe(950);
-    expect(game.error('a', 'bid', { amount: 100 })).toBeTruthy();
+  it('lets the visitor decline the direct purchase', () => {
+    const game = stationGame();
     game.send('a', 'end-turn');
-    expect(game.state.stationAuctions[5]!.bids).toEqual([50, 0, 0]);
-    visit(game, 1);
-    game.send('b', 'bid', { amount: 100 });
-    visit(game, 0);
-    expect(game.error('a', 'bid', { amount: 150 })).toBeTruthy();
-    game.send('a', 'bid', { amount: 200 });
-    expect(game.state.stationAuctions[5]!.bids).toEqual([250, 100, 0]);
-    expect(game.state.stationAuctions[5]!.contributions).toEqual([2, 1, 0]);
-    expect(game.state.players[0]!.cash).toBe(750);
-    expect(previous.stationAuctions[5]!.bids).toEqual([50, 0, 0]);
-    expect(previous.stationAuctions[5]!.contributions).toEqual([1, 0, 0]);
-  });
 
-  it('refunds each withdrawing player immediately and the winner before payment', () => {
-    const game = testGame(plugin, ['a', 'b', 'c', 'd']);
-    for (const [seat, amount] of [
-      [0, 50],
-      [1, 100],
-      [2, 200],
-      [0, 400],
-    ]) {
-      visit(game, seat!);
-      game.send(['a', 'b', 'c', 'd'][seat!]!, 'bid', { amount });
-    }
-    expect(game.state.stationAuctions[5]!.bids).toEqual([450, 100, 200, 0]);
-    visit(game, 1);
-    game.send('b', 'pass');
-    expect(game.state.players[1]!.cash).toBe(1000);
-    expect(game.state.stationAuctions[5]!.bids[1]).toBe(0);
-    expect(game.state.stationAuctions[5]!.contributions).toEqual([2, 0, 1, 0]);
-    expect(game.state.stationAuctions[5]!.highest).toBe(400);
-    visit(game, 1);
-    expect(game.state.phase).toBe('end');
-    expect(game.error('b', 'bid', { amount: 250 })).toBeTruthy();
-    visit(game, 2);
-    game.send('c', 'pass');
-    expect(game.state.properties[5]!.owner).toBeNull(); // d has never visited.
-    visit(game, 3);
-    game.send('d', 'pass');
-    expect(game.state.properties[5]!.owner).toBe(0);
-    expect(game.state.players.map((p) => p.cash)).toEqual([600, 1000, 1000, 1000]);
-    expect(game.state.stationAuctions[5]).toBeUndefined();
-    expect(game.state.transfers.map((t) => t.amount)).toEqual([450, 400]);
-    expect(game.state.transfers.at(-1)).toMatchObject({ from: 0, to: null, reason: 'Mua Bến Bắc' });
-  });
-
-  it('uses spendable cash for each new contribution and tracks stations independently', () => {
-    const game = auction();
-    game.state.players[0]!.cash = 50;
-    game.send('a', 'bid', { amount: 50 });
-    visit(game, 0);
-    expect(game.error('a', 'bid', { amount: 100 })).toBeTruthy();
-    visit(game, 1, 15);
-    game.send('b', 'bid', { amount: 50 });
-    expect(game.state.stationAuctions[5]!.highest).toBe(50);
-    expect(game.state.stationAuctions[15]!.highest).toBe(50);
-    expect(copy(game.state).stationAuctions[15]).not.toBe(game.state.stationAuctions[15]);
-  });
-
-  it('preserves extra rolls and permits withdrawal after another player contributes', () => {
-    const game = auction();
-    game.state.after = 'roll';
-    game.send('a', 'bid', { amount: 50 });
-    expect(game.state.phase).toBe('roll');
-    visit(game, 1);
-    game.send('b', 'bid', { amount: 100 });
-    visit(game, 0);
-    game.send('a', 'pass');
-    expect(game.state.stationAuctions[5]!.passed).toEqual([0]);
+    expect(game.state.properties[5]!.owner).toBeNull();
     expect(game.state.players[0]!.cash).toBe(1000);
-  });
-
-  it('skips repeat visits by the latest contributor until someone else bids at that station', () => {
-    const game = auction();
-    game.send('a', 'bid', { amount: 50 });
-    visit(game, 0);
-    expect(game.state.phase).toBe('end');
-    expect(game.state.auction).toBeNull();
     expect(game.state.pending).toBeNull();
-    expect(game.state.players[0]!.cash).toBe(950);
-    expect(game.state.stationAuctions[5]!.bids).toEqual([50, 0, 0]);
-    visit(game, 1, 15);
-    game.send('b', 'bid', { amount: 50 });
-    visit(game, 0);
-    expect(game.state.phase).toBe('end');
-    expect(game.error('a', 'bid', { amount: 100 })).toBeTruthy();
-    visit(game, 1);
-    game.send('b', 'bid', { amount: 100 });
-    visit(game, 0);
-    expect(game.state.phase).toBe('auction');
-    game.send('a', 'bid', { amount: 200 });
-    expect(game.state.stationAuctions[5]!.bids).toEqual([250, 100, 0]);
+    expect(game.state.turn).toBe(1);
   });
 
-  it('does not start an auction countdown or charge a returning latest bidder on a real roll', () => {
-    const game = auction();
-    visit(game, 0, 15);
-    game.send('a', 'bid', { amount: 50 });
-    const rng = seededRng(1);
-    for (let i = 0; i < 24; i++) rng();
-    const sum = 2 + Math.floor(rng() * 6) + Math.floor(rng() * 6);
-    game.state.players[0]!.position = 15 - sum;
-    game.state.phase = 'roll';
-    game.send('a', 'roll');
-    expect(game.state.players[0]!.position).toBe(15);
-    expect(game.state.auction).toBeNull();
-    expect(game.state.pending).toBeNull();
-    expect(game.state.players[0]!.cash).toBe(950);
-    expect(game.timer?.ms).not.toBe(AUCTION_TURN_MS);
-    expect(game.state.stationAuctions[15]!.bids).toEqual([50, 0, 0]);
-  });
+  it('rejects a purchase when the visitor cannot afford the posted price', () => {
+    const game = stationGame();
+    game.state.players[0]!.cash = 199;
 
-  it('rejects a second consecutive contribution even if an auction payload is forced', () => {
-    const game = auction();
-    game.send('a', 'bid', { amount: 50 });
-    game.state.phase = 'auction';
-    game.state.pending = 5;
-    game.state.auction = { ...game.state.stationAuctions[5]!, bidder: 0 };
-    expect(game.error('a', 'bid', { amount: 100 })).toContain('Cần người khác góp giá');
-    expect(game.state.players[0]!.cash).toBe(950);
-    expect(game.state.stationAuctions[5]!.bids).toEqual([50, 0, 0]);
-  });
-
-  it('passes only the visitor after the station decision countdown expires', () => {
-    const game = testGame(plugin, ['a', 'b', 'c'], { seed: 1 });
-    const rng = seededRng(1);
-    for (let i = 0; i < 24; i++) rng();
-    const sum = 2 + Math.floor(rng() * 6) + Math.floor(rng() * 6);
-    game.state.players[0]!.position = (5 - sum + 40) % 40;
-    game.send('a', 'roll');
-    expect(game.timer).toMatchObject({ event: 'turn-timeout', ms: AUCTION_TURN_MS });
-    game.fireTimer();
-    expect(game.state.stationAuctions[5]!.passed).toEqual([0]);
-    expect(game.state.auction).toBeNull();
+    expect(game.error('a', 'buy')).toBe('Không đủ tiền mua đất');
+    expect(game.state.phase).toBe('buy');
     expect(game.state.properties[5]!.owner).toBeNull();
+    expect(game.state.players[0]!.cash).toBe(199);
   });
 
-  it('refunds the leaver before liquidation without canceling other station deposits', () => {
-    const game = auction();
-    game.send('a', 'bid', { amount: 50 });
-    visit(game, 1);
-    game.send('b', 'bid', { amount: 100 });
-    game.leave('b');
-    expect(game.state.stationAuctions[5]!.bids).toEqual([50, 0, 0]);
-    expect(game.state.stationAuctions[5]!.highest).toBe(100);
-    expect(game.state.players.map((p) => p.cash)).toEqual([950, 0, 1000]);
-    expect(game.state.transfers[0]).toMatchObject({ to: 1, amount: 100 });
-    visit(game, 2);
-    game.send('c', 'pass');
-    expect(game.state.properties[5]!.owner).toBe(0);
-    expect(game.state.properties[5]!.acquisitionCost).toBe(100);
-    expect(game.state.players[0]!.cash).toBe(900);
-  });
-
-  it('retains other deposits when the current visitor leaves during a station decision', () => {
-    const game = testGame(plugin, ['a', 'b', 'c', 'd']);
-    visit(game, 0);
-    game.send('a', 'bid', { amount: 50 });
-    visit(game, 1);
-    game.leave('b');
-    expect(game.state.turn).toBe(2);
-    expect(game.state.phase).toBe('roll');
-    expect(game.state.stationAuctions[5]!.bids).toEqual([50, 0, 0, 0]);
-    expect(game.state.stationAuctions[5]!.passed).toEqual([1]);
-  });
-
-  it('lets an off-turn winner settle the final contribution and resumes the visiting player', () => {
-    const game = auction();
-    game.state.players[0]!.cash = 50;
-    game.send('a', 'bid', { amount: 50 });
-    visit(game, 1);
-    game.send('b', 'bid', { amount: 100 });
-    game.leave('b');
-    game.state.properties[9]!.owner = 0;
-    visit(game, 2);
-    game.send('c', 'pass');
-    expect(game.state.debt).toMatchObject({ payer: 0, amount: 100, after: 'end' });
-    expect(game.state.players[0]!.cash).toBe(50);
-    expect(game.state.turn).toBe(2);
-    expect(game.error('c', 'pay-debt')).toBeTruthy();
-    expect(botMove(game.state, 0)?.event).toBe('mortgage');
-    game.send('a', 'mortgage', { square: 9 }).send('a', 'pay-debt');
-    expect(game.state.players[0]!.cash).toBe(50 + BOARD[9]!.price! / 2 - 100);
-    expect(game.state.phase).toBe('end');
-    expect(game.state.turn).toBe(2);
-    expect(game.state.properties[5]!.owner).toBe(0);
-  });
-
-  it('handles an insolvent off-turn winner without taking away the visitor’s turn', () => {
-    const game = auction();
-    game.state.players[0]!.cash = 50;
-    game.send('a', 'bid', { amount: 50 });
-    visit(game, 1);
-    game.send('b', 'pass');
-    visit(game, 2);
-    game.send('c', 'pass');
-    game.send('a', 'bankrupt');
-    expect(game.state.turn).toBe(2);
-    expect(game.state.phase).toBe('end');
-    expect(game.state.properties[5]!.owner).toBeNull();
-    expect(game.state.stationAuctions).toEqual({});
+  it('lets a bot buy at the posted price while keeping its cash reserve', () => {
+    const game = stationGame();
+    game.state.players[0]!.cash = 300;
+    expect(botMove(game.state, 0)?.event).toBe('buy');
+    game.state.players[0]!.cash = 299;
+    expect(botMove(game.state, 0)?.event).toBe('end-turn');
   });
 });
 
@@ -338,7 +113,7 @@ describe('taxes and table rounds', () => {
   });
 
   it('charges linear station fees while respecting jail and mortgage', () => {
-    const game = auction();
+    const game = testGame(plugin, ['a', 'b']);
     for (const square of [5, 15, 25]) game.state.properties[square]!.owner = 0;
     expect(rent(game.state, 5, 7)).toBe(150);
     game.state.properties[35]!.owner = 0;
@@ -348,6 +123,24 @@ describe('taxes and table rounds', () => {
     game.state.players[0]!.jailed = false;
     game.state.properties[5]!.mortgaged = true;
     expect(rent(game.state, 5, 7)).toBe(0);
+  });
+});
+
+describe('repair card notices', () => {
+  it.each([
+    [1000, 'Sửa chữa: 40 mỗi nhà, 115 mỗi khách sạn: −40'],
+    [0, 'Sửa chữa: 40 mỗi nhà, 115 mỗi khách sạn: cần trả 40. Bán nhà hoặc thế chấp để trả nợ.'],
+  ])('joins the charge detail cleanly with %s cash', (cash, notice) => {
+    const game = testGame(plugin, ['a', 'b']);
+    game.state.chest = [CHEST.findIndex((card) => card.kind === 'repairs')];
+    game.state.players[0]!.cash = cash;
+    game.state.properties[1]!.owner = 0;
+    game.state.properties[1]!.houses = 1;
+
+    move(game.state, 0, 17, false, 7);
+    resolveSpecialEvent(game.state, () => 0);
+
+    expect(game.state.notice).toBe(notice);
   });
 });
 

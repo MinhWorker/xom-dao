@@ -71,8 +71,6 @@ func _view(extra: Dictionary = {}) -> Dictionary:
 		"dice": null,
 		"pending": null,
 		"buildable": null,
-		"auction": null,
-		"stationAuctions": {},
 		"debt": null,
 		"trade": null,
 		"notice": "Bắt đầu ván mới.",
@@ -118,6 +116,18 @@ func _tap(node: Control) -> void:
 	node.gui_input.emit(up)
 
 
+func _tap_board_square(table: Control, square: int) -> void:
+	var board: Control = _node(table, "Board")
+	var cells: Array = _rules_script().get("CELLS")
+	var corners: Array = cells[square]
+	var center: Vector2 = (corners[0] + corners[1] + corners[2] + corners[3]) / 4.0
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.position = center * board.size
+	up.pressed = false
+	board.gui_input.emit(up)
+
+
 func test_your_turn_offers_the_dice_and_jail_ways_out() -> void:
 	var table := _table(_view())
 	assert_null(_node(table, "Roll"))
@@ -129,9 +139,49 @@ func test_your_turn_offers_the_dice_and_jail_ways_out() -> void:
 	var view := _view()
 	view["players"][0]["jailed"] = true
 	view["players"][0]["position"] = 10
+	view["players"][0]["freeCards"] = ["chance"]
 	table = _table(view)
 	assert_true(_node(table, "Bail").visible)
+	assert_true(_node(table, "UseCard").visible)
+	var final_attempt := _view()
+	final_attempt["players"][0]["jailed"] = true
+	final_attempt["players"][0]["position"] = 10
+	final_attempt["players"][0]["jailRolls"] = 2
+	final_attempt["players"][0]["freeCards"] = ["chance"]
+	table = _table(final_attempt)
+	assert_true(bool(table.get("_can_roll")), "The third jail turn still allows a final roll")
+	assert_false(_node(table, "Bail").visible)
 	assert_false(_node(table, "UseCard").visible)
+
+	var event_view := _view(
+		{
+			"phase": "event",
+			"specialEvent":
+			{"kind": "release", "id": 9, "ready": true, "reason": "Bạn đã mãn hạn tù."}
+		}
+	)
+	event_view["players"][0]["position"] = 10
+	event_view["players"][0]["jailed"] = true
+	event_view["players"][0]["jailRolls"] = 3
+	event_view["players"][0]["freeCards"] = ["chance"]
+	table = _table(event_view)
+	assert_eq(_text(table, "CardTitle"), "Ra tù")
+	assert_true(_node(table, "Confirm").visible)
+	assert_false(_node(table, "Bail").visible)
+	assert_false(_node(table, "UseCard").visible)
+	assert_false(bool(table.get("_can_roll")))
+
+	var released: Dictionary = event_view.duplicate(true)
+	released["phase"] = "roll"
+	released["specialEvent"] = null
+	released["players"][0]["jailed"] = false
+	released["players"][0]["jailRolls"] = 0
+	table.call("_show", _snapshot(released))
+	assert_true(_node(table, "JailGate").visible)
+	assert_false(bool(table.get("_can_roll")), "The dice stay locked while the doors open")
+	await wait_until(func() -> bool: return not bool(table.get("_running")), 2.0)
+	assert_true(bool(table.get("_can_roll")), "The roll is offered after the release animation")
+	assert_eq(_text(table, "Status"), "Chạm xúc xắc để gieo")
 
 
 func test_space_is_a_roll_hotkey_only_for_a_fresh_press_when_roll_is_allowed() -> void:
@@ -150,7 +200,7 @@ func test_space_is_a_roll_hotkey_only_for_a_fresh_press_when_roll_is_allowed() -
 	assert_false(DiceHotkey.should_roll(space, true), "Only Space is a dice shortcut")
 
 
-func test_buying_phase_and_square_touch_does_not_open_card() -> void:
+func test_tapping_a_square_opens_its_hud_and_tapping_it_again_follows_the_player() -> void:
 	var view := _view({"phase": "buy", "pending": 6, "dice": [2, 4]})
 	view["players"][0]["position"] = 6
 	view["properties"][1]["owner"] = 0
@@ -158,8 +208,19 @@ func test_buying_phase_and_square_touch_does_not_open_card() -> void:
 	var table := _table(view)
 	assert_eq(_text(table, "Buy"), "Mua 280")
 	assert_true(_node(table, "Skip").visible)
-	_tap(_node(table, "Square_1"))
+	var board: Control = _node(table, "Board")
+	await wait_until(func() -> bool: return board.size.x > 0.0, 1.0)
+	_tap_board_square(table, 1)
+	var tile_hud: Control = _node(table, "TileHud")
+	assert_eq(int(tile_hud.get("current_square")), 1)
+	assert_true(_node(table, "TileActionButton").visible)
+	assert_eq(_text(table, "TileActionButton"), "+50")
+	assert_eq(tile_hud.get("details")["tile_action_event"], "sell-house")
 	assert_false(_node(table, "Card").visible)
+	_tap_board_square(table, 1)
+	assert_eq(int(table.get("_focus")), -1)
+	assert_eq(int(tile_hud.get("current_square")), 6)
+	assert_false(_node(table, "TileActionButton").visible)
 
 
 func test_build_is_offered_after_doubles_on_your_own_street() -> void:
@@ -175,6 +236,8 @@ func test_build_is_offered_after_doubles_on_your_own_street() -> void:
 	assert_true(_node(table, "Build").visible)
 	assert_false((_node(table, "Build") as Button).disabled)
 	assert_eq(_text(table, "Build"), "Xây nhà 100")
+	assert_true(_node(table, "SkipBuild").visible)
+	assert_eq(_text(table, "SkipBuild"), "Bỏ qua")
 	assert_true(bool(table.get("_can_roll")))
 
 
@@ -240,24 +303,16 @@ func test_debt_offers_bankruptcy_when_short() -> void:
 	assert_true(_node(table, "Bankrupt").visible)
 
 
-func test_a_station_contribution() -> void:
+func test_unowned_station_offers_direct_purchase_for_200() -> void:
 	var rules: GDScript = _rules_script()
-	assert_eq(rules.call("bid_amount", _view({"auction": {"highest": 0}})), 50)
-	assert_eq(rules.call("bid_amount", _view({"auction": {"highest": 50}})), 100)
-	assert_eq(rules.call("bid_amount", _view({"auction": {"highest": 100}})), 200)
-	var auction: Dictionary = {
-		"square": 5, "highest": 50, "leader": 1, "passed": [], "bids": [0, 50, 0], "bidder": 0
-	}
-	var view := _view({"phase": "auction", "auction": auction, "pending": 5})
+	assert_eq(rules.call("price", 5), 200)
+	var view := _view({"phase": "buy", "pending": 5})
 	view["players"][0]["position"] = 5
 	var table := _table(view)
-	assert_eq(_text(table, "Bid"), "Góp 100")
-	assert_false((_node(table, "Bid") as Button).disabled)
-	assert_eq(_text(table, "Pass"), "Từ bỏ")
-	assert_eq(_text(table, "Status"), "Bến Bắc: 50 ₫")
-	auction["highest"] = 100
-	table = _table(view)
-	assert_eq(_text(table, "Bid"), "Góp 200")
+	assert_eq(_text(table, "Buy"), "Mua 200")
+	assert_false((_node(table, "Buy") as Button).disabled)
+	assert_true(_node(table, "Skip").visible)
+	assert_eq(_text(table, "Status"), "Lượt bạn")
 
 
 func test_names_fit_on_their_squares() -> void:
@@ -284,9 +339,10 @@ func test_assets_and_what_mortgaging_brings() -> void:
 	view["properties"][9]["owner"] = 0
 	view["properties"][9]["mortgaged"] = true
 	view["players"][0]["freeCards"] = ["chance"]
-	assert_eq(rules.call("mortgage_squares", view["properties"], 0), [1, 5] as Array[int])
-	# 1000 cash + 200 ticket + (200 + 2 × 100) + 50 + 350 − ceil(175 × 1.1)
-	assert_eq(rules.call("asset_value", view, 0), 1000 + 200 + 400 + 50 + 350 - 193)
+	assert_eq(rules.call("mortgage_squares", view["properties"], 0), [5] as Array[int])
+	assert_eq(rules.call("mortgage_amount", view["properties"], 1), 100)
+	# 1000 cash + 200 ticket + (200 + 2 × 100) + 200 + 350 − ceil(175 × 1.1)
+	assert_eq(rules.call("asset_value", view, 0), 1000 + 200 + 400 + 200 + 350 - 193)
 
 
 func test_the_dice_paths_end_still() -> void:

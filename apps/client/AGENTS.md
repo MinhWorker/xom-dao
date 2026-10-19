@@ -63,7 +63,10 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   `layout: "right"` docks the shared result HUD on the right and leaves uncovered table controls
   interactive. Optional `result_area() -> Rect2` docks it in a game-provided area without a screen
   shade and also leaves uncovered table controls interactive. Pair it with
-  `set_result_visible(shown: bool) -> void` to follow Xem bàn / Kết quả.
+  `set_result_visible(shown: bool) -> void` to follow Xem bàn / Kết quả. Optional
+  `result_reopen_theme() -> Dictionary` styles the shared Kết quả button with `StyleBox` values for
+  its `normal`, `hover`, `pressed`, `hover_pressed` and `disabled` states, plus an optional
+  `font_color: Color`; the button sits at the bottom right while the result board is hidden.
   Games without this hook keep the centred result overlay.
   Games with voluntary elimination may also define `can_declare_bankruptcy() -> bool` and
   `declare_bankruptcy() -> bool`; the hub uses these hooks to confirm and apply bankruptcy before

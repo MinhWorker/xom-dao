@@ -23,6 +23,20 @@ hãy chắc rằng nó chạy và bạn hiểu nó.
 
 Trước khi push, `npm run check` chạy đúng các bước kiểm tra đó trên máy bạn.
 
+## Làm việc với nhiều worktree
+
+Từ repo chính, tạo một worktree mới từ `origin/main` và checkout nhánh mới:
+
+```sh
+npm run wt -- feat/ten-cong-viec
+```
+
+Worktree nằm trong `wt/feat/ten-cong-viec/`. Lệnh cập nhật `origin/main`, tạo nhánh
+`feat/ten-cong-viec`, liên kết các file `.env`, `.env.local`, `apps/server/.env` và
+`apps/server/.env.local` nếu chúng có trong repo hiện tại, rồi chạy `npm ci` riêng cho worktree. Có
+thể thêm cờ `--no-install` để bỏ qua bước cài dependency; khi đó chạy `npm ci` sau khi vào worktree.
+Không chia sẻ `node_modules` vì liên kết workspace trong đó sẽ trỏ về nhầm checkout.
+
 ## Phiên bản
 
 Không ai tự sửa số phiên bản. Một bot giữ sẵn PR "release" liệt kê mọi thứ đã merge từ lần phát
