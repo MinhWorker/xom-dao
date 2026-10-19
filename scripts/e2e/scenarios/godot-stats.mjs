@@ -1,7 +1,7 @@
-// Stats, achievements and rankings in the Godot client (#126): Lan plays Caro against the
-// computer in the sandbox (?play=tic-tac-toe); the game unlocks "Ván đầu tiên" (a notice, and its
-// coins). Her Nhà shows the level, the achievement reached and her place on Cả xóm; Đình ranks
-// her. Needs the debug web build (npm run godot:export -- --debug) and a dev server.
+// Stats and achievements in the Godot client (#126): Lan plays Caro against the computer in the
+// sandbox (?play=tic-tac-toe); the game unlocks "Ván đầu tiên" (a notice, and its coins). Her Nhà
+// shows the level, reached achievement and match history; Đình is marked as coming soon. Needs
+// the debug web build (npm run godot:export -- --debug) and a dev server.
 
 import { caroPlayToEnd, DESKTOP, godotText, launch, onScene, openGodot, tap } from '../godot.mjs';
 
@@ -24,7 +24,7 @@ export default async function run(t) {
   await onScene(lan, 'nha');
   await godotText(lan, 'HomePlayed', '1 ván');
   await tap(lan, 'Tab_thanh-tich');
-  await godotText(lan, 'Reached', 'Đã đạt');
+  await godotText(lan, 'AchievementReached', 'Đã đạt');
   const first = await lan.evaluate(() => window.xomdao.rect('Achievement_core-played-1'));
   if (!first) throw new Error('Ván đầu tiên is not on the shelf');
   await lan.screenshot({ path: t.shot('2-achievements.png') });
@@ -36,11 +36,6 @@ export default async function run(t) {
   await onScene(lan, 'lobby');
   await tap(lan, 'Place_dinh');
   await onScene(lan, 'dinh');
-  // She is on Cả xóm: in the top rows, or in her own row below them.
-  const name = await lan.evaluate(() => window.xomdao.state().user.name);
-  await lan.waitForFunction((me) => {
-    const tree = JSON.stringify(window.xomdao.tree(99));
-    return tree.includes('"RankMine"') || tree.includes('"RankMe"') ? tree.includes(me) : false;
-  }, name);
-  await lan.screenshot({ path: t.shot('4-dinh.png') });
+  await godotText(lan, 'DevBadge', 'Sắp ra mắt trên Xóm Đảo');
+  await lan.screenshot({ path: t.shot('4-dinh-coming-soon.png') });
 }

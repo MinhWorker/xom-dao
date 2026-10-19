@@ -49,6 +49,7 @@ docs/              Shared guides for people: making-a-game, ui-guide, deploy
 | `npm run format` | Auto-fix formatting and safe lint issues (Biome) |
 | `npm run setup:godot` | Install the pinned Godot, web templates, gdtoolkit and GUT into `.tools/` (Linux, macOS) |
 | `npm run godot -- <args>` | The pinned Godot on `apps/client`; `godot:check`, `godot:link`, `godot:export`, `godot:smoke`, `godot:measure` in `apps/client/AGENTS.md` |
+| `npm run godot:export -- --debug --game <id>` | Refresh one game's pack in a matching existing debug web build; full exports cache packs for unchanged games |
 | `npm run setup:blender` | Install bpy + Pillow into `.tools/blender` (needs Python 3.13) |
 | `npm run blender -- <id> [names…]` | Bake game art with the `.tools/blender` bpy, Blender or `XOMDAO_BLENDER_PYTHON`; see `assets/AGENTS.md` |
 | `npm run e2e [url]` | Headless Chromium plays every `godot-*` scenario in `scripts/e2e/scenarios/` through the Godot client's debug build, side by side (needs a running dev server and `godot:export -- --debug`). `-- --only <names>` (`godot-*` works), `-- --changed origin/main`; flags at the top of `scripts/e2e.mjs`. Screenshots in `.e2e/<scenario>/` |
@@ -100,8 +101,9 @@ Test what the change needs, no more (e2e is slow):
   screenshot where it is used. Skip `npm run check` and e2e.
 - **Small UI tweaks**: `npm run godot:check`, plus `npm run shots` of that screen.
 - **Other code changes**: `npm run check` passes.
-- **Godot changes** (`apps/client/`, `games/<id>/godot/`, `tools/godot/`): `npm run godot:check`, and
-  `npm run godot:export && npm run godot:smoke` when the build or a screen changed.
+- **Godot changes** (`apps/client/`, `games/<id>/godot/`, `tools/godot/`): `npm run godot:check`;
+  use `npm run godot:export -- --debug --game <id>` for game-only browser iteration on a matching
+  debug build. Run the full export and `npm run godot:smoke` when the shared client/build changed.
 - **Gameplay, room/lobby flow, protocol or socket changes**: also run
   `npm run e2e -- --changed origin/main` against a running dev server (with a debug export) and
   look at the screenshots; CI's `godot` job runs every scenario. Run it once, at the end of the

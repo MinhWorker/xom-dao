@@ -251,12 +251,15 @@ tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến c
   trượt ra từ bên phải, ghi hình lớn, tên và loại của món đó, cùng nút hành động hợp với nó: đồ
   trang trí có **Dùng** (hoặc "Đang dùng"). Chạm lại ô đó hoặc nút ✕ để đóng. Ở Nhà người khác
   ngăn kéo chỉ để xem. Vật phẩm nào cũng có biểu tượng vuông, nền trong suốt, để đặt được vào ô.
-- **Thành tích** là lưới ô, cuộn dọc khi nhiều.
+- **Thành tích** có tổng số đã đạt và thanh tiến độ chung. Hàng lọc cuộn ngang dùng logo đơn sắc
+  làm biểu tượng cho Tất cả, Xóm Đảo và từng trò; chạm logo để xem riêng nhóm đó, không cần nhãn
+  loại bằng chữ. Danh sách cuộn dọc, thành tích đã đạt đứng trước; mỗi hàng có logo trò, tên,
+  tiến độ và xu thưởng.
 - Cấp tính từ kinh nghiệm: 10 cho mỗi ván, cộng kinh nghiệm của mỗi thành tích đã đạt. Cấp N bắt
   đầu ở 50 × N × (N − 1) (cấp 2 ở 100, cấp 3 ở 300). Thanh tiến độ dưới chip cấp cho biết còn bao
   xa tới cấp sau.
-- Thành tích là ô trong lưới: chiếc cúp (vàng khi đã đạt), tên, "Đã đạt" hoặc số đếm như "3/10", và
-  phần thưởng. Ô đã đạt đứng trước.
+- Thành tích là hàng trong danh sách: logo trò đơn sắc, tên, thanh tiến độ cùng "Đã đạt" hoặc số
+  đếm như "3/10", và xu thưởng. Thành tích đã đạt đứng trước.
 - **Ai cũng chơi bằng tài khoản, không có khách.** Chưa đăng nhập thì ứng dụng mở ra bảng **Vào
   Xóm Đảo** trên nền màn chờ, không đóng được, với hai lựa chọn:
   - **Đăng nhập**: tên đăng nhập và mật khẩu.

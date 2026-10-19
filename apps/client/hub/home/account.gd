@@ -66,6 +66,12 @@ func _ready() -> void:
 	_layout()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if _closable and event.is_action_pressed("ui_cancel"):
+		_board.close()
+		get_viewport().set_input_as_handled()
+
+
 func _build_form(guest_name: String) -> void:
 	var column: VBoxContainer = _board.content
 	column.add_theme_constant_override("separation", 12)

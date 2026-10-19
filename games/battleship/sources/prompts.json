@@ -1,10 +1,15 @@
 {
-  "$comment": "Đảo Bắn Tàu tạo bằng image generation, cùng phong cách đảo Tiến Lên và Bài Cào. Tạo lại: npm run gen:asset -- battleship/island.",
+  "$comment": "Đảo Bắn Tàu và bong bóng biểu cảm tạo bằng image generation. Tạo lại: npm run gen:asset -- battleship/island battleship/emote-bubble.",
   "assets": {
     "island": {
       "transparent": true,
       "maxSize": 640,
       "prompt": "A floating sky island for the Battleship game, matching the polished stylized 3D cartoon Vietnamese casual mobile-game islands. Chunky rounded toy materials, saturated lush green grass, tiny white flowers, leafy hanging vines, warm soft upper-left lighting, brown faceted rocky underside tapering down to a point. Isometric three-quarter view, complete island silhouette, approximately square overall proportions. On the grassy plateau, an enclosed turquoise naval harbour basin with timber piers and exactly two cute slate-blue toy battleships, ivory deck structures and rounded turret barrels. A compact ivory lighthouse with a red roof and warm glowing windows stands beside rounded rocks and bushes. Harbour water stays entirely within the island; no external ocean or ground plane. Naval objects large and legible at small map-icon size, prominent grass rim and floating rock. Friendly calm maritime theme, no explosions. No cards, chips, text, letters, numbers, logo, watermark, frame, sky, clouds or ground shadow. Real transparent alpha outside the island."
+    },
+    "emote-bubble": {
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "A single warm ivory giấy dó speech-bubble shell for an emote sticker in a Vietnamese naval board game HUD. Front view on a square canvas, rounded almost-square body with a short tapered tail integrated into its lower-left edge, pointing down and left toward the player's portrait. The body and tail form one continuous silhouette with no seam or wedge overlapping the interior. Smooth, clean anti-aliased shape, flat cream #FBF1DC interior, thin muted honey-brown #9C5F2A outline, subtle paper-gold #E6D2AA edge shading, faint paper texture, gentle upper-left light and a short soft shadow down and right. Centered with transparent padding around the whole bubble; leave a broad blank opaque interior for a separate emote sticker placed on top. No text, icon, emoji, sticker, character, multiple bubbles, fake checkerboard, background, thick bevel, heavy texture, watermark or frame. Real transparent alpha outside the bubble."
     }
   }
 }

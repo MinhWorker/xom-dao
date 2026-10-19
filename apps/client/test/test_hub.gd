@@ -194,6 +194,18 @@ func test_seats_fill_rows_by_how_many_there_are() -> void:
 	assert_eq(HubWaitingRoom.columns_for(8), 4)
 
 
+func test_escape_activates_the_top_bar_back_button() -> void:
+	var settings := XomDaoSettings.new()
+	settings.path = ""
+	var top: HubTopBar = add_child_autofree(HubTopBar.new(settings))
+	watch_signals(top)
+	var escape := InputEventAction.new()
+	escape.action = "ui_cancel"
+	escape.pressed = true
+	top._unhandled_input(escape)
+	assert_signal_emitted(top, "back_pressed")
+
+
 func test_the_curtain_covers_then_lifts() -> void:
 	var curtain: HubTransition = add_child_autofree(HubTransition.new())
 	watch_signals(curtain)
@@ -260,6 +272,22 @@ func test_result_ranks_and_rewards() -> void:
 	assert_eq(result.money.coins.text, "120")
 
 
+func test_escape_returns_to_result_then_leaves_the_finished_room() -> void:
+	var settings := XomDaoSettings.new()
+	settings.path = ""
+	var result: HubResult = add_child_autofree(HubResult.new(settings))
+	result.show_result(_snapshot(["minh"], []), "minh", 100)
+	result.show_board(true)
+	watch_signals(result)
+	var escape := InputEventAction.new()
+	escape.action = "ui_cancel"
+	escape.pressed = true
+	result._unhandled_input(escape)
+	assert_false(result.looking(), "Escape returns from the table to its result")
+	result._unhandled_input(escape)
+	assert_signal_emitted(result, "home_pressed", "Escape leaves from the result")
+
+
 func test_right_result_panel_stays_inside_viewport_after_scaling() -> void:
 	var won: XomDaoRoomSnapshot = _snapshot(["minh"], [])
 	var settings := XomDaoSettings.new()
@@ -283,6 +311,22 @@ func test_right_result_panel_stays_inside_viewport_after_scaling() -> void:
 	)
 	await wait_process_frames(2)
 	var panel: Control = result.find_child("ResultBoard", true, false)
+	var shade: ColorRect = result.get("_shade")
+	assert_eq(
+		result.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"the side result panel leaves the game table interactive"
+	)
+	assert_eq(
+		panel.mouse_filter,
+		Control.MOUSE_FILTER_STOP,
+		"the result panel itself still receives input"
+	)
+	assert_eq(
+		shade.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"the side result shade does not block the game table"
+	)
 	var top_left: Vector2 = panel.position + panel.pivot_offset * (Vector2.ONE - panel.scale)
 	var bottom_right: Vector2 = top_left + panel.size * panel.scale
 	assert_gte(top_left.x, settings.margin, "the panel stays inside the left edge")
@@ -292,6 +336,29 @@ func test_right_result_panel_stays_inside_viewport_after_scaling() -> void:
 	)
 	assert_lte(
 		bottom_right.y, result.size.y - settings.margin, "the panel stays inside the bottom edge"
+	)
+	result.show_board(true)
+	assert_eq(
+		result.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"putting the result away keeps the game table interactive"
+	)
+	result.show_board(false)
+	assert_eq(
+		result.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"reopening a side result leaves the game table interactive"
+	)
+	var docked := HubResult.new(settings)
+	docked.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	docked.size = XomDaoFrame.SIZE
+	docked.dock(func() -> Rect2: return Rect2(Vector2(24.0, 24.0), Vector2(400.0, 400.0)))
+	add_child_autofree(docked)
+	docked.show_result(won, "minh", 100)
+	assert_eq(
+		docked.mouse_filter,
+		Control.MOUSE_FILTER_IGNORE,
+		"a result docked by the game leaves uncovered controls interactive"
 	)
 
 

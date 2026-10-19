@@ -25,8 +25,10 @@ Thêm file logic từ mẫu: `npm run new -- logic __ID__ [Tên]` (luật) hoặ
 
 ## Chơi thử
 
-- `npm run godot:export -- --debug`, `npm run dev`, rồi mở
-  http://localhost:5033/?play=__ID__ để chơi với máy.
+- Lần đầu chạy `npm run godot:export -- --debug`, `npm run dev`, rồi mở
+  http://localhost:5033/?play=__ID__ để chơi với máy. Khi chỉ sửa bàn game và đã có bản web debug
+  phù hợp, chạy `npm run godot:export -- --debug --game __ID__` để cập nhật riêng pack.
+- Chạy luật nhanh bằng `npm run test -w @xomdao/game-__ID__`.
 - Kiểm tra luật bằng `npm run check`, bàn chơi bằng `npm run godot:check`.
 
 ## Ghi công

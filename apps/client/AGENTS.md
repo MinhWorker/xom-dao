@@ -32,6 +32,7 @@ hub/                main.gd routes the screens: lobby (island ring + HUD), selec
                     read-only; avatar and frame equipment lives in Túi đồ) and Chợ (HubShop:
                     avatars, frames, card backs, emotes)
   gallery/          Every UI kit component on 4 pages: ?gallery=<page> or `-- --gallery=<page>`
+dev/                Isolated visual workbench host; excluded from web exports
 addons/xomdao_sdk/  The only API a game's Godot code uses: XomDaoFrame, XomDaoClient (client.gd)
   ui/               The shared UI kit (theme, widgets, fonts, Phosphor icons, UI sounds)
   generated/        XomDao<Type> classes + XomDaoProtocol from npm run gen:protocol (never edit)
@@ -59,8 +60,10 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   option is picked, or the one at index `default`), and `result_detail() -> Dictionary`, what
   the result board adds under its title: `{reason: String, rows: [[label, value], …], layout?: "right"}` after the
   hub's own Thời gian row. `layout: "right"` docks the panel on the right for a game's end-of-game presentation.
-  Optional `result_area() -> Rect2` docks the shared result HUD in a game-provided area without a
-  screen shade. Pair it with `set_result_visible(shown: bool) -> void` to follow Xem bàn / Kết quả.
+  `layout: "right"` docks the shared result HUD on the right and leaves uncovered table controls
+  interactive. Optional `result_area() -> Rect2` docks it in a game-provided area without a screen
+  shade and also leaves uncovered table controls interactive. Pair it with
+  `set_result_visible(shown: bool) -> void` to follow Xem bàn / Kết quả.
   Games without this hook keep the centred result overlay.
   Games with voluntary elimination may also define `can_declare_bankruptcy() -> bool` and
   `declare_bankruptcy() -> bool`; the hub uses these hooks to confirm and apply bankruptcy before
@@ -122,10 +125,11 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 | `npm run godot:check` | gdformat --check, gdlint, the boundary rule, headless import, compile every script and scene, GUT. `npm run check` runs it when Godot is installed |
 | `npm run godot:capture` | Ask the already-running desktop debug game to save its current root viewport to `.shots/godot-live.png`; pass `-- --output .shots/name.png` to choose another file, or `-- --timeout 30` to wait longer |
 | `npm run godot:link` | (Re)make the `content/<id>` symlinks; check and export do it too |
-| `npm run godot:export` | Web build into `dist/` (`-- --debug` for a debug build) plus `dist/content/<id>.<hash>.pck` and `manifest.json`. Runs on a copy in `.tools/export/` because Godot's export filters do not follow symlinks |
+| `npm run godot:export` | Web build into `dist/` (`-- --debug` for a debug build) plus `dist/content/<id>.<hash>.pck` and `manifest.json`. Full exports reuse unchanged packs from `.tools/export/packs`; `-- --debug --game <id>` refreshes one pack in a matching existing debug build. Runs on a copy in `.tools/export/` because Godot's export filters do not follow symlinks |
 | `npm run godot:net` | Builds and starts a dev server (no database) on a free port, then runs the GUT tests that need it (`test_net.gd`, skipped by `godot:check`) |
 | `npm run godot:smoke` | Serves `dist/`, opens it in headless Chromium at 800 × 360, waits for `xomdao:ready`, saves `.shots/godot-800x360.png` |
 | `npm run godot:measure` | Download size and time to playable, first and repeat visit, on a throttled phone profile (`-- --server <url>` of a running server; `--cpu`, `--net`). Release build for sizes, debug build for every timing. Numbers go in `docs/adr/0001-godot-client.md` |
+| `npm run godot:preview -- open <index> <scene>` | Open an isolated desktop preview in a numbered slot; see `apps/client/README.md` for refresh, animation and capture commands |
 
 In the browser: `npm run dev` serves `dist/` at http://localhost:5033/ (`scripts/web.mjs`; export
 again to see changes) and forwards `/api` and `/ws`. `npm run e2e -- --only godot-co-ty-phu-classic`

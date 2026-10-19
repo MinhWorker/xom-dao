@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccccqhsfpuks2"
-path="res://.godot/imported/piece-o.webp-6477718f7df0a960b605192424886cc2.ctex"
+uid="uid://d1wmlepooh00m"
+path="res://.godot/imported/mark-x.webp-cb795987a6cb98290f95a5104925c90d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://content/tic-tac-toe/art/piece-o.webp"
-dest_files=["res://.godot/imported/piece-o.webp-6477718f7df0a960b605192424886cc2.ctex"]
+source_file="res://content/tic-tac-toe/art/mark-x.webp"
+dest_files=["res://.godot/imported/mark-x.webp-cb795987a6cb98290f95a5104925c90d.ctex"]
 
 [params]
 

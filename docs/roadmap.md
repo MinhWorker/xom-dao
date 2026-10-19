@@ -70,7 +70,8 @@ Chủ dự án: "Làm sự kiện câu cá Trung Thu"
 - [x] `npm run godot:check`: mở dự án headless và báo lỗi script, chạy `gdlint`/`gdformat`
       (gdtoolkit) và test GUT. Bật cảnh báo thiếu kiểu thành lỗi
 - [x] `npm run godot:link`: tạo symlink `apps/client/content/<id>` → `games/<id>/godot`
-- [x] `npm run godot:export`: bản web đơn luồng + PWA, mỗi trò một `.pck` đặt tên theo mã băm
+- [x] `npm run godot:export`: bản web đơn luồng + PWA, mỗi trò một `.pck` đặt tên theo mã băm;
+      dùng lại pack không đổi và hỗ trợ `--game <id>` trên bản web có sẵn
 
 **Mạng và protocol**
 - [x] Cổng WebSocket thuần trên server, cùng logic phòng với Socket.IO

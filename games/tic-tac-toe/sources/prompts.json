@@ -1,5 +1,5 @@
 {
-  "$comment": "Prompts for this game: paper is generated with Image Gen; legacy wooden art is baked with Blender (render_assets.py).",
+  "$comment": "Prompts for this game: paper, polished X/O marks and the emote bubble are generated with Image Gen; legacy wooden art is baked with Blender (render_assets.py).",
   "assets": {
     "island": {
       "transparent": true,
@@ -10,6 +10,24 @@
       "transparent": false,
       "maxSize": 512,
       "prompt": "Seamless flat top-down warm ivory natural notebook paper (#f4eedf), subtle fibers and fine matte tooth, evenly illuminated. No lines, grid, marks, pen, hand, text, shadows, folds, edges or vignette. Generated with Image Gen for the paper-and-ink Caro board."
+    },
+    "mark-x": {
+      "plain": true,
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "Exactly one capital X made from two perfectly straight, equal-width red lacquer strokes with soft rounded ends, crossing cleanly at the center. Polished, precise and balanced, with a restrained bevel and a small soft highlight from the upper left. Smooth enamel surface, uniform thickness, no hand-drawn variation. Front-facing, centered, fills about 78% of a square canvas with generous transparent padding. Deep vermilion red (#A52F3E) with a slightly darker red edge. No paper, grid, board, text, hand, brush, texture, watermark or extra objects."
+    },
+    "mark-o": {
+      "plain": true,
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "Exactly one perfectly circular, closed O ring in deep blue lacquer, with a smooth transparent inner opening and uniform ring width matching the X mark. Polished, precise and balanced, with the same front-facing angle, restrained bevel, gloss level and upper-left highlight as the matching red X. Smooth enamel surface, no hand-drawn variation. Centered, fills about 78% of a square canvas with generous transparent padding. Deep blue (#245477) with a slightly darker blue edge. No paper, grid, board, text, hand, brush, texture, watermark or extra objects."
+    },
+    "emote-bubble": {
+      "plain": true,
+      "transparent": true,
+      "maxSize": 512,
+      "prompt": "One empty, nearly square speech bubble sprite for a polished friendly board-game UI. Warm ivory fill (#FFF9EC), clean even dark warm-brown outline (#6C4935), short smooth tail attached at the lower-left and pointing toward the player's avatar. Flat fill with only a small restrained shadow outside the outline, crisp antialiased vector-like edges, sized to frame a large emoji sticker. Transparent canvas. No words, emoji, symbols, paper texture, background, glow or other objects."
     }
   }
 }

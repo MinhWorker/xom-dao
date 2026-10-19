@@ -21,11 +21,18 @@ từ hôm nay trong 4 tuần, nếu không chỉ định ngày. Cả hai viết 
 `npm run godot:check` lần đầu để Godot viết các file `.uid`; commit chúng cùng game. Rồi biến
 game mẫu thành game của bạn từng bước một, lúc nào cũng giữ cho nó chơi được.
 
-- **Chơi một mình:** `npm run godot:export -- --debug`, `npm run dev`, rồi mở
-  http://localhost:5033/?play=my-game: một phòng thật với máy ngồi các ghế còn lại.
+- **Chơi một mình:** lần đầu chạy `npm run godot:export -- --debug`, rồi `npm run dev` và mở
+  http://localhost:5033/?play=my-game: một phòng thật với máy ngồi các ghế còn lại. Khi chỉ sửa
+  bàn của game và đã có bản web debug phù hợp, chạy
+  `npm run godot:export -- --debug --game my-game` để cập nhật riêng pack của game.
+- **Xem riêng một đối tượng:** tạo `godot/preview.tscn` để đặt đối tượng vào sân khấu độc lập, rồi chạy
+  `npm run godot:preview -- open 0 res://content/my-game/preview.tscn`. Sau khi sửa, `capture 0` cập nhật
+  cửa sổ và lưu ảnh; `capture-sequence 0 --animation idle --duration 1.2 --frames 6` tạo contact sheet
+  của animation. Dùng index khác để mở song song nhiều preview.
 - **Chơi thật:** mở http://localhost:5033/, chọn đảo và thẻ của game; mở thêm một cửa sổ
   ẩn danh để làm người chơi còn lại.
-- **Kiểm tra:** `npm run check`, `npm run godot:check` và `npm run shots`. Kịch bản chơi trọn một
+- **Kiểm tra luật nhanh:** `npm run test -w @xomdao/game-my-game`. Trước khi xong, chạy
+  `npm run check`, `npm run godot:check` và `npm run shots`. Kịch bản chơi trọn một
   game trên trình duyệt hiện được giữ cho Cờ tỷ phú Classic (Monopoly); CI vẫn chạy các luồng
   chung của client và kịch bản sự kiện.
 
@@ -127,19 +134,22 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
 - `room_setup() -> Array`: các hàng tuỳ chọn trong phòng,
   `{key, label, options: [[nhãn, giá trị], …], default?}`, khớp `room.options`.
 - `result_detail() -> Dictionary`: phần game thêm vào bảng kết quả, dưới dòng Thời gian của hub:
-  `{reason: "Đen thắng · Trắng hết nước", rows: [["Số lượt đi", 42], …]}`.
+  `{reason: "Đen thắng · Trắng hết nước", rows: [["Số lượt đi", 42], …], layout?: "right"}`.
+  `layout: "right"` đặt bảng kết quả bên phải và giữ vùng bàn còn lộ ra có thể chạm được.
 - `result_area() -> Rect2` (tuỳ chọn): vùng trong khung của game để đặt HUD kết quả, không
-  phủ tối bàn chơi. `set_result_visible(shown: bool) -> void` nhận trạng thái **Xem bàn** /
-  **Kết quả** để game trượt bàn sang bên hoặc đưa về giữa. Không khai báo thì bảng vẫn ở giữa.
+  phủ tối bàn chơi; vùng bàn còn lộ ra vẫn nhận thao tác. `set_result_visible(shown: bool) -> void`
+  nhận trạng thái **Xem bàn** / **Kết quả** để game trượt bàn sang bên hoặc đưa về giữa. Không
+  khai báo thì bảng vẫn ở giữa.
 - Hình và âm thanh: chép bản cần dùng từ `assets/` vào `godot/art/`, `godot/sounds/`, rồi
   `load("res://content/<id>/art/<tên>.webp")`. Nhạc nền: đặt file nhạc vào `godot/music/`; hub
   phát ngẫu nhiên một bài khi game đang chơi. Mỗi `AudioStreamPlayer` của game đặt
   `bus = XomDaoSettings.SFX_BUS` để theo nút bật/tắt và âm lượng hiệu ứng trong Cài đặt.
 - **Emote dùng chung**: vật phẩm `emote` có `look` như `happy`, `love`, `wow`, `sad`, `angry`,
-  `laugh`. `await client.owned_emotes()` trả về các `look` người chơi sở hữu. Gửi bằng
-  `await client.send_emote(look)`, rồi nghe `client.emote_received` (`XomDaoRoomEmote` gồm
-  `player_id` và `emote`). Dùng `XomDaoLooks.emote(look)` để lấy ảnh. Game tự quyết định vị trí,
-  hoạt ảnh và thời gian hiện; sự kiện này không sửa state hay luật ván.
+  `laugh`. Menu ☰ hiển thị các emote người chơi sở hữu và gửi emote đã chọn. Game nghe
+  `client.emote_received` (`XomDaoRoomEmote` gồm `player_id` và `emote`) rồi dùng
+  `XomDaoLooks.emote(look)` để lấy ảnh. `await client.owned_emotes()` và
+  `await client.send_emote(look)` vẫn dùng được khi game cần giao diện riêng. Game tự quyết định
+  vị trí, hoạt ảnh và thời gian hiện; sự kiện này không sửa state hay luật ván.
 - Hub vẽ nút ☰, phòng chờ, bảng kết quả (có **Xem bàn** để xem bàn cuối, **Kết quả** để mở lại)
   và bảng Luật (đọc `RULES.md`). Game để trống ô vuông
   88 × 88 ở góc trên trái cho nút ☰ và chỉ vẽ bàn chơi.

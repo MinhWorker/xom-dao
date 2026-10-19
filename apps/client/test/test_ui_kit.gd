@@ -174,12 +174,30 @@ func test_menu_opens_and_reports_choices() -> void:
 	menu.board.find_child("Leave", true, false).pressed.emit()
 	assert_signal_emitted(menu, "leave_requested")
 	assert_false(menu.is_open())
+	menu.emote_looks = ["happy", "love"]
 	menu.open()
-	menu.board.find_child("thumbs-up", true, false).pressed.emit()
-	assert_signal_emitted_with_parameters(menu, "emote_chosen", ["thumbs-up"])
+	assert_not_null(menu.board.find_child("Emote_love", true, false))
+	assert_null(menu.board.find_child("Emote_wow", true, false), "only owned emotes are offered")
+	menu.board.find_child("Emote_happy", true, false).pressed.emit()
+	assert_signal_emitted_with_parameters(menu, "emote_chosen", ["happy"])
+	assert_eq(
+		(menu.board.find_child("Emote_happy", true, false) as Button).icon.resource_path,
+		"res://addons/xomdao_sdk/ui/looks/emote-happy.webp"
+	)
 	menu.open()
 	menu.board.find_child("Rules", true, false).pressed.emit()
 	assert_signal_emitted(menu, "rules_requested")
+	menu.button.visible = true
+	var escape := InputEventAction.new()
+	escape.action = "ui_cancel"
+	escape.pressed = true
+	menu._unhandled_input(escape)
+	assert_true(menu.is_open(), "Escape opens the in-game menu")
+	menu._unhandled_input(escape)
+	assert_false(menu.is_open(), "Escape closes the menu")
+	menu.confirm_leave("Rời ván?", "Bạn sẽ rời phòng.", "Rời phòng")
+	menu._unhandled_input(escape)
+	assert_false(menu.dismiss_confirmation(), "Escape dismisses the confirmation")
 
 
 func test_menu_changes_the_settings() -> void:

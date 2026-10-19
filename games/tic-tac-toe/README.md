@@ -12,7 +12,7 @@ Hai người chơi Caro trên bàn mở rộng, với bạn hoặc máy.
 | Hàng thắng, hoà và bàn mở rộng | `src/game/board.ts` |
 | Dữ liệu và tuỳ chọn | `src/game/model.ts` |
 | Máy | `src/game/bot.ts` |
-| Bàn giấy: nét mực, bàn mở rộng, hàng thắng, Đổi quân, `room_setup()` và `result_detail()` | `godot/main.tscn`, `godot/main.gd` (test: `godot/test/`) |
+| Bàn giấy: mark X/O men sơn, bàn mở rộng, hàng thắng, avatar và khung theo hồ sơ, picker emote trên avatar với bong bóng thoại, chọn quân ngay trên panel người chơi, `room_setup()` và `result_detail()` | `godot/main.tscn`, `godot/main.gd` (test: `godot/test/`) |
 | Hình, âm thanh và nhạc của bàn | `godot/art/`, `godot/sounds/`, `godot/music/` |
 
 `src/index.ts` đăng ký game phía server. `assets/` chứa hình và âm thanh cỡ đầy đủ (bàn chép bản
@@ -29,13 +29,15 @@ Kiểm tra bằng `npm run check` và `npm run godot:check`. Hướng dẫn SDK 
 ## Tài nguyên
 
 Bàn dùng nền giấy ngà có vân nhẹ tạo bằng Image Gen (`assets/paper.webp`, bản dùng trong
-`godot/art/paper.webp`; prompt trong `sources/prompts.json`). Lưới ô liền mạch và nét mực được
-vẽ bằng GDScript: `paper_cell.gd` vẽ ô giấy; `ink_mark.gd` vẽ X đỏ thành hai nét và O xanh thành
-một vòng liên tục, không có bút hay bàn tay. Khi đi sát mép, bàn vẫn mở rộng, ô mới hiện dần và
-cả bàn trượt cho vừa. Hàng thắng được khoanh vàng. Khi hết ván, cả bàn trượt sang trái và HUD
-kết quả hiện bên phải; **Xem bàn** đưa bàn về giữa, **Kết quả** mở lại HUD. Chủ phòng dùng
-**Đổi quân** để chọn quân cho ván sau. Hình ô gỗ và quân sơn mài cũ vẫn giữ trong tài nguyên
-nguồn Blender (`sources/render_assets.py`).
+`godot/art/paper.webp`; prompt trong `sources/prompts.json`). Lưới ô liền mạch được vẽ bằng
+GDScript; X đỏ và O xanh là mark men sơn cân đối, tạo bằng Image Gen (`assets/mark-x.webp`,
+`assets/mark-o.webp`). Bong bóng emote là sprite vuông có đuôi hướng về avatar, cũng được tạo bằng
+Image Gen (`assets/emote-bubble.webp`). Nước mới bật nhẹ vào vị trí. Khi đi sát mép, bàn vẫn mở rộng, ô mới hiện dần
+và cả bàn trượt cho vừa. Hàng thắng được khoanh vàng. Khi hết ván, bàn và panel người chơi nằm bên
+trái, HUD kết quả hiện bên phải; **Xem bàn** đưa bàn về giữa, **Kết quả** mở lại bố cục đó. Chủ phòng
+chạm mark trên panel của mình để đổi quân cho ván sau.
+Panel dùng avatar và khung theo hồ sơ; chạm avatar của mình để mở picker emote, sticker được chọn
+nổi trong bong bóng thoại cạnh avatar người gửi.
 
 Hình đảo tạo bằng Codex,
 prompt trong `sources/prompts.json`. Âm thanh chép từ `assets/` vào `godot/sounds/`;

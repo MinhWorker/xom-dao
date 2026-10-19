@@ -126,6 +126,16 @@ func _ready() -> void:
 	_layout()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_cancel") or not is_visible_in_tree():
+		return
+	if looking():
+		show_board(false)
+	else:
+		home_pressed.emit()
+	get_viewport().set_input_as_handled()
+
+
 ## Fills the board for player `me`; `balance` is the coins shown before this game's reward. An
 ## event's game (`event`) is titled with the event points you got, also shown on your row.
 ## `detail` is the game's `result_detail()`: `{reason: String, rows: [[label, value], …]}`.
@@ -137,6 +147,11 @@ func show_result(
 	detail: Dictionary = {}
 ) -> void:
 	_side_panel = str(detail.get("layout", "")) == "right"
+	var table_interactive: bool = _side_panel or _dock_area.is_valid()
+	mouse_filter = Control.MOUSE_FILTER_IGNORE if table_interactive else Control.MOUSE_FILTER_STOP
+	_shade.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE if table_interactive else Control.MOUSE_FILTER_STOP
+	)
 	_shade.color = Color(XomDaoUi.INK, 0.18 if _side_panel else 0.45)
 	var column: VBoxContainer = _board.content
 	if _side_panel and _again.get_parent() == _button_row:
@@ -239,7 +254,11 @@ func show_board(looking: bool) -> void:
 	_board.visible = not looking
 	money.visible = not looking
 	_reopen.visible = looking
-	mouse_filter = Control.MOUSE_FILTER_IGNORE if looking else Control.MOUSE_FILTER_STOP
+	mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE
+		if looking or _side_panel or _dock_area.is_valid()
+		else Control.MOUSE_FILTER_STOP
+	)
 	board_view_changed.emit(looking)
 	board_visibility_changed.emit(not looking)
 	XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
