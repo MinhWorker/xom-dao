@@ -1,6 +1,16 @@
 {
-  "$comment": "Đảo tạo bằng Image Gen; bàn, 12 quân và nền vải kết xuất bằng Blender qua render_assets.py.",
+  "$comment": "Đảo và nền phòng tạo bằng Image Gen; bàn và 12 quân kết xuất bằng Blender qua render_assets.py.",
   "assets": {
+    "chess-room": {
+      "transparent": false,
+      "maxSize": 2048,
+      "prompt": "A refined, dark British manor chess library at night, seen from the seated player's eye level, with convincing room depth. Tall dark walnut wall panels, built-in shelves of old leather-bound books, an ornate but subdued fireplace, brass wall sconces, a rain-dark mullioned window with heavy forest-green velvet curtains, restrained oxblood accents and a patterned rug near the back wall. Premium stylized 3D game environment art with softly hand-painted material detail and readable forms, not a photograph or film still. Extra-wide 20:9 panoramic composition with room details across the width; fireplace high in the background; lower middle open, dark and uncluttered for a separate large perspective chessboard. Side columns low-contrast for player and action HUD. Layered warm amber firelight and brass sconces, soft cool blue-green moonlight at the window, deep but readable shadows, gentle atmospheric falloff and subtle dust in the light. Dark walnut, muted forest green, oxblood, aged brass, amber and blue-black. No chessboard, chess pieces, table, desk, people, animals, text, lettering, logos, UI or watermark."
+    },
+    "chess-room-v2": {
+      "transparent": false,
+      "maxSize": 2048,
+      "prompt": "A refined royal chess salon at night, designed as a static background plate behind a separately rendered chessboard. Wide 16:9 composition in a stately manor library. In the upper background, restrained dark walnut wall panels, a centered ornate but subdued fireplace with a modest warm fire, tall bookcases and a few framed paintings. A cool blue moonlit mullioned window with deep forest-green curtains on the left, a small amount of aged brass detail. One broad, empty dark walnut game table fills the lower half and extends beyond the bottom edge, viewed from a seated player slightly above the tabletop; its far edge is around the middle of the image and its near edge is outside the frame. Keep the central 70% of the tabletop visually quiet for a large separately composited chessboard, with subtle wood grain and no objects. Keep room details mostly in the upper third and near the side edges, dark negative space at the far left and right for game HUD, and avoid bright objects behind the board. Premium stylized 3D environment art with softly painted materials and readable forms, not a photograph or film still. Soft amber firelight and brass sconces, gentle blue-green moonlight, dark but readable shadows and subtle depth falloff. Walnut, muted forest green, restrained oxblood, aged brass, amber and blue-black. No chessboard, chess pieces, cards, people, animals, text, lettering, logos, UI, watermark, foreground clutter, tabletop objects or rug crossing the table."
+    },
     "island": {
       "transparent": true,
       "maxSize": 640,

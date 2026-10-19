@@ -48,10 +48,7 @@ static func square(view: Dictionary, i: int, names: Array[String]) -> String:
 	var lines: Array[String] = []
 	var deed: Dictionary = view["properties"][i]
 	var owner: int = -1 if deed.get("owner") == null else int(deed["owner"])
-	if kind == "station" and owner < 0:
-		lines.append("Góp đầu %s ₫" % XomDaoUi.money(Rules.price(i)))
-	else:
-		lines.append("Giá mua %s ₫" % XomDaoUi.money(Rules.deed_price(view["properties"], i)))
+	lines.append("Giá mua %s ₫" % XomDaoUi.money(Rules.deed_price(view["properties"], i)))
 	match kind:
 		"street":
 			var ladder: Array = square["rent"]
@@ -64,8 +61,6 @@ static func square(view: Dictionary, i: int, names: Array[String]) -> String:
 			lines.append("Xây %s ₫ mỗi lần" % XomDaoUi.money(int(square["houseCost"])))
 		"station":
 			lines.append("Thuê %d ₫ cho mỗi bến của chủ" % Rules.STATION_FEE)
-			if owner < 0:
-				lines.append(station_bids(view, i, names))
 		"utility":
 			lines.append("Thuê = tổng xúc xắc × 4, đủ bộ × 10")
 	if owner < 0:
@@ -91,31 +86,13 @@ static func square(view: Dictionary, i: int, names: Array[String]) -> String:
 	return "\n".join(lines)
 
 
-static func station_bids(view: Dictionary, i: int, names: Array[String]) -> String:
-	var auctions: Dictionary = view.get("stationAuctions", {})
-	var auction: Variant = auctions.get(str(i), auctions.get(i))
-	if auction is not Dictionary:
-		return "Góp tiền khi dừng ở bến"
-	var bids: Array = (auction as Dictionary)["bids"]
-	var parts: Array[String] = []
-	for seat: int in bids.size():
-		if int(bids[seat]) > 0:
-			parts.append("%s %s" % [names[seat], XomDaoUi.money(int(bids[seat]))])
-	return "Đã góp: " + (", ".join(parts) if not parts.is_empty() else "chưa ai")
-
-
-## The line over your actions: whose turn, the auction, what you owe.
+## The line over your actions: whose turn or what you owe.
 static func status(view: Dictionary, me: int, names: Array[String]) -> String:
 	var winner: Variant = view.get("winner")
 	if winner != null:
 		return "Bạn thắng!" if int(winner) == me else "%s thắng!" % names[int(winner)]
 	var seat: int = Rules.decision_seat(view)
 	var phase: String = view["phase"]
-	if phase == "auction" and view.get("auction") is Dictionary:
-		var auction: Dictionary = view["auction"]
-		var name_of: String = Rules.SQUARES[int(auction["square"])]["name"]
-		var highest: int = int(auction["highest"])
-		return "%s: %s ₫" % [name_of, XomDaoUi.money(highest)] if highest > 0 else name_of
 	if phase == "debt" and seat == me:
 		return (
 			"Thiếu %s ₫"

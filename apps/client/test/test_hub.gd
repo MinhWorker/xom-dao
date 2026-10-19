@@ -338,6 +338,20 @@ func test_right_result_panel_stays_inside_viewport_after_scaling() -> void:
 		bottom_right.y, result.size.y - settings.margin, "the panel stays inside the bottom edge"
 	)
 	result.show_board(true)
+	await wait_process_frames(2)
+	var reopen: Control = result.find_child("ShowResult", true, false)
+	assert_gte(reopen.position.x, result.size.x * 0.5, "the reopen button sits on the right")
+	assert_gte(reopen.position.y, result.size.y * 0.5, "the reopen button sits at the bottom")
+	assert_lte(
+		reopen.position.x + reopen.size.x,
+		result.size.x - settings.margin,
+		"the reopen button stays inside the right edge"
+	)
+	assert_lte(
+		reopen.position.y + reopen.size.y,
+		result.size.y - settings.margin,
+		"the reopen button stays inside the bottom edge"
+	)
 	assert_eq(
 		result.mouse_filter,
 		Control.MOUSE_FILTER_IGNORE,

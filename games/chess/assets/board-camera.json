@@ -1,0 +1,24 @@
+{
+  "camera_position": [
+    0.0,
+    -12.6,
+    32.0475
+  ],
+  "camera_target": [
+    0.0,
+    2.4,
+    2.3475
+  ],
+  "lens": 92.0,
+  "sensor_width": 36.0,
+  "sensor_height": 32.0,
+  "board_center": [
+    0.0,
+    2.4
+  ],
+  "playable_side": 9.4,
+  "board_surface_z": 2.4250000000000003,
+  "piece_base_z": 2.4450000000000003,
+  "image_width": 1800,
+  "image_height": 1600
+}

@@ -35,8 +35,11 @@ TypeScript.
 
 ## Tài nguyên
 
-Hình bàn gỗ óc chó viền nổi mỏng và cảnh đình lúc hoàng hôn sinh bằng Image Gen từ prompt
-trong `sources/prompts.json`; đường bàn vẽ bằng code trong `godot/main.gd`.
+Hình bàn gỗ óc chó viền nổi mỏng và nền hồ sen thủy mặc nhìn thẳng từ trên xuống, có bệ gỗ óc chó
+mảnh đỡ bàn, sinh bằng Image Gen từ prompt trong `sources/prompts.json`; prompt tạo video loop nền
+10 giây nằm ở
+[`sources/pavilion-video-prompt.md`](sources/pavilion-video-prompt.md). Đường bàn vẽ bằng code trong
+`godot/main.gd`.
 Quân cờ là model đĩa đá trắng ngà dựng bằng Blender, thân dày và mép thẳng không bo tròn.
 Bán kính giảm nhẹ để các quân đứng cạnh nhau thoáng hơn. Chữ Hán và vòng viền được khoét
 lõm vào mặt quân; màu Đỏ/Đen nằm ở đáy rãnh, còn thành rãnh giữ màu ngà.

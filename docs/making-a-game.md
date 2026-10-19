@@ -140,6 +140,10 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
   phủ tối bàn chơi; vùng bàn còn lộ ra vẫn nhận thao tác. `set_result_visible(shown: bool) -> void`
   nhận trạng thái **Xem bàn** / **Kết quả** để game trượt bàn sang bên hoặc đưa về giữa. Không
   khai báo thì bảng vẫn ở giữa.
+- `result_reopen_theme() -> Dictionary` (tuỳ chọn): giao diện cho nút **Kết quả** dùng chung khi
+  người chơi đang xem bàn; nhận các `StyleBox` theo trạng thái (`normal`, `hover`, `pressed`,
+  `hover_pressed`, `disabled`) và `font_color: Color`. Nút nằm ở góc dưới phải trong lúc bảng kết
+  quả được ẩn.
 - Hình và âm thanh: chép bản cần dùng từ `assets/` vào `godot/art/`, `godot/sounds/`, rồi
   `load("res://content/<id>/art/<tên>.webp")`. Nhạc nền: đặt file nhạc vào `godot/music/`; hub
   phát ngẫu nhiên một bài khi game đang chơi. Mỗi `AudioStreamPlayer` của game đặt

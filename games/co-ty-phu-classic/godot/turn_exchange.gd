@@ -12,7 +12,6 @@ const ICONS: Dictionary = {
 	"houses": preload("res://addons/xomdao_sdk/ui/icons/house.svg"),
 	"hotels": preload("res://addons/xomdao_sdk/ui/icons/storefront.svg"),
 	"stations": Bus,
-	"contributing": Bus,
 	"jail": preload("res://content/co-ty-phu-classic/art/tile-jail.svg"),
 	"power": preload("res://content/co-ty-phu-classic/art/tile-power.svg"),
 	"water": preload("res://content/co-ty-phu-classic/art/tile-water.svg"),
@@ -270,8 +269,6 @@ func _stat(key: String, at: Vector2, value: int, ink: Color) -> void:
 	var state: bool = key in Model.STATES
 	var position: Vector2 = at + (Vector2(0.007, 0) if value < 0 else Vector2.ZERO)
 	_picture(ICONS[key], Rect2(position - Vector2(0, 0.0105), Vector2.ONE * 0.021), ink)
-	if key == "contributing":
-		_ring(position + Vector2(0.017, 0.006), 0.005, XomDaoUi.COIN_DARK, 1.0)
 	if value >= 0:
 		Draw.text(
 			self,

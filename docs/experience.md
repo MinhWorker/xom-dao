@@ -144,7 +144,8 @@ Mở game ─► Sảnh (vòng đảo)
   vòng xoay "Đang tải"; màn này ở lại ít nhất gần hai giây rồi mờ dần sang bàn chơi.
 - Nút ← luôn về đúng một bước. Từ ván đấu về sảnh có hỏi xác nhận nếu đang giữa ván.
 - Chơi với bạn bè: phòng nào cũng có **mã phòng** ngắn. Gửi mã hoặc link mời; bạn bè nhập mã ở Bến
-  hoặc mở link là vào thẳng phòng. Thoát ra thì về sảnh, với trò đó đang được chọn.
+  hoặc mở link là vào thẳng phòng. Nếu ván đã bắt đầu, họ vào xem với tư cách khán giả. Thoát ra thì
+  về sảnh, với trò đó đang được chọn.
 
 ## Khung hình
 
@@ -215,7 +216,9 @@ máy, số vòng, số giây) là **− giá trị +**; vài chữ ngắn chia �
 là **‹ giá trị ›**, mỗi lần một lựa chọn.
 
 Danh sách phòng (từ **Bến**) là một bảng gỗ, mỗi dòng: tranh nhỏ của trò,
-tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến có thêm ô nhập mã phòng:
+tên trò, chủ phòng và số ghế là hai chip riêng. Phòng còn ghế có nút **Vào**; ván đang chơi có
+nút **Xem** để vào làm khán giả, không chiếm ghế. Phòng chờ đã đủ ghế vẫn không nhận thêm người
+chơi. Bến có thêm ô nhập mã phòng:
 
 ![Bến: nhập mã phòng và danh sách phòng đang mở](concepts/room-list.webp)
 
@@ -229,6 +232,8 @@ tên trò, chủ phòng và số ghế là hai chip riêng, nút "Vào". Bến c
 - Phần thưởng do server tính (sổ cái). Xu và tài nguyên **bay** từ bảng vào góc trên phải, số dư
   đếm lên. Có âm thanh xu rơi.
 - Hai nút: **Chơi tiếp** (ván mới, cùng phòng) và **Về sảnh**. Ảnh concept còn ghi "Về đảo".
+- Khi chọn **Xem bàn**, bảng kết quả ẩn và nút **Kết quả** nằm ở góc dưới phải để mở lại; game có
+  thể dùng viền nút phù hợp với bàn chơi của mình.
 
 ## Nhà: hồ sơ, túi đồ, thành tích, lịch sử
 

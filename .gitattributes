@@ -25,8 +25,10 @@ games/*/sources/**/*.wav filter=lfs diff=lfs merge=lfs -text
 games/*/sources/**/*.ogg filter=lfs diff=lfs merge=lfs -text
 games/*/sources/**/*.flac filter=lfs diff=lfs merge=lfs -text
 games/*/sources/**/*.zip filter=lfs diff=lfs merge=lfs -text
-# This small chess original stays in plain git: the connected transport cannot authenticate LFS uploads.
+# These chess originals stay in plain git: the connected transport cannot authenticate LFS uploads.
 games/chess/sources/island.png -filter -diff -merge -text
+games/chess/sources/chess-room.png -filter -diff -merge -text
+games/chess/sources/chess-room-v2.png -filter -diff -merge -text
 # The app's ready-made images and sounds (assets/app/) stay in plain git: they are small, and the
 # Godot client copies what it uses from them.
 assets/app/** -filter -diff -merge -text

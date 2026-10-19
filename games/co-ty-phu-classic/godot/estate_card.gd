@@ -22,7 +22,6 @@ var picked: bool = false
 var draggable: bool = false
 var drag_side: int = 0
 var deed: Dictionary = {}
-var contribution: int = 0
 var _font: Font = XomDaoUi.display_font(800)
 
 
@@ -84,7 +83,7 @@ func _draw() -> void:
 	banner_box.corner_radius_bottom_right = 4
 	draw_style_box(banner_box, Rect2(4, 4, size.x - 8, banner_height))
 
-	# Houses badge or Station contribution
+	# Houses badge
 	var houses: int = int(deed.get("houses", 0))
 	if houses > 0:
 		var icon_of: Texture2D = Hotel if houses == 5 else House
@@ -92,11 +91,6 @@ func _draw() -> void:
 		draw_style_box(XomDaoUi.box(Color(0, 0, 0, 0.4), Color.TRANSPARENT, 0, 6), badge_rect)
 		draw_texture_rect(icon_of, Rect2(11, 8, 16, 16), false, Color.WHITE)
 		_text("1" if houses == 5 else str(houses), Vector2(34, 21), 16, Color.WHITE)
-	elif contribution > 0:
-		var bid_rect := Rect2(8, 6, 42, banner_height - 4)
-		draw_style_box(XomDaoUi.box(Color(0, 0, 0, 0.4), Color.TRANSPARENT, 0, 6), bid_rect)
-		_text("+" + str(contribution), Vector2(29, 21), 15, Color.WHITE)
-
 	# Property name
 	var heading: String = str(cell["name"])
 	var words: PackedStringArray = heading.split(" ")
@@ -127,8 +121,6 @@ func _draw() -> void:
 
 	# Bottom price row with golden coin & bold price
 	var amount: int = 200 if square == -2 else Rules.price(square)
-	if square >= 0 and str(cell["kind"]) == "station":
-		amount = int(deed.get("acquisitionCost", Rules.STATION_INITIAL_CONTRIBUTION))
 	var coin_w: float = 24.0
 	var coin_h: float = 19.0
 	var price_y: float = size.y - 28.0

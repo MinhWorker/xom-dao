@@ -16,7 +16,7 @@ const returnToBorrower = (game: ReturnType<typeof fixture>) => {
 };
 
 describe('declining an unowned street', () => {
-  it.each([0, 1000])('lets a buyer with %s cash end the turn without an auction', (cash) => {
+  it.each([0, 1000])('lets a buyer with %s cash skip an unowned property', (cash) => {
     const game = fixture();
     game.state.players[0]!.cash = cash;
     move(game.state, 0, 3, false, 3);
@@ -25,7 +25,6 @@ describe('declining an unowned street', () => {
     game.send('a', 'end-turn');
     expect(game.state.turn).toBe(1);
     expect(game.state.pending).toBeNull();
-    expect(game.state.auction).toBeNull();
     expect(game.state.properties[3]!.owner).toBeNull();
     expect(game.state.players[0]!.cash).toBe(cash);
     expect(game.state.phase).toBe('roll');
@@ -54,7 +53,6 @@ describe('personal asset auctions are unavailable', () => {
     const game = fixture();
     game.state.properties[square]!.owner = 0;
     expect(game.error('a', 'auction', { square })).toBeTruthy();
-    expect(game.state.auction).toBeNull();
     expect(game.state.properties[square]!.owner).toBe(0);
     expect(game.state.phase).toBe('roll');
   });
@@ -163,51 +161,33 @@ describe('three personal turns to redeem a mortgage', () => {
   });
 });
 
-describe('mortgaging several deeds with their buildings', () => {
-  it('pledges houses and a hotel together for half their combined purchase/construction cost', () => {
+describe('buildings must be sold before their deed is mortgaged', () => {
+  it('pays half the building cost first and mortgages the land price only', () => {
     const game = fixture();
     Object.assign(game.state.properties[1]!, { owner: 0, houses: 2 });
-    Object.assign(game.state.properties[3]!, { owner: 0, houses: 5 });
-    game.send('a', 'mortgage', { squares: [1, 3] });
-    expect(game.state.players[0]!.cash).toBe(1515);
-    expect(game.state.transfers.map((transfer) => transfer.amount)).toEqual([200, 315]);
+    expect(game.error('a', 'mortgage', { square: 1 })).toBe(
+      'Phải bán hết công trình trên ô đất trước khi thế chấp',
+    );
+    expect(game.state.players[0]!.cash).toBe(1000);
+    expect(game.state.properties[1]!.mortgaged).toBe(false);
+
+    game.send('a', 'sell-house', { square: 1 });
+    game.send('a', 'sell-house', { square: 1 });
+    expect(game.state.players[0]!.cash).toBe(1100);
+    expect(game.state.transfers.map((transfer) => transfer.amount)).toEqual([50]);
+    expect(game.state.properties[1]!.houses).toBe(0);
+
+    game.send('a', 'mortgage', { square: 1 });
+    expect(game.state.players[0]!.cash).toBe(1200);
     expect(game.state.properties[1]).toMatchObject({
-      houses: 2,
+      houses: 0,
       mortgaged: true,
-      mortgage: { principal: 200, deadline: 4 },
-    });
-    expect(game.state.properties[3]).toMatchObject({
-      houses: 5,
-      mortgaged: true,
-      mortgage: { principal: 315, deadline: 4 },
+      mortgage: { principal: 100, deadline: 4 },
     });
     expect(game.error('a', 'sell-house', { square: 1 })).toBeTruthy();
-    expect(game.error('a', 'sell-house', { square: 3 })).toBeTruthy();
     game.send('a', 'redeem', { square: 1 });
-    expect(game.state.players[0]!.cash).toBe(1295);
-    expect(game.state.properties[1]).toMatchObject({ houses: 2, mortgaged: false });
-    game.send('a', 'redeem', { square: 3 });
-    expect(game.state.players[0]!.cash).toBe(948);
-    expect(game.state.properties[3]).toMatchObject({ houses: 5, mortgaged: false });
-  });
-
-  it('retains mortgaged buildings until the loan expires', () => {
-    const game = fixture();
-    Object.assign(game.state.properties[1]!, { owner: 0, houses: 2 });
-    Object.assign(game.state.properties[3]!, { owner: 0, houses: 5 });
-    game.send('a', 'mortgage', { squares: [1, 3] });
-    for (let i = 0; i < 3; i++) returnToBorrower(game);
-    expect(game.state.properties[1]!.houses).toBe(2);
-    expect(game.state.properties[3]!.houses).toBe(5);
-    end(game);
-    for (const square of [1, 3]) {
-      expect(game.state.properties[square]).toMatchObject({
-        owner: null,
-        houses: 0,
-        mortgaged: false,
-      });
-      expect(game.state.properties[square]!.mortgage).toBeUndefined();
-    }
+    expect(game.state.players[0]!.cash).toBe(1090);
+    expect(game.state.properties[1]).toMatchObject({ houses: 0, mortgaged: false });
   });
 
   it('rejects a whole batch without paying or pledging any deed if one choice is invalid', () => {
@@ -227,13 +207,39 @@ describe('mortgaging several deeds with their buildings', () => {
 
   it('rounds the whole redemption up without adding a floating point extra unit', () => {
     const game = fixture();
-    Object.assign(game.state.properties[2]!, { owner: 0, houses: 1 });
+    game.state.properties[2]!.owner = 0;
     game.send('a', 'mortgage', { squares: [2] });
-    expect(game.state.properties[2]!.mortgage?.principal).toBe(112.5);
+    expect(game.state.properties[2]!.mortgage?.principal).toBe(75);
     game.send('a', 'redeem', { square: 2 });
-    expect(game.state.transfers[0]?.amount).toBe(124);
+    expect(game.state.transfers[0]?.amount).toBe(83);
     game.state.properties[1]!.owner = 0;
     game.send('a', 'mortgage', { square: 1 }).send('a', 'redeem', { square: 1 });
     expect(game.state.transfers[0]?.amount).toBe(110);
+  });
+
+  it('rounds a half building price to the nearest whole currency unit', () => {
+    const game = fixture();
+    const deed = game.state.properties[2];
+    if (!deed) throw new Error('Missing Lào Cai deed');
+    deed.owner = 0;
+    deed.houses = 1;
+
+    game.send('a', 'sell-house', { square: 2 });
+
+    expect(game.state.players[0]?.cash).toBe(1038);
+    expect(game.state.transfers[0]).toMatchObject({ amount: 38, reason: 'Bán nhà ở Lào Cai' });
+    expect(game.state.notice).toBe('Bán nhà ở Lào Cai, nhận 38.');
+  });
+
+  it('uses the rounded per-level sale price when liquidating buildings in bankruptcy', () => {
+    const game = fixture();
+    const deed = game.state.properties[2];
+    if (!deed) throw new Error('Missing Lào Cai deed');
+    deed.owner = 0;
+    deed.houses = 2;
+
+    game.send('a', 'bankrupt');
+
+    expect(game.state.transfers[0]).toMatchObject({ amount: 76, reason: 'Thanh lý nhà' });
   });
 });

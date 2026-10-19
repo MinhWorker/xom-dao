@@ -1,10 +1,8 @@
 extends Control
-## Cờ Vây on the Godot client, in the **Bàn** layout (docs/experience.md): the wooden board in the
-## middle, as tall as the frame; the two players in the column on its left (yours at the bottom,
-## the other under the hub's ☰), each with a bowl of stones and a lid of the stones they took;
-## the status, the move count or the count, and Bỏ lượt, Đồng ý, Đánh tiếp, Đầu hàng in the
-## column on its right. It draws `snapshot.view` (View in src/game/model.ts, with the points you
-## may play on your turn and, while counting, the count) and sends `place {point}`, `pass`,
+## Cờ Vây on the Godot client, in the **Bàn** layout (docs/experience.md): a wooden board on a
+## dark table, the computer and its white bowls on the left, and your card, black bowls, turn plaque
+## and actions on the right. It draws `snapshot.view` (View in src/game/model.ts, with the points
+## you may play on your turn and, while counting, the count) and sends `place {point}`, `pass`,
 ## `mark {point}`, `accept`, `resume` and `resign`.
 ##
 ## On your turn the stone you would play follows the mouse; while a finger (or the mouse) is down
@@ -31,8 +29,12 @@ const WHITE := Color("#F5F2EA")
 const GOLDEN_ANGLE := PI * (3.0 - sqrt(5.0))
 ## The hub's ☰ button keeps the top left square.
 const MENU := 88.0
-const COLUMN := 230.0
-const BUTTON_WIDTH := 210.0
+const COLUMN := 286.0
+const BUTTON_WIDTH := 232.0
+const TABLE_INK := Color("#3B2A1E")
+const TABLE_EDGE := Color("#745A3F")
+const RESIGN_INK := Color("#542C2A")
+const RESIGN_EDGE := Color("#89514A")
 const SOUNDS: Array[String] = [
 	"capture", "count", "end", "pass", "place-1", "place-2", "place-3", "start"
 ]
@@ -43,7 +45,8 @@ var _view: Dictionary = {}
 ## Your side ("b", "w"), or "" for a spectator (who looks from Black's side).
 var _mine: String = ""
 
-var _cloth := TextureRect.new()
+var _surface := ColorRect.new()
+var _surface_shadows := Control.new()
 var _board := TextureRect.new()
 var _lines := Control.new()
 var _shadows := Control.new()
@@ -55,15 +58,19 @@ var _points := Control.new()
 var _zone := Control.new()
 var _status := Label.new()
 var _details := Label.new()
+var _turn_plaque := Control.new()
+var _plaque_background := Panel.new()
 var _pass: XomDaoButton = XomDaoButton.create("Bỏ lượt", XomDaoUi.Kind.INFO)
 var _accept: XomDaoButton = XomDaoButton.create("Đồng ý", XomDaoUi.Kind.CONFIRM)
 var _resume: XomDaoButton = XomDaoButton.create("Đánh tiếp", XomDaoUi.Kind.INFO)
 var _resign: XomDaoButton = XomDaoButton.create("Đầu hàng", XomDaoUi.Kind.DANGER)
 var _dialog: XomDaoBoard = XomDaoBoard.create("Đầu hàng?")
 var _shade := ColorRect.new()
-var _slots: Array[XomDaoPlayerSlot] = []
+var _cards: Array[GoPlayerCard] = []
 var _bowls: Array[Control] = []
 var _lids: Array[Control] = []
+var _prisoner_badges: Array[PanelContainer] = []
+var _prisoner_counts: Array[Label] = []
 var _sounds: Dictionary = {}
 var _textures: Dictionary = {}
 
@@ -143,16 +150,18 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = XomDaoUi.theme()
 	clip_contents = true
-	var night := ColorRect.new()
-	night.color = Color("#0F2A26")
-	night.set_anchors_preset(Control.PRESET_FULL_RECT)
-	night.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(night)
-	_cloth.texture = _art("cloth")
-	_cloth.stretch_mode = TextureRect.STRETCH_TILE
-	_cloth.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-	_cloth.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_cloth)
+	_surface.name = "TableSurface"
+	_surface.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var surface_material := ShaderMaterial.new()
+	surface_material.shader = load("res://content/go/art/table_surface.gdshader")
+	_surface.material = surface_material
+	add_child(_surface)
+	_surface_shadows.name = "SurfaceShadows"
+	_surface_shadows.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_surface_shadows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_surface_shadows.draw.connect(_draw_surface_shadows)
+	add_child(_surface_shadows)
 
 	_board.name = "Board"
 	_board.texture = _art("board")
@@ -186,16 +195,39 @@ func _ready() -> void:
 	_loupe.draw.connect(_draw_loupe)
 	add_child(_loupe)
 
+	_turn_plaque.name = "TurnPlaque"
+	_turn_plaque.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_plaque.visible = false
+	var plaque_style := XomDaoUi.box(
+		Color(0.025, 0.02, 0.015, 0.84), Color("#A28A5F", 0.88), 1, 16.0
+	)
+	plaque_style.content_margin_left = 15.0
+	plaque_style.content_margin_right = 15.0
+	plaque_style.content_margin_top = 8.0
+	plaque_style.content_margin_bottom = 8.0
+	_plaque_background.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_plaque_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_plaque_background.add_theme_stylebox_override("panel", plaque_style)
+	_turn_plaque.add_child(_plaque_background)
 	_status.name = "Status"
 	_status.theme_type_variation = "HudLabel"
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(_status)
+	_status.add_theme_font_override("font", XomDaoUi.body_font(true))
+	_status.add_theme_font_size_override("font_size", 24)
+	_status.add_theme_color_override("font_color", Color("#FFF3DE"))
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_status.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_turn_plaque.add_child(_status)
 	_details.name = "Details"
 	_details.theme_type_variation = "HudLabel"
-	_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(_details)
+	_details.add_theme_font_override("font", XomDaoUi.body_font())
+	_details.add_theme_font_size_override("font_size", 20)
+	_details.add_theme_color_override("font_color", Color("#D5C4A4"))
+	_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_details.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_details.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_turn_plaque.add_child(_details)
+	add_child(_turn_plaque)
 	_pass.name = "Pass"
 	_pass.pressed.connect(_send.bind("pass"))
 	_accept.name = "Accept"
@@ -205,6 +237,7 @@ func _ready() -> void:
 	_resign.name = "Resign"
 	_resign.pressed.connect(_open_dialog)
 	for button: XomDaoButton in [_pass, _accept, _resume, _resign]:
+		_style_action_button(button, button == _resign)
 		button.custom_minimum_size.x = BUTTON_WIDTH
 		add_child(button)
 	for seat: int in 2:
@@ -220,11 +253,35 @@ func _ready() -> void:
 		lid.draw.connect(_draw_bowl.bind(seat, true))
 		add_child(lid)
 		_lids.append(lid)
-		var slot := XomDaoPlayerSlot.new()
-		slot.name = "Seat_%d" % seat
-		slot.compact = true
-		add_child(slot)
-		_slots.append(slot)
+		var badge := PanelContainer.new()
+		badge.name = "PrisonerBadge_%d" % seat
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.tooltip_text = "Bắt: 0"
+		badge.custom_minimum_size = Vector2(42.0, 34.0)
+		var badge_style := XomDaoUi.box(
+			Color(0.035, 0.027, 0.02, 0.94), Color("#C3A66C", 0.95), 1, 16.0
+		)
+		badge_style.content_margin_left = 8.0
+		badge_style.content_margin_right = 8.0
+		badge_style.content_margin_top = 3.0
+		badge_style.content_margin_bottom = 3.0
+		badge.add_theme_stylebox_override("panel", badge_style)
+		var count_label := Label.new()
+		count_label.name = "PrisonerCount_%d" % seat
+		count_label.text = "0"
+		count_label.add_theme_font_override("font", XomDaoUi.body_font(true))
+		count_label.add_theme_font_size_override("font_size", 19)
+		count_label.add_theme_color_override("font_color", Color("#FFF0D1"))
+		count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		badge.add_child(count_label)
+		add_child(badge)
+		_prisoner_badges.append(badge)
+		_prisoner_counts.append(count_label)
+		var card := GoPlayerCard.new()
+		card.name = "Seat_%d" % seat
+		add_child(card)
+		_cards.append(card)
 	_build_dialog()
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
@@ -259,6 +316,7 @@ func _build_dialog() -> void:
 	row.add_theme_constant_override("separation", 12)
 	_dialog.content.add_child(row)
 	var confirm: XomDaoButton = XomDaoButton.create("Đầu hàng", XomDaoUi.Kind.DANGER)
+	_style_action_button(confirm, true)
 	confirm.name = "ConfirmResign"
 	confirm.pressed.connect(
 		func() -> void:
@@ -267,6 +325,7 @@ func _build_dialog() -> void:
 	)
 	row.add_child(confirm)
 	var keep: XomDaoButton = XomDaoButton.create("Chơi tiếp", XomDaoUi.Kind.CONFIRM)
+	_style_action_button(keep)
 	keep.name = "KeepPlaying"
 	keep.pressed.connect(_close_dialog)
 	row.add_child(keep)
@@ -645,58 +704,58 @@ func _player_of(side: String) -> String:
 	return str(players[0 if side == FIRST else 1])
 
 
+func _player_info(id: String) -> XomDaoPlayerInfo:
+	for player: XomDaoPlayerInfo in _snapshot.seats + _snapshot.players:
+		if player.id == id:
+			return player
+	return null
+
+
 func _name_of(side: String) -> String:
 	var id: String = _player_of(side)
 	if id == _client.player_id:
 		return "Bạn"
-	if _snapshot != null:
-		for player: XomDaoPlayerInfo in _snapshot.seats + _snapshot.players:
-			if player.id == id:
-				return player.name
+	var player: XomDaoPlayerInfo = _player_info(id)
+	if player != null:
+		return "Máy" if player.bot else player.name
 	return str(SIDE_NAMES[side])
 
 
-## Slot 0 is the side at the bottom (yours), slot 1 the other, with its wins and prisoners.
+## Card 0 is yours, with wins on the card and prisoners on the lid badge.
 func _show_seats() -> void:
-	var playing: bool = (
-		_view.get("end") == null
-		and _snapshot.status == "playing"
-		and str(_view.get("phase", "")) == "play"
-	)
+	var playing: bool = _view.get("end") == null and _snapshot.status == "playing"
 	var prisoners: Dictionary = _view.get("prisoners", {})
 	for i: int in 2:
 		var side: String = _side_at_bottom() if i == 0 else _other(_side_at_bottom())
 		var id: String = _player_of(side)
-		var slot: XomDaoPlayerSlot = _slots[i]
-		slot.player_name = _name_of(side)
-		slot.host = id != "" and id == str(_snapshot.host_id)
+		var player: XomDaoPlayerInfo = _player_info(id)
+		var card: GoPlayerCard = _cards[i]
+		card.player_name = _name_of(side)
+		card.side = side
+		card.picture = XomDaoLooks.avatar(player.avatar) if player != null else null
+		card.host = id != "" and id == str(_snapshot.host_id)
 		var wins: int = 0
-		for seat: XomDaoPlayerInfo in _snapshot.seats:
-			if seat.id == id:
-				slot.frame = seat.frame
 		# The room's score counts wins by place in `players`.
 		for i_player: int in _snapshot.players.size():
 			var counted: bool = _snapshot.score != null and i_player < _snapshot.score.wins.size()
 			if counted and _snapshot.players[i_player].id == id:
 				wins = _snapshot.score.wins[i_player]
-		slot.extra = "Thắng %d · Bắt %d" % [wins, int(prisoners.get(side, 0))]
+		card.stats = "Thắng: %d" % wins
+		var caught: int = int(prisoners.get(side, 0))
+		_prisoner_counts[i].text = str(caught)
+		_prisoner_badges[i].tooltip_text = "Bắt: %d" % caught
 		var on_turn: bool = playing and str(_view.get("turn", "")) == side
-		if on_turn and not slot.is_turn():
-			slot.show_turn()
-		elif not on_turn and slot.is_turn():
-			slot.end_turn()
-	# A longer count can widen the seats' column.
+		card.active = not playing or on_turn
 	_layout()
 
 
 func _show_status() -> void:
 	var playing: bool = _view.get("end") == null and _snapshot.status == "playing"
-	_status.visible = playing
-	_details.visible = playing
+	_turn_plaque.visible = playing
 	if not playing:
 		return
 	var turn: String = str(_view.get("turn", FIRST))
-	var whose: String = "Lượt bạn" if turn == _mine else "Lượt %s" % SIDE_NAMES[turn]
+	var whose: String = "Lượt bạn" if turn == _mine else "Lượt %s" % _name_of(turn)
 	var last: Variant = _view.get("last")
 	if str(_view.get("phase", "")) == "scoring":
 		var count: Dictionary = _view.get("count", {}) if _view.get("count") is Dictionary else {}
@@ -741,11 +800,46 @@ func _sfx(sound: String) -> void:
 		player.play()
 
 
+func _style_action_button(button: XomDaoButton, danger: bool = false) -> void:
+	var body_color: Color = RESIGN_INK if danger else TABLE_INK
+	var edge_color: Color = RESIGN_EDGE if danger else TABLE_EDGE
+	button.body.face = body_color
+	button.body.edge = edge_color
+	button.body.lit = false
+	button.body.radius = 15.0
+	button.body.depth = 3.0
+	button.body.border = 2
+	button.add_theme_font_override("font", XomDaoUi.body_font(true))
+	button.add_theme_font_size_override("font_size", 27)
+	button.add_theme_color_override("font_outline_color", Color.TRANSPARENT)
+	button.add_theme_constant_override("outline_size", 0)
+	button.custom_minimum_size.y = 72.0
+
+
+func _draw_surface_shadows() -> void:
+	var board_shadow := XomDaoUi.box(Color(0.0, 0.0, 0.0, 0.02), Color.TRANSPARENT, 0, 12.0)
+	board_shadow.shadow_color = Color(0.0, 0.0, 0.0, 0.52)
+	board_shadow.shadow_size = 24
+	board_shadow.shadow_offset = Vector2(0.0, 9.0)
+	_surface_shadows.draw_style_box(
+		board_shadow, Rect2(_board.position + Vector2(7.0, 7.0), _board.size - Vector2(14.0, 14.0))
+	)
+	for control: Control in _bowls + _lids:
+		if control.size.x <= 0.0:
+			continue
+		var radius: float = minf(control.size.x, control.size.y) * 0.48
+		var bowl_shadow := XomDaoUi.box(Color(0.0, 0.0, 0.0, 0.01), Color.TRANSPARENT, 0, radius)
+		bowl_shadow.shadow_color = Color(0.0, 0.0, 0.0, 0.48)
+		bowl_shadow.shadow_size = 15
+		bowl_shadow.shadow_offset = Vector2(0.0, 6.0)
+		_surface_shadows.draw_style_box(bowl_shadow, Rect2(control.position, control.size))
+
+
 # ── Layout ────────────────────────────────────────────────────────────────────────────────
 
 
-## The board as tall as the frame in the middle; the players with their bowls in the column on
-## its left, the status and buttons in the column on its right.
+## The board stays between the two player columns; the computer sits left and your player card,
+## bowls, turn plaque and actions sit right.
 func _layout() -> void:
 	if not is_inside_tree():
 		return
@@ -753,16 +847,15 @@ func _layout() -> void:
 	var edge: float = float(XomDaoSettings.current().margin)
 	var left: float = inset.x + edge
 	var right: float = size.x - inset.x - edge
-	_cloth.size = size / _cloth.scale
 	var seats_width: float = COLUMN
-	for slot: XomDaoPlayerSlot in _slots:
-		slot.reset_size()
-		seats_width = maxf(seats_width, slot.size.x)
-	var buttons_width: float = BUTTON_WIDTH
+	for card: GoPlayerCard in _cards:
+		card.reset_size()
+		seats_width = maxf(seats_width, card.size.x)
+	var controls_width: float = maxf(COLUMN, BUTTON_WIDTH)
 	for button: XomDaoButton in [_pass, _accept, _resume, _resign]:
 		button.reset_size()
-		buttons_width = maxf(buttons_width, button.size.x)
-	var room: float = right - left - seats_width - buttons_width - 32.0
+		controls_width = maxf(controls_width, button.size.x)
+	var room: float = right - left - seats_width - controls_width - 32.0
 	var side: float = clampf(minf(size.y - 2.0 * edge, room), 240.0, size.y)
 	var between: float = left + seats_width + 16.0
 	var board_at := Vector2(between + maxf(0.0, (room - side) / 2.0), (size.y - side) / 2.0)
@@ -785,40 +878,56 @@ func _layout() -> void:
 	_shadows.queue_redraw()
 	_marks.queue_redraw()
 	_hover(-1)
-	# Left column: the other player under ☰ with its bowl below, yours at the bottom with its
-	# bowl above.
-	var top_y: float = edge + MENU + 12.0
-	var room_y: float = size.y - edge - top_y - _slots[0].size.y - _slots[1].size.y - 32.0
-	var diameter: float = clampf(room_y / 2.0, 64.0, minf(150.0, seats_width * 0.52))
+	# The computer sits below the menu; your player group mirrors it on the right.
+	var card_top: float = edge + MENU + 12.0
+	var diameter: float = clampf(minf(size.y * 0.16, (seats_width - 28.0) / 1.9), 88.0, 128.0)
+	var lid_size: float = diameter * 0.82
+	var bowls_width: float = diameter + 12.0 + lid_size
 	for i: int in 2:
-		var slot: XomDaoPlayerSlot = _slots[i]
-		var y: float = size.y - edge - slot.size.y if i == 0 else top_y
-		slot.position = Vector2(left, y)
-		var bowl_y: float = y - 8.0 - diameter if i == 0 else y + slot.size.y + 8.0
-		_bowls[i].position = Vector2(left, bowl_y)
+		var card: GoPlayerCard = _cards[i]
+		var x: float = right - controls_width if i == 0 else left
+		card.position = Vector2(x, card_top)
+		var bowl_x: float = x + (controls_width - bowls_width) / 2.0
+		var bowl_y: float = card_top + card.size.y + 12.0
+		_bowls[i].position = Vector2(bowl_x, bowl_y)
 		_bowls[i].size = Vector2.ONE * diameter
-		var lid: float = diameter * 0.82
-		_lids[i].position = Vector2(left + diameter + 12.0, bowl_y + (diameter - lid) / 2.0)
-		_lids[i].size = Vector2.ONE * lid
+		_lids[i].position = Vector2(bowl_x + diameter + 12.0, bowl_y + (diameter - lid_size) / 2.0)
+		_lids[i].size = Vector2.ONE * lid_size
+		var badge: PanelContainer = _prisoner_badges[i]
+		badge.reset_size()
+		badge.position = _lids[i].position + Vector2(lid_size * 0.62, lid_size * 0.65)
 		_bowls[i].queue_redraw()
 		_lids[i].queue_redraw()
-	# Right column: the status and the count at the top, the buttons at the bottom.
-	var column_left: float = board_at.x + side + 16.0
-	var width: float = maxf(right - column_left, BUTTON_WIDTH)
-	_status.size = Vector2(width, 0.0)
-	_status.position = Vector2(column_left, edge)
-	_status.reset_size()
-	_status.size.x = width
-	_details.size = Vector2(width, 0.0)
-	_details.position = Vector2(column_left, _status.position.y + _status.size.y + 8.0)
-	var y: float = size.y - edge
+	# The turn plaque anchors the column; actions stay below the player bowls.
+	var status_height: float = XomDaoUi.body_font(true).get_height(24)
+	var details_height: float = (
+		XomDaoUi.body_font().get_height(20) * maxi(1, _details.text.count("\n") + 1)
+	)
+	_turn_plaque.size = Vector2(controls_width, status_height + details_height + 18.0)
+	_turn_plaque.position = Vector2(right - controls_width, edge)
+	_status.position = Vector2(15.0, 8.0)
+	_status.size = Vector2(controls_width - 30.0, status_height + 2.0)
+	_details.position = Vector2(15.0, 8.0 + status_height)
+	_details.size = Vector2(controls_width - 30.0, details_height)
+	var button_height: float = 0.0
+	var visible_count: int = 0
 	for button: XomDaoButton in [_resign, _resume, _accept, _pass]:
 		if not button.visible:
 			continue
 		button.reset_size()
-		y -= button.size.y
-		button.position = Vector2(right - button.size.x, y)
-		y -= 10.0
+		button_height += button.size.y + 10.0
+		visible_count += 1
+	if visible_count > 0:
+		button_height -= 10.0
+	var button_top: float = _bowls[0].position.y + diameter + 16.0
+	var bottom_top: float = size.y - edge - button_height
+	var action_y: float = lerpf(button_top, bottom_top, 0.54)
+	for button: XomDaoButton in [_resign, _resume, _accept, _pass]:
+		if not button.visible:
+			continue
+		button.position = Vector2(right - button.size.x, action_y)
+		action_y += button.size.y + 10.0
+	_surface_shadows.queue_redraw()
 	if _dialog.visible:
 		_dialog.reset_size()
 		_dialog.position = (size - _dialog.size) / 2.0

@@ -5,7 +5,7 @@ const Rules := preload("res://content/co-ty-phu-classic/rules.gd")
 const BANK := Vector2(0.525, 0.275)
 const LOCAL := Rect2(0.191, 0.193, 0.25, 0.163)
 const NUMBERS: Array[String] = ["land", "houses", "hotels", "stations"]
-const STATES: Array[String] = ["contributing", "jail", "power", "water", "tickets"]
+const STATES: Array[String] = ["jail", "power", "water", "tickets"]
 
 
 static func seats(viewer: int, count: int) -> Array[int]:
@@ -64,19 +64,6 @@ static func summary(view: Dictionary, seat: int) -> Dictionary:
 		var tickets: int = (player.get("freeCards", []) as Array).size()
 		if tickets > 0:
 			out["tickets"] = tickets
-	var stations: Dictionary = {}
-	for square: Variant in view.get("stationAuctions", {}):
-		stations[str(square)] = view["stationAuctions"][square]
-	var current: Variant = view.get("auction")
-	if current is Dictionary and Rules.STATIONS.has(int(current.get("square", -1))):
-		stations[str(current["square"])] = current
-	var contributing: int = 0
-	for square: Variant in stations:
-		var bids: Array = stations[square].get("bids", [])
-		if seat < bids.size() and int(bids[seat]) > 0:
-			contributing += 1
-	if contributing > 0:
-		out["contributing"] = contributing
 	return out
 
 

@@ -1,16 +1,14 @@
 import type { Seat } from '@xomdao/sdk';
 import type { State } from './model.js';
 
-type DecisionState = Pick<State, 'turn' | 'phase' | 'auction' | 'trade' | 'debt'>;
+type DecisionState = Pick<State, 'turn' | 'phase' | 'trade' | 'debt'>;
 
 export function decisionSeat(state: DecisionState) {
-  return state.phase === 'auction'
-    ? (state.auction?.bidder ?? state.turn)
-    : state.phase === 'trade'
-      ? (state.trade?.to ?? state.turn)
-      : state.phase === 'debt'
-        ? (state.debt?.payer ?? state.turn)
-        : state.turn;
+  return state.phase === 'trade'
+    ? (state.trade?.to ?? state.turn)
+    : state.phase === 'debt'
+      ? (state.debt?.payer ?? state.turn)
+      : state.turn;
 }
 
 export function hasPvpClock(state: State, players: Seat[]) {
@@ -24,7 +22,6 @@ export function decisionKey(state: State) {
     state.turn,
     state.phase,
     state.pending,
-    state.auction,
     state.trade,
     state.debt && { payer: state.debt.payer, amount: state.debt.amount, reason: state.debt.reason },
     event && { ...event, ready: undefined },

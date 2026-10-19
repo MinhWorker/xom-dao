@@ -30,6 +30,7 @@
     "new": "node scripts/new.mjs",
     "new:game": "node scripts/new.mjs game",
     "new:event": "node scripts/new.mjs event",
+    "wt": "node scripts/worktree.mjs",
     "assets": "node scripts/assets.mjs",
     "blender": "node scripts/blender.mjs",
     "setup:blender": "node tools/blender/setup.mjs",

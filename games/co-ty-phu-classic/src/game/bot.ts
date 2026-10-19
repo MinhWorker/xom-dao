@@ -1,15 +1,12 @@
 import type { GameEvent } from '@xomdao/sdk';
-import { BOARD, isDeed, STATION_INITIAL_CONTRIBUTION, type State } from './model.js';
-import { nextStationContribution, redeemAmount } from './rules.js';
+import { BOARD, isDeed, type State } from './model.js';
+import { redeemAmount } from './rules.js';
 
 const event = (name: string, payload?: object): GameEvent => ({ event: name, payload });
-const deedValue = (state: State, square: number | null) => {
+const deedValue = (square: number | null) => {
   if (square === null) return 0;
   const cell = BOARD[square];
-  const price =
-    cell?.kind === 'station'
-      ? (state.properties[square]?.acquisitionCost ?? STATION_INITIAL_CONTRIBUTION)
-      : (cell?.price ?? 0);
+  const price = cell?.price ?? 0;
   return price * 1.1;
 };
 
@@ -21,17 +18,9 @@ export function botMove(state: State, seat: number): GameEvent | null {
   if (state.phase === 'trade') {
     const trade = state.trade;
     if (trade?.to !== seat) return null;
-    const offered = deedValue(state, trade.give) + trade.giveCash + (trade.giveCard ? 200 : 0);
-    const requested = deedValue(state, trade.take) + trade.takeCash + (trade.takeCard ? 200 : 0);
+    const offered = deedValue(trade.give) + trade.giveCash + (trade.giveCard ? 200 : 0);
+    const requested = deedValue(trade.take) + trade.takeCash + (trade.takeCard ? 200 : 0);
     return event(offered >= requested ? 'accept-trade' : 'decline-trade');
-  }
-
-  if (state.phase === 'auction') {
-    const auction = state.auction;
-    if (!auction || auction.bidder !== seat) return null;
-    const contribution = nextStationContribution(auction.highest);
-    const limit = me.cash - 100;
-    return limit >= contribution ? event('bid', { amount: contribution }) : event('pass');
   }
 
   if ((state.phase === 'debt' ? (state.debt?.payer ?? state.turn) : state.turn) !== seat)
@@ -49,7 +38,10 @@ export function botMove(state: State, seat: number): GameEvent | null {
     if (house >= 0) return event('sell-house', { square: house });
     const mortgage = state.properties.findIndex(
       (property, square) =>
-        property.owner === seat && !property.mortgaged && isDeed(BOARD[square]!),
+        property.owner === seat &&
+        !property.mortgaged &&
+        property.houses === 0 &&
+        isDeed(BOARD[square]!),
     );
     return mortgage >= 0 ? event('mortgage', { square: mortgage }) : event('bankrupt');
   }
@@ -73,7 +65,6 @@ export function botMove(state: State, seat: number): GameEvent | null {
   }
   if (state.phase === 'roll') {
     if (me.jailed && me.freeCards.length) return event('use-card');
-    if (me.jailed && me.jailRolls >= 2 && me.cash >= 50) return event('pay-bail');
     return event('roll');
   }
   return null;

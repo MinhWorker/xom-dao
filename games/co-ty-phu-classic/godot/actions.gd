@@ -9,9 +9,8 @@ const FIELD_BUTTONS: Array = [
 	["UseCard", "Dùng thẻ", "use-card", XomDaoUi.Kind.SOCIAL],
 	["Buy", "Mua", "buy", XomDaoUi.Kind.CONFIRM],
 	["Skip", "Bỏ qua", "end-turn", XomDaoUi.Kind.BACK],
-	["Bid", "Góp", "bid", XomDaoUi.Kind.CONFIRM],
-	["Pass", "Từ bỏ", "pass", XomDaoUi.Kind.BACK],
 	["Build", "Xây", "build", XomDaoUi.Kind.CONFIRM],
+	["SkipBuild", "Bỏ qua", "skip-build", XomDaoUi.Kind.BACK],
 	["EndTurn", "Hết lượt", "end-turn", XomDaoUi.Kind.BACK],
 	["PayDebt", "Trả nợ", "pay-debt", XomDaoUi.Kind.CONFIRM],
 	["Bankrupt", "Phá sản", "bankrupt", XomDaoUi.Kind.DANGER],
@@ -24,8 +23,7 @@ const CARD_BUTTONS: Array = [
 ]
 
 
-## The field's buttons when the room waits on `me`: the dice, buying, an auction, the end of
-## the turn or a debt.
+## The field's buttons when the room waits on `me`: the dice, buying, the end of the turn or a debt.
 static func phase_actions(view: Dictionary, me: int) -> Array:
 	var out: Array = []
 	if me < 0 or view.get("winner") != null or Rules.decision_seat(view) != me:
@@ -34,9 +32,15 @@ static func phase_actions(view: Dictionary, me: int) -> Array:
 	var cash: int = int(player["cash"])
 	match str(view["phase"]):
 		"roll":
+			var final_jail_turn: bool = (
+				bool(player["jailed"]) and int(player.get("jailRolls", 0)) >= 2
+			)
 			out.append(["Roll", "", true])
-			out.append_array(_build(view, me, cash))
-			if bool(player["jailed"]):
+			var build: Array = _build(view, me, cash)
+			out.append_array(build)
+			if not build.is_empty():
+				out.append(["SkipBuild", "", true])
+			if bool(player["jailed"]) and not final_jail_turn:
 				out.append(["Bail", "Nộp %d" % Rules.BAIL, cash >= Rules.BAIL])
 				if not (player["freeCards"] as Array).is_empty():
 					out.append(["UseCard", "", true])
@@ -44,8 +48,6 @@ static func phase_actions(view: Dictionary, me: int) -> Array:
 			var price: int = Rules.price(int(view["pending"]))
 			out.append(["Buy", "Mua %s" % XomDaoUi.money(price), cash >= price])
 			out.append(["Skip", "", true])
-		"auction":
-			out.append_array(_auction(view, me, cash))
 		"end":
 			out.append_array(_build(view, me, cash))
 			out.append(["EndTurn", "", true])
@@ -55,14 +57,6 @@ static func phase_actions(view: Dictionary, me: int) -> Array:
 			if cash < amount:
 				out.append(["Bankrupt", "", true])
 	return out
-
-
-static func _auction(view: Dictionary, me: int, cash: int) -> Array:
-	var auction: Dictionary = view["auction"]
-	var amount: int = Rules.bid_amount(view)
-	var contribution: String = "Góp %s" % XomDaoUi.money(amount)
-	var leading: bool = auction.get("leader") != null and int(auction["leader"]) == me
-	return [["Bid", contribution, not leading and cash >= amount], ["Pass", "Từ bỏ", true]]
 
 
 static func _build(view: Dictionary, me: int, cash: int) -> Array:
@@ -86,7 +80,7 @@ static func _build(view: Dictionary, me: int, cash: int) -> Array:
 static func deed_actions(view: Dictionary, me: int, i: int) -> Array:
 	var out: Array = []
 	var phase: String = view["phase"]
-	if me < 0 or view.get("winner") != null or phase in ["event", "trade", "auction"]:
+	if me < 0 or view.get("winner") != null or phase in ["event", "trade"]:
 		return out
 	var properties: Array = view["properties"]
 	var deed: Dictionary = properties[i]
@@ -95,14 +89,20 @@ static func deed_actions(view: Dictionary, me: int, i: int) -> Array:
 	var cash: int = int(view["players"][me]["cash"])
 	var houses: int = int(deed["houses"])
 	if houses > 0 and not bool(deed["mortgaged"]):
-		var back: int = int(Rules.SQUARES[i]["houseCost"] / 2)
-		out.append(["SellHouse", "Bán nhà +%s" % XomDaoUi.money(back), true])
+		var house_cost: int = int(Rules.SQUARES[i]["houseCost"])
+		out.append(
+			[
+				"SellHouse",
+				"Bán nhà +%s" % XomDaoUi.money(Rules.building_sale_price(house_cost)),
+				true
+			]
+		)
 	if Rules.decision_seat(view) != me:
 		return out
 	if bool(deed["mortgaged"]):
 		var cost: int = Rules.redeem_amount(properties, i)
 		out.append(["Redeem", "Chuộc %s" % XomDaoUi.money(cost), cash >= cost])
-	else:
+	elif houses == 0:
 		var amount: int = Rules.mortgage_amount(properties, i)
 		out.append(["Mortgage", "Thế chấp +%s" % XomDaoUi.money(amount), true])
 	return out

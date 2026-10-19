@@ -9,9 +9,10 @@ const PawnMotion := preload("res://content/co-ty-phu-classic/pawn_motion.gd")
 const Actions := preload("res://content/co-ty-phu-classic/actions.gd")
 const Victory := preload("res://content/co-ty-phu-classic/victory.gd")
 const TileHud := preload("res://content/co-ty-phu-classic/tile_hud.gd")
+const TileSelection := preload("res://content/co-ty-phu-classic/tile_selection.gd")
 const DiceHotkey := preload("res://content/co-ty-phu-classic/dice_hotkey.gd")
 const SOUNDS := (
-	"auction.wav bankrupt.wav build.wav buy.wav card-flip.wav coin.wav dice.wav jail.wav plane.wav"
+	"bankrupt.wav build.wav buy.wav card-flip.wav coin.wav dice.wav jail.wav plane.wav"
 	+ " release.wav rent.wav step.wav turn.wav win.mp3 item-receive.mp3 trade-request.mp3"
 )
 const INKS: Array[Color] = [Color("#DF6554"), Color("#5793D3"), Color("#60AF72"), Color("#E6BE52")]
@@ -73,6 +74,7 @@ var _field := Rect2()
 var _surface: Control = BoardSurface.new()
 var _exchange: Control = preload("res://content/co-ty-phu-classic/turn_exchange.gd").new()
 var _tile_hud: Control = TileHud.new()
+var _tile_selection: RefCounted = TileSelection.new()
 
 
 func sandbox_options() -> Dictionary:
@@ -119,7 +121,8 @@ func _ready() -> void:
 	_board.texture = load("res://content/co-ty-phu-classic/art/board.webp")
 	_board.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_board.mouse_filter = Control.MOUSE_FILTER_STOP
-	_board.gui_input.connect(_on_board_input)
+	_tile_selection.call("bind", _board)
+	_tile_selection.connect("focus_changed", _on_tile_focus_changed)
 	add_child(_board)
 	_marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_marks)
@@ -127,6 +130,7 @@ func _ready() -> void:
 	add_child(_exchange)
 	_tile_hud.name = "TileHud"
 	add_child(_tile_hud)
+	_tile_hud.connect("acted", _on_ledger_action)
 	for i: int in Rules.SQUARES.size():
 		var square := Control.new()
 		square.name = "Square_%d" % i
@@ -377,10 +381,10 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 		and bool(before["players"][_me]["jailed"])
 		and not bool(view["players"][_me]["jailed"])
 	)
-	if freed:
-		_enqueue(_gate_job.bind(false))
 	if rolled:
 		_enqueue(_roll.bind((dice as Array).duplicate(), turn))
+	if freed:
+		_enqueue(_gate_job.bind(false))
 	var transfers: Array = (
 		view.get("transfers", []).duplicate(true)
 		if int(view.get("moneySequence", 0)) != int(before.get("moneySequence", 0))
@@ -440,8 +444,6 @@ func _animate(before: Dictionary, view: Dictionary) -> void:
 			_enqueue(_draw_event.bind(revealed.duplicate(true)))
 	if view["phase"] == "trade" and before["phase"] != "trade" and Rules.decision_seat(view) == _me:
 		_enqueue(_sfx_job.bind("trade-request"))
-	if str(view["phase"]) == "auction" and str(before["phase"]) != "auction":
-		_enqueue(_sfx_job.bind("auction"))
 	var houses_before: int = 0
 	var houses_now: int = 0
 	for i: int in 40:
@@ -564,6 +566,7 @@ func declare_bankruptcy() -> bool:
 
 
 func _walk(seat: int, from: int, steps: int, reward: Array = []) -> void:
+	_tile_selection.call("clear_focus")
 	_tile_hud.call("movement_started", seat, _me)
 	for k: int in steps:
 		var square: int = (from + k + 1) % 40
@@ -577,11 +580,12 @@ func _walk(seat: int, from: int, steps: int, reward: Array = []) -> void:
 		if square == 0 and not reward.is_empty():
 			await _money(reward)
 	_place_pawns()
-	_tile_hud.call("movement_stopped", seat, _presented_view, _shown, _names(), _me)
+	_tile_hud.call("movement_stopped", seat, _presented_view, _shown, _names(), _me, _me >= 0)
 
 
 ## The airport carries the pawn; jail retains its separate transport.
 func _fly(seat: int, to: int, sound: String, reward: Array = []) -> void:
+	_tile_selection.call("clear_focus")
 	_tile_hud.call("movement_started", seat, _me)
 	_sfx(sound)
 	_shown[seat] = to
@@ -595,7 +599,7 @@ func _fly(seat: int, to: int, sound: String, reward: Array = []) -> void:
 		await PawnMotion.move(self, pawn, target, FLY_SECONDS, 0.65)
 	if is_inside_tree():
 		_place_pawns()
-		_tile_hud.call("movement_stopped", seat, _presented_view, _shown, _names(), _me)
+		_tile_hud.call("movement_stopped", seat, _presented_view, _shown, _names(), _me, _me >= 0)
 
 
 func _money(transfers: Array) -> void:
@@ -639,16 +643,9 @@ static func _is_tap(event: InputEvent) -> bool:
 	return false
 
 
-func _on_square_input(_event: InputEvent, _i: int) -> void:
-	pass
-
-
-func _on_board_input(event: InputEvent) -> void:
-	if _view.get("winner") != null:
-		return
-	if _is_tap(event) and _focus >= 0:
-		_focus = -1
-		_refresh()
+func _on_tile_focus_changed(square: int) -> void:
+	_focus = square
+	_refresh()
 
 
 func _on_dice_input(event: InputEvent) -> void:
@@ -671,8 +668,6 @@ func _on_action(button: String, event: String) -> void:
 		return
 	var payload: Dictionary = {}
 	match button:
-		"Bid":
-			payload = {"amount": Rules.bid_amount(_view)}
 		"Build":
 			payload = {"square": int(_view["buildable"])}
 		"Redeem", "SellHouse":
@@ -703,11 +698,16 @@ func _on_ledger_action(event: String, payload: Dictionary) -> void:
 func _refresh() -> void:
 	if _presented_view.is_empty() or not is_inside_tree():
 		return
+	_tile_selection.call(
+		"set_enabled",
+		_me >= 0 and _presented_view.get("winner") == null and not _running and not _sent
+	)
 	if not _running:
 		for seat: int in _cash.size():
 			_cash[seat] = int(_player(seat)["cash"])
 		_ready_event()
-	_tile_hud.call("follow", _presented_view, _shown, _names(), _me)
+	_tile_hud.call("follow", _presented_view, _shown, _names(), _me, _focus, _me >= 0)
+	_tile_hud.call("set_interaction_locked", _running or _sent or _ledger.visible)
 	_show_slots()
 	_show_panel()
 	_show_actions()

@@ -36,8 +36,6 @@ export interface Property {
   /** 0–4 houses; 5 is a hotel. */
   houses: number;
   mortgaged: boolean;
-  /** Winning station contribution, used as its acquired value after the auction. */
-  acquisitionCost?: number;
   /** Original borrower and deadline, measured in their own turns (not dice rolls). */
   mortgage?: { borrower: number; deadline: number; principal: number };
 }
@@ -51,37 +49,20 @@ export interface TycoonPlayer {
   bankrupt: boolean;
 }
 
-export type Phase = 'roll' | 'buy' | 'auction' | 'debt' | 'trade' | 'event' | 'end';
+export type Phase = 'roll' | 'buy' | 'debt' | 'trade' | 'event' | 'end';
 
-/** How long each bidder has to raise or pass in an auction (ms). */
-export const AUCTION_TURN_MS = 10_000;
-
-export interface Auction {
-  square: number;
-  bidder: number;
-  highest: number;
-  leader: number | null;
-  passed: number[];
-  bids: number[];
-  /** Successful station deposits per seat, independent of their increasing amounts. */
-  contributions?: number[];
-}
-
-/** Deposits and withdrawals persist between visits to this station. */
-export type StationAuction = Omit<Auction, 'bidder'>;
-
-export const STATION_INITIAL_CONTRIBUTION = 50;
+export const STATION_PRICE = 200;
 export const STATION_BASE_FEE = 50;
 
 export interface Debt {
-  /** A station winner may owe the bank during another player's turn. */
+  /** A player may owe the bank during another player's turn. */
   payer?: number;
   amount: number;
   creditor: number | null;
   reason: string;
   /** The phase to continue after payment; a double may grant another roll. */
   after: 'roll' | 'end';
-  /** Third failed jail roll moves after the bail is paid. */
+  /** Optional square to move to after settling this payment. */
   moveAfter?: number;
 }
 
@@ -111,7 +92,8 @@ export type SpecialEventEffect =
   | { kind: 'card'; card: Card; deck: Deck; roll: number }
   | { kind: 'tax'; amount: number; reason: string }
   | { kind: 'airport'; roll: number; reason: string }
-  | { kind: 'jail'; reason: string };
+  | { kind: 'jail'; reason: string }
+  | { kind: 'release'; reason: string };
 
 export type SpecialEvent = SpecialEventEffect & { id: number; ready: boolean };
 
@@ -128,7 +110,7 @@ export interface State {
   round: number;
   shortages: { square: number; round: number }[];
   phase: Phase;
-  /** The phase a resolved landing/auction should lead to. */
+  /** The phase a resolved landing should lead to. */
   after: 'roll' | 'end';
   doubles: number;
   dice: [number, number] | null;
@@ -137,8 +119,6 @@ export interface State {
   pending: number | null;
   /** One building upgrade after landing on an already-owned street. */
   buildable: number | null;
-  auction: Auction | null;
-  stationAuctions: Record<number, StationAuction>;
   debt: Debt | null;
   trade: Trade | null;
   chance: number[];
@@ -161,7 +141,7 @@ const street = (name: string, group: Group, price: number): Square => ({
   houseCost: price / 2,
   rent: [0.1, 0.4, 1.1, 3, 4, 5].map((rate) => Math.round(price * rate)),
 });
-const station = (name: string): Square => ({ name, kind: 'station' });
+const station = (name: string): Square => ({ name, kind: 'station', price: STATION_PRICE });
 const utility = (name: string): Square => ({ name, kind: 'utility', price: 150 });
 
 /** Clockwise from Start: six streets per side, with two Chance and two Chest squares. */

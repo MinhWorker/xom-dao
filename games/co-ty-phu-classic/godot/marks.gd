@@ -1,7 +1,7 @@
 extends Control
 ## The marks Cờ tỷ phú draws over board.webp (this control covers the whole picture): each deed's
-## owner band with its houses or hotel, a dark veil on a mortgaged deed, the contributions at a
-## bus station, a ring round the tapped and the pending square, and on every square its name
+## owner band with its houses or hotel, a dark veil on a mortgaged deed, a ring round the tapped
+## and pending squares, and on every square its name
 ## and, on a deed, its price. Owner strips and buildings use the shared Blender atlas.
 
 const Rules := preload("res://content/co-ty-phu-classic/rules.gd")

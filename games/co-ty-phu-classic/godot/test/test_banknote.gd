@@ -9,9 +9,7 @@ func _view() -> Dictionary:
 	for i: int in 40:
 		properties.append({"owner": null, "houses": 0, "mortgaged": false})
 	return {
-		"players": [{"jailed": false, "jailRolls": 0, "freeCards": []}],
-		"properties": properties,
-		"stationAuctions": {}
+		"players": [{"jailed": false, "jailRolls": 0, "freeCards": []}], "properties": properties
 	}
 
 
@@ -43,14 +41,16 @@ func test_numeric_zeroes_remain_but_inactive_states_are_absent() -> void:
 
 func test_jail_countdown_and_ownership_states_disappear_when_no_longer_active() -> void:
 	var view: Dictionary = _view()
-	view["players"][0].assign({"jailed": true, "jailRolls": 1, "freeCards": ["chance", "chest"]})
+	view["players"][0].assign({"jailed": true, "jailRolls": 0, "freeCards": ["chance", "chest"]})
 	view["properties"][12]["owner"] = 0
 	view["properties"][28]["owner"] = 0
 	var totals: Dictionary = Model.summary(view, 0)
-	assert_eq(totals["jail"], 2)
+	assert_eq(totals["jail"], 3)
 	assert_eq(totals["tickets"], 2)
 	assert_eq(totals["power"], 1)
 	assert_eq(totals["water"], 1)
+	view["players"][0]["jailRolls"] = 1
+	assert_eq(Model.summary(view, 0)["jail"], 2)
 	view["players"][0]["jailRolls"] = 2
 	assert_eq(Model.summary(view, 0)["jail"], 1)
 	view["players"][0]["jailed"] = false
@@ -62,21 +62,17 @@ func test_jail_countdown_and_ownership_states_disappear_when_no_longer_active() 
 		assert_false(totals.has(key), key)
 
 
-func test_deed_and_building_totals_and_pending_station_contribution() -> void:
+func test_deed_and_building_totals() -> void:
 	var view: Dictionary = _view()
 	for square: int in [1, 2, 5, 12]:
 		view["properties"][square]["owner"] = 0
 	view["properties"][1]["houses"] = 4
 	view["properties"][2]["houses"] = 5
-	view["stationAuctions"] = {"5": {"bids": [50]}, "15": {"bids": [0]}}
-	view["auction"] = {"square": 5, "bids": [100]}
 	var totals: Dictionary = Model.summary(view, 0)
 	assert_eq(totals["land"], 2)
 	assert_eq(totals["houses"], 4)
 	assert_eq(totals["hotels"], 1)
 	assert_eq(totals["stations"], 1)
-	assert_eq(totals["contributing"], 1, "The current station overrides its saved deposit")
-	view["auction"]["bids"] = [0]
 	assert_false(Model.summary(view, 0).has("contributing"))
 
 

@@ -25,13 +25,12 @@ const PRIORITY: Dictionary = {
 	"Confirm": 100,
 	"EndTurn": 90,
 	"Buy": 80,
-	"Bid": 80,
 	"PayDebt": 80,
 	"Bail": 80,
 	"UseCard": 70,
 	"Build": 60,
+	"SkipBuild": 30,
 	"Skip": 30,
-	"Pass": 30,
 	"Bankrupt": 20
 }
 const SYMBOLS: Array[Texture2D] = [
@@ -56,6 +55,8 @@ static func event_changed(before: Variant, after: Variant) -> bool:
 
 static func title(event: Dictionary) -> String:
 	var kind: String = str(event.get("kind", ""))
+	if kind == "release":
+		return "Ra tù"
 	if kind != "card":
 		return str(event.get("reason", "Vào tù" if kind == "jail" else "Sự kiện"))
 	var card: Dictionary = event["card"]
@@ -87,12 +88,14 @@ static func title(event: Dictionary) -> String:
 		"move":
 			return "Đến " + str(Rules.SQUARES[int(card["target"])]["name"])
 		"nearest":
-			return "Ghé bến xe" if card["target"] == "station" else "Ghé tiện ích"
+			return "Ghé bến xe" if card["target"] == "station" else "Đến ô điện/nước gần nhất"
 	return "Quà bất ngờ" if int(card.get("amount", 0)) > 0 else "Khoản chi"
 
 
 static func description(event: Dictionary, notice: String) -> String:
 	var kind: String = str(event.get("kind", ""))
+	if kind == "release":
+		return str(event.get("reason", notice))
 	if kind == "tax":
 		return "Cần nộp %s ₫." % XomDaoUi.money(int(event.get("amount", 0)))
 	if kind == "jail" or kind == "airport":

@@ -74,12 +74,7 @@ func _redraw() -> void:
 	var groups: Dictionary = {}
 	for i: int in 40:
 		var deed: Dictionary = _view["properties"][i]
-		var stations: Dictionary = _view.get("stationAuctions", {})
-		var station: Dictionary = stations.get(str(i), stations.get(i, {}))
-		if _view.get("auction") is Dictionary and int(_view["auction"]["square"]) == i:
-			station = _view["auction"]
-		var deposit: int = int(station.get("bids", [0, 0, 0, 0])[seat]) if seat >= 0 else 0
-		if deed.get("owner") != seat and deposit <= 0:
+		if deed.get("owner") != seat:
 			continue
 		var key: String = str(Rules.SQUARES[i].get("group", Rules.SQUARES[i]["kind"]))
 		if not groups.has(key):
@@ -88,9 +83,9 @@ func _redraw() -> void:
 			key += "_extra"
 			if not groups.has(key):
 				groups[key] = []
-		groups[key].append([i, deposit])
+		groups[key].append(i)
 	if seat >= 0 and not (_view["players"][seat]["freeCards"] as Array).is_empty():
-		groups["ticket"] = [[-2, 0]]
+		groups["ticket"] = [-2]
 	for key: String in groups:
 		var group := VBoxContainer.new()
 		group.add_theme_constant_override("separation", 8)
@@ -98,8 +93,8 @@ func _redraw() -> void:
 		var rail := HBoxContainer.new()
 		rail.add_theme_constant_override("separation", 10)
 		group.add_child(rail)
-		for entry: Array in groups[key]:
-			var square: int = int(entry[0])
+		for entry: Variant in groups[key]:
+			var square: int = int(entry)
 			var card: XomDaoButton = Card.new()
 			card.custom_minimum_size = Vector2(116, 168)
 			card.name = "Estate_%d" % square
@@ -110,12 +105,11 @@ func _redraw() -> void:
 				_view["properties"][square] if square >= 0 else {},
 				square in picked if mode != "" else square == selected
 			)
-			card.set("contribution", int(entry[1]))
 			card.pressed.connect(select.bind(square))
 			rail.add_child(card)
 		var count: int = (groups[key] as Array).size()
 		var full: bool = (
-			key in Rules.GROUP_COLORS and count == Rules.group_of(int(groups[key][0][0])).size()
+			key in Rules.GROUP_COLORS and count == Rules.group_of(int(groups[key][0])).size()
 		)
 		var strip := Panel.new()
 		strip.custom_minimum_size.y = 5

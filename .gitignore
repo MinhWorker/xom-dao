@@ -19,4 +19,6 @@ packages/shared/src/generated/
 .dev/
 # Pinned toolchains (Godot, gdtoolkit, bpy), installed by npm run setup:godot / setup:blender
 .tools/
+# Git worktrees created by `npm run wt`
+/wt/
 codex-session-*.md

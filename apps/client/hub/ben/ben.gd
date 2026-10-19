@@ -8,10 +8,11 @@ extends Control
 ## with the open rooms list (HubBenRoomCard) below.
 ##
 ## Named nodes for tests: CodeInput, Join, RoomsHeading, Rooms, Room_<code >, Enter_<code >,
-## NoRooms, GameList, GameCard_<id>, Category_<genre>.
+## Watch_<code >, NoRooms, GameList, GameCard_<id>, Category_<genre>.
 
 signal back_pressed
 signal join_requested(code: String)
+signal watch_requested(code: String)
 signal game_selected(game_id: String)
 
 var top := HubTopBar.new()
@@ -96,11 +97,7 @@ func show_rooms(game_name: String, rooms: Array[XomDaoRoomSummary], game_id: Str
 	_rooms = rooms
 	_heading.text = "Phòng %s đang mở" % _game_name
 
-	var joinable: int = 0
-	for s: XomDaoRoomSummary in rooms:
-		if s.can_join:
-			joinable += 1
-	_room_count_chip.text = "%d phòng" % joinable
+	_room_count_chip.text = "%d phòng" % rooms.size()
 
 	for child: Node in _list.get_children():
 		child.queue_free()
@@ -109,6 +106,7 @@ func show_rooms(game_name: String, rooms: Array[XomDaoRoomSummary], game_id: Str
 	for summary: XomDaoRoomSummary in rooms:
 		var room_card: HubBenRoomCard = HubBenRoomCard.create(summary, _game_name, _game_id)
 		room_card.join_pressed.connect(join_requested.emit)
+		room_card.watch_pressed.connect(watch_requested.emit)
 		_list.add_child(room_card)
 		shown += 1
 
