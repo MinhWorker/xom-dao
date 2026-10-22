@@ -20,7 +20,7 @@ shared player data.
 | The Godot client: hub screens, HUD, UI kit, a game's `godot/` folder, the Godot toolchain (`apps/client/`, `tools/godot/`) | `apps/client/AGENTS.md` |
 | The server, rooms, accounts, DB, socket protocol, the console's API (`apps/server/`, `packages/shared/`, `apps/console/`) | `apps/server/AGENTS.md` |
 | Images or sounds, for the app or a game | `assets/AGENTS.md` |
-| A new game or event, an asset, a phone-size check | the skills in `.claude/skills/` |
+| A new game or event, an asset, a phone-size check, driving the client (`xd`) | the skills in `.claude/skills/` |
 
 ## Layout
 
@@ -35,6 +35,7 @@ assets/            The app's own art and audio: originals (Git LFS), ready files
 scripts/           Build helpers (libs.mjs), the dev web server (web.mjs), generators (new.mjs), asset tools, smoke/e2e
 tools/blender/     Shared Python/bpy sprite baking helpers (xomdao_bake), setup:blender
 tools/godot/       Pinned Godot toolchain (version.json) and the godot:* scripts
+tools/xd/          xd CLI: drive desktop debug clients (shots, tree, taps, PvP, dev console)
 .tools/            What setup:godot / setup:blender install (ignored)
 docs/              Shared guides for people: making-a-game, ui-guide, deploy
 ```
@@ -55,6 +56,7 @@ docs/              Shared guides for people: making-a-game, ui-guide, deploy
 | `npm run blender -- <id> [names…]` | Bake game art with the `.tools/blender` bpy, Blender or `XOMDAO_BLENDER_PYTHON`; see `assets/AGENTS.md` |
 | `npm run e2e [url]` | Headless Chromium plays every `godot-*` scenario in `scripts/e2e/scenarios/` through the Godot client's debug build, side by side (needs a running dev server and `godot:export -- --debug`). `-- --only <names>` (`godot-*` works), `-- --changed origin/main`; flags at the top of `scripts/e2e.mjs`. Screenshots in `.e2e/<scenario>/` |
 | `npm run shots [url]` | Headless screenshots of one page (default `/`, the lobby; `-- --path '/?play=<id>'` for a game's sandbox) on real phone/tablet/desktop sizes held sideways, at their pixel density and with notch insets. Prints the canvas density against the screen's. `.shots/<device>.png` + a 1:1 `-crop.png`; flags at the top of `scripts/shots.mjs` |
+| `npm run -s xd -- <command>` | Drive desktop debug clients: `server start`, `start [session] [--as <account>] [--play <id>]`, `shot`, `tree`, `tap`, `go`, `room`, `dev`, `restart`; `help` lists all, `tools/xd/README.md` |
 | `npm run smoke [url]` | Bots play Caro over the `/ws` WebSocket against a running server |
 
 Commands for games, assets and the DB are in the topic files above.
@@ -64,8 +66,9 @@ The owner often runs `npm run dev` in their own terminal. If you need a running 
 - check what you need;
 - stop it when you are done.
 
-Test the browser headless only: `npm run e2e`, `npm run shots` or your own headless Playwright
-script. Judge sharpness on the `-crop.png` files: the full shots are scaled down when viewed.
+To look at or play the client while you work, use `xd` (the `xd` skill). It is fastest: no export
+or browser. Test the browser headless only: `npm run e2e`, `npm run shots` or your own headless
+Playwright script. Judge sharpness on the `-crop.png` files: the full shots are scaled down when viewed.
 
 ## Conventions
 

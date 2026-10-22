@@ -43,7 +43,8 @@
     "godot:smoke": "node tools/godot/smoke.mjs",
     "godot:net": "node tools/godot/net.mjs",
     "godot:measure": "node tools/godot/measure.mjs",
-    "godot:preview": "node tools/godot/preview.mjs"
+    "godot:preview": "node tools/godot/preview.mjs",
+    "xd": "node tools/xd/xd.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

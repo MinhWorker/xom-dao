@@ -73,6 +73,13 @@ npm run godot:preview -- close 0
 ảnh hoặc tài nguyên cần import, thêm `--import` vào `open`, `refresh`, `capture` hoặc
 `capture-sequence`. Khi sửa GDScript/scene, `capture` mặc định nạp lại scene.
 
+## Điều khiển client bằng dòng lệnh (xd)
+
+`npm run -s xd -- <lệnh>` mở client desktop bản debug, mỗi phiên một tài khoản. Từ dòng lệnh,
+nó chụp màn hình, đọc cây node, chạm, chuyển màn, chơi PvP và sửa trạng thái ván qua dev
+console. Mỗi lệnh khoảng nửa giây, không cần export. Hướng dẫn: [tools/xd/README.md](../../tools/xd/README.md).
+Ngoài trình chỉnh sửa, `-- --play=<id>` mở thẳng sandbox như `?play=` trên web.
+
 ## Kết nối server
 
 `XomDaoClient` nói chuyện với server qua WebSocket thuần + JSON ở `/ws` (cùng cổng với API

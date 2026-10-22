@@ -5,7 +5,9 @@ description: Check a Godot screen or game table on real phone, tablet and deskto
 
 # Check a screen on phone sizes
 
-Never open a visible browser; everything here is headless.
+Never open a visible browser; everything here is headless. While iterating on a layout, the
+`xd` skill is faster (`xd size 20:9`, `xd shot`, `xd restart` after an edit); use this check
+for real devices, pixel density and notches.
 
 1. **Build and serve.** `npm run godot:export -- --debug`, then a dev server on free ports with
    no database (the environment may hold a real `DATABASE_URL`):
