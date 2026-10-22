@@ -68,6 +68,7 @@ func _ready() -> void:
 		queue_free()
 		return
 	theme = XomDaoUi.theme()
+	TestBridge.hub = self
 	_screen = Control.new()
 	_screen.name = "Screen"
 	_screen.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -988,9 +989,9 @@ func _say(text: String) -> void:
 	XomDaoToast.show_on(self, text, "warning")
 
 
-## A query parameter of the page's URL (web only).
+## A query parameter of the page's URL; off the web, `-- --<key>=<value>` on the command line.
 func _query(key: String) -> String:
 	if not OS.has_feature("web"):
-		return ""
+		return TestBridge.user_arg(key)
 	var js: String = "new URLSearchParams(location.search).get('%s') || ''" % key
 	return str(JavaScriptBridge.eval(js, true))

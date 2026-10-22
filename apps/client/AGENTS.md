@@ -21,12 +21,14 @@ the server; this project only shows state and sends moves. Folder guide (Vietnam
 ```
 project.godot       1280 × 720 base; fixed 16:9, 18:9, 19.5:9, 20:9 presets (canvas_items + keep, black bars), landscape, Compatibility renderer
 core/               Autoloads: FramePresets (best-fitting fixed frame on startup and resize), Net (the app's XomDaoClient, server_url()), Session (saved token, /api/auth register/login/logout),
-                    Wallet, ContentLoader (game packs), TestBridge (window.xomdao, debug web only)
+                    Wallet, ContentLoader (game packs), TestBridge (window.xomdao on debug web; xd on debug desktop)
+  xd_server.gd      xd's control channel (tools/xd): line JSON on 127.0.0.1, debug desktop builds with --xd-port
 hub/                main.gd routes the screens: lobby (island ring + HUD), select (game select),
                     ben (Bến), room (waiting room), the game with ☰, the result over it
   lobby/            HubLobby, HubIslandRing (ring layout, swipe/tap), HubIsland (drawn islands)
   select/           Game select: a rail of posters (splash art/ + flat logo/), genre objects
   touch_cancel.gd   DOM touchcancel capture for web gestures (before Godot releases the touch)
+  xd_nav.gd         xd's `go`: opens hub places and sandboxes through main.gd's own methods
   ben/ room/        Bến; waiting room (seat cards, option rows), result, paged Luật board
   home/ shop/       Nhà (HubHome: tabs stacked down the left beside one page, someone else's
                     read-only; avatar and frame equipment lives in Túi đồ) and Chợ (HubShop:
@@ -87,6 +89,12 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   bridge `window.xomdao` (`core/test_bridge.gd`): `scene()`, `tree(depth)`, `text(name)`,
   `rect(name)` (CSS px), `click(name)`, `state()`. The hub sets `TestBridge.scene`.
   `scripts/e2e/godot.mjs` wraps it for scenarios (`tap` clicks with the real mouse).
+- Debug desktop builds: `-- --xd-port=<port> --xd-key=<key>` opens xd's channel
+  (`core/xd_server.gd`, one `_cmd_<name>` method per command; `tools/xd/xd.mjs` is the CLI).
+  `--xd-profile=<name>` keeps that run's login token in `user://xd/<name>.cfg`, `--xd-token`
+  seeds it, `--xd-sound` keeps sound on. `--play=<id>` and `--room=<code>` do what `?play=` and
+  `?room=` do on the web. New command: add `_cmd_<name>` there, a verb in `tools/xd/xd.mjs`, and a
+  line in `tools/xd/README.md`.
 - The server connection is `XomDaoClient` (WebSocket + JSON on `/ws`): `connect_to_server`,
   `login_guest` / `login` / `login_token`, `create_room`, `quick_match(game_id)`, `join_room(code)`, `leave_room`,
   `start_game`, `send(event, payload)`, `owned_emotes()`, `send_emote(look)`, `request(event, data)`; signals
@@ -126,6 +134,7 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 | Command | What it does |
 | --- | --- |
 | `npm run godot:check` | gdformat --check, gdlint, the boundary rule, headless import, compile every script and scene, GUT. `npm run check` runs it when Godot is installed |
+| `npm run -s xd -- <command>` | Drive desktop debug clients: shots, node tree, taps, navigation, accounts, PvP rooms, dev console (`tools/xd/README.md`). Fastest way to look at a screen |
 | `npm run godot:capture` | Ask the already-running desktop debug game to save its current root viewport to `.shots/godot-live.png`; pass `-- --output .shots/name.png` to choose another file, or `-- --timeout 30` to wait longer |
 | `npm run godot:link` | (Re)make the `content/<id>` symlinks; check and export do it too |
 | `npm run godot:export` | Web build into `dist/` (`-- --debug` for a debug build) plus `dist/content/<id>.<hash>.pck` and `manifest.json`. Full exports reuse unchanged packs from `.tools/export/packs`; `-- --debug --game <id>` refreshes one pack in a matching existing debug build. Runs on a copy in `.tools/export/` because Godot's export filters do not follow symlinks |

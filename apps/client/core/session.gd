@@ -6,18 +6,34 @@ const FILE := "user://session.cfg"
 ## Where the old web app kept its token (localStorage), read once so its players stay logged in.
 const LEGACY_KEY := "xomdao:token"
 
+## Where the token is kept: FILE, or one file per `--xd-profile` so xd runs (tools/xd) side by
+## side stay different players.
+var _file: String = FILE
+
+
+func _ready() -> void:
+	if not OS.is_debug_build():
+		return
+	var profile: String = TestBridge.user_arg("xd-profile")
+	if profile != "":
+		DirAccess.make_dir_recursive_absolute("user://xd")
+		_file = "user://xd/%s.cfg" % profile.validate_filename()
+	var token: String = TestBridge.user_arg("xd-token")
+	if token != "":
+		save_token(token)
+
 
 func saved_token() -> String:
 	var config := ConfigFile.new()
-	if config.load(FILE) != OK:
-		return _legacy_token()
+	if config.load(_file) != OK:
+		return _legacy_token() if _file == FILE else ""
 	return str(config.get_value("session", "token", ""))
 
 
 func save_token(token: String) -> void:
 	var config := ConfigFile.new()
 	config.set_value("session", "token", token)
-	config.save(FILE)
+	config.save(_file)
 
 
 ## Logs in with the saved token. False when there is none, the server no longer knows it, or
