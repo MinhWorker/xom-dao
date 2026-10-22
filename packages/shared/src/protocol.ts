@@ -257,7 +257,7 @@ export const Catalog = z.object({
 });
 export type Catalog = z.infer<typeof Catalog>;
 
-/** An item at Chợ (`ITEMS` in items.ts), with whether you have it. */
+/** An item at Chợ (the server's `items` table, see items.ts), with whether you have it. */
 export const ShopItem = z.object({
   id: z.string(),
   slot: z.enum(ITEM_SLOTS),
@@ -283,7 +283,7 @@ export const Profile = z.object({
   avatar: z.string(),
   frame: z.string(),
   cardBack: z.string(),
-  /** Item ids, in `ITEMS` order. */
+  /** Item ids, in the shop's order. */
   owned: z.array(z.string()),
 });
 export type Profile = z.infer<typeof Profile>;

@@ -136,7 +136,7 @@ Làm dần, theo thứ tự chủ dự án muốn:
   đầu tiên (Hành động) thay đảo Sắp có, kèm Bom Nguyên Tố
 - Sự kiện theo mùa: `npm run new:event` tạo khung (ngày mở/đóng, mốc thưởng, bố cục Hành động);
   ví dụ đầy đủ `games/trung-thu`
-- Thêm vật phẩm và loại vật phẩm cho túi đồ, Chợ
+- Thêm loại vật phẩm cho túi đồ, Chợ (vật phẩm thì thêm ở trang quản lý `/console`)
 - Thêm thành tích (dữ liệu trong `meta.achievements`) và bảng xếp hạng (khung đã có: `ctx.stat`,
   cấp theo kinh nghiệm, Nhà và Đình)
 - Nhiều loại tài nguyên

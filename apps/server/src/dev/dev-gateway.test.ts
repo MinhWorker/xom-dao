@@ -8,6 +8,8 @@ import { EventsService } from '../events/events.service.js';
 import { MemoryEventsStore } from '../events/events.store.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { MemoryInventoryStore } from '../inventory/inventory.store.js';
+import { ItemsService } from '../items/items.service.js';
+import { MemoryItemsStore } from '../items/items.store.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MemoryLedgerStore } from '../ledger/ledger.store.js';
 import { MatchesService } from '../matches/matches.service.js';
@@ -27,7 +29,8 @@ function setup(dev: boolean) {
   const { room } = rooms.create('tic-tac-toe', { id: 'a', name: 'A' }, { opponent: 'bot' });
   const accounts = new AccountsService(new MemoryAccountsStore());
   const ledger = new LedgerService(new MemoryLedgerStore());
-  const inventory = new InventoryService(new MemoryInventoryStore(), accounts);
+  const items = new ItemsService(new MemoryItemsStore());
+  const inventory = new InventoryService(new MemoryInventoryStore(), accounts, items);
   const gateway = new RoomsGateway(
     rooms,
     accounts,
@@ -36,7 +39,8 @@ function setup(dev: boolean) {
     new CatalogService(rooms),
     ledger,
     inventory,
-    new ShopService(ledger, inventory),
+    new ShopService(ledger, inventory, items),
+    items,
     new EventsService(new MemoryEventsStore(), ledger, new EventClock()),
     new StatsService(new MemoryStatsStore(), ledger, accounts),
   );

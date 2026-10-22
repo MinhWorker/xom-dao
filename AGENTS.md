@@ -18,7 +18,7 @@ shared player data.
 | --- | --- |
 | A game or the SDK (`games/`, `packages/sdk/`) | `games/AGENTS.md` |
 | The Godot client: hub screens, HUD, UI kit, a game's `godot/` folder, the Godot toolchain (`apps/client/`, `tools/godot/`) | `apps/client/AGENTS.md` |
-| The server, rooms, accounts, DB, socket protocol (`apps/server/`, `packages/shared/`) | `apps/server/AGENTS.md` |
+| The server, rooms, accounts, DB, socket protocol, the console's API (`apps/server/`, `packages/shared/`, `apps/console/`) | `apps/server/AGENTS.md` |
 | Images or sounds, for the app or a game | `assets/AGENTS.md` |
 | A new game or event, an asset, a phone-size check | the skills in `.claude/skills/` |
 
@@ -29,6 +29,7 @@ games/<id>/        @xomdao/game-<id>  One game = one folder; adding or changing 
 packages/sdk/      @xomdao/sdk        The only API games use
 packages/shared/   @xomdao/shared     Core only, never imported by games: socket protocol, accounts, game registry
 apps/server/       @xomdao/server     NestJS, WebSocket + JSON on /ws, the HTTP API
+apps/console/      @xomdao/console    Vite + React admin page at /console (users, shop items, events); calls /api/console
 apps/client/                          Godot 4 client (GDScript), not an npm workspace; its web export is the site
 assets/            The app's own art and audio: originals (Git LFS), ready files in app/ (plain git), prompts.json
 scripts/           Build helpers (libs.mjs), the dev web server (web.mjs), generators (new.mjs), asset tools, smoke/e2e
@@ -43,7 +44,7 @@ docs/              Shared guides for people: making-a-game, ui-guide, deploy
 | Command | What it does |
 | --- | --- |
 | `npm install` | Install (npm only, not pnpm/yarn). Also writes the game list: rerun it and restart dev after adding a game folder |
-| `npm run dev` | Server on :8033; `scripts/web.mjs` on :5033 serves the Godot export (`apps/client/dist`) at `/` and forwards `/api` and `/ws`. Export first: `npm run godot:export -- --debug`. `PORT=8133 WEB_PORT=5133` moves them |
+| `npm run dev` | Server on :8033; `scripts/web.mjs` on :5033 serves the Godot export (`apps/client/dist`) at `/`, the console (`apps/console/dist`, rebuilt on change) at `/console`, and forwards `/api` and `/ws`. Export first: `npm run godot:export -- --debug`. `PORT=8133 WEB_PORT=5133` moves them |
 | `npm run check` | Lint + typecheck + `gen:protocol --check` + unit tests, plus `godot:check` when Godot is installed |
 | `npm run gen:protocol` | Regenerate the Godot protocol classes from the zod schemas in `packages/shared/src/protocol.ts` |
 | `npm run format` | Auto-fix formatting and safe lint issues (Biome) |
