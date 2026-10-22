@@ -30,6 +30,10 @@ Each command takes about 0.5 s, and there is no web export or browser. The full 
   need to reach (as in `apps/client/AGENTS.md`). `@Type@N` names work, but only for that run.
 - Compare screens: `compare <session> <session> [node] [--scale 0.5]` makes one labelled image.
   Use `shot --rect x,y,w,h` (boxes from `tree --rects`) to look closely at an area.
+- Motion and sound: `clip --ms 1500 <command>` films a command into one contact sheet, with each
+  frame's time and the sounds that started (♪); check that a sound lands with its motion and
+  that nothing changes too early. `sounds` lists what played (it works muted and under xvfb).
+  `timescale 0.25` slows the game down to inspect an animation.
 - `wait` instead of sleeping: `--text "Status=Lượt bạn"`, `--node ResultBoard`,
   `--expr 'client.snapshot.status == "finished"'`.
 - PvP: `start a`, `start b`, `-s a room create <game> --json` for the code, `-s b room join`,

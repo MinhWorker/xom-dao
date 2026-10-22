@@ -76,6 +76,26 @@ Chọn node bằng bộ chọn. Mỗi bước tìm node đầu tiên đang hiệ
 
 Ví dụ: `Board/Cell_1_2`, `Seat_0/type:Label[1]`. Toạ độ là pixel cửa sổ, cùng hệ với ảnh `shot`.
 
+## Chuyển động và âm thanh
+
+```sh
+npm run -s xd -- tap Square_64
+npm run -s xd -- clip --ms 1500 --fps 10 tap Square_1   # quay lại nước ăn quân
+npm run -s xd -- sounds                                 # âm thanh đã phát từ lần hỏi trước
+npm run -s xd -- timescale 0.25                         # chạy chậm 4 lần để soi hiệu ứng
+```
+
+- `clip [--ms 1500] [--fps 10] [--scale 0.5] [--node N | --rect x,y,w,h] <lệnh>`: quay các
+  khung hình từ lúc lệnh bắt đầu, ghép thành một bảng khung (`.shots/xd-<phiên>-clip.png`).
+  Mỗi khung ghi thời điểm và tên âm thanh vừa phát (♪), nên đối chiếu được hình với tiếng.
+  Khung được giữ trong bộ nhớ lúc quay và chỉ ghi ra đĩa khi dừng, để việc ghi file không làm
+  chậm hiệu ứng.
+- `record start | stop`: như `clip` nhưng tự bấm bắt đầu và dừng, để quay quanh bất cứ việc
+  gì, kể cả lệnh của phiên khác hay lệnh `dev`.
+- `sounds [--all] [--clear]`: mỗi lần `play()` của một AudioStreamPlayer, gồm thời điểm, tên,
+  độ dài, bus và node. Ghi được cả khi phiên đang tắt tiếng hay chạy dưới xvfb không có loa.
+- `timescale [K]`: đổi `Engine.time_scale`. Âm thanh vẫn giữ tốc độ thường.
+
 ## PvP và sửa trạng thái ván
 
 ```sh

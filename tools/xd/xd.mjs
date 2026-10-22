@@ -2,6 +2,7 @@
 // xd: drive the Godot client from the command line, like Playwright for Godot. See HELP below
 // and tools/xd/README.md. Sessions are desktop debug clients with a control channel
 // (apps/client/core/xd_server.gd); state lives in .xd/.
+import { rmSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import sharp from 'sharp';
@@ -68,6 +69,15 @@ Acting
   login <account>                 switch this session to another account
   size <WxH|16:9|18:9|19.5:9|20:9>
 
+Motion and sound
+  clip [--ms 1500] [--fps 10] [--scale 0.5] [--node N | --rect …] <command> [args…]
+                         film a command: frames from its start for --ms, as one contact sheet
+                         with each frame's time and the sounds that started (.shots/xd-<s>-clip.png)
+  record start [--fps 10] [--scale 0.5] [--node N | --rect …] | record stop
+                         the same by hand, around anything (other sessions, dev lines…)
+  sounds [--all] [--clear]        sounds started since the last call: time, name, length, bus
+  timescale [K]                   run the game K times as fast (0.25 = slow motion); no K reads it
+
 Waiting and scripting
   wait [--scene S] [--node N] [--gone N] [--text NODE=PART] [--expr GDSCRIPT] [--timeout MS]
   eval <GDScript expression>      names: hub, client, root, bridge; find("Name"), node("Name")
@@ -92,7 +102,6 @@ const { values: flags, positionals } = parseArgs({
     server: { type: 'string' },
     visible: { type: 'boolean' },
     import: { type: 'boolean' },
-    all: { type: 'boolean' },
     port: { type: 'string' },
     'bot-delay': { type: 'string' },
     out: { type: 'string' },
@@ -102,6 +111,9 @@ const { values: flags, positionals } = parseArgs({
     depth: { type: 'string' },
     rects: { type: 'boolean' },
     ms: { type: 'string' },
+    fps: { type: 'string' },
+    all: { type: 'boolean' },
+    clear: { type: 'boolean' },
     submit: { type: 'boolean' },
     options: { type: 'string' },
     watch: { type: 'boolean' },
@@ -117,7 +129,9 @@ const { values: flags, positionals } = parseArgs({
   },
 });
 
-const [command, ...rest] = positionals;
+const [command, ...words] = positionals;
+/** The command's own words (`clip` hands the rest to the command it films). */
+let rest = words;
 
 function sessionName(fromPositional) {
   return fromPositional ?? flags.session ?? process.env.XD_SESSION ?? 'main';
@@ -243,6 +257,65 @@ async function sideBySide(tiles, out) {
 }
 
 const shortPath = (path) => (path.startsWith(root) ? relative(root, path) : path);
+
+/** Frames in a grid, each under its time and the sounds that started with it. */
+async function contactSheet(frames, out) {
+  const first = await sharp(frames[0].path).metadata();
+  const tile = Math.min(first.width, 400);
+  const tall = Math.round((first.height * tile) / first.width);
+  const bar = 30;
+  const columns = Math.min(4, frames.length);
+  const rows = Math.ceil(frames.length / columns);
+  const composites = [];
+  for (const [i, frame] of frames.entries()) {
+    const left = (i % columns) * (tile + 6);
+    const top = Math.floor(i / columns) * (tall + bar + 6);
+    const sounds = frame.sounds.length ? `  ♪ ${frame.sounds.join(', ')}` : '';
+    const label = Buffer.from(
+      `<svg width="${tile}" height="${bar}"><rect width="100%" height="100%" fill="${sounds ? '#3a2a12' : '#1d2630'}"/>` +
+        `<text x="8" y="21" fill="#f3ead8" font-family="sans-serif" font-size="16">` +
+        `${escapeXml(`${(frame.t / 1000).toFixed(2)}s${sounds}`)}</text></svg>`,
+    );
+    const image = await sharp(frame.path).resize(tile, tall).png().toBuffer();
+    composites.push({ input: label, left, top }, { input: image, left, top: top + bar });
+  }
+  await sharp({
+    create: {
+      width: columns * (tile + 6) - 6,
+      height: rows * (tall + bar + 6) - 6,
+      channels: 3,
+      background: '#0e1318',
+    },
+  })
+    .composite(composites)
+    .png()
+    .toFile(out);
+  return out;
+}
+
+function recordArgs() {
+  return {
+    action: 'start',
+    fps: flags.fps && Number(flags.fps),
+    scale: flags.scale && Number(flags.scale),
+    node: flags.node,
+    rect: rectFlag(),
+    ms: flags.ms && Number(flags.ms) + 1000,
+  };
+}
+
+async function stopRecording(name, sheet) {
+  const dir = resolve(root, '.xd', 'clips', name);
+  rmSync(dir, { recursive: true, force: true });
+  const done = await act('record', { action: 'stop', dir }, 60_000);
+  if (done.frames.length === 0) throw new XdError('No frames were recorded');
+  const out = await contactSheet(done.frames, outPath(name, sheet));
+  const heard = done.frames.flatMap((f) => f.sounds.map((sound) => `${f.t}ms ${sound}`));
+  if (flags.json) return show({ ...done, sheet: out });
+  console.log(`${shortPath(out)} ${done.frames.length} frames over ${done.ms} ms`);
+  console.log(heard.length ? `sounds: ${heard.join(', ')}` : 'sounds: none');
+  if (done.after.length) console.log(`after the last frame: ${done.after.join(', ')}`);
+}
 
 async function act(cmd, args, timeout) {
   return call(running(), cmd, args, timeout);
@@ -393,6 +466,54 @@ const commands = {
     }
     const result = await sideBySide(tiles, outPath('compare', '.shots/xd-compare.png'));
     show(flags.json ? result : `${shortPath(result.path)} ${result.width}x${result.height}`);
+  },
+
+  async clip() {
+    const [sub, ...more] = rest;
+    if (!commands[sub] || ['clip', 'record', 'start', 'stop', 'restart'].includes(sub)) {
+      throw new XdError('clip films one session command: xd clip [--ms 1500] tap Square_64');
+    }
+    const name = sessionName();
+    const ms = Number(flags.ms ?? 1500);
+    const started = Date.now();
+    await act('record', recordArgs());
+    const out = flags.out;
+    flags.out = undefined;
+    rest = more;
+    try {
+      await commands[sub]();
+    } finally {
+      flags.out = out;
+    }
+    const left = ms - (Date.now() - started);
+    if (left > 0) await new Promise((done) => setTimeout(done, left));
+    await stopRecording(name, `.shots/xd-${name}-clip.png`);
+  },
+
+  async record() {
+    const [action] = rest;
+    const name = sessionName();
+    if (action === 'start') {
+      await act('record', recordArgs());
+      return show(`recording ${name}; stop with: npm run -s xd -- record stop`);
+    }
+    if (action === 'stop') return stopRecording(name, `.shots/xd-${name}-clip.png`);
+    throw new XdError('record start | stop');
+  },
+
+  async sounds() {
+    const result = await act('sounds', { all: flags.all, clear: flags.clear });
+    if (flags.json) return show(result);
+    if (result.sounds.length === 0) return console.log('no sounds');
+    for (const s of result.sounds) {
+      const ago = ((result.now - s.t) / 1000).toFixed(2);
+      console.log(`${ago}s ago  ${s.sound.padEnd(18)} ${s.seconds}s  ${s.bus}  ${s.node}`);
+    }
+  },
+
+  async timescale() {
+    const scale = rest[0] === undefined ? undefined : Number(rest[0]);
+    show(`timescale ${await act('timescale', scale === undefined ? {} : { scale })}`);
   },
 
   async tree() {

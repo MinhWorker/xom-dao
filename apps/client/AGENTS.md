@@ -23,6 +23,7 @@ project.godot       1280 × 720 base; fixed 16:9, 18:9, 19.5:9, 20:9 presets (ca
 core/               Autoloads: FramePresets (best-fitting fixed frame on startup and resize), Net (the app's XomDaoClient, server_url()), Session (saved token, /api/auth register/login/logout),
                     Wallet, ContentLoader (game packs), TestBridge (window.xomdao on debug web; xd on debug desktop)
   xd_server.gd      xd's control channel (tools/xd): line JSON on 127.0.0.1, debug desktop builds with --xd-port
+  xd_media.gd       xd's sound log (every play(), even muted or under xvfb) and frame recorder
 hub/                main.gd routes the screens: lobby (island ring + HUD), select (game select),
                     ben (Bến), room (waiting room), the game with ☰, the result over it
   lobby/            HubLobby, HubIslandRing (ring layout, swipe/tap), HubIsland (drawn islands)

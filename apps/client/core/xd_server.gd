@@ -15,6 +15,7 @@ var _server := TCPServer.new()
 var _key: String = ""
 var _peers: Array[StreamPeerTCP] = []
 var _buffers: Dictionary = {}
+var _media: Node = (load("res://core/xd_media.gd") as GDScript).new()
 
 
 ## Listens on 127.0.0.1:`port`; requests must carry `key`.
@@ -24,6 +25,8 @@ func start(port: int, key: String) -> bool:
 	if error != OK:
 		push_error("xd: cannot listen on port %d (error %d)" % [port, error])
 		return false
+	_media.name = "XdMedia"
+	add_child(_media)
 	print("xd:listening %d" % port)
 	return true
 
@@ -359,6 +362,50 @@ func _cmd_size(args: Dictionary) -> Dictionary:
 	get_window().size = size
 	await _frames(4)
 	return await _cmd_ping({})
+
+
+# ── Motion and sound ─────────────────────────────────────────────────────────────────────
+
+
+## { all = false, clear = false }: the sounds that started since the last call (or all of the
+## log), each { t (ms on the run's clock), sound, path, seconds, bus, volume_db, node }.
+func _cmd_sounds(args: Dictionary) -> Dictionary:
+	var heard: Array[Dictionary] = _media.call(
+		"sounds", args.get("all") == true, args.get("clear") == true
+	)
+	return _ok({"now": _media.call("now"), "sounds": heard})
+
+
+## { action: start, fps = 10, scale = 0.5, node? | rect?, ms = 10000 } starts recording frames;
+## { action: stop, dir } writes them as PNGs into dir and lists them with the sounds heard.
+func _cmd_record(args: Dictionary) -> Dictionary:
+	if args.get("action") == "stop":
+		var done: Dictionary = _media.call("record_stop", str(args.get("dir", "")))
+		return _ok(done) if not done.is_empty() else _fail("Not recording")
+	var area := Rect2()
+	var box: Variant = args.get("rect")
+	if str(args.get("node", "")) != "":
+		box = TestBridge.node_rect(TestBridge.find(str(args["node"])) as Control)
+		if box == null:
+			return _fail("No visible control %s" % args["node"])
+	if box is Array and (box as Array).size() == 4:
+		area = Rect2(box[0], box[1], box[2], box[3])
+	_media.call(
+		"record_start",
+		float(args.get("fps", 10)),
+		float(args.get("scale", 0.5)),
+		area,
+		int(args.get("ms", 10_000))
+	)
+	return _ok({"now": _media.call("now")})
+
+
+## { scale }: how fast the game runs (Engine.time_scale: 0.25 is four times slower). Sounds keep
+## their speed.
+func _cmd_timescale(args: Dictionary) -> Dictionary:
+	if args.has("scale"):
+		Engine.time_scale = clampf(float(args["scale"]), 0.05, 4.0)
+	return _ok(Engine.time_scale)
 
 
 # ── Waiting and scripting ─────────────────────────────────────────────────────────────────
