@@ -3,7 +3,6 @@ import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/com
 import { ConsoleError, type ConsoleIssue } from '@xomdao/sdk';
 import {
   COIN,
-  itemFor,
   type JoinedRoom,
   type RoomRole,
   type ServerToClientEvents,
@@ -15,6 +14,7 @@ import { DevConsoleService } from '../dev/dev-console.service.js';
 import { followRoomLog } from '../dev/room-log.js';
 import { EventError, EventsService } from '../events/events.service.js';
 import { InventoryError, InventoryService } from '../inventory/inventory.service.js';
+import { ItemsService } from '../items/items.service.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MatchesService } from '../matches/matches.service.js';
 import { ShopError, ShopService } from '../shop/shop.service.js';
@@ -103,6 +103,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     private readonly ledger: LedgerService,
     private readonly inventory: InventoryService,
     private readonly shop: ShopService,
+    private readonly items: ItemsService,
     private readonly events: EventsService,
     private readonly stats: StatsService,
   ) {
@@ -401,7 +402,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       if (!room || room.code !== roomCode) throw new RoomError('Bạn chưa ở trong phòng này');
 
       const emote = typeof req?.emote === 'string' ? req.emote : '';
-      const item = itemFor('emote', emote);
+      const item = await this.items.forLook('emote', emote);
       if (!item) throw new InventoryError('Biểu cảm không hợp lệ');
       if (!(await this.inventory.owns(playerId, item.id)))
         throw new InventoryError('Bạn chưa có biểu cảm này');

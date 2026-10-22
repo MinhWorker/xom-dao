@@ -50,13 +50,15 @@ khiển bot/timer, lưu ván) từ console của trình duyệt. Xem
   [apps/client/README.md](apps/client/README.md); trải nghiệm và HUD:
   [docs/experience.md](docs/experience.md), khung ngang: [docs/ui-guide.md](docs/ui-guide.md)
 - `apps/server`: NestJS, WebSocket + JSON ở `/ws`; server giữ các phòng và kiểm tra mọi nước đi
+- `apps/console`: trang quản lý ở `/console` (người dùng, vật phẩm, sự kiện), xem
+  [docs/console.md](docs/console.md)
 
 `npm run check` chạy lint, kiểm tra kiểu và test (và `godot:check` khi đã cài Godot). Các lệnh khác và bản đồ đầy đủ: `AGENTS.md`.
 
 ## Đóng góp
 
 Ai cũng được chào đón, dùng công cụ nào cũng được. Xem [CONTRIBUTING.md](CONTRIBUTING.md).
-Triển khai: [docs/deploy.md](docs/deploy.md).
+Triển khai: [docs/deploy.md](docs/deploy.md). Trang quản lý `/console`: [docs/console.md](docs/console.md).
 
 ## Giấy phép
 

@@ -4,6 +4,8 @@ import { AccountsService } from '../accounts/accounts.service.js';
 import { MemoryAccountsStore } from '../accounts/accounts.store.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { MemoryInventoryStore } from '../inventory/inventory.store.js';
+import { ItemsService } from '../items/items.service.js';
+import { MemoryItemsStore } from '../items/items.store.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MemoryLedgerStore } from '../ledger/ledger.store.js';
 import { ShopService } from './shop.service.js';
@@ -11,8 +13,9 @@ import { ShopService } from './shop.service.js';
 async function setup(coins: number) {
   const accounts = new AccountsService(new MemoryAccountsStore());
   const ledger = new LedgerService(new MemoryLedgerStore());
-  const inventory = new InventoryService(new MemoryInventoryStore(), accounts);
-  const shop = new ShopService(ledger, inventory);
+  const items = new ItemsService(new MemoryItemsStore());
+  const inventory = new InventoryService(new MemoryInventoryStore(), accounts, items);
+  const shop = new ShopService(ledger, inventory, items);
   const { user } = await accounts.guest('Minh');
   if (coins)
     await ledger.apply({

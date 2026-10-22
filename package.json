@@ -14,7 +14,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/libs.mjs --generate",
-    "dev": "npm run build -w @xomdao/shared && concurrently -k -n shared,server,web -c magenta,blue,green \"npm run dev -w @xomdao/shared\" \"npm run dev -w @xomdao/server\" \"node scripts/web.mjs\"",
+    "dev": "npm run build -w @xomdao/shared && concurrently -k -n shared,server,console,web -c magenta,blue,yellow,green \"npm run dev -w @xomdao/shared\" \"npm run dev -w @xomdao/server\" \"npm run dev -w @xomdao/console\" \"node scripts/web.mjs\"",
     "build": "npm run build -w @xomdao/shared && npm run build -w @xomdao/server",
     "typecheck": "npm run build -w @xomdao/shared && npm run typecheck --workspaces --if-present",
     "test": "npm run build -w @xomdao/shared && npm run test --workspaces --if-present",

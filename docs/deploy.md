@@ -83,7 +83,9 @@ lại.
 `buildCommand` là `node tools/godot/vercel.mjs`: lệnh này cài Godot và template web (khoảng 80 MB
 tải về mỗi lần build) rồi xuất client vào `apps/client/dist`, thư mục Vercel phục vụ ở `/`. Bản
 thật dùng bản release, bản xem trước của PR dùng bản debug, có cầu nối test và sandbox
-`?play=<id>`. Link cũ `/godot/…` chuyển về `/…`.
+`?play=<id>`. Link cũ `/godot/…` chuyển về `/…`. Sau đó lệnh build trang quản lý
+(`apps/console`) và chép vào `apps/client/dist/console`, phục vụ ở `/console` (xem
+[docs/console.md](console.md)).
 
 ## Game server → Render
 

@@ -12,6 +12,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -111,8 +112,30 @@ export const balances = pgTable(
 );
 
 /**
- * Túi đồ (apps/server/src/inventory): the items each account bought or won (`ITEMS` in
- * @xomdao/shared). Free items are everyone's and never stored. Only the inventory writes it.
+ * Vật phẩm (apps/server/src/items): every item that can be owned and is sold at Chợ, edited from
+ * the console. Started as `SEED_ITEMS` (migration 0008). Only the Items module writes it.
+ */
+export const items = pgTable(
+  'items',
+  {
+    id: text('id').primaryKey(),
+    /** `ItemSlot` in @xomdao/shared. */
+    slot: text('slot').notNull(),
+    /** One of `ITEM_LOOKS[slot]`: the art the client draws. */
+    look: text('look').notNull(),
+    name: text('name').notNull(),
+    /** In `core:coin`; 0 = everyone has it. */
+    price: integer('price').notNull(),
+    /** The shop's order among items of the same price. */
+    position: integer('position').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('items_slot_look').on(t.slot, t.look)],
+);
+
+/**
+ * Túi đồ (apps/server/src/inventory): the items each account bought or won (`items`). Free items
+ * are everyone's and never stored. Only the inventory writes it.
  */
 export const inventoryItems = pgTable(
   'inventory_items',

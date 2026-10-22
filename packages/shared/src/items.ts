@@ -1,11 +1,15 @@
 /**
- * Things a player can own (Túi đồ) and buy at Chợ, as data. Ids are namespaced (`core:` for the
- * platform's own; a game or event adds `<id>:…`). Avatar, frame and card-back items change a
- * player's appearance; emote items are sent in a room and drawn by the game's table.
+ * Things a player can own (Túi đồ) and buy at Chợ. The live list is the server's `items` table,
+ * edited from the console (/console/items); `SEED_ITEMS` is what that table started with (and
+ * what a server without a database uses). Ids are namespaced (`core:` for the platform's own; a
+ * game or event adds `<id>:…`). Avatar, frame and card-back items change a player's appearance;
+ * emote items are sent in a room and drawn by the game's table.
  *
- * Free items (price 0) belong to everyone and are never stored. Append new items; never reuse
- * or rename an id, since inventories keep them.
+ * Free items (price 0) belong to everyone and are never stored. Never reuse or rename an id,
+ * since inventories keep them. An item's `look` must be one the client has art for
+ * (`ITEM_LOOKS`).
  */
+import { z } from 'zod';
 import {
   AVATARS,
   type Avatar,
@@ -93,7 +97,8 @@ export const EMOTES = [
   { look: 'laugh', name: 'Cười lớn', price: 80 },
 ] as const;
 
-export const ITEMS: readonly ItemDef[] = [
+/** The items the shop started with (migration `0008_items` and the memory store). */
+export const SEED_ITEMS: readonly ItemDef[] = [
   ...AVATARS.map((look) => ({
     id: `core:avatar-${look}`,
     slot: 'avatar' as const,
@@ -121,11 +126,52 @@ export const ITEMS: readonly ItemDef[] = [
   })),
 ];
 
-export const getItem = (id: string) => ITEMS.find((item) => item.id === id);
+/** The looks the client has art for, per slot: an item can only give one of these. */
+export const ITEM_LOOKS: Record<ItemSlot, readonly string[]> = {
+  avatar: AVATARS,
+  frame: FRAMES,
+  'card-back': CARD_BACKS,
+  emote: EMOTES.map((emote) => emote.look),
+};
 
-/** The item that gives this look in this slot. */
-export const itemFor = (slot: ItemSlot, look: string) =>
-  ITEMS.find((item) => item.slot === slot && item.look === look);
+/** A new item, as the console sends it. */
+export const itemSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9-]+:[a-z0-9-]+$/, 'Mã món dạng <nhóm>:<tên>, chỉ chữ thường, số và -'),
+    slot: z.enum(ITEM_SLOTS, 'Loại món không hợp lệ'),
+    look: z.string(),
+    name: z.string().trim().min(1, 'Bạn cần nhập tên món').max(40, 'Tên món tối đa 40 ký tự'),
+    price: z
+      .number('Giá phải là số')
+      .int('Giá phải là số nguyên')
+      .min(0, 'Giá không được âm')
+      .max(1_000_000, 'Giá tối đa 1.000.000 xu'),
+  })
+  .refine((item) => ITEM_LOOKS[item.slot].includes(item.look), {
+    message: 'Hình này không có cho loại món đã chọn',
+    path: ['look'],
+  });
+
+/** What the console may change on an item (its id never changes). */
+export const itemChangeSchema = z.object({
+  slot: z.enum(ITEM_SLOTS, 'Loại món không hợp lệ').optional(),
+  look: z.string().optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Bạn cần nhập tên món')
+    .max(40, 'Tên món tối đa 40 ký tự')
+    .optional(),
+  price: z
+    .number('Giá phải là số')
+    .int('Giá phải là số nguyên')
+    .min(0, 'Giá không được âm')
+    .max(1_000_000, 'Giá tối đa 1.000.000 xu')
+    .optional(),
+});
 
 /** The look each slot has before anything is equipped. */
 export const DEFAULT_LOOKS: Record<Exclude<ItemSlot, 'emote'>, string> = {

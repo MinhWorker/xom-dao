@@ -1,5 +1,5 @@
 // The dev web server (`npm run dev`): serves the Godot client's web build (apps/client/dist, from
-// `npm run godot:export`) at / and forwards /api and the /ws WebSocket to the game server, so the
+// `npm run godot:export`) at /, the console's build (apps/console/dist) at /console, and forwards /api and the /ws WebSocket to the game server, so the
 // browser talks to one origin (this also makes LAN play work without extra config). Production
 // serves the same build from Vercel (vercel.json).
 //
@@ -13,8 +13,10 @@ import { fileURLToPath } from 'node:url';
 const webPort = Number(process.env.WEB_PORT ?? 5033);
 const apiPort = Number(process.env.PORT ?? 8033);
 const dist = fileURLToPath(new URL('../apps/client/dist', import.meta.url));
+const consoleDist = fileURLToPath(new URL('../apps/console/dist', import.meta.url));
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript',
   '.json': 'application/json',
   '.wasm': 'application/wasm',
@@ -33,6 +35,9 @@ const server = createServer((req, res) => {
     res.writeHead(302, { Location: path + url.search }).end();
     return;
   }
+  if (url.pathname === '/console' || url.pathname.startsWith('/console/')) {
+    return serveConsole(url.pathname.slice('/console'.length), res);
+  }
   const path = normalize(decodeURIComponent(url.pathname));
   const file = join(dist, path === '/' ? 'index.html' : path);
   if (!file.startsWith(dist) || !existsSync(file) || statSync(file).isDirectory()) {
@@ -46,6 +51,25 @@ const server = createServer((req, res) => {
   });
   createReadStream(file).pipe(res);
 });
+
+/** The console: its files, and its index.html for every page path (/console/users…). */
+function serveConsole(rest, res) {
+  const path = normalize(decodeURIComponent(rest || '/'));
+  let file = join(consoleDist, path);
+  if (!file.startsWith(consoleDist) || !existsSync(file) || statSync(file).isDirectory()) {
+    file = join(consoleDist, 'index.html');
+  }
+  if (!existsSync(file)) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('No console build: npm run build -w @xomdao/console');
+    return;
+  }
+  res.writeHead(200, {
+    'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream',
+    'Cache-Control': 'no-cache',
+  });
+  createReadStream(file).pipe(res);
+}
 
 /** An /api request, passed to the game server as it is. */
 function forward(req, res) {

@@ -12,7 +12,9 @@ src/accounts/   Username/password (scrypt) and login tokens
 src/catalog/    The hub's catalog (`catalog:get`): core genres + a card per game with a genre
 src/ledger/     Ledger: the only module that changes balances (`ledger_entries`, `balances`)
 src/inventory/  Túi đồ: what each account owns (`inventory_items`), equipping looks, profiles
+src/items/      Vật phẩm: the item list (`items` table), read by Túi đồ and Chợ, edited from the console
 src/shop/       Chợ: `shop:list` and `shop:buy`, paid through the Ledger
+src/console/    The console's HTTP API (/api/console/*): question gate, accounts and items CRUD
 src/events/     Sự kiện: event points (`event_points`), claimed tiers (`event_claims`), EventClock
 src/stats/      Stats, achievements, rankings (`player_stats`, `stat_matches`, `achievements`)
 src/matches/    Match history: finished games (fed by RoomsService.onFinished), `history:recent`
@@ -20,7 +22,7 @@ src/db/         Drizzle schema; migrations in drizzle/
 src/version.ts  For /api/health
 packages/shared/src/protocol.ts   The protocol as zod schemas (types, requests, events) + PROTOCOL_VERSION
 packages/shared/src/catalog.ts    Genre list (core data), GameCard, metaProblems (registry test)
-packages/shared/src/items.ts      Item catalog (ITEMS: id, slot, look, name, price), card backs
+packages/shared/src/items.ts      ItemDef, SEED_ITEMS (the table's starting rows), ITEM_LOOKS, item schemas, card backs
 packages/shared/src/achievements.ts  ACHIEVEMENTS (the hub's own + each game's), levels, boards
 packages/shared/src/registry.ts   games/getGame, from the generated (gitignored) src/generated/games.ts
 ```
@@ -81,9 +83,14 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 
 ## Inventory and Shop
 
-- Items are data in `packages/shared/src/items.ts` (`core:avatar-<look>`,
-  `core:frame-<look>`, `core:card-back-<look>`, `core:emote-<look>`). Append new ones; never reuse or rename an id. Price 0 = everyone has
-  it, so free items are never stored.
+- Items live in the `items` table, owned by `ItemsService` (src/items), and are edited from the
+  console. Migration `0008_items` seeded it with `SEED_ITEMS` (`core:avatar-<look>`,
+  `core:frame-<look>`, `core:card-back-<look>`, `core:emote-<look>`); without `DATABASE_URL` the
+  memory store starts from the same list. Never reuse or rename an id. An item's `look` must be in
+  `ITEM_LOOKS[slot]` (the art the client has), and a slot + look belongs to one item. Price 0 =
+  everyone has it, so free items are never stored. `ItemsService` caches the list in memory (one
+  server) and drops the cache on every write. A deleted item disappears from Chợ and Túi đồ; its
+  `inventory_items` rows stay.
 - `InventoryService` owns `inventory_items` (user, item). `inventory:get { userId? }` returns a
   `Profile` (yours, or anyone's, read-only); `inventory:equip { itemId }` sets `users.avatar`,
   `users.frame` or `users.card_back` through `AccountsService.setLooks`, then the gateway refreshes
@@ -154,6 +161,23 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - **DB**: edit `src/db/schema.ts`, then run `npm run db:generate -w @xomdao/server`. Migrations apply
   on server start.
 - A migration must work with the previous server build: add first, remove later.
+
+## Console (/console)
+
+- `apps/console` is a Vite + React page, built to `apps/console/dist`; `scripts/web.mjs` serves it
+  at `/console` in dev, `tools/godot/vercel.mjs` copies it to `apps/client/dist/console` on Vercel
+  (`vercel.json` rewrites `/console/*` to its index.html). It calls `XOMDAO_SERVER_URL` (baked in
+  at build) or its own origin.
+- `ConsoleModule` (src/console) owns no table. `GET /api/console/question` returns the question;
+  `POST /api/console/login { answer }` compares the answer (NFC, lowercase, spaces squeezed)
+  against a sha256 in `console-auth.service.ts` or `XOMDAO_CONSOLE_ANSWER`, allows 5 wrong answers
+  per address per 10 minutes, and returns a random token kept in memory for 12 hours.
+- Every other route needs `Authorization: Bearer <token>` (`ConsoleGuard`): `users` (list with
+  `q`/`page`, create, `PATCH` name/password, delete) through `AccountsService`, and `items`
+  (list with `slots`/`looks`, create, `PATCH`, delete) through `ItemsService`. Refusals are 400
+  `{ message }` in Vietnamese. A new password logs the account out everywhere; deleting an
+  account cascades to its rows (match history keeps the name).
+- Sự kiện is an empty page for now.
 
 ## Dev Console
 

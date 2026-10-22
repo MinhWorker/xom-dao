@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AccountsModule } from './accounts/accounts.module.js';
+import { ConsoleModule } from './console/console.module.js';
 import { DbModule } from './db/db.module.js';
 import { EventsModule } from './events/events.module.js';
 import { HealthController } from './health.controller.js';
 import { InventoryModule } from './inventory/inventory.module.js';
+import { ItemsModule } from './items/items.module.js';
 import { LedgerModule } from './ledger/ledger.module.js';
 import { MatchesModule } from './matches/matches.module.js';
 import { RoomsModule } from './rooms/rooms.module.js';
@@ -18,11 +20,13 @@ import { StatsModule } from './stats/stats.module.js';
     AccountsModule,
     MatchesModule,
     LedgerModule,
+    ItemsModule,
     InventoryModule,
     ShopModule,
     EventsModule,
     StatsModule,
     RoomsModule,
+    ConsoleModule,
   ],
   controllers: [HealthController],
 })
