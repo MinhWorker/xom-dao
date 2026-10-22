@@ -51,7 +51,8 @@ npm run -s xd -- stop --all && npm run -s xd -- server stop
 
 | Lệnh | Việc |
 | --- | --- |
-| `shot [node] [--out f.png] [--pad N] [--scale K]` | PNG của cửa sổ hoặc riêng một node |
+| `shot [node] [--rect x,y,w,h] [--out f.png] [--pad N] [--scale K]` | PNG của cửa sổ, một node hoặc một vùng |
+| `compare <phiên> <phiên>… [node] [--rect …] [--scale K]` | Cùng một ảnh từ nhiều phiên, ghép cạnh nhau có nhãn (`.shots/xd-compare.png`) |
 | `tree [node] [--depth N] [--rects] [--json]` | Cây node đang hiện: tên, loại, chữ, khung |
 | `find <node>` / `text <node>` | Mô tả một node / chữ của nó |
 | `state [đường.dẫn]` | Màn, người chơi, snapshot của phòng, số dư |
@@ -65,8 +66,15 @@ npm run -s xd -- stop --all && npm run -s xd -- server stop
 | `wait --scene/--node/--gone/--text NODE=CHỮ/--expr …` | Chờ đến khi điều kiện đúng |
 | `eval <biểu thức GDScript>` | Đọc hoặc gọi bất cứ gì: `hub`, `client`, `root`, `bridge`, `find("Tên")` |
 
-Một node được gọi bằng tên (`Play`) hoặc bằng đường dẫn tên (`Board/Cell_1_2`: `Cell_1_2` đầu
-tiên đang hiện, nằm dưới `Board`). Toạ độ là pixel cửa sổ, cùng hệ với ảnh `shot`.
+Chọn node bằng bộ chọn. Mỗi bước tìm node đầu tiên đang hiện khớp với nó:
+
+- `Play`: theo tên. Node chưa đặt tên thì dùng tên tự sinh mà `tree` in ra, ví dụ `@Label@108`.
+- `type:Label`: theo loại node hoặc `class_name` của script.
+- `text:Đầu hàng`: theo chữ mà node đang hiện.
+- `[n]`: lấy kết quả thứ n, đếm từ 0.
+- `/`: tìm tiếp bên dưới bước trước.
+
+Ví dụ: `Board/Cell_1_2`, `Seat_0/type:Label[1]`. Toạ độ là pixel cửa sổ, cùng hệ với ảnh `shot`.
 
 ## PvP và sửa trạng thái ván
 

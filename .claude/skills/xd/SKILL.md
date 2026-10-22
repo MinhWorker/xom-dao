@@ -21,11 +21,15 @@ Each command takes about 0.5 s, and there is no web export or browser. The full 
 5. After editing GDScript or a scene: `npm run -s xd -- restart`. It logs in again and resumes the
    seat. Add `--import` for new images or sounds.
 6. When done: `npm run -s xd -- stop --all` and `npm run -s xd -- server stop`.
+   Stop them before `npm run e2e` too: running sessions slow the browser enough to time out.
 
 ## Tips
 
-- Address nodes by name or path of names (`Board/Cell_1_2`). Name nodes you need to reach (as
-  in `apps/client/AGENTS.md`); `tree` shows unnamed ones as `@Type@N`.
+- Address nodes with selectors: a name, `type:Class`, `text:Part`, `[n]` for the n-th match, and
+  `/` between steps (`Seat_0/type:Label[1]`, `text:Đầu hàng`). Name nodes that tests or tools
+  need to reach (as in `apps/client/AGENTS.md`). `@Type@N` names work, but only for that run.
+- Compare screens: `compare <session> <session> [node] [--scale 0.5]` makes one labelled image.
+  Use `shot --rect x,y,w,h` (boxes from `tree --rects`) to look closely at an area.
 - `wait` instead of sleeping: `--text "Status=Lượt bạn"`, `--node ResultBoard`,
   `--expr 'client.snapshot.status == "finished"'`.
 - PvP: `start a`, `start b`, `-s a room create <game> --json` for the code, `-s b room join`,

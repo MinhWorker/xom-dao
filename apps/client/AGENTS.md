@@ -85,7 +85,8 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 - The server URL: `window.XOMDAO_SERVER` when the export baked it in (`XOMDAO_SERVER_URL`, or
   the older `VITE_SERVER_URL`), else the page's own origin (`npm run dev` proxies `/ws`); off the web
   `XOMDAO_SERVER` or ws://localhost:8033/ws.
-- Name every node a test taps or reads (`Cell_<x>_<y>`, `Play`, `RoomCode`, `Island_<genre>`…). The debug
+- Name every node a test taps or reads (`Cell_<x>_<y>`, `Play`, `RoomCode`, `Island_<genre>`…).
+  `TestBridge.find()` takes a selector: names, `type:Class`, `text:Part`, `[n]`, `/` between steps. The debug
   bridge `window.xomdao` (`core/test_bridge.gd`): `scene()`, `tree(depth)`, `text(name)`,
   `rect(name)` (CSS px), `click(name)`, `state()`. The hub sets `TestBridge.scene`.
   `scripts/e2e/godot.mjs` wraps it for scenarios (`tap` clicks with the real mouse).

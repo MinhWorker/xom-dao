@@ -201,27 +201,52 @@ func app_state() -> Dictionary:
 	}
 
 
-## The first visible node with this name, searching the whole tree. "Board/Cell_1_2" is the
-## first visible Cell_1_2 under the first visible Board.
-func find(node_name: String) -> Node:
+## The first visible node a selector names, searching the whole tree. Steps are separated by
+## "/", each one searched under the node the step before found:
+##   Name          a node with this name ("Play", "@Label@108" for an unnamed one)
+##   type:Class    a node of this class or script class ("type:Label", "type:XomDaoButton")
+##   text:Part     a node whose text contains this ("text:Đầu hàng")
+## and [n] after a step takes its n-th match, from 0: "Seat_0/type:Label[1]".
+func find(selector: String) -> Node:
 	var node: Node = get_tree().root
-	for part: String in node_name.split("/", false):
-		node = _find(node, part)
+	for step: String in selector.split("/", false):
+		node = _find_step(node, step)
 		if node == null:
 			return null
 	return node if node != get_tree().root else null
 
 
-func _find(node: Node, node_name: String) -> Node:
+func _find_step(from: Node, step: String) -> Node:
+	var index: int = 0
+	var indexed: RegExMatch = RegEx.create_from_string("^(.+)\\[(\\d+)\\]$").search(step)
+	if indexed != null:
+		step = indexed.get_string(1)
+		index = indexed.get_string(2).to_int()
+	var found: Array[Node] = []
+	for child: Node in from.get_children():
+		_collect(child, step, index + 1, found)
+	return found[index] if found.size() > index else null
+
+
+func _collect(node: Node, step: String, limit: int, found: Array[Node]) -> void:
+	if found.size() >= limit:
+		return
 	if node is CanvasItem and not (node as CanvasItem).is_visible_in_tree():
-		return null
-	if node.name == node_name:
-		return node
+		return
+	if _matches(node, step):
+		found.append(node)
 	for child: Node in node.get_children():
-		var found: Node = _find(child, node_name)
-		if found != null:
-			return found
-	return null
+		_collect(child, step, limit, found)
+
+
+func _matches(node: Node, step: String) -> bool:
+	if step.begins_with("type:"):
+		var type: String = step.trim_prefix("type:")
+		var script: Script = node.get_script() as Script
+		return node.is_class(type) or (script != null and script.get_global_name() == type)
+	if step.begins_with("text:"):
+		return "text" in node and str(node.get("text")).contains(step.trim_prefix("text:"))
+	return node.name == step
 
 
 ## Visible nodes as { name, type, text?, rect?, disabled?, children? }; `rects` adds each

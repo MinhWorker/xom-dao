@@ -4,6 +4,7 @@
 // (apps/client/core/xd_server.gd); state lives in .xd/.
 import { isAbsolute, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import sharp from 'sharp';
 import { root } from '../godot/lib.mjs';
 import {
   account,
@@ -40,7 +41,10 @@ Server and sessions
   account <name>         make or log in an xd account; prints its token
 
 Looking
-  shot [node] [--out file.png] [--pad N] [--scale K]   PNG of the window or one node
+  shot [node] [--rect x,y,w,h] [--out f.png] [--pad N] [--scale K]
+                         PNG of the window, one node or an area
+  compare <session> <session>… [node] [--rect x,y,w,h] [--scale K] [--out f.png]
+                         the same shot from each session, side by side with labels
   tree [node] [--depth N] [--rects]                   visible nodes (indented text)
   find <node>            path, type, text, box, disabled
   text <node>
@@ -68,7 +72,9 @@ Waiting and scripting
   wait [--scene S] [--node N] [--gone N] [--text NODE=PART] [--expr GDSCRIPT] [--timeout MS]
   eval <GDScript expression>      names: hub, client, root, bridge; find("Name"), node("Name")
 
-A node is a name ("Play") or a path of names ("Board/Cell_1_2"). Points are window pixels.
+A node is a selector: a name ("Play"), type:Class, text:Part, [n] for the n-th match, and
+"/" to search under the step before: "Board/Cell_1_2", "Seat_0/type:Label[1]",
+"text:Đầu hàng". Points and areas are window pixels.
 Session: -s <name>, else XD_SESSION, else "main".`;
 
 const FRAMES = { '16:9': '1280x720', '18:9': '1440x720', '19.5:9': '1560x720', '20:9': '1600x720' };
@@ -90,6 +96,7 @@ const { values: flags, positionals } = parseArgs({
     port: { type: 'string' },
     'bot-delay': { type: 'string' },
     out: { type: 'string' },
+    rect: { type: 'string' },
     pad: { type: 'string' },
     scale: { type: 'string' },
     depth: { type: 'string' },
@@ -172,9 +179,67 @@ function point(text) {
   return match ? [Number(match[1]), Number(match[2])] : text;
 }
 
-function outPath(name) {
-  const path = flags.out ?? `.shots/xd-${name}.png`;
+function outPath(name, fallback = `.shots/xd-${name}.png`) {
+  const path = flags.out ?? fallback;
   return isAbsolute(path) ? path : resolve(root, path);
+}
+
+function rectFlag() {
+  if (!flags.rect) return undefined;
+  const parts = flags.rect.split(',').map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+    throw new XdError('--rect takes x,y,width,height');
+  }
+  return parts;
+}
+
+function shotArgs(path, node) {
+  return {
+    path,
+    node,
+    rect: rectFlag(),
+    pad: flags.pad && Number(flags.pad),
+    scale: flags.scale && Number(flags.scale),
+  };
+}
+
+const escapeXml = (text) =>
+  String(text).replace(
+    /[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+  );
+
+/** Shots side by side at one height, each under a label bar with its session and scene. */
+async function sideBySide(tiles, out) {
+  const height = Math.min(...tiles.map((t) => t.height));
+  const bar = 36;
+  const gap = 8;
+  const images = await Promise.all(
+    tiles.map(async (t) => {
+      const buffer = await sharp(t.path).resize({ height }).png().toBuffer();
+      const { width } = await sharp(buffer).metadata();
+      return { ...t, buffer, width };
+    }),
+  );
+  const total = images.reduce((sum, i) => sum + i.width, 0) + gap * (images.length - 1);
+  const composites = [];
+  let left = 0;
+  for (const image of images) {
+    const label = Buffer.from(
+      `<svg width="${image.width}" height="${bar}"><rect width="100%" height="100%" fill="#1d2630"/>` +
+        `<text x="12" y="24" fill="#f3ead8" font-family="sans-serif" font-size="18">` +
+        `${escapeXml(image.label)}</text></svg>`,
+    );
+    composites.push({ input: label, left, top: 0 }, { input: image.buffer, left, top: bar });
+    left += image.width + gap;
+  }
+  await sharp({
+    create: { width: total, height: height + bar, channels: 3, background: '#0e1318' },
+  })
+    .composite(composites)
+    .png()
+    .toFile(out);
+  return { path: out, width: total, height: height + bar };
 }
 
 const shortPath = (path) => (path.startsWith(root) ? relative(root, path) : path);
@@ -308,12 +373,25 @@ const commands = {
 
   async shot() {
     const name = sessionName();
-    const result = await act('shot', {
-      path: outPath(name),
-      node: rest[0],
-      pad: flags.pad && Number(flags.pad),
-      scale: flags.scale && Number(flags.scale),
-    });
+    const result = await act('shot', shotArgs(outPath(name), rest[0]));
+    show(flags.json ? result : `${shortPath(result.path)} ${result.width}x${result.height}`);
+  },
+
+  async compare() {
+    const names = rest.filter((word) => readSession(word));
+    const node = rest.find((word) => !readSession(word));
+    if (names.length < 2) throw new XdError('compare needs two or more session names');
+    const tiles = [];
+    for (const name of names) {
+      const info = running(name);
+      const shot = await call(info, 'shot', {
+        ...shotArgs(resolve(root, `.shots/xd-${name}.png`), node),
+        out: undefined,
+      });
+      const { scene } = await call(info, 'ping');
+      tiles.push({ ...shot, label: `${name} · ${scene}` });
+    }
+    const result = await sideBySide(tiles, outPath('compare', '.shots/xd-compare.png'));
     show(flags.json ? result : `${shortPath(result.path)} ${result.width}x${result.height}`);
   },
 

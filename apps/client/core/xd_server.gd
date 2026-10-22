@@ -5,8 +5,8 @@ extends Node
 ## TestBridge adds it; release and web builds never have it. The commands are the _cmd_*
 ## methods below; tools/xd/README.md describes them for people.
 ##
-## A node is named as TestBridge.find() takes it: "Play", or "Board/Cell_1_2" for the first
-## visible Cell_1_2 under the first visible Board. Points and boxes are window pixels, the same
+## A node is a selector as TestBridge.find() takes it: "Play", "Board/Cell_1_2",
+## "Seat_0/type:Label[1]", "text:Đầu hàng". Points and boxes are window pixels, the same
 ## pixels a `shot` has.
 
 const WAIT_MS := 10_000
@@ -146,24 +146,27 @@ func _cmd_state(_args: Dictionary) -> Dictionary:
 	return _ok(TestBridge.app_state())
 
 
-## { path, node?, pad = 0, scale = 1 }: saves the window (or one node's box) as a PNG.
+## { path, node? | rect? [x, y, w, h], pad = 0, scale = 1 }: saves the window, one node's
+## box or an area as a PNG.
 func _cmd_shot(args: Dictionary) -> Dictionary:
 	var path: String = str(args.get("path", ""))
 	if path == "":
 		return _fail("shot needs a path")
 	await RenderingServer.frame_post_draw
 	var image: Image = get_viewport().get_texture().get_image()
+	var box: Variant = args.get("rect")
 	if str(args.get("node", "")) != "":
-		var node: Control = TestBridge.find(str(args["node"])) as Control
-		var box: Variant = TestBridge.node_rect(node)
+		box = TestBridge.node_rect(TestBridge.find(str(args["node"])) as Control)
 		if box == null:
 			return _fail("No visible control %s" % args["node"])
+	if box != null:
+		if box is not Array or (box as Array).size() != 4:
+			return _fail("rect is [x, y, width, height]")
 		var pad: float = float(args.get("pad", 0))
 		var area := Rect2(box[0] - pad, box[1] - pad, box[2] + pad * 2, box[3] + pad * 2)
-		var full := Rect2(Vector2.ZERO, Vector2(image.get_size()))
-		area = area.intersection(full)
+		area = area.intersection(Rect2(Vector2.ZERO, Vector2(image.get_size())))
 		if area.size.x < 1 or area.size.y < 1:
-			return _fail("%s is off screen" % args["node"])
+			return _fail("That area is off screen")
 		image = image.get_region(Rect2i(area))
 	var scale: float = float(args.get("scale", 1.0))
 	if scale > 0.0 and not is_equal_approx(scale, 1.0):
