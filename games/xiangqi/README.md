@@ -27,16 +27,17 @@ http://localhost:5033/?play=xiangqi (chơi với máy trên server thật). Ki�
 Hướng dẫn SDK và Dev Console:
 [tạo game](../../docs/making-a-game.md).
 
-Bàn có cảnh đình, bàn, đường kẻ, chữ 楚河 漢界, quân và bóng, vòng chiếu tướng nhấp nháy, cột
-thống kê và các nút. Quân bị ăn bị đánh văng, xoay rồi tan; thông báo chiếu là một cuộn giấy mở ra
+Bàn có nền hồ sen tối dần ra mép, bàn và bóng của bàn, đường kẻ, chữ 楚河 漢界, quân và bóng,
+vòng chiếu tướng nhấp nháy, tấm biển lượt, khay quân đã ăn và các nút. Quân bị ăn bị đánh văng, xoay rồi tan; thông báo chiếu là một cuộn giấy mở ra
 rồi cuộn lại. Quân là từng ảnh cắt từ atlas `assets/pieces.webp`, chưa có đèn normal map. Nước đi
 hợp lệ lấy từ `moves` trong view của server (chỉ có khi tới lượt mình), nên luật chỉ nằm ở
 TypeScript.
 
 ## Tài nguyên
 
-Hình bàn gỗ óc chó viền nổi mỏng và nền hồ sen thủy mặc nhìn thẳng từ trên xuống, có bệ gỗ óc chó
-mảnh đỡ bàn, sinh bằng Image Gen từ prompt trong `sources/prompts.json`; prompt tạo video loop nền
+Hình bàn gỗ óc chó viền nổi mỏng sinh bằng Image Gen; nền hồ sen thủy mặc nhìn thẳng từ trên
+xuống, giữa là mặt nước trống để đặt bàn, sinh bằng Antigravity (`agy`). Cả hai dùng prompt trong
+`sources/prompts.json`; prompt tạo video loop nền
 10 giây nằm ở
 [`sources/pavilion-video-prompt.md`](sources/pavilion-video-prompt.md). Đường bàn vẽ bằng code trong
 `godot/main.gd`.
@@ -64,6 +65,12 @@ vẽ bằng code (`_cut_in` trong `godot/main.gd`).
 ## Bố cục bàn chơi
 
 Bố cục **Bàn** ([experience.md](../../docs/experience.md)): bàn gỗ óc chó ở giữa, cao gần trọn
-khung, trước cảnh đình. Cột bên trái có hai người chơi (mình ở dưới, đối thủ dưới nút ☰ của hub)
-và số nước giữa họ; cột bên phải có trạng thái và các nút Xin hoà, Đầu hàng, Hiệu ứng. Bên Đen
-thấy bàn xoay ngược.
+khung, trên nền hồ sen.
+
+- **Cột trái:** hai người chơi, mình ở dưới, đối thủ dưới nút ☰ của hub. Ô người chơi có ảnh đại
+  diện, huy hiệu tướng của bên mình ở góc trên phải và số ván thắng. Người chưa tới lượt mờ đi.
+  Cạnh mỗi ô là khay các quân người đó đã ăn; quân vào khay khi quân ăn nó vừa đặt xuống.
+- **Cột phải:** tấm biển lượt ở trên (lượt ai, nước thứ mấy, "Chiếu tướng!" hoặc cách ván kết
+  thúc), dưới nó là nút ✦ bật tắt hiệu ứng. Dưới cùng là Xin hoà, còn Đầu hàng đứng tách lên trên.
+
+Bên Đen thấy bàn xoay ngược.

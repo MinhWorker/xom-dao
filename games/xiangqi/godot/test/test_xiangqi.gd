@@ -102,9 +102,8 @@ func test_a_piece_is_picked_and_dropped() -> void:
 
 func test_check_rings_the_general_and_the_end_fills_the_result_board() -> void:
 	var checked := _table(_view(["me", "bot"], "r", [{"from": 85, "to": 76}], {"check": true}))
-	assert_eq(
-		(checked.find_child("Status", true, false) as Label).text, "Tới lượt bạn · Chiếu tướng!"
-	)
+	assert_eq((checked.find_child("Status", true, false) as Label).text, "Tới lượt bạn")
+	assert_eq((checked.find_child("StatusNote", true, false) as Label).text, "Chiếu tướng!")
 	assert_true((checked.find_child("CheckRing", true, false) as Control).visible)
 	var ended := _table(
 		_view(
@@ -116,6 +115,11 @@ func test_check_rings_the_general_and_the_end_fills_the_result_board() -> void:
 		"finished"
 	)
 	var detail: Dictionary = ended.call("result_detail")
-	assert_eq(detail["reason"], "Bạn thắng · Máy chiếu dai")
+	assert_eq(detail["reason"], "Máy chiếu dai")
 	assert_eq(detail["rows"], [["Số nước", "4"], ["Quân đã ăn", "Đỏ 2 · Đen 1"]])
 	assert_false((ended.find_child("Resign", true, false) as Control).visible)
+	# Red (you, at the bottom) took two soldiers, Black a horse: each in its taker's tray.
+	var mine: Control = ended.find_child("Taken_0", true, false)
+	var theirs: Control = ended.find_child("Taken_1", true, false)
+	assert_eq(mine.find_children("TakenPiece_*", "", true, false).size(), 2)
+	assert_eq(theirs.find_children("TakenPiece_*", "", true, false).size(), 1)
