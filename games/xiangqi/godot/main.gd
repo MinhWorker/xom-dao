@@ -1,8 +1,9 @@
 extends Control
 ## Cờ Tướng on the Godot client, in the **Bàn** layout (docs/experience.md): the walnut table in
-## the middle, as tall as the frame, in front of the pavilion; the two players in the column on
-## its left (yours at the bottom, the other under the hub's ☰) with the move count between them;
-## the status and Xin hoà, Đầu hàng, Hiệu ứng in the column on its right. It draws
+## the middle, as tall as the frame, over the night lotus pond (XiangqiBackdrop); the two
+## players in the column on its left (yours at the bottom, the other under the hub's ☰), each with
+## a tray of the pieces they took; the turn plaque (whose turn, the move, check) and Hiệu ứng at
+## the top of the column on its right, Đầu hàng and Xin hoà at its bottom. It draws
 ## `snapshot.view` (View in src/game/model.ts, with your legal `moves` on your turn) and sends
 ## `move {from, to}`, `offer-draw`, `decline-draw` and `resign`.
 ##
@@ -12,8 +13,8 @@ extends Control
 ## shows a CHIẾU TƯỚNG! (CHIẾU BÍ!) scroll (Hiệu ứng: Tắt skips the motion, the sounds stay).
 ##
 ## Named nodes for tests: Board, Square_<sq> (a button per point, sq = row * 9 + col from
-## Black's side), Piece_<sq>, Status, MoveCount, Seat_<seat>, OfferDraw, DeclineDraw, Resign,
-## Effects, CheckRing, CutIn.
+## Black's side), Piece_<sq>, TurnPlaque, Status, MoveCount, StatusNote, Seat_<seat>,
+## General_<seat>, Taken_<seat>, OfferDraw, DeclineDraw, Resign, Effects, CheckRing, CutIn.
 
 const COLS := 9
 const ROWS := 10
@@ -49,6 +50,9 @@ const SLIDE_SECONDS := 0.24
 const MENU := 88.0
 const COLUMN := 230.0
 const BUTTON_WIDTH := 210.0
+## The player who is not on turn fades back.
+const WAITING_ALPHA := 0.6
+const NOTE := Color("#FF8A7A")
 const SOUNDS: Array[String] = [
 	"capture",
 	"capture-heavy",
@@ -73,7 +77,7 @@ var _mine: String = ""
 var _flip: bool = false
 var _effects: bool = true
 
-var _pavilion := TextureRect.new()
+var _backdrop := XiangqiBackdrop.new()
 var _board := TextureRect.new()
 var _lines := Control.new()
 var _river := TextureRect.new()
@@ -82,14 +86,14 @@ var _check_ring := Control.new()
 var _shadows_layer := Control.new()
 var _pieces_layer := Control.new()
 var _squares := Control.new()
-var _status := Label.new()
-var _move_count := Label.new()
+var _plaque := XiangqiTurnPlaque.new()
 var _draw: XomDaoButton = XomDaoButton.create("Xin hoà", XomDaoUi.Kind.INFO)
 var _decline: XomDaoButton = XomDaoButton.create("Từ chối", XomDaoUi.Kind.BACK)
 var _resign: XomDaoButton = XomDaoButton.create("Đầu hàng", XomDaoUi.Kind.DANGER)
-var _effects_button: XomDaoButton = XomDaoButton.create("", XomDaoUi.Kind.BACK)
+var _effects_button: XomDaoIconButton = XomDaoIconButton.create("sparkle")
 var _slots: Array[XomDaoPlayerSlot] = []
 var _icons: Array[TextureRect] = []
+var _trays: Array[XiangqiTakenTray] = []
 var _sounds: Dictionary = {}
 var _textures: Dictionary = {}
 var _pulse: Tween
@@ -141,7 +145,7 @@ func result_detail() -> Dictionary:
 	if _view.is_empty() or _view.get("end") == null:
 		return {}
 	return {
-		"reason": _status.text,
+		"reason": _plaque.note.text,
 		"rows":
 		[
 			["Số nước", str(int(_view.get("plies", 0)))],
@@ -162,16 +166,7 @@ func _ready() -> void:
 	theme = XomDaoUi.theme()
 	clip_contents = true
 	_effects = _load_effects()
-	var night := ColorRect.new()
-	night.color = Color("#1B1410")
-	night.set_anchors_preset(Control.PRESET_FULL_RECT)
-	night.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(night)
-	_pavilion.texture = _art("pavilion")
-	_pavilion.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_pavilion.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_pavilion.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_pavilion)
+	add_child(_backdrop)
 
 	_board.name = "Board"
 	_board.texture = _art("board")
@@ -216,15 +211,7 @@ func _ready() -> void:
 		square.pressed.connect(_tap.bind(sq))
 		_squares.add_child(square)
 
-	_status.name = "Status"
-	_status.theme_type_variation = "HudLabel"
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(_status)
-	_move_count.name = "MoveCount"
-	_move_count.theme_type_variation = "HudLabel"
-	_move_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(_move_count)
+	add_child(_plaque)
 	_draw.name = "OfferDraw"
 	_draw.pressed.connect(_send.bind("offer-draw"))
 	_decline.name = "DeclineDraw"
@@ -233,7 +220,8 @@ func _ready() -> void:
 	_resign.pressed.connect(_on_resign)
 	_effects_button.name = "Effects"
 	_effects_button.pressed.connect(_toggle_effects)
-	for button: XomDaoButton in [_draw, _decline, _resign, _effects_button]:
+	add_child(_effects_button)
+	for button: XomDaoButton in [_draw, _decline, _resign]:
 		button.custom_minimum_size.x = BUTTON_WIDTH
 		add_child(button)
 	for seat: int in 2:
@@ -243,12 +231,20 @@ func _ready() -> void:
 		add_child(slot)
 		_slots.append(slot)
 		var icon := TextureRect.new()
+		icon.name = "General_%d" % seat
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.custom_minimum_size = Vector2(56.0, 56.0)
+		icon.custom_minimum_size = Vector2(48.0, 48.0)
 		icon.size = icon.custom_minimum_size
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(icon)
 		_icons.append(icon)
+		# The badge follows the avatar once its container has laid it out.
+		slot.item_rect_changed.connect(_place_icons)
+		slot.avatar.item_rect_changed.connect(_place_icons)
+		var tray := XiangqiTakenTray.new()
+		tray.name = "Taken_%d" % seat
+		add_child(tray)
+		_trays.append(tray)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
 		player.bus = XomDaoSettings.SFX_BUS
@@ -318,7 +314,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		elif str(end.get("winner")) == _mine:
 			_sfx("victory")
 	_ended = ended
-	_move_count.text = "Nước %d" % (plies / 2 + 1)
+	_plaque.move_count.text = "Nước %d" % (plies / 2 + 1)
 	_marks.queue_redraw()
 	_show_check()
 
@@ -464,6 +460,7 @@ func _play_move(last: Dictionary, plies: int) -> void:
 	_letters[to] = letter
 	_place_pieces()
 	_animating = false
+	_show_seats()
 	if plies == int(_view.get("plies", 0)):
 		_after_move(last, true)
 	# A reply that came in meanwhile plays next.
@@ -739,18 +736,25 @@ func _show_seats() -> void:
 		for seat: XomDaoPlayerInfo in _snapshot.seats:
 			if seat.id == id:
 				slot.frame = seat.frame
+				slot.picture = XomDaoLooks.avatar("bot" if seat.bot else seat.avatar)
 		# The room's score counts wins by place in `players`.
 		for i_player: int in _snapshot.players.size():
 			var counted: bool = _snapshot.score != null and i_player < _snapshot.score.wins.size()
 			if counted and _snapshot.players[i_player].id == id:
 				wins = _snapshot.score.wins[i_player]
-		slot.extra = "Thắng %d · Ăn %d" % [wins, _taken_by(side)]
+		slot.extra = "Thắng %d" % wins
 		var on_turn: bool = playing and str(_view.get("turn", "")) == side
 		if on_turn and not slot.is_turn():
 			slot.show_turn()
 		elif not on_turn and slot.is_turn():
 			slot.end_turn()
+		var alpha: float = WAITING_ALPHA if playing and not on_turn else 1.0
+		for faded: CanvasItem in [slot, _icons[i], _trays[i]]:
+			faded.modulate.a = alpha
 		_icons[i].texture = _texture_of("K" if side == "r" else "k")
+		# A taken piece reaches the tray when the piece that took it lands.
+		if not _animating:
+			_fill_tray(i, side)
 	# A longer count can widen the seats' column.
 	_layout()
 
@@ -776,19 +780,17 @@ func _show_status() -> void:
 			}
 			. get(str((end as Dictionary).get("reason", "")), "")
 		)
-		if winner != null:
-			_status.text = "%s thắng · %s" % [_name_of(str(winner)), how]
-		else:
-			_status.text = "Hoà · %s" % how
+		_plaque.status.text = "%s thắng" % _name_of(str(winner)) if winner != null else "Hoà"
+		_plaque.set_note(how, XomDaoUi.CREAM)
 		return
-	var check: String = " · Chiếu tướng!" if bool(_view.get("check", false)) else ""
+	_plaque.set_note("Chiếu tướng!" if bool(_view.get("check", false)) else "", NOTE)
 	var offer: Variant = _view.get("drawOffer")
 	if offer != null and _mine != "" and str(offer) != _mine:
-		_status.text = "%s xin hoà" % SIDE_NAMES[str(offer)]
+		_plaque.status.text = "%s xin hoà" % SIDE_NAMES[str(offer)]
 	elif turn == _mine:
-		_status.text = "Tới lượt bạn" + check
+		_plaque.status.text = "Tới lượt bạn"
 	else:
-		_status.text = "Lượt %s%s" % [SIDE_NAMES[turn], check]
+		_plaque.status.text = "Lượt %s" % SIDE_NAMES[turn]
 
 
 func _show_buttons() -> void:
@@ -811,7 +813,7 @@ func _show_buttons() -> void:
 	if not playing:
 		_resign_armed = false
 	_resign.text = "Chắc chưa?" if _resign_armed else "Đầu hàng"
-	_effects_button.text = "Hiệu ứng: %s" % ("Bật" if _effects else "Tắt")
+	_show_effects()
 	_layout.call_deferred()
 
 
@@ -839,7 +841,8 @@ func _toggle_effects() -> void:
 	var config := ConfigFile.new()
 	config.set_value("xiangqi", "effects", _effects)
 	config.save(SETTINGS)
-	_effects_button.text = "Hiệu ứng: %s" % ("Bật" if _effects else "Tắt")
+	_show_effects()
+	XomDaoToast.show_on(self, "Hiệu ứng: %s" % ("Bật" if _effects else "Tắt"), "sparkle")
 	if not _animating:
 		_place_pieces()
 	_show_check()
@@ -861,8 +864,8 @@ func _sfx(sound: String) -> void:
 # ── Layout ────────────────────────────────────────────────────────────────────────────────
 
 
-## The table as tall as the frame in the middle; the players' column on its left, the status
-## and buttons' column on its right.
+## The table as tall as the frame in the middle; the players' column on its left, the turn
+## plaque and buttons' column on its right.
 func _layout() -> void:
 	if not is_inside_tree():
 		return
@@ -870,14 +873,13 @@ func _layout() -> void:
 	var edge: float = float(XomDaoSettings.current().margin)
 	var left: float = inset.x + edge
 	var right: float = size.x - inset.x - edge
-	_pavilion.size = size
 	# The board takes what the two columns leave: the seats on the left, the buttons on the right.
 	var seats_width: float = COLUMN
 	for slot: XomDaoPlayerSlot in _slots:
 		slot.reset_size()
 		seats_width = maxf(seats_width, slot.size.x)
 	var buttons_width: float = BUTTON_WIDTH
-	for button: XomDaoButton in [_effects_button, _resign, _decline, _draw]:
+	for button: XomDaoButton in [_resign, _decline, _draw]:
 		button.reset_size()
 		buttons_width = maxf(buttons_width, button.size.x)
 	var room: float = right - left - seats_width - buttons_width - 32.0
@@ -889,6 +891,7 @@ func _layout() -> void:
 	)
 	_board.position = board_at
 	_board.size = board_size
+	_backdrop.fit(size, Rect2(board_at, board_size))
 	_gap = GAP * scale
 	_origin = board_at + FIRST_POINT * scale
 	for layer: Control in [_lines, _marks, _shadows_layer, _pieces_layer, _squares]:
@@ -908,36 +911,72 @@ func _layout() -> void:
 		_place_pieces()
 	if _check_ring.visible:
 		_show_check()
-	# Left column: the other player under ☰, yours at the bottom, the move count between.
-	var column_right: float = board_at.x - 16.0
+	# Left column: the other player under ☰ with their tray below, yours at the bottom with your
+	# tray above.
 	for i: int in 2:
 		var slot: XomDaoPlayerSlot = _slots[i]
 		var y: float = size.y - edge - slot.size.y if i == 0 else edge + MENU + 12.0
 		slot.position = Vector2(left, y)
+		var tray: XiangqiTakenTray = _trays[i]
+		tray.reset_size()
+		var tray_y: float = y - tray.size.y - 12.0 if i == 0 else y + slot.size.y + 12.0
+		tray.position = Vector2(left, tray_y)
 	_place_icons.call_deferred()
-	_move_count.reset_size()
-	_move_count.position = Vector2(
-		left + (column_right - left - _move_count.size.x) / 2.0, (size.y - _move_count.size.y) / 2.0
-	)
-	# Right column: the status at the top, the buttons at the bottom.
+	# Right column: the turn plaque and Hiệu ứng at the top, the buttons at the bottom; Đầu hàng
+	# stands apart above the others.
 	var column_left: float = board_at.x + board_size.x + 16.0
 	var width: float = maxf(right - column_left, BUTTON_WIDTH)
-	_status.size = Vector2(width, 0.0)
-	_status.position = Vector2(column_left, edge)
+	_plaque.fit(width)
+	_plaque.position = Vector2(right - width, edge)
+	_effects_button.reset_size()
+	_effects_button.position = Vector2(right - _effects_button.size.x, edge + _plaque.size.y + 12.0)
 	var y: float = size.y - edge
-	for button: XomDaoButton in [_effects_button, _resign, _decline, _draw]:
+	for button: XomDaoButton in [_draw, _decline, _resign]:
 		if not button.visible:
 			continue
 		button.reset_size()
+		if button == _resign and y < size.y - edge:
+			y -= 28.0
 		y -= button.size.y
 		button.position = Vector2(right - button.size.x, y)
 		y -= 10.0
 	_marks.queue_redraw()
 
 
-## Each side's general sits on its player's avatar like a badge, once the slots have laid out.
+## Each side's general sits on its player's avatar like a badge, at the top right (the host's
+## crown has the top left), once the slots have laid out.
 func _place_icons() -> void:
 	for i: int in _slots.size():
 		var avatar: Control = _slots[i].avatar
 		var icon: TextureRect = _icons[i]
-		icon.position = (avatar.global_position - global_position + avatar.size - icon.size * 0.62)
+		var corner := Vector2(avatar.size.x - icon.size.x * 0.62, -icon.size.y * 0.3)
+		icon.position = avatar.global_position - global_position + corner
+
+
+## The pieces `side` took, in the tray of slot `i`.
+func _fill_tray(i: int, side: String) -> void:
+	var letters: Array[String] = []
+	var textures: Array[Texture2D] = []
+	for piece: Variant in _view.get("captured", []):
+		if _side_of(str(piece)) != side:
+			letters.append(str(piece))
+			textures.append(_disc_of(str(piece)))
+	if _trays[i].show_pieces(letters, textures):
+		_layout.call_deferred()
+
+
+## Just the disc of a piece's picture (the picture has room around it for the shadow).
+func _disc_of(letter: String) -> Texture2D:
+	var picture: Texture2D = _texture_of(letter)
+	var side: float = picture.get_width() * DISC * 1.1
+	var disc := AtlasTexture.new()
+	disc.atlas = picture
+	disc.region = Rect2(
+		(Vector2(picture.get_size()) - Vector2.ONE * side) / 2.0, Vector2.ONE * side
+	)
+	return disc
+
+
+## Hiệu ứng is a sparkle: bright while the motion is on, faded while it is off.
+func _show_effects() -> void:
+	_effects_button.modulate.a = 1.0 if _effects else 0.45
