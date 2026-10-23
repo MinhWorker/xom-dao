@@ -6,6 +6,7 @@ import { PROTOCOL_MISMATCH, PROTOCOL_VERSION, type RoomSnapshot } from '@xomdao/
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { AppModule } from '../app.module.js';
+import { MailService } from '../mail/mail.service.js';
 
 let app: INestApplication;
 let url: string;
@@ -161,5 +162,76 @@ describe('WebSocket transport', () => {
     expect(await request('room:fly')).toEqual({ ok: false, error: 'Không có lệnh room:fly' });
     expect(await request('catalog:get')).toMatchObject({ ok: true, genres: expect.any(Array) });
     ws.close();
+  });
+});
+
+describe('Bạn bè over the socket', () => {
+  it('asks, accepts, chats and invites, pushing each change to the other side', async () => {
+    const lan = await connect();
+    const minh = await connect();
+    const a = await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
+    const b = await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
+    const lanUser = a.user as { id: string; username: string };
+    const minhUser = b.user as { id: string; username: string };
+    expect(await lan.request('friends:add', { username: minhUser.username })).toMatchObject({
+      ok: true,
+      friends: [{ id: minhUser.id, state: 'outgoing' }],
+    });
+    await settle();
+    const asked = minh.pushed.filter((m) => m.event === 'friends:changed').at(-1);
+    expect(asked?.data).toMatchObject({ friends: [{ id: lanUser.id, state: 'incoming' }] });
+    expect(
+      await minh.request('friends:answer', { userId: lanUser.id, accept: true }),
+    ).toMatchObject({ friends: [{ id: lanUser.id, state: 'friend', online: true }] });
+
+    const sent = await lan.request('chat:send', { userId: minhUser.id, text: 'Chơi không?' });
+    expect(sent).toMatchObject({ ok: true, message: { text: 'Chơi không?' } });
+    await settle();
+    expect(minh.pushed.some((m) => m.event === 'chat:message')).toBe(true);
+    expect(await minh.request('chat:history', { userId: lanUser.id })).toMatchObject({
+      messages: [{ from: lanUser.id, text: 'Chơi không?' }],
+    });
+
+    expect(await lan.request('friends:invite', { userId: minhUser.id })).toMatchObject({
+      ok: false,
+      error: 'Bạn chưa ở trong phòng nào',
+    });
+    const room = await lan.request('room:create', { gameId: 'tic-tac-toe' });
+    expect(await lan.request('friends:invite', { userId: minhUser.id })).toEqual({ ok: true });
+    await settle();
+    const invite = minh.pushed.find((m) => m.event === 'room:invite');
+    expect(invite?.data).toMatchObject({ fromId: lanUser.id, roomCode: room.roomCode });
+    // Lan going into a room reaches Minh's list a moment later.
+    await new Promise((r) => setTimeout(r, 400));
+    const moved = minh.pushed.filter((m) => m.event === 'friends:changed').at(-1);
+    expect(moved?.data).toMatchObject({
+      friends: [{ id: lanUser.id, gameId: 'tic-tac-toe', roomCode: room.roomCode }],
+    });
+    lan.ws.close();
+    minh.ws.close();
+  });
+});
+
+describe('Hộp thư over the socket', () => {
+  it('pushes a letter to everyone online, reads it and pays its coins once', async () => {
+    const lan = await connect();
+    await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
+    await app.get(MailService).send({ title: 'Quà cả xóm', body: 'Chúc vui', coins: 30 });
+    await settle();
+    const pushed = lan.pushed.filter((m) => m.event === 'mail:changed').at(-1);
+    const box = pushed?.data as { letters: { id: string; title: string }[] } | undefined;
+    const letter = box?.letters[0];
+    expect(letter?.title).toBe('Quà cả xóm');
+    expect(await lan.request('mail:read', { id: letter?.id })).toMatchObject({
+      ok: true,
+      waiting: 1,
+    });
+    const paid = await lan.request('mail:claim', { id: letter?.id });
+    expect(paid).toMatchObject({ ok: true, mailbox: { waiting: 0 } });
+    expect(await lan.request('mail:claim', { id: letter?.id })).toEqual({
+      ok: false,
+      error: 'Bạn đã nhận rồi',
+    });
+    lan.ws.close();
   });
 });

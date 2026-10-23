@@ -138,6 +138,53 @@ func show_event(card: XomDaoGameCard) -> void:
 		dot.queue_free()
 
 
+## Red dots on Nhiệm vụ and the gift while `waiting` quests have a reward to take.
+func show_quests(waiting: int) -> void:
+	for button: Control in [_shortcuts.get_node("Shortcut_nhiem-vu"), gifts]:
+		var dot: Node = button.get_node_or_null("Dot")
+		if waiting > 0 and dot == null:
+			XomDaoDot.attach(button)
+		elif waiting <= 0 and dot != null:
+			dot.queue_free()
+
+
+## Follows the hub's Bạn bè: a red dot on Bến while requests or messages wait for you.
+func watch_friends(friends: HubFriends) -> void:
+	friends.changed.connect(_on_friends.bind(friends))
+	_on_friends(friends)
+
+
+func _on_friends(friends: HubFriends) -> void:
+	show_friends(friends.attention())
+
+
+## Follows the hub's Hộp thư: the envelope opens it, with a red dot while letters wait.
+func watch_mail(letters: HubMail) -> void:
+	mail.pressed.connect(func() -> void: letters.open(self))
+	letters.changed.connect(_on_mail.bind(letters))
+	_on_mail(letters)
+
+
+func _on_mail(letters: HubMail) -> void:
+	var dot: Node = mail.get_node_or_null("Dot")
+	if letters.box.waiting > 0 and dot == null:
+		XomDaoDot.attach(mail)
+	elif letters.box.waiting <= 0 and dot != null:
+		dot.queue_free()
+
+
+## A red dot on Bến while `waiting` (friend requests and messages) is above 0.
+func show_friends(waiting: int) -> void:
+	var button: Control = _places.get_node_or_null("Place_ben")
+	if button == null:
+		return
+	var dot: Node = button.get_node_or_null("Dot")
+	if waiting > 0 and dot == null:
+		XomDaoDot.attach(button)
+	elif waiting <= 0 and dot != null:
+		dot.queue_free()
+
+
 func show_user(user: XomDaoUser) -> void:
 	_name.text = user.name if user != null else ""
 	var uname: String = user.username if user != null else ""
@@ -191,10 +238,6 @@ func _open_genre() -> void:
 		XomDaoToast.show_on(self, "Sắp có", "lock-simple")
 		return
 	select_opened.emit(ring.selected_id())
-
-
-func _soon() -> void:
-	XomDaoToast.show_on(self, "Sắp có", "lock-simple")
 
 
 func _build_sidebar() -> void:
@@ -346,10 +389,9 @@ func _build_money() -> void:
 		button.edge = XomDaoUi.GOLD_DARK
 		button.lit = true
 	mail.name = "Mail"
-	mail.pressed.connect(_soon)
 	money.add_child(mail)
 	gifts.name = "Gifts"
-	gifts.pressed.connect(_soon)
+	gifts.pressed.connect(place_pressed.emit.bind("nhiem-vu"))
 	money.add_child(gifts)
 	money.move_child(money.settings, -1)
 
@@ -386,8 +428,10 @@ func _on_shortcut(id: String) -> void:
 				event_pressed.emit(_event_id)
 			else:
 				XomDaoToast.show_on(self, "Chưa có sự kiện", "moon-stars")
+		"nhiem-vu":
+			place_pressed.emit("nhiem-vu")
 		_:
-			_soon()
+			XomDaoToast.show_on(self, "Sắp có", "lock-simple")
 
 
 ## The selected game: name and players online, its picture, players and length, CHƠI and

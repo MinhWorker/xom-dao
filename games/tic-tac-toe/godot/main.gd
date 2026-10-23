@@ -1,7 +1,10 @@
 extends Control
-## Caro on a notebook page with an expanding board, player HUD and emote bubbles.
+## Caro on a notebook page with an expanding board, player HUD and emote bubbles. The game's end
+## beat (a pen stroke through the five, a stamped word) is finale.gd, which the hub waits for.
 
 const PAPER_CELL := preload("res://content/tic-tac-toe/paper_cell.gd")
+const EMOTES := preload("res://content/tic-tac-toe/emotes.gd")
+const FINALE := preload("res://content/tic-tac-toe/finale.gd")
 const RED := Color("#a52f3e")
 const BLUE := Color("#245477")
 const HOVER := Color(0.62, 0.72, 0.76, 0.2)
@@ -9,6 +12,9 @@ const LAST := Color(0.85, 0.68, 0.3, 0.12)
 const WIN_TINT := Color(0.91, 0.7, 0.24, 0.24)
 ## Marks in a row that win (WIN in src/game/model.ts).
 const WIN := 5
+## Cells under this many units are smaller than a fingertip on a phone.
+const TOUCH_CELL := 64.0
+const NO_CELL := Vector2i(1 << 20, 1 << 20)
 const GLIDE_SECONDS := 0.65
 ## The hub's ☰ button keeps the top left square.
 const MENU := 88.0
@@ -17,11 +23,11 @@ const INFO_COLUMN := 230.0
 const MARK_TARGET := 44.0
 const MARK_BADGE := 34.0
 const EMOTE_BUBBLE_SIZE := 180.0
-const EMOTE_STICKER_SIZE := 128.0
 const EMOTE_TAIL_TIP_RATIO := 0.91
 const SOUNDS: Array[String] = [
 	"caro-draw", "caro-line-complete", "caro-o-place", "caro-select", "caro-start", "mark-drop"
 ]
+const END_SOUNDS: Array[String] = ["caro-lose", "caro-win"]
 const PLACE_SOUND: Dictionary = {"X": "mark-drop", "O": "caro-o-place"}
 const DIRECTIONS: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)
@@ -32,6 +38,8 @@ var _snapshot: XomDaoRoomSnapshot
 var _view: Dictionary = {}
 
 var _paper := TextureRect.new()
+## The notebook's HUD: names on paper with a ballpoint-blue edge, the timer in red pen.
+var _skin: XomDaoTableSkin = FINALE.skin()
 var _board := Control.new()
 var _tiles_layer := Control.new()
 var _pieces_layer := Control.new()
@@ -46,7 +54,6 @@ var _mark_badges: Array[Control] = []
 var _mark_visuals: Array[PanelContainer] = []
 var _icons: Array[TextureRect] = []
 var _emote_bubbles: Array[Control] = []
-var _emote_stickers: Array[TextureRect] = []
 var _emote_tweens: Array[Tween] = []
 var _emote_shade := ColorRect.new()
 var _emote_panel: XomDaoBoard = XomDaoBoard.create("Biểu cảm", true)
@@ -62,14 +69,18 @@ var _tiles: Dictionary = {}
 var _buttons: Dictionary = {}
 var _pieces: Dictionary = {}
 var _win_ring := Line2D.new()
+var _finale: FINALE = FINALE.new()
 var _result_visible: bool = true
 var _board_center := Vector2.ZERO
 var _shape := Vector4i(0, 0, -1, -1)
 var _mid := Vector2.ZERO
 var _cell: float = 40.0
+## Touch: whether the last press was a finger, and the cell its first tap marked.
+var _touching: bool = false
+var _armed := NO_CELL
 var _area := Rect2()
 var _glide: Tween
-var _hovered := Vector2i(1 << 20, 1 << 20)
+var _hovered := NO_CELL
 var _round: int = -1
 var _seq: int = -1
 var _ended: bool = false
@@ -108,6 +119,23 @@ func result_detail() -> Dictionary:
 			moves += 1
 	var how: String = "Nối đủ %d quân" % WIN if not _line.is_empty() else "Hết chỗ để nối %d" % WIN
 	return {"reason": how, "rows": [["Số nước", str(moves)]]}
+
+
+## Hub hook: the result board waits for the end beat.
+func wait_for_result_panel() -> void:
+	if _client != null and _client.snapshot != null:
+		_show(_client.snapshot)
+	await _finale.wait()
+
+
+## Hub hook: the result board on the notebook page, with the paper rosette.
+func result_theme() -> Dictionary:
+	return FINALE.theme(not _line.is_empty())
+
+
+## Hub hook: the ☰ button and the seats on the notebook's paper and ink.
+func table_skin() -> XomDaoTableSkin:
+	return _skin
 
 
 func bind(client: XomDaoClient) -> void:
@@ -166,6 +194,7 @@ func _ready() -> void:
 	_rule.name = "Rule"
 	_rule.text = "Nối %d" % WIN
 	add_child(_rule)
+	_rule.dress(_skin.chip, _skin.chip_edge, _skin.chip_ink)
 	for seat: int in 2:
 		var seat_panel := Panel.new()
 		seat_panel.name = "SeatPanel_%d" % seat
@@ -180,6 +209,7 @@ func _ready() -> void:
 		slot.name = "Seat_%d" % seat
 		slot.avatar.name = "Avatar_%d" % seat
 		slot.compact = true
+		slot.skin = _skin
 		slot.avatar.gui_input.connect(_on_avatar_input.bind(seat))
 		add_child(slot)
 		_slots.append(slot)
@@ -212,7 +242,8 @@ func _ready() -> void:
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		visual.add_child(icon)
 		_icons.append(icon)
-		var bubble := _make_emote_bubble(seat)
+		var bubble: Control = EMOTES.bubble(seat, _art("emote-bubble"), EMOTE_BUBBLE_SIZE)
+		_emote_tweens.append(null)
 		slot.avatar.add_child(bubble)
 		_emote_bubbles.append(bubble)
 	_emote_shade.name = "EmoteShade"
@@ -247,7 +278,10 @@ func _ready() -> void:
 	_win_ring.width = 3.0
 	_win_ring.antialiased = true
 	_tiles_layer.add_child(_win_ring)
-	for sound: String in SOUNDS:
+	_pieces_layer.add_child(_finale.stroke)
+	add_child(_finale)
+	_finale.done.connect(_layout)
+	for sound: String in SOUNDS + END_SOUNDS:
 		var player := AudioStreamPlayer.new()
 		player.bus = XomDaoSettings.SFX_BUS
 		player.stream = load("res://content/tic-tac-toe/sounds/%s.wav" % sound)
@@ -270,6 +304,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		_round = snapshot.round
 		_seq = -1
 		_clear_pieces()
+		_finale.reset()
 		_result_visible = true
 		if not first and snapshot.status == "playing":
 			_sfx("caro-start")
@@ -280,7 +315,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	if shape != _shape:
 		_sync_tiles(shape, not first and not fresh)
 		_frame(not first and not fresh)
-	var placed := Vector2i(1 << 20, 1 << 20)
+	var placed := NO_CELL
 	if snapshot.last != null and snapshot.last.seq != _seq:
 		var move: Variant = snapshot.last.move
 		if not first and move is Dictionary and (move as Dictionary).get("payload") is Dictionary:
@@ -290,8 +325,9 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	_sync_pieces(placed)
 	_line = _winning_line()
 	var ended: bool = snapshot.status != "playing" and snapshot.result != null
-	if ended and not _ended and not first:
-		_sfx("caro-line-complete" if not _line.is_empty() else "caro-draw")
+	if ended and not _ended:
+		_finale.arm(not first)
+		_end_beat.call_deferred()
 	_ended = ended
 	_tint_tiles()
 	_place_board()
@@ -304,38 +340,6 @@ func _art(name_of: String) -> Texture2D:
 	if not _textures.has(name_of):
 		_textures[name_of] = load("res://content/tic-tac-toe/art/%s.webp" % name_of)
 	return _textures[name_of]
-
-
-func _make_emote_bubble(seat: int) -> Control:
-	var bubble := Control.new()
-	bubble.name = "Emote_%d" % seat
-	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bubble.custom_minimum_size = Vector2.ONE * EMOTE_BUBBLE_SIZE
-	var art := TextureRect.new()
-	art.name = "BubbleArt"
-	art.texture = _art("emote-bubble")
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.flip_v = seat == 1
-	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bubble.add_child(art)
-	var sticker := TextureRect.new()
-	sticker.name = "Sticker"
-	sticker.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	sticker.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	sticker.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	sticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sticker.custom_minimum_size = Vector2.ONE * EMOTE_STICKER_SIZE
-	sticker.size = sticker.custom_minimum_size
-	sticker.position = Vector2(26.0, 21.0)
-	bubble.add_child(sticker)
-	bubble.visible = false
-	bubble.z_index = 5
-	_emote_stickers.append(sticker)
-	_emote_tweens.append(null)
-	return bubble
 
 
 func _at(p: Vector2i) -> String:
@@ -383,8 +387,9 @@ func _sync_tiles(shape: Vector4i, animate: bool) -> void:
 		for state: String in ["normal", "hover", "pressed", "disabled", "focus"]:
 			cell.add_theme_stylebox_override(state, clear)
 		cell.pressed.connect(_tap.bind(p))
+		cell.gui_input.connect(_note_touch)
 		cell.mouse_entered.connect(_hover.bind(p))
-		cell.mouse_exited.connect(_hover.bind(Vector2i(1 << 20, 1 << 20)))
+		cell.mouse_exited.connect(_hover.bind(NO_CELL))
 		_cells.add_child(cell)
 		_buttons[p] = cell
 		if animate and old.z > 0 and is_inside_tree():
@@ -501,6 +506,36 @@ func _winning_line() -> Array[Vector2i]:
 	return []
 
 
+## The end beat, from your side, once the last mark has popped in and the board stopped moving.
+func _end_beat() -> void:
+	if _glide != null and _glide.is_running():
+		await _glide.finished
+	await get_tree().create_timer(0.22).timeout
+	if not _finale.armed() or not is_inside_tree():
+		return
+	var winners: Array[String] = _snapshot.result.winners if _snapshot.result != null else []
+	var winner: String = winners[0] if not winners.is_empty() else ""
+	var outcome: String = "draw" if winner == "" else "watch"
+	if winner != "" and _mine() != "":
+		outcome = "win" if winner == _client.player_id else "lose"
+	var marks: Array = []
+	for p: Vector2i in _line:
+		marks.append(_pieces[p])
+	var winning_mark: String = "X" if _player_of("X") == winner else "O"
+	var spec: Dictionary = {
+		"headline": FINALE.headline(outcome, _name(winner)),
+		"ink": XomDaoUi.INK if winner == "" else (RED if winning_mark == "X" else BLUE),
+		"center": _area.get_center(),
+		"marks": marks,
+		"ring": _win_ring,
+		"ends": func() -> Array: return [_center_of(_line[0]), _center_of(_line[-1])],
+		"cell": func() -> float: return _cell,
+		"line_sound": _sfx.bind("caro-line-complete"),
+		"sound": _sfx.bind({"win": "caro-win", "lose": "caro-lose"}.get(outcome, "caro-draw")),
+	}
+	_finale.play(spec)
+
+
 func _can_play(p: Vector2i) -> bool:
 	return (
 		_snapshot != null
@@ -512,7 +547,7 @@ func _can_play(p: Vector2i) -> bool:
 
 ## Gold under the winning line, light under the mouse where you may play, else plain.
 func _tint_tiles() -> void:
-	var last := Vector2i(1 << 20, 1 << 20)
+	var last := NO_CELL
 	if _snapshot != null and _snapshot.last != null and _snapshot.last.move is Dictionary:
 		var payload: Variant = (_snapshot.last.move as Dictionary).get("payload")
 		if payload is Dictionary:
@@ -533,24 +568,25 @@ func _tint_tiles() -> void:
 ## A restrained gold oval around the winning row, behind the marks.
 func _place_win_ring() -> void:
 	_win_ring.clear_points()
-	if _line.is_empty():
-		return
-	var first: Vector2 = _center_of(_line[0])
-	var last: Vector2 = _center_of(_line[-1])
-	var center: Vector2 = (first + last) / 2.0
-	var angle: float = (last - first).angle()
-	var radius: float = first.distance_to(last) / 2.0 + _cell * 0.48
-	for i: int in 81:
-		var t: float = TAU * float(i) / 80.0
-		var point := Vector2(cos(t) * radius, sin(t) * _cell * 0.46)
-		point.y += sin(t * 3.0) * _cell * 0.035
-		_win_ring.add_point(center + point.rotated(angle))
+	if not _line.is_empty():
+		FINALE.ring(_win_ring, _center_of(_line[0]), _center_of(_line[-1]), _cell)
+
+
+## A finger pressed a cell: on cells under a fingertip a first tap marks, a second one plays.
+func _note_touch(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		_touching = event.device == InputEvent.DEVICE_ID_EMULATION
 
 
 func _tap(p: Vector2i) -> void:
 	if not _can_play(p):
 		return
-	_hovered = Vector2i(1 << 20, 1 << 20)
+	if _touching and _cell < TOUCH_CELL and _armed != p:
+		_armed = p
+		_hover(p)
+		return
+	_armed = NO_CELL
+	_hovered = NO_CELL
 	(_buttons[p] as Button).disabled = true
 	await _client.send("place", {"x": p.x, "y": p.y})
 
@@ -572,6 +608,12 @@ func _player_of(mark: String) -> String:
 	return str(players[0 if mark == "X" else 1])
 
 
+## The mark at seat 0 (the bottom: yours, or X for a spectator) or seat 1.
+func _seat_mark(seat: int) -> String:
+	var bottom: String = "O" if _mine() == "O" else "X"
+	return bottom if seat == 0 else ("X" if bottom == "O" else "O")
+
+
 func _mine() -> String:
 	if _player_of("O") == _client.player_id:
 		return "O"
@@ -589,9 +631,8 @@ func _name(id: String) -> String:
 
 ## Slot 0 (at the bottom) is yours, or X for a spectator; each with its wins and its piece.
 func _show_seats() -> void:
-	var bottom: String = "O" if _mine() == "O" else "X"
 	for i: int in 2:
-		var mark: String = bottom if i == 0 else ("X" if bottom == "O" else "O")
+		var mark: String = _seat_mark(i)
 		var id: String = _player_of(mark)
 		var slot: XomDaoPlayerSlot = _slots[i]
 		slot.player_name = _name(id)
@@ -638,10 +679,9 @@ func _show_seats() -> void:
 func _on_emote_received(emote: XomDaoRoomEmote) -> void:
 	if _snapshot == null or _client == null or _view.is_empty():
 		return
-	var bottom: String = "O" if _mine() == "O" else "X"
 	var seat_index: int = -1
 	for i: int in 2:
-		var mark: String = bottom if i == 0 else ("X" if bottom == "O" else "O")
+		var mark: String = _seat_mark(i)
 		if _player_of(mark) == emote.player_id:
 			seat_index = i
 			break
@@ -654,7 +694,7 @@ func _on_emote_received(emote: XomDaoRoomEmote) -> void:
 	var previous: Tween = _emote_tweens[seat_index]
 	if previous != null and previous.is_running():
 		previous.kill()
-	_emote_stickers[seat_index].texture = sticker
+	(_emote_bubbles[seat_index].get_node("Sticker") as TextureRect).texture = sticker
 	bubble.visible = true
 	bubble.scale = Vector2.ONE * 0.72
 	bubble.modulate.a = 0.0
@@ -674,17 +714,10 @@ func _on_emote_received(emote: XomDaoRoomEmote) -> void:
 func _on_avatar_input(event: InputEvent, seat: int) -> void:
 	if _client == null or _snapshot == null or seat < 0 or seat >= _slots.size():
 		return
-	var bottom: String = "O" if _mine() == "O" else "X"
-	var mark: String = bottom if seat == 0 else ("X" if bottom == "O" else "O")
+	var mark: String = _seat_mark(seat)
 	if _player_of(mark) != _client.player_id:
 		return
-	var mouse := event as InputEventMouseButton
-	if mouse != null and mouse.button_index == MOUSE_BUTTON_LEFT and mouse.pressed:
-		_slots[seat].avatar.accept_event()
-		_toggle_emote_picker()
-		return
-	var touch := event as InputEventScreenTouch
-	if touch != null and touch.pressed:
+	if EMOTES.pressed(event):
 		_slots[seat].avatar.accept_event()
 		_toggle_emote_picker()
 
@@ -702,12 +735,7 @@ func _toggle_emote_picker() -> void:
 
 
 func _on_emote_shade_input(event: InputEvent) -> void:
-	var mouse := event as InputEventMouseButton
-	var touch := event as InputEventScreenTouch
-	if (
-		(mouse != null and mouse.button_index == MOUSE_BUTTON_LEFT and mouse.pressed)
-		or (touch != null and touch.pressed)
-	):
+	if EMOTES.pressed(event):
 		_emote_shade.accept_event()
 		_emote_panel.close()
 
@@ -734,9 +762,8 @@ func _layout_emote_panel() -> void:
 func _own_seat() -> int:
 	if _client == null or _view.is_empty():
 		return -1
-	var bottom: String = "O" if _mine() == "O" else "X"
 	for seat: int in 2:
-		var mark: String = bottom if seat == 0 else ("X" if bottom == "O" else "O")
+		var mark: String = _seat_mark(seat)
 		if _player_of(mark) == _client.player_id:
 			return seat
 	return -1
@@ -769,25 +796,7 @@ func _rebuild_emote_picker() -> void:
 	_emote_holder.visible = not _owned_emotes.is_empty()
 	_emote_note.text = "Đang tải biểu cảm" if _loading_emotes else "Chưa có biểu cảm"
 	_emote_note.visible = _owned_emotes.is_empty()
-	for look: String in _owned_emotes:
-		var sticker: Texture2D = XomDaoLooks.emote(look)
-		if sticker == null:
-			continue
-		var pick := XomDaoIconButton.create("")
-		pick.name = "Emote_%s" % look
-		pick.icon = sticker
-		pick.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		for state: String in ["normal", "hover", "pressed", "disabled", "hover_pressed"]:
-			var icon_style := StyleBoxEmpty.new()
-			icon_style.set_content_margin_all(12.0)
-			icon_style.content_margin_top = 10.0 - XomDaoIconButton.DEPTH / 2.0
-			icon_style.content_margin_bottom = 10.0 + XomDaoIconButton.DEPTH / 2.0
-			pick.add_theme_stylebox_override(state, icon_style)
-		for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
-			pick.add_theme_color_override(state, Color.WHITE)
-		pick.tooltip_text = str(XomDaoMenu.EMOTE_LABELS.get(look, look))
-		pick.pressed.connect(_choose_emote.bind(look))
-		_emote_grid.add_child(pick)
+	EMOTES.fill(_emote_grid, _owned_emotes, _choose_emote)
 
 
 func _choose_emote(look: String) -> void:
@@ -834,8 +843,7 @@ func _can_choose_mark(seat: int) -> bool:
 		or str(_snapshot.host_id) != _client.player_id
 	):
 		return false
-	var bottom: String = "O" if _mine() == "O" else "X"
-	var mark: String = bottom if seat == 0 else ("X" if bottom == "O" else "O")
+	var mark: String = _seat_mark(seat)
 	return _player_of(mark) == _client.player_id
 
 
@@ -857,13 +865,7 @@ func _mark_hover(seat: int, hovered: bool) -> void:
 func _on_mark_input(event: InputEvent, seat: int) -> void:
 	if not _can_choose_mark(seat):
 		return
-	var pressed: bool = false
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		pressed = mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
-	elif event is InputEventScreenTouch:
-		pressed = (event as InputEventScreenTouch).pressed
-	if pressed:
+	if EMOTES.pressed(event):
 		_mark_badges[seat].accept_event()
 		_toggle_next_mark()
 
@@ -908,7 +910,7 @@ func _layout() -> void:
 		Vector2(between + maxf(0.0, (room - side) / 2.0), (size.y - side) / 2.0),
 		Vector2(side, side)
 	)
-	var docked: bool = _ended and _result_visible
+	var docked: bool = _ended and _result_visible and _finale.over()
 	if docked:
 		var panel: Rect2 = result_area()
 		var board_left: float = left + seats_width + 16.0

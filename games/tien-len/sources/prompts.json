@@ -1,5 +1,5 @@
 {
-  "$comment": "Prompts for this game's art: npm run gen:asset -- tien-len/<name> (the style in assets/prompts.json is added).",
+  "$comment": "Prompts for this game's art: npm run gen:asset -- tien-len/<name> (the style in assets/prompts.json is added). blossom, emblem: Made with Antigravity (agy, its built-in image tool), which saves into ~/.gemini/antigravity-cli/brain/; transparent ones were asked for on flat #00FF00 and keyed with games/checkers/sources/key_green.py.",
   "assets": {
     "island": {
       "transparent": true,
@@ -45,6 +45,18 @@
       "transparent": true,
       "maxSize": 320,
       "prompt": "A blank wide rounded-rectangle game button, glossy golden-yellow like the buttons of a cheerful mobile game, thick darker orange bottom edge for depth, seen straight from the front, empty face."
+    },
+    "blossom": {
+      "transparent": true,
+      "maxSize": 560,
+      "generator": "agy",
+      "prompt": "A single decorative branch of Vietnamese Tet peach blossom (hoa dao) for the corner of a mobile game screen: a dark brown gnarled twig running diagonally from the top right corner toward the lower left, with about twelve soft pink five-petal blossoms, a few buds and small fresh green leaves, and one small red paper lucky charm with a gold tassel hanging from it. Polished stylized 3D cartoon art, soft rounded chunky shapes, light from the top left, each outline a darker shade of its own fill. The branch only, nothing else. Background: perfectly flat solid pure green #00FF00 everywhere, no shadow on the background, no gradient. No text, letters, frame or watermark."
+    },
+    "emblem": {
+      "transparent": true,
+      "maxSize": 320,
+      "generator": "agy",
+      "prompt": "A single game emblem icon, polished stylized 3D cartoon art for a cheerful Vietnamese casual mobile card game: a small fanned hand of five chunky cream playing cards with rounded corners, the front card a red two of hearts, tucked against a small red Tet lucky-money envelope (li xi) with a gold flower print, and one sprig of pink peach blossom lying across them. Front view, slightly from above, centered, compact, filling about 80 percent of a square frame, light from the top left, soft rounded chunky shapes, each outline a darker shade of its own fill (never black). Background: perfectly flat solid pure green #00FF00 everywhere, no shadow on the background, no gradient. No text, letters except the card corner, frame or watermark."
     }
   }
 }

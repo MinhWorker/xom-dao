@@ -1,6 +1,6 @@
 // Stats and achievements in the Godot client (#126): Lan plays Caro against the computer in the
 // sandbox (?play=tic-tac-toe); the game unlocks "Ván đầu tiên" (a notice, and its coins). Her Nhà
-// shows the level, reached achievement and match history; Đình is marked as coming soon. Needs
+// shows the level, reached achievement and match history; Đình ranks her on the podium. Needs
 // the debug web build (npm run godot:export -- --debug) and a dev server.
 
 import { caroPlayToEnd, DESKTOP, godotText, launch, onScene, openGodot, tap } from '../godot.mjs';
@@ -36,6 +36,7 @@ export default async function run(t) {
   await onScene(lan, 'lobby');
   await tap(lan, 'Place_dinh');
   await onScene(lan, 'dinh');
-  await godotText(lan, 'DevBadge', 'Sắp ra mắt trên Xóm Đảo');
-  await lan.screenshot({ path: t.shot('4-dinh-coming-soon.png') });
+  // She has experience now, so Cả xóm has her on the podium.
+  await lan.waitForFunction(() => window.xomdao.rect('Rank_1') !== null, null, { timeout: 30_000 });
+  await lan.screenshot({ path: t.shot('4-dinh.png') });
 }

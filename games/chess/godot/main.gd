@@ -10,11 +10,12 @@ extends Control
 ## reaching the last rank asks which piece it becomes (Phong cấp). The side that plays Black sees
 ## the board turned round. The last move's squares are tinted gold, a king in check red. A move
 ## slides (the rook too when castling), a taken piece flies to its taker's seat, and a check shows
-## a CHIẾU TƯỚNG! ribbon (Hiệu ứng: Tắt skips the motion, the sounds stay).
+## a CHIẾU TƯỚNG! ribbon. When the game ends the beaten king tips over and the royal banner says
+## how (chess_finale.gd, which the hub waits for). Hiệu ứng: Tắt skips the motion, the sounds stay.
 ##
 ## Named nodes for tests: Board, Square_<sq> (a button per square, sq = row * 8 + col from
 ## Black's side), Piece_<sq>, Shadow_<sq>, Status, MoveCount, Seat_<seat>, OfferDraw,
-## DeclineDraw, Resign, Effects, Promotion with Promote_<q|r|b|n>, CutIn.
+## DeclineDraw, Resign, Effects, Promotion with Promote_<q|r|b|n>, CutIn, Finale with EndBanner.
 
 const SIZE := 8
 const PROJECTION = preload("res://content/chess/projection.gd")
@@ -25,6 +26,7 @@ const PIECE_ATLAS = preload("res://content/chess/chess_piece_atlas.gd")
 const CHESS_HUD = preload("res://content/chess/chess_hud.gd")
 const CHESS_SEAT = preload("res://content/chess/chess_player_seat.gd")
 const ROOM_DATA = preload("res://content/chess/chess_room_data.gd")
+const FINALE = preload("res://content/chess/chess_finale.gd")
 ## White moves first and starts at the bottom.
 const FIRST := "w"
 const SIDE_NAMES: Dictionary = {"w": "Trắng", "b": "Đen"}
@@ -50,9 +52,7 @@ const SLIDE_SECONDS := 0.22
 const MENU := 88.0
 const COLUMN := 180.0
 const BUTTON_WIDTH := 210.0
-const SOUNDS: Array[String] = [
-	"capture", "castle", "check", "draw", "mate", "move", "promote", "select", "start", "win"
-]
+const SOUNDS := "capture castle check draw lose mate move promote select start victory"
 
 var _client: XomDaoClient
 var _snapshot: XomDaoRoomSnapshot
@@ -77,16 +77,17 @@ var _promotion: XomDaoBoard = XomDaoBoard.create("Phong cấp")
 var _seats: Array[ChessPlayerSeat] = []
 var _avatars: Array[XomDaoAvatar] = []
 var _sounds: Dictionary = {}
-var _shadow_texture: Texture2D
 var _piece_atlas: PIECE_ATLAS = PIECE_ATLAS.new()
 var _active_cutin: Control
+var _finale: FINALE = FINALE.new()
 
 ## Pieces on screen: square → TextureRect, and the letter each shows.
 var _pieces: Dictionary = {}
 var _shadows: Dictionary = {}
 var _letters: Dictionary = {}
-## The picked piece's square (-1: none), and the square a pawn is promoting on.
+## The picked piece's square (-1: none), the square a pawn is promoting on, and the beaten king's.
 var _picked: int = -1
+var _fallen: int = -1
 var _promoting: int = -1
 var _moves: Array = []
 var _plies: int = -1
@@ -118,6 +119,23 @@ func result_detail() -> Dictionary:
 ## The shared Kết quả button uses the same lacquer frame as the chess table controls.
 func result_reopen_theme() -> Dictionary:
 	return CHESS_HUD.result_reopen_theme()
+
+
+## Hub hook: the result board waits for the end beat.
+func wait_for_result_panel() -> void:
+	if _client != null and _client.snapshot != null:
+		_show(_client.snapshot)
+	await _finale.wait()
+
+
+## Hub hook: the result board in parchment, oxblood and brass, with the royal crest.
+func result_theme() -> Dictionary:
+	return FINALE.theme(_view)
+
+
+## Hub hook: the ☰ button in the seats' dark walnut with a gold edge.
+func table_skin() -> XomDaoTableSkin:
+	return FINALE.skin()
 
 
 func bind(client: XomDaoClient) -> void:
@@ -165,28 +183,12 @@ func _ready() -> void:
 		square.pressed.connect(_tap.bind(sq))
 		_squares.add_child(square)
 
-	_status.name = "Status"
-	_status.theme_type_variation = "HudLabel"
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	CHESS_HUD.hud_label(_status, "Status", 28, Color("#F5E8CE"))
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.add_theme_color_override("font_color", Color("#F5E8CE"))
-	_status.add_theme_font_size_override("font_size", 28)
-	_status.add_theme_color_override("font_outline_color", Color(0.07, 0.05, 0.04, 0.82))
-	_status.add_theme_constant_override("outline_size", 2)
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_status.visible = false
-	_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_status)
-	_move_count.name = "MoveCount"
-	_move_count.theme_type_variation = "HudLabel"
-	_move_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_move_count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_move_count.add_theme_color_override("font_color", Color("#F0D18A"))
-	_move_count.add_theme_font_size_override("font_size", 24)
-	_move_count.add_theme_color_override("font_outline_color", Color(0.07, 0.05, 0.04, 0.82))
-	_move_count.add_theme_constant_override("outline_size", 2)
-	_move_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	CHESS_HUD.hud_label(_move_count, "MoveCount", 24, Color("#F0D18A"))
 	add_child(_move_count)
 	_draw.name = "OfferDraw"
 	_draw.pressed.connect(_send.bind("offer-draw"))
@@ -211,36 +213,18 @@ func _ready() -> void:
 		_seats.append(player_seat)
 		_avatars.append(player_seat.avatar)
 		add_child(player_seat)
-	_build_promotion()
-	for sound: String in SOUNDS:
+	add_child(_promotion)
+	CHESS_HUD.build_promotion(_promotion, PROMOTIONS, PROMOTION_NAMES, _promote)
+	for sound: String in SOUNDS.split(" "):
 		var player := AudioStreamPlayer.new()
 		player.bus = XomDaoSettings.SFX_BUS
 		player.stream = load("res://content/chess/sounds/%s.wav" % sound)
 		player.max_polyphony = 3
 		add_child(player)
 		_sounds[sound] = player
+	add_child(_finale)
 	resized.connect(_layout)
 	_layout.call_deferred()
-
-
-## Phong cấp: the four pieces a pawn may become, over the board.
-func _build_promotion() -> void:
-	_promotion.name = "Promotion"
-	_promotion.visible = false
-	add_child(_promotion)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	_promotion.content.add_child(row)
-	for kind: String in PROMOTIONS:
-		var button: XomDaoButton = XomDaoButton.create(PROMOTION_NAMES[kind], XomDaoUi.Kind.BACK)
-		button.name = "Promote_" + kind
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		button.expand_icon = true
-		button.custom_minimum_size = Vector2(110.0, 140.0)
-		CHESS_HUD.skin_royal_button(button, false)
-		button.pressed.connect(_promote.bind(kind))
-		row.add_child(button)
 
 
 func _show(snapshot: XomDaoRoomSnapshot) -> void:
@@ -269,6 +253,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		and _letters.has(int((last as Dictionary)["from"]))
 	)
 	var moved: bool = plies == _plies + 1 and last is Dictionary
+	var seen: bool = not _view.is_empty()
 	_view = view
 	_moves = view.get("moves", [])
 	if flip != _flip:
@@ -276,6 +261,8 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		_layout()
 	if fresh:
 		_clear_pieces()
+		_finale.reset()
+		_fallen = -1
 		_sfx("start")
 	if animate:
 		_play_move(last as Dictionary, plies)
@@ -292,7 +279,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 				false
 			)
 	_plies = plies
-	if _picked >= 0 and not _starts().has(_picked):
+	if _picked >= 0 and not CHESS_INPUT.starts(_moves).has(_picked):
 		_picked = -1
 	if _promoting >= 0 and _moves.is_empty():
 		_close_promotion()
@@ -301,9 +288,9 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	_show_buttons()
 	var ended: bool = view.get("end") != null
 	if ended and not _ended:
-		var end: Dictionary = view["end"]
-		if str(end.get("reason", "")) != "checkmate":
-			_sfx("win" if end.get("winner") != null else "draw")
+		_finale.arm(seen)
+		if not _animating:
+			_end_beat()
 	_ended = ended
 	_move_count.text = "NƯỚC %02d" % (plies / 2 + 1)
 	_marks.queue_redraw()
@@ -340,7 +327,14 @@ func _piece_rect(sq: int) -> Rect2:
 
 func _on_board_input(event: InputEvent) -> void:
 	var sq: int = CHESS_INPUT.square_for_event(
-		event, _pieces.keys(), _letters, _flip, _board.position, _board.size, _animating
+		event,
+		_pieces.keys(),
+		_letters,
+		_flip,
+		_board.position,
+		_board.size,
+		_animating,
+		CHESS_INPUT.targets(_moves, _picked) if _picked >= 0 else []
 	)
 	if sq < 0:
 		return
@@ -387,7 +381,7 @@ func _sync_pieces() -> void:
 			continue
 		var shadow := TextureRect.new()
 		shadow.name = "Shadow_%d" % sq
-		shadow.texture = _piece_shadow_texture()
+		shadow.texture = CHESS_EFFECTS.piece_shadow_texture()
 		shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		shadow.stretch_mode = TextureRect.STRETCH_SCALE
 		shadow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -423,6 +417,8 @@ func _place_pieces() -> void:
 		piece.modulate = Color.WHITE
 		piece.scale = Vector2.ONE
 		piece.rotation = 0.0
+		if sq == _fallen and _finale.toppled:
+			FINALE.lay_down(piece, shadow, _finale.fall_side)
 		shadow.move_to_front()
 		piece.move_to_front()
 
@@ -432,23 +428,6 @@ func _shadow_rect(sq: int) -> Rect2:
 	var shadow_size := Vector2(tile.x * SHADOW_WIDTH, tile.y * SHADOW_HEIGHT)
 	var center: Vector2 = _center_of(sq) + tile * SHADOW_OFFSET
 	return Rect2(center - shadow_size / 2.0, shadow_size)
-
-
-func _piece_shadow_texture() -> Texture2D:
-	if _shadow_texture != null:
-		return _shadow_texture
-	const WIDTH := 96
-	const HEIGHT := 64
-	var image := Image.create(WIDTH, HEIGHT, false, Image.FORMAT_RGBA8)
-	for y: int in HEIGHT:
-		for x: int in WIDTH:
-			var dx: float = (float(x) + 0.5 - WIDTH * 0.5) / (WIDTH * 0.5)
-			var dy: float = (float(y) + 0.5 - HEIGHT * 0.5) / (HEIGHT * 0.5)
-			var radius: float = sqrt(dx * dx + dy * dy)
-			var alpha: float = pow(maxf(1.0 - radius, 0.0), 2.2) * 0.58
-			image.set_pixel(x, y, Color(0.035, 0.022, 0.014, alpha))
-	_shadow_texture = ImageTexture.create_from_image(image)
-	return _shadow_texture
 
 
 ## The last move on screen: the piece slides (the rook with it when castling), a taken piece flies
@@ -582,6 +561,8 @@ func _play_move(last: Dictionary, plies: int) -> void:
 		_letters[rook[1]] = "R" if letter == "K" else "r"
 	_place_pieces()
 	_animating = false
+	if plies == int(_view.get("plies", 0)) and _view.get("end") != null:
+		_end_beat()
 	# A reply that came in meanwhile plays next.
 	var next: Variant = _view.get("last")
 	if (
@@ -595,8 +576,9 @@ func _play_move(last: Dictionary, plies: int) -> void:
 	_marks.queue_redraw()
 
 
+## CHIẾU TƯỚNG!: the royal banner with the checking piece (a mate's end beat says CHIẾU HẾT).
 func _cut_in(last: Dictionary, mate: bool, checker: String) -> void:
-	if not _effects:
+	if not _effects or mate:
 		return
 	if is_instance_valid(_active_cutin):
 		_active_cutin.queue_free()
@@ -609,6 +591,45 @@ func _cut_in(last: Dictionary, mate: bool, checker: String) -> void:
 		str(SIDE_NAMES[CHESS_HUD.side_of(checker)]),
 		_texture_of(checker, to)
 	)
+
+
+## The end beat, from your side: the beaten king tips over, the banner says how the game ended
+## and the outcome sound plays (a win's fanfare, a loss, a draw).
+func _end_beat() -> void:
+	if not _finale.armed():
+		return
+	var end: Dictionary = _view["end"]
+	var winner: Variant = end.get("winner")
+	var outcome: String = "draw"
+	if winner != null:
+		outcome = "watch" if _mine == "" else ("win" if str(winner) == _mine else "lose")
+	var board: Array[String] = _board_letters()
+	var white_won: bool = str(winner) == "w"
+	_fallen = board.find("k" if white_won else "K") if winner != null else -1
+	var crowned: int = board.find("K" if white_won else "k") if winner != null else -1
+	var crest: int = crowned if crowned >= 0 else board.find("K")
+	var falls: float = 1.0
+	if _fallen >= 0 and _center_of(_fallen).x > _board.position.x + _board.size.x / 2.0:
+		falls = -1.0
+	var spec: Dictionary = {
+		"outcome": outcome,
+		"headline":
+		{"win": "Thắng rồi!", "lose": "Thua rồi", "draw": "Hoà"}.get(
+			outcome, "%s thắng" % SIDE_NAMES[str(winner)]
+		),
+		"reason": str(end.get("reason", "")),
+		"board": Rect2(_board.position, _board.size),
+		"crest": _texture_of(board[crest], crest) if crest >= 0 else null,
+		"winner_at": _center_of(crowned) if crowned >= 0 else null,
+		"winner_size": _square_size(crowned) if crowned >= 0 else Vector2.ONE,
+		"piece": _pieces.get(_fallen),
+		"shadow": _shadows.get(_fallen),
+		"fall_side": falls,
+		"effects": _effects,
+		"sound": _sfx.bind({"lose": "lose", "draw": "draw"}.get(outcome, "victory")),
+		"thud": _sfx.bind("capture"),
+	}
+	_finale.play(spec, self)
 
 
 ## The files and ranks on the edge squares; the last move's squares; a king in check; the picked
@@ -644,50 +665,21 @@ func _draw_marks() -> void:
 		return
 	_marks.draw_colored_polygon(_square_points(_picked), Color(PICKED, 0.5))
 	var board: Array[String] = _board_letters()
-	for to: int in _targets(_picked):
+	for to: int in CHESS_INPUT.targets(_moves, _picked):
 		var target_size: Vector2 = _square_size(to)
 		if board[to] != "":
-			var outline := _ellipse_points(_center_of(to), target_size * 0.44)
+			var outline := PROJECTION.ellipse_points(_center_of(to), target_size * 0.44)
 			var outline_width: float = maxf(2.0, minf(target_size.x, target_size.y) * 0.07)
 			_marks.draw_polyline(outline, Color(TARGET, 0.8), outline_width, true)
 		else:
 			_marks.draw_colored_polygon(
-				_ellipse_points(_center_of(to), target_size * 0.16), Color(TARGET, 0.75)
+				PROJECTION.ellipse_points(_center_of(to), target_size * 0.16), Color(TARGET, 0.75)
 			)
-
-
-func _ellipse_points(center: Vector2, radii: Vector2) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	for i: int in 40:
-		var angle: float = TAU * float(i) / 40.0
-		points.append(center + Vector2(cos(angle) * radii.x, sin(angle) * radii.y))
-	points.append(points[0])
-	return points
 
 
 func _mated() -> bool:
 	var end: Variant = _view.get("end")
 	return end is Dictionary and str((end as Dictionary).get("reason", "")) == "checkmate"
-
-
-## The squares of the pieces that may move now.
-func _starts() -> Array[int]:
-	var out: Array[int] = []
-	for move: Dictionary in _moves:
-		var from: int = int(move["from"])
-		if not out.has(from):
-			out.append(from)
-	return out
-
-
-## Where the piece on `from` may go.
-func _targets(from: int) -> Array[int]:
-	var out: Array[int] = []
-	for move: Dictionary in _moves:
-		var to: int = int(move["to"])
-		if int(move["from"]) == from and not out.has(to):
-			out.append(to)
-	return out
 
 
 ## A tap on a square: pick a piece that may move, move the picked piece there (a pawn reaching
@@ -697,7 +689,7 @@ func _tap(sq: int) -> void:
 		return
 	if _promoting >= 0:
 		_close_promotion()
-	if _picked >= 0 and _targets(_picked).has(sq):
+	if _picked >= 0 and CHESS_INPUT.targets(_moves, _picked).has(sq):
 		var promotes: bool = _moves.any(
 			func(m: Dictionary) -> bool:
 				return (
@@ -713,7 +705,7 @@ func _tap(sq: int) -> void:
 		_marks.queue_redraw()
 		await _client.send("move", {"from": from, "to": sq})
 		return
-	if _starts().has(sq) and sq != _picked:
+	if CHESS_INPUT.starts(_moves).has(sq) and sq != _picked:
 		_sfx("select")
 		_picked = sq
 	else:
@@ -790,11 +782,8 @@ func _name_of(side: String) -> String:
 	var id: String = _player_of(side)
 	if id == _client.player_id:
 		return "Bạn"
-	if _snapshot != null:
-		for player: XomDaoPlayerInfo in _snapshot.seats + _snapshot.players:
-			if player.id == id:
-				return player.name
-	return str(SIDE_NAMES[side])
+	var info: XomDaoPlayerInfo = _player_info_of(id)
+	return info.name if info != null else str(SIDE_NAMES[side])
 
 
 ## Seat 0 is the side at the bottom (yours), with the player's SDK avatar, frame and record.

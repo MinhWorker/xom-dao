@@ -6,6 +6,7 @@ extends Control
 ##
 ##   var party := Celebration.new()   # preload("res://content/co-ca-ngua/celebration.gd")
 ##   party.setup(board_rect, Color("#E95853"), Color("#FFB5A4"), "Bạn", 1)
+##   party.setup(board_rect, accent, tint, "Máy 1", 1, "CHIẾN THẮNG!", "BẠN THUA", false)  # a loss
 ##   add_child(party)
 ##   party.play()
 ##
@@ -31,6 +32,7 @@ var board := Rect2()
 var elapsed: float = 0.0
 
 var _accent := Color("#E7BD64")
+var _fireworks: bool = true
 var _badge := Control.new()
 var _heading := Label.new()
 var _name := Label.new()
@@ -59,14 +61,26 @@ func _init() -> void:
 	_text(_rank, 26, Color("#553410"), Color("#FFF1BF"), 0, 35.0)
 
 
-## What the plaque shows: the player's colour (accent for the ribbons, tint for the name).
-func setup(on: Rect2, accent: Color, tint: Color, who: String, rank: int) -> void:
+## What the plaque shows: the player's colour (accent for the ribbons, tint for the name), and
+## optionally its own `heading` and `ribbon` words (else heading_for(rank) and "HẠNG n");
+## `fireworks` false keeps the sky dark (someone else won).
+func setup(
+	on: Rect2,
+	accent: Color,
+	tint: Color,
+	who: String,
+	rank: int,
+	heading: String = "",
+	ribbon: String = "",
+	fireworks: bool = true
+) -> void:
 	board = on
 	_accent = accent
-	_heading.text = heading_for(rank)
+	_fireworks = fireworks
+	_heading.text = heading if heading != "" else heading_for(rank)
 	_name.text = who
 	_name.add_theme_color_override("font_color", tint)
-	_rank.text = "HẠNG %d" % rank
+	_rank.text = ribbon if ribbon != "" else "HẠNG %d" % rank
 	var font: Font = XomDaoUi.display_font(800)
 	var font_size: int = 34
 	while (
@@ -119,6 +133,8 @@ func _step(at: float) -> void:
 
 ## Six bursts of sparks over the board, a third of a second apart, each fading in a second.
 func _draw() -> void:
+	if not _fireworks:
+		return
 	var side: float = board.size.x
 	for burst: int in 6:
 		var age: float = elapsed - burst * 0.33

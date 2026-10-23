@@ -30,8 +30,10 @@ Mặt chiếu, lá bài, chất và nút lấy từ Tiến Lên (`mat`, `face-cl
 `back-lotus`, `suit-*`, `button`). Đảo `island.webp` là hình riêng của Bài Cào, tạo bằng công cụ
 tạo ảnh của Codex; mô tả lưu trong `sources/prompts.json`. Phỉnh `chip-5`, `chip-10`, `chip-20`
 và dấu `dealer` là hình vector gốc của dự án, xuất bằng
-`node games/bai-cao/sources/render_tokens.mjs`. Lá bài và chiếu trên bàn là `XomDaoCard` và
-`XomDaoMat` của SDK, dùng chung với Tiến Lên.
+`node games/bai-cao/sources/render_tokens.mjs`. Lá bài là `XomDaoCard` của SDK. Nền bàn gỗ đêm
+(`lamplight`) và hình nhỏ trên bảng kết quả (`emblem`) tạo bằng Antigravity, prompt ở
+`sources/prompts.json`; emblem vẽ trên nền xanh #00FF00 rồi tách nền bằng
+`games/checkers/sources/key_green.py`.
 
 Chạy: `npm run godot:export -- --debug` và `npm run dev`, rồi mở
 `http://localhost:5033/?play=bai-cao` (ba máy, năm ván, trên server thật). Kiểm tra bằng
@@ -39,18 +41,25 @@ Chạy: `npm run godot:export -- --debug` và `npm run dev`, rồi mở
 
 ## Bàn chơi
 
-Bố cục **Bàn** ([experience.md](../../docs/experience.md)): chiếu cói, bạn ở dưới với ba lá ở
-giữa, các ghế khác quanh bàn với bài của họ; ván, nhà cái và nhịp **Cược → Nặn bài → So bài** ở
-trên; nút Cược 5 / 10 / 20 và Lật bài ở dưới bên phải.
+Một chiếc bàn gỗ óc chó ban đêm, ngọn đèn dầu ở góc trên phải thở nhẹ, mép bàn chìm vào bóng tối.
+Bàn đổi theo nhịp ván (`godot/table_layout.gd`):
 
-Ba mức cược hiện bằng phỉnh xanh (5), đỏ (10), vàng (20), luôn có số để phân biệt. Nhà cái có
-dấu vàng “CÁI”; chủ phòng có vương miện. Điểm cược là điểm trong trò chơi; mỗi người so bài với
-nhà cái, và dấu cái chuyển theo vòng bàn ở ván sau.
+- **Cược**: mọi người thu gọn thành dải thẻ trên cùng (`XomDaoSeatPill`; nhà cái có dấu CÁI, phỉnh
+  cược của từng người nằm cạnh thẻ). Dưới dải là tấm bảng gỗ ghi ván, nhà cái, nhịp **Cược → Nặn
+  bài → So bài**, cùng thanh thời gian. Giữa bàn là ba phỉnh lớn 5 / 10 / 20 (`godot/bet_tray.gd`);
+  chọn một phỉnh thì nó trượt vào ô cược trước mặt bạn.
+- **Nặn bài**: ba lá của bạn to giữa bàn (`godot/hand.gd`). Bài được chia úp; chạm một lá để mở,
+  hoặc kéo lên (hay sang phải) để nặn: mặt lưng trượt đi và mặt bài hiện dần, thả sớm thì úp lại.
+  Thao tác này không gửi sự kiện công khai. **Lật bài** (đỏ đất nung) công khai cả ba lá.
+- **So bài**: nhà cái ở trên đối diện cả hàng người chơi (bạn đứng đầu hàng). Bài nhà cái lật
+  trước, rồi lần lượt từng người: tên bộ, điểm được/mất và phỉnh bay giữa người đó với nhà cái.
 
-Bài của bạn được chia úp. Chạm một lá để mở, hoặc kéo lên (hay sang phải) để nặn: mặt lưng trượt
-đi và mặt bài hiện dần; thả sớm thì úp lại. Thao tác này không gửi sự kiện công khai. “Lật bài”
-công khai cả ba lá cho mọi người. Khi so bài, tên bộ và điểm được/mất hiện ở từng ghế, phỉnh bay
-giữa nhà cái và người chơi.
+Trên máy tính: phím 1 / 2 / 3 cược 5 / 10 / 20 (lúc nặn thì mở lá 1 / 2 / 3), Enter hoặc Space
+lật bài. Điểm cược là điểm trong trò chơi; dấu cái chuyển theo vòng bàn ở ván sau.
+
+Hết trận, ánh đèn toả quanh người nhiều điểm nhất, phỉnh của các ghế khác trượt về chồng của họ,
+rồi dải giấy viền đồng ghi "Thắng rồi!" hoặc "Thua rồi" cùng số điểm. Bảng kết quả "Tàn canh" xếp
+đủ hạng theo điểm (bằng điểm thì cùng hạng) và ghi điểm từng người.
 
 ## Hình và âm thanh
 

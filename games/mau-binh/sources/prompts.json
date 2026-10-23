@@ -1,5 +1,5 @@
 {
-  "$comment": "Prompts for this game's art: npm run gen:asset -- mau-binh/<name> (the style in assets/prompts.json is added). Frames with \"from\" are drawn by editing their base image.",
+  "$comment": "Prompts for this game's art: npm run gen:asset -- mau-binh/<name> (the style in assets/prompts.json is added). Frames with \"from\" are drawn by editing their base image. indigo, emblem: Made with Antigravity (agy, its built-in image tool), which saves into ~/.gemini/antigravity-cli/brain/; transparent ones were asked for on flat #00FF00 and keyed with games/checkers/sources/key_green.py.",
   "assets": {
     "island": {
       "transparent": true,
@@ -85,6 +85,18 @@
       "preserveCanvas": true,
       "maxSize": 256,
       "prompt": "Next frame of the same falling sand: the hourglass is exactly the same in the same place; only the falling sand is a wavy stream with a few grains bouncing off the heap in the bottom bulb, and a tiny sparkle glints on the glass. Use a real transparent alpha background."
+    },
+    "indigo": {
+      "transparent": false,
+      "maxSize": 1376,
+      "generator": "agy",
+      "prompt": "A wide landscape 16:9 game background, polished stylized 3D cartoon art for a cheerful Vietnamese casual mobile card game: a deep indigo hand-dyed cotton tablecloth (vai cham, Vietnamese highland indigo batik) spread over a low wooden table, seen straight down from directly above (top-down orthographic, no horizon). The whole central area, about 70 percent of the width and height, is plain calm indigo cloth with a faint soft woven texture and very gentle folds, darker toward the edges, completely empty (no objects, cards, board or rectangle in the middle). A border of pale indigo batik pattern (small diamonds, spirals and zigzag bands in faded sky blue and cream) runs along all four edges of the cloth, and in the four corners the honey-brown wood of the table peeks out. Light from the top left, soft and calm, low contrast. No text, letters, people, playing cards, UI, frame or watermark."
+    },
+    "emblem": {
+      "transparent": true,
+      "maxSize": 320,
+      "generator": "agy",
+      "prompt": "A single game emblem icon, polished stylized 3D cartoon art for a cheerful Vietnamese casual mobile card game: a hand of thin standard PLAYING CARDS (poker cards, portrait 2:3, rounded corners, cream faces) arranged in three stepped rows, each card face clearly showing a big rank and suit pips in red and black: top row three cards (red hearts), middle row five cards, bottom row five cards, slightly overlapping like a fanned hand, lying on a folded square of deep indigo batik cloth with a pale blue pattern, a small brass bowl beside it. NOT mahjong tiles, NOT blocks: thin paper playing cards with suit symbols. Front view slightly from above, centered, compact, filling about 80 percent of a square frame, light from the top left, soft rounded chunky shapes, each outline a darker shade of its own fill (never black). Background: perfectly flat solid pure green #00FF00 everywhere, no shadow on the background, no gradient. No words, frame or watermark."
     }
   }
 }

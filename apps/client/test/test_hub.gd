@@ -376,6 +376,125 @@ func test_right_result_panel_stays_inside_viewport_after_scaling() -> void:
 	)
 
 
+class HookGame:
+	extends Node
+	var calls: int = 0
+	var hold: float = 0.0
+
+	func wait_for_result_panel() -> void:
+		calls += 1
+		if hold > 0.0:
+			await get_tree().create_timer(hold).timeout
+
+
+func _still() -> bool:
+	return true
+
+
+func test_the_hub_waits_for_a_games_own_end_beat_on_every_ending() -> void:
+	var host: Control = add_child_autofree(Control.new())
+	var game: HookGame = add_child_autofree(HookGame.new())
+	game.hold = 0.2
+	for winners: Array in [[], ["bot:1"], ["minh"]]:
+		var began: int = Time.get_ticks_msec()
+		await HubEndBeat.run(host, game, _snapshot(winners, []), "minh", _still)
+		assert_gte(Time.get_ticks_msec() - began, 150, "waited for the game (%s)" % [winners])
+		assert_null(host.find_child("EndBeat", true, false), "no hub ribbon over the game's own")
+	assert_eq(game.calls, 3, "a draw and a loss wait too, not only a win")
+
+
+func test_a_games_end_beat_is_capped_and_dropped_when_the_ending_goes() -> void:
+	assert_eq(HubEndBeat.WAIT_CAP, 8.0)
+	var host: Control = add_child_autofree(Control.new())
+	var game: HookGame = add_child_autofree(HookGame.new())
+	game.hold = 30.0
+	var began: int = Time.get_ticks_msec()
+	var said: bool = await HubEndBeat.wait_for_game(host, game, _still, 0.3)
+	assert_false(said, "the game never said it was ready")
+	assert_between(Time.get_ticks_msec() - began, 250, 1000, "gave up at the cap")
+	began = Time.get_ticks_msec()
+	await HubEndBeat.wait_for_game(host, game, func() -> bool: return false)
+	assert_lt(Time.get_ticks_msec() - began, 100, "stops once the room left its ending")
+
+
+func test_a_game_without_its_own_gets_the_hubs_ribbon() -> void:
+	var host: Control = add_child_autofree(Control.new())
+	host.size = XomDaoFrame.SIZE
+	var game: Node = add_child_autofree(Node.new())
+	var won: XomDaoRoomSnapshot = _snapshot(["minh"], [])
+	HubEndBeat.run(host, game, won, "minh", _still)
+	await wait_process_frames(2)
+	var beat: HubEndBeat = host.find_child("EndBeat", true, false)
+	assert_not_null(beat, "the default beat plays")
+	assert_eq(beat.headline, "Thắng rồi!")
+	assert_false(beat.find_child("EndRibbon", true, false).visible, "a pause first")
+	await wait_seconds(HubEndBeat.PAUSE + 0.2)
+	assert_true(beat.find_child("EndRibbon", true, false).visible, "then the ribbon")
+	var tap := InputEventMouseButton.new()
+	tap.button_index = MOUSE_BUTTON_LEFT
+	tap.pressed = true
+	beat._gui_input(tap)
+	assert_false(beat.running, "a tap skips it")
+	await wait_seconds(0.8)
+	assert_null(host.find_child("EndBeat", true, false), "gone for the board")
+	assert_eq(HubEndBeat.headline_for(_snapshot(["bot:1"], []), "minh"), "Thua rồi")
+	assert_eq(HubEndBeat.headline_for(_snapshot([], []), "minh"), "Hoà")
+	assert_eq(HubEndBeat.headline_for(won, "lan"), "Minh thắng", "someone watching")
+	assert_eq(HubEndBeat.outcome_for(won, "lan"), "watch")
+
+
+func test_a_game_skins_the_result_board() -> void:
+	var settings := XomDaoSettings.new()
+	settings.path = ""
+	var result: HubResult = add_child_autofree(HubResult.new(settings))
+	var emblem := PlaceholderTexture2D.new()
+	emblem.size = Vector2(96.0, 96.0)
+	var accent := Color("#2E6B4A")
+	(
+		result
+		. apply_theme(
+			{
+				"paper": Color("#EFE6CF"),
+				"ink": Color("#20302A"),
+				"accent": accent,
+				"shade": Color(0.0, 0.1, 0.05, 0.5),
+				"title": "Tàn cuộc",
+				"emblem": emblem,
+			}
+		)
+	)
+	result.show_result(_snapshot(["minh"], []), "minh", 100)
+	var board: XomDaoBoard = result.find_child("ResultBoard", true, false)
+	assert_eq(board.title, "Tàn cuộc")
+	assert_true(result.find_child("ResultEmblem", true, false).visible)
+	assert_eq((result.get("_shade") as ColorRect).color, Color(0.0, 0.1, 0.05, 0.5))
+	var title: Label = result.find_child("ResultTitle", true, false)
+	assert_eq(title.get_theme_color("font_color"), accent)
+	assert_not_null(result.find_child("MyRow", true, false), "your row stands out")
+	var paper: StyleBoxFlat = board.content.get_parent().get_theme_stylebox("panel")
+	assert_eq(paper.bg_color, Color("#EFE6CF"))
+
+
+func test_the_board_arrives_before_the_coins_fly() -> void:
+	var settings := XomDaoSettings.new()
+	settings.path = ""
+	var result: HubResult = add_child_autofree(HubResult.new(settings))
+	result.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	result.size = XomDaoFrame.SIZE
+	var won: XomDaoRoomSnapshot = _snapshot(
+		["minh"], [{"player": "minh", "resource": "core:coin", "amount": 20}]
+	)
+	result.show_result(won, "minh", 100)
+	result.present()
+	result.receive(120)
+	assert_true(result.arriving())
+	assert_eq(result.money.coins.amount, 100, "the coins wait for the board")
+	await wait_seconds(0.7)
+	assert_false(result.arriving(), "in place within about half a second")
+	await wait_seconds(1.5)
+	assert_eq(result.money.coins.text, "120")
+
+
 func test_rules_read_as_plain_text() -> void:
 	var text: String = HubRulesBoard.plain(
 		"# Luật Caro\n\nHai người **lần lượt**.\n\n## Thắng\n\n- Đủ `5` quân thì thắng."

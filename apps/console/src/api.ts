@@ -34,6 +34,16 @@ export interface ItemList {
   looks: Record<ItemSlot, string[]>;
 }
 
+/** A letter sent to Hộp thư; `to` is a username, "" for everyone. */
+export interface SentLetter {
+  id: string;
+  to: string;
+  title: string;
+  body: string;
+  coins: number;
+  sentAt: string;
+}
+
 /** A refused request; `message` is Vietnamese, ready to show. */
 export class ApiError extends Error {
   constructor(
@@ -123,4 +133,9 @@ export const api = {
   updateItem: (id: string, change: Omit<Item, 'id'>) =>
     call<{ item: Item }>('PATCH', `/items/${encodeURIComponent(id)}`, change),
   deleteItem: (id: string) => call('DELETE', `/items/${encodeURIComponent(id)}`),
+
+  letters: () => call<{ letters: SentLetter[] }>('GET', '/mail'),
+  sendLetter: (letter: { to: string; title: string; body: string; coins: number }) =>
+    call<{ letter: SentLetter }>('POST', '/mail', letter),
+  deleteLetter: (id: string) => call('DELETE', `/mail/${encodeURIComponent(id)}`),
 };

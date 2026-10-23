@@ -64,6 +64,27 @@
       "when": 1792645453330,
       "tag": "0008_items",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792700166378,
+      "tag": "0009_friends",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792701210869,
+      "tag": "0010_quests",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792703027258,
+      "tag": "0011_mail",
+      "breakpoints": true
     }
   ]
 }

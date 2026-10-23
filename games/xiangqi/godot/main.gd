@@ -10,11 +10,13 @@ extends Control
 ## Tap one of your pieces (it lifts), then a dotted point (a ring marks a piece you can take).
 ## Black's player sees the board turned round. The last move is marked gold, a general in check
 ## gets a pulsing red ring. A move slides; a taken piece is struck and breaks apart, and a check
-## shows a CHIẾU TƯỚNG! (CHIẾU BÍ!) scroll (Hiệu ứng: Tắt skips the motion, the sounds stay).
+## shows a CHIẾU TƯỚNG! scroll. When the game ends the beaten general topples and a seal stamps how
+## (XiangqiFinale, which the hub waits for). Hiệu ứng: Tắt skips the motion, the sounds stay.
 ##
 ## Named nodes for tests: Board, Square_<sq> (a button per point, sq = row * 9 + col from
 ## Black's side), Piece_<sq>, TurnPlaque, Status, MoveCount, StatusNote, Seat_<seat>,
-## General_<seat>, Taken_<seat>, OfferDraw, DeclineDraw, Resign, Effects, CheckRing, CutIn.
+## General_<seat>, Taken_<seat>, OfferDraw, DeclineDraw, Resign, Effects, CheckRing, CutIn,
+## Finale with EndSeal, EndHeadline and EndLine.
 
 const COLS := 9
 const ROWS := 10
@@ -60,6 +62,7 @@ const SOUNDS: Array[String] = [
 	"checkmate",
 	"draw",
 	"illegal",
+	"lose",
 	"move",
 	"piece-select",
 	"shatter",
@@ -87,6 +90,7 @@ var _shadows_layer := Control.new()
 var _pieces_layer := Control.new()
 var _squares := Control.new()
 var _plaque := XiangqiTurnPlaque.new()
+var _skin: XomDaoTableSkin = XiangqiFinale.skin()
 var _draw: XomDaoButton = XomDaoButton.create("Xin hoà", XomDaoUi.Kind.INFO)
 var _decline: XomDaoButton = XomDaoButton.create("Từ chối", XomDaoUi.Kind.BACK)
 var _resign: XomDaoButton = XomDaoButton.create("Đầu hàng", XomDaoUi.Kind.DANGER)
@@ -94,6 +98,7 @@ var _effects_button: XomDaoIconButton = XomDaoIconButton.create("sparkle")
 var _slots: Array[XomDaoPlayerSlot] = []
 var _icons: Array[TextureRect] = []
 var _trays: Array[XiangqiTakenTray] = []
+var _finale := XiangqiFinale.new()
 var _sounds: Dictionary = {}
 var _textures: Dictionary = {}
 var _pulse: Tween
@@ -102,8 +107,9 @@ var _pulse: Tween
 var _pieces: Dictionary = {}
 var _shadows: Dictionary = {}
 var _letters: Dictionary = {}
-## The picked piece's point (-1: none).
+## The picked piece's point (-1: none), and the beaten general's once the game is over.
 var _picked: int = -1
+var _fallen: int = -1
 var _moves: Array = []
 var _plies: int = -1
 var _ended: bool = false
@@ -149,9 +155,27 @@ func result_detail() -> Dictionary:
 		"rows":
 		[
 			["Số nước", str(int(_view.get("plies", 0)))],
-			["Quân đã ăn", "Đỏ %d · Đen %d" % [_taken_by("r"), _taken_by("b")]],
+			["Đỏ ăn", "%d quân" % _taken_by("r")],
+			["Đen ăn", "%d quân" % _taken_by("b")],
 		],
 	}
+
+
+## Hub hook: the result board waits for the end beat.
+func wait_for_result_panel() -> void:
+	if _client != null and _client.snapshot != null:
+		_show(_client.snapshot)
+	await _finale.wait()
+
+
+## Hub hook: the result board in the table's colors, with a seal on top.
+func result_theme() -> Dictionary:
+	return XiangqiFinale.theme(_view)
+
+
+## Hub hook: the ☰ button, the seats and the buttons in the table's own materials.
+func table_skin() -> XomDaoTableSkin:
+	return _skin
 
 
 func bind(client: XomDaoClient) -> void:
@@ -245,6 +269,7 @@ func _ready() -> void:
 		tray.name = "Taken_%d" % seat
 		add_child(tray)
 		_trays.append(tray)
+	_skin.dress_all([_plaque, _effects_button, _draw, _decline, _resign] + _slots)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
 		player.bus = XomDaoSettings.SFX_BUS
@@ -255,6 +280,7 @@ func _ready() -> void:
 		player.max_polyphony = 3
 		add_child(player)
 		_sounds[sound] = player
+	add_child(_finale)
 	resized.connect(_layout)
 	_layout.call_deferred()
 
@@ -285,6 +311,7 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		and _letters.has(int((last as Dictionary)["from"]))
 	)
 	var moved: bool = plies == _plies + 1 and last is Dictionary
+	var seen: bool = not _view.is_empty()
 	_view = view
 	_moves = view.get("moves", [])
 	if flip != _flip:
@@ -292,6 +319,8 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		_layout()
 	if fresh:
 		_clear_pieces()
+		_finale.reset()
+		_fallen = -1
 		_sfx("start")
 	if animate:
 		_play_move(last as Dictionary, plies)
@@ -308,11 +337,9 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	_show_buttons()
 	var ended: bool = view.get("end") != null
 	if ended and not _ended:
-		var end: Dictionary = view["end"]
-		if end.get("winner") == null:
-			_sfx("draw")
-		elif str(end.get("winner")) == _mine:
-			_sfx("victory")
+		_finale.arm(seen)
+		if not _animating:
+			_end_beat()
 	_ended = ended
 	_plaque.move_count.text = "Nước %d" % (plies / 2 + 1)
 	_marks.queue_redraw()
@@ -425,6 +452,8 @@ func _place_pieces() -> void:
 		shadow.pivot_offset = rest.size / 2.0
 		shadow.scale = Vector2.ONE * (1.0 - lift)
 		shadow.modulate.a = 1.0 - lift * 1.3
+		if sq == _fallen and _finale.toppled:
+			XiangqiFinale.lay_down(piece, shadow, _gap)
 
 
 ## The last move on screen: the piece lifts and slides; a taken piece is struck and breaks apart.
@@ -499,58 +528,59 @@ func _move_sound(last: Dictionary) -> String:
 	return "capture-heavy" if str(captured).to_lower() == "r" else "capture"
 
 
-## After a move lands: the check or mate sound and scroll, or the "your turn" chime.
+## After a move lands: the check or mate sound and the CHIẾU TƯỚNG! scroll (a mate's end beat
+## follows), or the "your turn" chime.
 func _after_move(last: Dictionary, animated: bool) -> void:
 	var end: Variant = _view.get("end")
 	var mate: bool = end is Dictionary and str((end as Dictionary).get("reason", "")) == "checkmate"
 	if bool(_view.get("check", false)) or mate:
 		_sfx("checkmate" if mate else "check")
-		if animated and _effects:
-			_cut_in(last, mate)
+		if animated and _effects and not mate:
+			var board: Array[String] = _board_letters()
+			var to: int = int(last["to"])
+			var checker: Texture2D = _texture_of(board[to] if board[to] != "" else "R")
+			XiangqiFinale.check_scroll(self, _board, checker)
 	elif str(_view.get("turn", "")) == _mine and end == null:
 		get_tree().create_timer(0.26).timeout.connect(_sfx.bind("turn"))
+	if animated and end != null:
+		_end_beat()
 
 
-## CHIẾU TƯỚNG! (or CHIẾU BÍ!): a paper scroll with the checking piece unrolls over the board
-## and rolls away.
-func _cut_in(last: Dictionary, mate: bool) -> void:
-	var scroll := PanelContainer.new()
-	scroll.name = "CutIn"
-	scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style: StyleBoxFlat = XomDaoUi.box(Color("#F3E6C8"), Color("#5C2D12"), 6, 10.0)
-	style.content_margin_left = 28.0
-	style.content_margin_right = 40.0
-	style.content_margin_top = 12.0
-	style.content_margin_bottom = 12.0
-	scroll.add_theme_stylebox_override("panel", style)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	scroll.add_child(row)
-	var piece := TextureRect.new()
+## The end beat, from your side: the beaten general topples, a seal says how the game ended and
+## the outcome sound plays (a win's music, a loss, a draw).
+func _end_beat() -> void:
+	if not _finale.armed():
+		return
+	var end: Dictionary = _view["end"]
+	var winner: Variant = end.get("winner")
+	var outcome: String = "draw"
+	if winner != null:
+		outcome = "watch" if _mine == "" else ("win" if str(winner) == _mine else "lose")
 	var board: Array[String] = _board_letters()
-	var to: int = int(last["to"])
-	piece.texture = _texture_of(board[to] if board[to] != "" else "R")
-	piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	piece.custom_minimum_size = Vector2(96.0, 96.0)
-	row.add_child(piece)
-	var text := Label.new()
-	text.text = "CHIẾU BÍ!" if mate else "CHIẾU TƯỚNG!"
-	text.add_theme_font_override("font", XomDaoUi.display_font(900))
-	text.add_theme_font_size_override("font_size", 48)
-	text.add_theme_color_override("font_color", Color("#8E1B1B"))
-	text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(text)
-	add_child(scroll)
-	scroll.reset_size()
-	scroll.position = _board.position + (_board.size - scroll.size) / 2.0
-	scroll.pivot_offset = scroll.size / 2.0
-	scroll.scale = Vector2(0.05, 1.0)
-	var tween: Tween = scroll.create_tween()
-	tween.tween_property(scroll, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_interval(0.9)
-	tween.tween_property(scroll, "scale", Vector2(0.05, 1.0), 0.22).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_callback(scroll.queue_free)
+	_fallen = board.find("k" if str(winner) == "r" else "K") if winner != null else -1
+	var crowned: int = board.find("K" if str(winner) == "r" else "k") if winner != null else -1
+	var sound: String = {"lose": "lose", "draw": "draw"}.get(outcome, "victory")
+	(
+		_finale
+		. play(
+			{
+				"outcome": outcome,
+				"headline":
+				{"win": "Thắng rồi!", "lose": "Thua rồi", "draw": "Hoà"}.get(
+					outcome, "%s thắng" % _name_of(str(winner))
+				),
+				"line": _plaque.note.text,
+				"reason": str(end.get("reason", "")),
+				"board": Rect2(_board.position, _board.size),
+				"gap": _gap,
+				"winner_at": _point_at(crowned) if crowned >= 0 else null,
+				"piece": _pieces.get(_fallen),
+				"shadow": _shadows.get(_fallen),
+				"effects": _effects,
+				"sound": _sfx.bind(sound),
+			}
+		)
+	)
 
 
 ## The pulsing red ring round a general in check.
@@ -960,21 +990,9 @@ func _fill_tray(i: int, side: String) -> void:
 	for piece: Variant in _view.get("captured", []):
 		if _side_of(str(piece)) != side:
 			letters.append(str(piece))
-			textures.append(_disc_of(str(piece)))
+			textures.append(XiangqiTakenTray.disc_of(_texture_of(str(piece)), DISC))
 	if _trays[i].show_pieces(letters, textures):
 		_layout.call_deferred()
-
-
-## Just the disc of a piece's picture (the picture has room around it for the shadow).
-func _disc_of(letter: String) -> Texture2D:
-	var picture: Texture2D = _texture_of(letter)
-	var side: float = picture.get_width() * DISC * 1.1
-	var disc := AtlasTexture.new()
-	disc.atlas = picture
-	disc.region = Rect2(
-		(Vector2(picture.get_size()) - Vector2.ONE * side) / 2.0, Vector2.ONE * side
-	)
-	return disc
 
 
 ## Hiệu ứng is a sparkle: bright while the motion is on, faded while it is off.

@@ -6,14 +6,20 @@ import { CatalogService } from '../catalog/catalog.service.js';
 import { EventClock } from '../events/event-clock.js';
 import { EventsService } from '../events/events.service.js';
 import { MemoryEventsStore } from '../events/events.store.js';
+import { FriendsService } from '../friends/friends.service.js';
+import { MemoryFriendsStore } from '../friends/friends.store.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { MemoryInventoryStore } from '../inventory/inventory.store.js';
 import { ItemsService } from '../items/items.service.js';
 import { MemoryItemsStore } from '../items/items.store.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MemoryLedgerStore } from '../ledger/ledger.store.js';
+import { MailService } from '../mail/mail.service.js';
+import { MemoryMailStore } from '../mail/mail.store.js';
 import { MatchesService } from '../matches/matches.service.js';
 import { MemoryMatchesStore } from '../matches/matches.store.js';
+import { QuestsService } from '../quests/quests.service.js';
+import { MemoryQuestsStore } from '../quests/quests.store.js';
 import { RoomsGateway } from '../rooms/rooms.gateway.js';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { ShopService } from '../shop/shop.service.js';
@@ -43,6 +49,9 @@ function setup(dev: boolean) {
     items,
     new EventsService(new MemoryEventsStore(), ledger, new EventClock()),
     new StatsService(new MemoryStatsStore(), ledger, accounts),
+    new FriendsService(new MemoryFriendsStore(), accounts),
+    new QuestsService(new MemoryQuestsStore(), ledger, new EventClock()),
+    new MailService(new MemoryMailStore(), ledger, accounts),
   );
   const socket = {
     data: { user: { id: 'a', name: 'A' }, roomCode: room.code },

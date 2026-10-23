@@ -224,3 +224,13 @@ static func _vector3(values: Array) -> Vector3:
 
 static func _profile() -> Dictionary:
 	return CAMERA_PROFILE.PROFILE
+
+
+## An ellipse round `center` as a closed polyline.
+static func ellipse_points(center: Vector2, radii: Vector2) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i: int in 40:
+		var angle: float = TAU * float(i) / 40.0
+		points.append(center + Vector2(cos(angle) * radii.x, sin(angle) * radii.y))
+	points.append(points[0])
+	return points

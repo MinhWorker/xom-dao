@@ -42,6 +42,16 @@ một lần. `godot/sea.gd` vẽ một vùng biển,
 `godot/rules.gd` kiểm tra vị trí tàu (chép từ `rules.ts`); hình ở `godot/art/`, âm thanh ở
 `godot/sounds/`, nhạc ở `godot/music/`; test: `godot/test/`.
 
+Trên máy tính: tới lượt bắn thì rê chuột hoặc dùng phím mũi tên để ngắm (vòng ngắm đồng thau),
+Enter hoặc Space để bắn; lúc xếp tàu, R xoay tàu đang chọn và Enter là Sẵn sàng.
+
+Mọi mảnh HUD là một "bàn hải đồ": thép xanh đậm viền đồng thau, chữ màu giấy hải đồ. Ba nút mệnh
+lệnh là đĩa trơn: **Xếp lại** thép, **Sẵn sàng** xanh cờ hiệu, **Đầu hàng** đỏ sẫm, đứng tách ra
+một chút. Hết trận (`godot/finale.gd`): thắng thì một dây cờ hiệu hàng hải kéo ngang trên biển và
+phấp phới; thua thì biển sẫm lại và bọt nước nổi lên. Dải giấy hải đồ viền đồng ghi "Thắng rồi!"
+hoặc "Thua rồi" và cách kết thúc (hạm đội chìm hết, đầu hàng, rời trận). Bảng kết quả "Hải chiến
+kết thúc" ghi số phát bắn và số tàu đánh chìm của từng người, mỗi số một dòng.
+
 Chạy: `npm run godot:export -- --debug` và `npm run dev`, rồi mở
 `http://localhost:5033/?play=battleship` (đấu máy Dễ, trên server thật). Kiểm tra bằng
 `npm run check` và `npm run godot:check`.
@@ -63,7 +73,7 @@ assets/                     hình (.webp) và âm thanh (.wav/.mp3) cỡ đầy 
 ```
 
 Âm thanh riêng cho đặt tàu, sẵn sàng, bắn, trượt, trúng, chìm và thắng, cùng một bản nhạc nền
-nhẹ.
+nhẹ; tiếng thua lúc hết trận là tiếng thua chung của ứng dụng.
 
 ## Hình và âm thanh
 
@@ -74,7 +84,9 @@ cùng chuẩn với các đảo khác. PNG gốc nằm ở `sources/island.png` 
 (Git LFS).
 
 Các hình trên bàn và âm thanh là tác phẩm gốc tạo bằng code trong `sources/render_assets.py`.
-Bong bóng emote được tạo riêng bằng ImageGen, prompt tại `sources/prompts.json`. Asset phát hành
+Bong bóng emote được tạo riêng bằng ImageGen, prompt tại `sources/prompts.json`. Hình nhỏ trên bảng
+kết quả (`emblem`) tạo bằng Antigravity trên nền xanh #00FF00 rồi tách nền bằng
+`games/checkers/sources/key_green.py`; prompt cũng ở `prompts.json`. Asset phát hành
 theo giấy phép MIT của repo, không dùng mẫu tải ngoài.
 Hình WebP có nền trong suốt (trừ biển), hiệu ứng WAV mono 16-bit 44,1 kHz, nhạc MP3 128 kbps.
 Bàn dùng bản sao trong `godot/art/`, `godot/sounds/` và `godot/music/`. Tạo lại từ thư mục gốc (cần `npm install`, Python 3 và ffmpeg):

@@ -5,6 +5,10 @@ extends Control
 ## the ledger (green up, red down), the balance on the top right that the coins fly into, and Chơi
 ## tiếp (a new game, same room), Về sảnh and Xem bàn (put the board away to look at the table;
 ## Kết quả at the top brings it back).
+##
+## It arrives rather than pops: the shade fades in, the board rises with a slight overshoot, its
+## lines show one after another, then the coins fly. A game skins it with `apply_theme()` (its
+## `result_theme()`: paper, ink, accent, shade, title, emblem).
 
 signal again_pressed
 signal home_pressed
@@ -29,6 +33,13 @@ var _presenting: bool = false
 var _side_panel: bool = false
 var _dock_area: Callable
 var _reveal: Tween
+var _emblem := TextureRect.new()
+var _paper: PanelContainer
+var _ink: Color = XomDaoUi.INK
+var _accent: Variant = null
+var _shade_color: Variant = null
+var _arriving: bool = false
+var _pending_balance: int = -1
 
 
 ## The ranks of a finished game: 1 for the winners, 2 for the others; everyone 0 in a draw.
@@ -74,6 +85,14 @@ func _init(settings: XomDaoSettings = null) -> void:
 	add_child(_board)
 	var column: VBoxContainer = _board.content
 	column.add_theme_constant_override("separation", 8)
+	_paper = column.get_parent() as PanelContainer
+	_emblem.name = "ResultEmblem"
+	_emblem.custom_minimum_size = Vector2(0.0, 96.0)
+	_emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_emblem.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_emblem.visible = false
+	column.add_child(_emblem)
 	_title.name = "ResultTitle"
 	_title.theme_type_variation = "TitleLabel"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -138,7 +157,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Fills the board for player `me`; `balance` is the coins shown before this game's reward. An
 ## event's game (`event`) is titled with the event points you got, also shown on your row.
-## `detail` is the game's `result_detail()`: `{reason: String, rows: [[label, value], …]}`.
+## `detail` is the game's `result_detail()`: `{reason: String, rows: [[label, value], …]}`, and
+## optionally `ranks` ({player id: rank}, for a game that places everyone, not only the winner)
+## and `scores` ({player id: String}, a short figure on that player's row: "15 điểm").
 func show_result(
 	snapshot: XomDaoRoomSnapshot,
 	me: String,
@@ -153,6 +174,8 @@ func show_result(
 		Control.MOUSE_FILTER_IGNORE if table_interactive else Control.MOUSE_FILTER_STOP
 	)
 	_shade.color = Color(XomDaoUi.INK, 0.18 if _side_panel else 0.45)
+	if _shade_color is Color:
+		_shade.color = _shade_color
 	var column: VBoxContainer = _board.content
 	if _side_panel and _again.get_parent() == _button_row:
 		_button_row.remove_child(_again)
@@ -179,6 +202,12 @@ func show_result(
 		_title.text = "%s thắng!" % _name_of(snapshot, winners[0])
 	_show_detail(snapshot, detail)
 	var rank: Dictionary = ranks(snapshot)
+	var placed: Variant = detail.get("ranks")
+	if placed is Dictionary:
+		for id: Variant in placed:
+			if rank.has(str(id)):
+				rank[str(id)] = int(placed[id])
+	var scores: Variant = detail.get("scores", {})
 	var paid: Dictionary = coins(snapshot)
 	var seated: Array[XomDaoPlayerInfo] = _seated(snapshot)
 	seated.sort_custom(
@@ -186,6 +215,15 @@ func show_result(
 	)
 	for player: XomDaoPlayerInfo in seated:
 		var row: Control = _row(player, int(rank[player.id]), int(paid.get(player.id, 0)), me)
+		if scores is Dictionary and (scores as Dictionary).has(player.id):
+			var score := Label.new()
+			score.name = "Score"
+			score.text = str(scores[player.id])
+			score.add_theme_font_override("font", XomDaoUi.display_font(800))
+			score.add_theme_color_override("font_color", Color(_ink, 0.78))
+			score.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(score)
+			row.move_child(score, row.get_child_count() - 2)
 		if event and not player.bot:
 			var got := XomDaoChip.create(
 				"+%d điểm" % int(points.get(player.id, 0)), "flag-banner", XomDaoUi.LACQUER
@@ -195,7 +233,7 @@ func show_result(
 			got.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(got)
 			row.move_child(got, row.get_child_count() - 2)
-		_ranks.add_child(row)
+		_ranks.add_child(_mine(row) if player.id == me else row)
 	_again.visible = snapshot.host_id == me
 	money.show_balance(balance)
 	_board.visible = true
@@ -203,34 +241,25 @@ func show_result(
 	_layout.call_deferred()
 
 
-## Brings the paper result panel in after the table's winner focus is ready.
+## Brings the paper result panel in after the game's end beat. Only the paper sound: the
+## outcome sound belongs to the end beat (the game's own or HubEndBeat).
 func present() -> void:
+	_arriving = true
 	await get_tree().process_frame
 	if not is_inside_tree():
 		return
 	_layout()
+	_stagger_lines(0.16)
 	if not _side_panel:
 		if _dock_area.is_valid():
-			_shade.visible = false
-			_shade.modulate.a = 0.0
-			_board.modulate.a = 0.0
-			_reveal = create_tween()
-			_reveal.tween_property(_board, "modulate:a", 1.0, 0.35).set_delay(0.3)
-			XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
+			await _settle_docked()
 		else:
-			_shade.modulate.a = 1.0
-			_board.modulate.a = 1.0
-			_board.open()
+			await _rise()
 		return
 	var target: Vector2 = _board.position
 	var final_scale: Vector2 = _board.scale
 	if _dock_area.is_valid():
-		_shade.visible = false
-		_shade.modulate.a = 0.0
-		_board.modulate.a = 0.0
-		_reveal = create_tween()
-		_reveal.tween_property(_board, "modulate:a", 1.0, 0.35).set_delay(0.3)
-		XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
+		await _settle_docked()
 		return
 	_presenting = true
 	_board.position.x += _board.size.x * final_scale.x + 20.0
@@ -250,9 +279,145 @@ func present() -> void:
 		. set_ease(Tween.EASE_OUT)
 	)
 	entrance.tween_property(_board, "modulate:a", 1.0, 0.28)
+	XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
 	await entrance.finished
 	_presenting = false
+	_arrived()
+
+
+## The centred board: the shade fades in while the board rises from below with a slight
+## overshoot (about half a second in all).
+func _rise() -> void:
+	var target: Vector2 = _board.position
+	var final_scale: Vector2 = _board.scale
+	_presenting = true
+	_board.pivot_offset = _board.size / 2.0
+	_board.position = target + Vector2(0.0, 72.0)
+	_board.scale = final_scale * 0.94
+	_board.modulate.a = 0.0
+	_shade.modulate.a = 0.0
 	XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
+	var entrance: Tween = create_tween().set_parallel(true)
+	entrance.tween_property(_shade, "modulate:a", 1.0, 0.2)
+	entrance.tween_property(_board, "position", target, 0.34).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+	(
+		entrance
+		. tween_property(_board, "scale", final_scale, 0.34)
+		. set_trans(Tween.TRANS_BACK)
+		. set_ease(Tween.EASE_OUT)
+	)
+	entrance.tween_property(_board, "modulate:a", 1.0, 0.14)
+	_reveal = entrance
+	await entrance.finished
+	_presenting = false
+	_layout()
+	_arrived()
+
+
+## A board docked in the game's area: no shade, it fades in as it rises into place.
+func _settle_docked() -> void:
+	_shade.visible = false
+	_shade.modulate.a = 0.0
+	var target: Vector2 = _board.position
+	_presenting = true
+	_board.position = target + Vector2(0.0, 40.0)
+	_board.modulate.a = 0.0
+	XomDaoUi.play(self, XomDaoUi.SOUND_PANEL)
+	_reveal = create_tween().set_parallel(true)
+	_reveal.tween_property(_board, "modulate:a", 1.0, 0.2)
+	_reveal.tween_property(_board, "position", target, 0.32).set_trans(Tween.TRANS_BACK).set_ease(
+		Tween.EASE_OUT
+	)
+	await _reveal.finished
+	_presenting = false
+	_layout()
+	_arrived()
+
+
+## The board's lines (emblem, title, figures, ranks, buttons) show one after another.
+func _stagger_lines(start: float) -> void:
+	var lines: Array[Control] = []
+	for child: Node in _board.content.get_children():
+		if child is Control and (child as Control).visible:
+			lines.append(child as Control)
+	for row: Node in _ranks.get_children():
+		if row is Control:
+			lines.append(row as Control)
+	var tween: Tween = create_tween().set_parallel(true)
+	for i: int in lines.size():
+		var line: Control = lines[i]
+		if line == _ranks:
+			continue
+		line.modulate.a = 0.0
+		tween.tween_property(line, "modulate:a", 1.0, 0.14).set_delay(start + 0.035 * i)
+
+
+## Arrived: coins the ledger paid meanwhile fly now.
+func _arrived() -> void:
+	_arriving = false
+	if _pending_balance >= 0:
+		var balance: int = _pending_balance
+		_pending_balance = -1
+		receive(balance)
+
+
+## Whether the board is still on its way in.
+func arriving() -> bool:
+	return _arriving
+
+
+## Takes a game's optional result hooks: `result_theme()`, `result_reopen_theme()`,
+## `result_area()` with `set_result_visible()`, and `set_result_view()` (Xem bàn / Kết quả).
+func follow(game: Node) -> void:
+	if game.has_method("result_theme"):
+		var skin: Variant = game.call("result_theme")
+		if skin is Dictionary:
+			apply_theme(skin as Dictionary)
+	if game.has_method("result_reopen_theme"):
+		var reopen_theme: Variant = game.call("result_reopen_theme")
+		if reopen_theme is Dictionary:
+			set_reopen_theme(reopen_theme as Dictionary)
+	if game.has_method("result_area"):
+		dock(Callable(game, "result_area"))
+		if game.has_method("set_result_visible"):
+			board_visibility_changed.connect(Callable(game, "set_result_visible"))
+	if game.has_method("set_result_view"):
+		board_view_changed.connect(Callable(game, "set_result_view"))
+
+
+## A game's skin for the board (its `result_theme()`), every key optional: `paper` (the board's
+## paper), `ink` (its text), `accent` (the headline and your row), `shade` (the dim behind it,
+## alpha included), `title` (in place of "Hết ván"), `emblem` (a Texture2D on top, 96 tall).
+## Call it before show_result().
+func apply_theme(skin: Dictionary) -> void:
+	var paper: Variant = skin.get("paper")
+	if paper is Color and _paper != null:
+		var inside: StyleBoxFlat = XomDaoUi.box(
+			paper, (paper as Color).darkened(0.18), XomDaoUi.BORDER, XomDaoUi.RADIUS - 8.0
+		)
+		inside.set_content_margin_all(XomDaoUi.PAD)
+		_paper.add_theme_stylebox_override("panel", inside)
+	var ink: Variant = skin.get("ink")
+	if ink is Color:
+		_ink = ink
+		_reason.add_theme_color_override("font_color", _ink)
+	var accent: Variant = skin.get("accent")
+	if accent is Color:
+		_accent = accent
+		_title.add_theme_color_override("font_color", accent as Color)
+	var shade: Variant = skin.get("shade")
+	if shade is Color:
+		_shade_color = shade
+		_shade.color = shade
+	var heading: Variant = skin.get("title")
+	if heading is String and heading != "":
+		_board.title = heading
+	var emblem: Variant = skin.get("emblem")
+	if emblem is Texture2D:
+		_emblem.texture = emblem
+		_emblem.visible = true
 
 
 ## `true` puts the board away to look at the table, with Kết quả to bring it back.
@@ -313,11 +478,13 @@ func _show_detail(snapshot: XomDaoRoomSnapshot, detail: Dictionary) -> void:
 		var pair: Array = row
 		var label := Label.new()
 		label.text = str(pair[0])
-		label.add_theme_color_override("font_color", XomDaoUi.HONEY_DARK)
+		label.add_theme_color_override(
+			"font_color", XomDaoUi.HONEY_DARK if _ink == XomDaoUi.INK else Color(_ink, 0.72)
+		)
 		_rows.add_child(label)
 		var value := Label.new()
 		value.text = str(pair[1])
-		value.add_theme_color_override("font_color", XomDaoUi.INK)
+		value.add_theme_color_override("font_color", _ink)
 		value.add_theme_font_override("font", XomDaoUi.display_font(800))
 		_rows.add_child(value)
 	_rows.visible = _rows.get_child_count() > 0
@@ -333,6 +500,9 @@ static func played_text(ms: float) -> String:
 
 ## The ledger paid: coins fly from your reward into the balance.
 func receive(balance: int) -> void:
+	if _arriving:
+		_pending_balance = balance
+		return
 	var from: Vector2 = _board.global_position + _board.size / 2.0
 	if _reward_at != null and is_instance_valid(_reward_at):
 		from = _reward_at.global_position + _reward_at.size / 2.0
@@ -356,10 +526,12 @@ func _row(player: XomDaoPlayerInfo, rank: int, amount: int, me: String) -> Contr
 	avatar.custom_minimum_size = Vector2(48.0, 48.0) if _side_panel else Vector2(64.0, 64.0)
 	avatar.initial = player.name
 	avatar.frame = player.frame
+	avatar.picture = XomDaoLooks.avatar("bot" if player.bot else player.avatar)
 	row.add_child(avatar)
 	var label := Label.new()
 	label.text = "Bạn" if player.id == me else player.name
 	label.add_theme_font_override("font", XomDaoUi.display_font(800))
+	label.add_theme_color_override("font_color", _ink)
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.custom_minimum_size.x = 100.0 if _side_panel or _dock_area.is_valid() else 200.0
@@ -374,6 +546,21 @@ func _row(player: XomDaoPlayerInfo, rank: int, amount: int, me: String) -> Contr
 		delta.visible = false
 	row.add_child(delta)
 	return row
+
+
+## Your row, on a soft band of the accent (gold unless the game says otherwise).
+func _mine(row: Control) -> Control:
+	var tint: Color = _accent if _accent is Color else XomDaoUi.GOLD
+	var band := PanelContainer.new()
+	band.name = "MyRow"
+	var style: StyleBoxFlat = XomDaoUi.box(Color(tint, 0.16), Color(tint, 0.7), 2, 14.0)
+	style.content_margin_left = 6.0
+	style.content_margin_right = 10.0
+	style.content_margin_top = 2.0
+	style.content_margin_bottom = 2.0
+	band.add_theme_stylebox_override("panel", style)
+	band.add_child(row)
+	return band
 
 
 func _name_of(snapshot: XomDaoRoomSnapshot, id: String) -> String:
@@ -419,12 +606,21 @@ func _layout() -> void:
 		var area: Rect2 = _dock_area.call()
 		var fit: float = minf(area.size.x / _board.size.x, area.size.y / _board.size.y)
 		_board.scale = Vector2.ONE * minf(k, fit)
-		_board.position = area.position + (area.size - _board.size * _board.scale) / 2.0
+		if not _presenting:
+			_board.position = area.position + (area.size - _board.size * _board.scale) / 2.0
 		_reopen.position = Vector2(right - _reopen.size.x, bottom - _reopen.size.y)
 	else:
 		_board.reset_size()
-		_board.scale = Vector2.ONE
-		_board.position = (size - _board.size) / 2.0
+		if not _presenting:
+			# Centred in the safe frame, shrunk to fit it: a tall board (an emblem, the game's
+			# rows, six players) never runs off the top or the bottom of the screen.
+			var frame_top: float = inset.y + edge
+			var room := Vector2(available_width, maxf(1.0, bottom - frame_top))
+			var fit: float = minf(room.x / _board.size.x, room.y / _board.size.y)
+			_board.pivot_offset = _board.size / 2.0
+			_board.scale = Vector2.ONE * minf(1.0, fit)
+			var middle := Vector2(size.x / 2.0, frame_top + room.y / 2.0)
+			_board.position = middle - _board.size / 2.0
 		_reopen.position = Vector2(right - _reopen.size.x, bottom - _reopen.size.y)
 
 
@@ -432,4 +628,5 @@ func _layout() -> void:
 func dock(area: Callable) -> void:
 	_dock_area = area
 	_shade.visible = false
-	_title.add_theme_color_override("font_color", XomDaoUi.LACQUER)
+	if _accent == null:
+		_title.add_theme_color_override("font_color", XomDaoUi.LACQUER)

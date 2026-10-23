@@ -38,6 +38,16 @@ var crown: bool = false:
 		crown = value
 		queue_redraw()
 
+## The turn timer's arc and the track it runs on (a table's XomDaoTableSkin sets its own).
+var timer_color: Color = XomDaoUi.GOLD:
+	set(value):
+		timer_color = value
+		queue_redraw()
+var timer_track: Color = Color(XomDaoUi.HUD, 0.5):
+	set(value):
+		timer_track = value
+		queue_redraw()
+
 var _frame: Texture2D
 
 
@@ -79,12 +89,12 @@ func _draw() -> void:
 	if turn >= 0.0:
 		var width: float = maxf(5.0, r * 0.12)
 		var ring_radius: float = r + width * 0.9
-		draw_circle(c, ring_radius, Color(XomDaoUi.HUD, 0.5), false, width, true)
+		draw_circle(c, ring_radius, timer_track, false, width, true)
 		if turn >= 1.0:
-			draw_circle(c, ring_radius, XomDaoUi.GOLD, false, width, true)
+			draw_circle(c, ring_radius, timer_color, false, width, true)
 		elif turn > 0.0:
 			var end: float = -PI / 2.0 + TAU * turn
-			draw_arc(c, ring_radius, -PI / 2.0, end, 48, XomDaoUi.GOLD, width, true)
+			draw_arc(c, ring_radius, -PI / 2.0, end, 48, timer_color, width, true)
 	if crown:
 		_draw_crown(c + Vector2(-r * 0.62, -r * 0.82), r * 0.42)
 

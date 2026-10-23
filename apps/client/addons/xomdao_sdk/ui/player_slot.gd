@@ -8,6 +8,7 @@ extends HBoxContainer
 ##   slot.player_name = "Minh"; slot.level = 12; slot.extra = "8 lá"; slot.host = true
 ##   slot.start_turn(20.0)    # the timer runs down; turn_ended when it runs out
 ##   slot.end_turn()
+##   slot.skin = my_table_skin   # the table's plate, chips and timer (XomDaoTableSkin)
 
 ## The turn timer ran out (the server decides what happens; this only shows it).
 signal turn_ended
@@ -55,6 +56,12 @@ var picture: Texture2D:
 		picture = value
 		avatar.picture = value
 
+## The table's materials for the plate, the chips and the turn timer; null keeps the kit's.
+var skin: XomDaoTableSkin:
+	set(value):
+		skin = value
+		_reskin()
+
 var avatar := XomDaoAvatar.new()
 
 var _name := Label.new()
@@ -74,16 +81,9 @@ func _init() -> void:
 	add_child(column)
 	avatar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(avatar)
-	var pill: StyleBoxFlat = XomDaoUi.box(XomDaoUi.HUD, XomDaoUi.BAMBOO_DARK, 2, 20.0)
-	pill.content_margin_left = 16.0
-	pill.content_margin_right = 16.0
-	pill.content_margin_bottom = 2.0
-	_name_pill.add_theme_stylebox_override("panel", pill)
 	_name_pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_name_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_name_pill)
-	_name.add_theme_font_override("font", XomDaoUi.display_font(800))
-	_name.add_theme_color_override("font_color", XomDaoUi.CREAM)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_name_pill.add_child(_name)
@@ -95,7 +95,29 @@ func _init() -> void:
 	_extra.visible = false
 	chips.add_child(_level)
 	chips.add_child(_extra)
+	_reskin()
 	_resize()
+
+
+func _reskin() -> void:
+	var look: XomDaoTableSkin = skin if skin != null else XomDaoTableSkin.new()
+	var pill: StyleBoxFlat = look.plate_box()
+	pill.content_margin_left = 16.0
+	pill.content_margin_right = 16.0
+	pill.content_margin_bottom = 2.0
+	_name_pill.add_theme_stylebox_override("panel", pill)
+	_name.add_theme_color_override("font_color", look.ink)
+	_name.add_theme_font_override(
+		"font", look.font if look.font != null else XomDaoUi.display_font(800)
+	)
+	avatar.timer_color = look.timer
+	avatar.timer_track = look.timer_track
+	if skin == null:
+		_level.dress(XomDaoUi.LACQUER, Color.TRANSPARENT, XomDaoUi.CREAM)
+		_extra.dress(XomDaoUi.BAMBOO_DARK, Color.TRANSPARENT, XomDaoUi.CREAM)
+		return
+	for chip: XomDaoChip in [_level, _extra]:
+		chip.dress(look.chip, look.chip_edge, look.chip_ink, look.font)
 
 
 func _ready() -> void:

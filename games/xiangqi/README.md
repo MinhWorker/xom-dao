@@ -12,7 +12,8 @@ Cờ Tướng cho hai người, chơi với bạn hoặc máy.
 | Lặp thế cờ, chiếu dai và đuổi dai | `src/game/referee.ts` |
 | Lượt, xin hoà, đầu hàng và kết thúc | `src/game/XiangqiGame.ts` |
 | Máy và tuỳ chọn | `src/game/bot.ts`, `model.ts` |
-| Bàn chơi: cảnh đình, bàn, đường kẻ, quân, vỡ quân, cuộn chiếu tướng, `room_setup()` và `result_detail()` | `godot/main.gd`, `godot/main.tscn` (test: `godot/test/`) |
+| Bàn chơi: cảnh đình, bàn, đường kẻ, quân, vỡ quân, `room_setup()` và `result_detail()` | `godot/main.gd`, `godot/main.tscn` (test: `godot/test/`) |
+| Cuộn chiếu tướng, khoảnh khắc hết ván (`wait_for_result_panel()`) và màu bảng kết quả (`result_theme()`) | `godot/finale.gd` |
 | Hình, âm thanh và nhạc của bàn | `godot/art/`, `godot/sounds/`, `godot/music/` |
 
 `src/index.ts` đăng ký game phía server. `assets/` chứa hình và âm thanh cỡ đầy đủ (bàn chép bản
@@ -57,10 +58,15 @@ Cần phông Noto Sans CJK Bold (SIL Open Font License),
 mặc định ở `/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc`; có thể chọn phông CJK khác
 bằng `XOMDAO_XIANGQI_FONT`. Script nằm ở `sources/render_pieces.py` và `sources/render_buttons.py`, PNG trung gian ở
 `.blender/xiangqi/`; xem [hướng dẫn Blender](../../docs/making-a-game.md#kết-xuất-blender-và-normal-map).
-Tiếng di chuyển, vỡ quân và nhạc thắng tổng hợp bằng code.
-Thông báo chiếu tướng/chiếu bí: một cuộn giấy có quân đang chiếu mở ra trên bàn rồi cuộn lại,
-vẽ bằng code (`_cut_in` trong `godot/main.gd`).
+Tiếng di chuyển, vỡ quân và nhạc thắng tổng hợp bằng code; tiếng thua (`xiangqi-lose`) chép từ
+`assets/app/audio/game-lose.wav` của ứng dụng.
+Thông báo chiếu tướng: một cuộn giấy có quân đang chiếu mở ra trên bàn rồi cuộn lại, vẽ bằng code
+(`check_scroll` trong `godot/finale.gd`).
 Âm thanh chép từ `assets/` vào `godot/sounds/`.
+
+Ấn đỏ trên bảng kết quả (`emblem`: ấn son vuông có sư tử đá ngà trên núm, một bông sen hồng ở
+chân) sinh bằng Antigravity (`agy`) trên nền xanh lá phẳng rồi khử nền bằng Pillow; prompt trong
+`sources/prompts.json`, ảnh gốc đã khử nền ở `sources/emblem.png`.
 
 ## Bố cục bàn chơi
 
@@ -74,3 +80,15 @@ khung, trên nền hồ sen.
   thúc), dưới nó là nút ✦ bật tắt hiệu ứng. Dưới cùng là Xin hoà, còn Đầu hàng đứng tách lên trên.
 
 Bên Đen thấy bàn xoay ngược.
+
+## Hết ván
+
+Khi ván kết thúc, đợi nước cuối đặt xuống xong, rồi trên bàn: tướng bên thua lắc lư rồi ngã nằm
+nghiêng (nằm luôn tới ván sau), vòng vàng loang ra quanh tướng bên thắng, một con dấu son vuông
+đóng mạnh xuống giữa bàn ghi cách kết thúc (CHIẾU BÍ, ĐẦU HÀNG, RỜI BÀN, HẾT NƯỚC, CHIẾU DAI,
+ĐUỔI DAI; hoà là dấu ngọc bích HOÀ CỜ) và một dải giấy dưới dấu ghi kết quả theo phía mình:
+"Thắng rồi!", "Thua rồi" hoặc "Hoà", kèm lý do; người xem thấy tên bên thắng. Đúng lúc dấu chạm bàn
+là tiếng kết quả: nhạc thắng, tiếng thua hoặc tiếng hoà. Chừng hai giây rưỡi; chạm để bỏ qua. Xong
+thì bảng kết quả của hub mới hiện, trong màu ngà, nâu óc chó và son của bàn, tiêu đề "Chiếu bí!"
+hoặc "Tàn cuộc", trên cùng là ấn đỏ. **Hiệu ứng: Tắt** bỏ chuyển động: tướng ngã ngay, chỉ còn
+tiếng. Vào xem một ván đã xong thì không có khoảnh khắc này.

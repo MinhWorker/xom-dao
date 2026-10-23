@@ -32,7 +32,8 @@ Bàn dùng nền giấy ngà có vân nhẹ tạo bằng Image Gen (`assets/pape
 `godot/art/paper.webp`; prompt trong `sources/prompts.json`). Lưới ô liền mạch được vẽ bằng
 GDScript; X đỏ và O xanh là mark men sơn cân đối, tạo bằng Image Gen (`assets/mark-x.webp`,
 `assets/mark-o.webp`). Bong bóng emote là sprite vuông có đuôi hướng về avatar, cũng được tạo bằng
-Image Gen (`assets/emote-bubble.webp`). Nước mới bật nhẹ vào vị trí. Khi đi sát mép, bàn vẫn mở rộng, ô mới hiện dần
+Image Gen (`assets/emote-bubble.webp`). Nước mới bật nhẹ vào vị trí. Trên điện thoại, khi ô nhỏ hơn đầu ngón tay
+(bàn đã nở rộng), chạm lần đầu chỉ tô sáng ô, chạm lại đúng ô đó mới đánh. Khi đi sát mép, bàn vẫn mở rộng, ô mới hiện dần
 và cả bàn trượt cho vừa. Hàng thắng được khoanh vàng. Khi hết ván, bàn và panel người chơi nằm bên
 trái, HUD kết quả hiện bên phải; **Xem bàn** đưa bàn về giữa, **Kết quả** mở lại bố cục đó. Chủ phòng
 chạm mark trên panel của mình để đổi quân cho ván sau.

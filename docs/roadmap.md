@@ -140,6 +140,11 @@ Làm dần, theo thứ tự chủ dự án muốn:
 - Thêm thành tích (dữ liệu trong `meta.achievements`) và bảng xếp hạng (khung đã có: `ctx.stat`,
   cấp theo kinh nghiệm, Nhà và Đình)
 - Nhiều loại tài nguyên
+- Đã xong: **Nhiệm vụ hằng ngày** (Điểm danh và ba nhiệm vụ đổi mỗi ngày, thưởng xu)
+- Đã xong: **Hộp thư** (thư từ trang quản lý cho một người hoặc cả xóm, có thể kèm xu) và
+  **Đình** hiện bảng xếp hạng thật, có bục vinh danh ba người đầu
+- Đã xong: **Bạn bè** ở Bến (kết bạn theo tên đăng nhập, ai đang online và đang chơi gì, nhắn tin
+  giữa bạn bè, mời bạn vào phòng)
 - Đã xong (#127): không còn trò nào dùng Phaser, nên đã xoá `apps/web` và cổng Socket.IO; client
   Godot phục vụ ở `/`
 

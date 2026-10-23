@@ -25,6 +25,8 @@ const PLACE_NAMES: Dictionary = {
 }
 
 var _client: XomDaoClient = Net.client
+var _friends := HubFriends.new(Net.client)
+var _mail := HubMail.new(Net.client, _paid)
 var _screen: Control
 var _shown: String = ""
 var _menu: XomDaoMenu
@@ -43,6 +45,9 @@ var _game_id_shown: String = ""
 var _loading: bool = false
 var _result: HubResult
 var _result_waiting: bool = false
+## End beats: bumped as one starts or stops holding; none when a table opens on a finished game.
+var _ending: int = 0
+var _saw_end: bool = false
 var _music := HubMusic.new()
 var _ben: HubBen
 ## A shop:buy is on its way.
@@ -60,7 +65,7 @@ var _outgoing: Array[Node] = []
 
 func _ready() -> void:
 	print("xomdao:ready")
-	var page: int = gallery_page()
+	var page: int = HubLaunch.gallery_page()
 	if page > 0:
 		var gallery: Control = load("res://hub/gallery/gallery.tscn").instantiate()
 		gallery.set("page", page)
@@ -73,6 +78,10 @@ func _ready() -> void:
 	_screen.name = "Screen"
 	_screen.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_screen)
+	_friends.game_name = func(id: String) -> String: return _catalog.name_of(id)
+	_friends.join_requested.connect(func(code: String) -> void: await _client.join_room(code))
+	add_child(_friends)
+	add_child(_mail)
 	_menu = XomDaoMenu.new()
 	_menu.name = "Shell"
 	_menu.button.name = "Menu"
@@ -97,17 +106,6 @@ func _ready() -> void:
 	await _start()
 
 
-## The gallery page asked for in the URL or on the command line, 0 when none.
-static func gallery_page() -> int:
-	var args: String = " ".join(OS.get_cmdline_user_args())
-	if OS.has_feature("web"):
-		args += " " + str(JavaScriptBridge.eval("window.location.search", true))
-	var found: RegExMatch = RegEx.create_from_string("gallery(?:=(\\d+))?").search(args)
-	if found == null:
-		return 0
-	return maxi(1, found.get_string(1).to_int())
-
-
 func _start() -> void:
 	if not await _connect():
 		_show_status("Không kết nối được máy chủ")
@@ -126,8 +124,8 @@ func _start() -> void:
 		return
 	_catalog = HubCatalog.create(XomDaoCatalog.from_dict(reply), await ContentLoader.available())
 	_pick_game(HubPrefs.selected_game(_client.user.id))
-	var play: String = _query("play") if OS.is_debug_build() else ""
-	var code: String = _query("room")
+	var play: String = HubLaunch.query("play") if OS.is_debug_build() else ""
+	var code: String = HubLaunch.query("room")
 	if play != "" and _client.room_code == "":
 		await _sandbox(play)
 	elif code != "" and _client.room_code == "":
@@ -299,6 +297,9 @@ func _show_lobby() -> void:
 	lobby.play_pressed.connect(_play)
 	lobby.select_opened.connect(_show_select)
 	lobby.place_pressed.connect(_on_place)
+	lobby.watch_friends(_friends)
+	lobby.watch_mail(_mail)
+	_check_quests()
 	lobby.event_pressed.connect(
 		func(id: String) -> void:
 			_choose_game(id)
@@ -326,8 +327,16 @@ func _on_place(place: String) -> void:
 			_show_shop()
 		"dinh":
 			_show_dinh()
+		"nhiem-vu":
+			# Nhiệm vụ hằng ngày over the lobby; the dots follow on closing.
+			HubQuests.open_over(_current, _client, _paid, _check_quests)
 		_:
 			XomDaoToast.show_on(self, "Sắp có", "lock-simple")
+
+
+func _check_quests() -> void:
+	if is_inside_tree() and _current is HubLobby:
+		HubQuests.mark(_current, _client)
 
 
 ## Nhà: your profile card and Túi đồ, where you wear what you own.
@@ -490,8 +499,7 @@ func _buy(item_id: String, shop: HubShop) -> void:
 		_say(str(reply.get("error", "")))
 		return
 	var purchase := XomDaoPurchase.from_dict(reply)
-	_client.balances = purchase.balances
-	_coins = _balance()
+	_paid(purchase.balances)
 	XomDaoUi.play(self, XomDaoUi.SOUND_COIN)
 	XomDaoToast.show_on(self, "Đã mua %s" % purchase.item.name, "check-circle")
 	if is_instance_valid(shop):
@@ -567,6 +575,7 @@ func _show_ben() -> void:
 				break
 
 	_ben.setup(_catalog, _game_id)
+	_ben.setup_friends(_friends, _client.user.id, _friends.attention() > 0)
 	if _game_id != "":
 		_watch_ben_rooms(_game_id)
 
@@ -745,10 +754,12 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 			_show_status("Không tải được trò chơi")
 			return
 		_game = scene.instantiate()
+		_saw_end = snapshot.status != "finished"
 		_set_screen("game", _game)
 		_music.play_for(snapshot.game_id)
 		if _game.has_method("bind"):
 			_game.call("bind", _client)
+		XomDaoTableSkin.dress_menu(_menu.button, _game)
 		_refresh()
 		return
 	if _shown != "game":
@@ -761,42 +772,39 @@ func _show_game(snapshot: XomDaoRoomSnapshot) -> void:
 			_result_waiting = true
 			_show_result_after_intro(snapshot)
 	else:
+		_ending += int(_result_waiting)
 		_result_waiting = false
+		_saw_end = true
 		if _result != null:
 			_result.queue_free()
 			_result = null
 
 
+## Every ending gets its moment before the board (HubEndBeat): the game's own
+## `wait_for_result_panel()` (at most HubEndBeat.WAIT_CAP seconds), else the hub's ribbon.
 func _show_result_after_intro(snapshot: XomDaoRoomSnapshot) -> void:
-	if (
-		_game.has_method("wait_for_result_panel")
-		and snapshot.view is Dictionary
-		and snapshot.view.get("winner") != null
-	):
-		await _game.call("wait_for_result_panel")
-	if not is_inside_tree():
-		return
-	_result_waiting = false
-	if _client.snapshot == null or _client.snapshot.status != "finished" or _result != null:
-		return
-	_show_result(_client.snapshot)
+	_ending += 1
+	var ending: int = _ending
+	var game: Node = _game
+	var still: Callable = func() -> bool:
+		var now: XomDaoRoomSnapshot = _client.snapshot
+		var holds: bool = _ending == ending and _game == game and _shown == "game"
+		return holds and is_inside_tree() and now != null and now.status == "finished"
+	if _saw_end:
+		await HubEndBeat.run(_screen, game, snapshot, _client.player_id, still)
+	if _ending == ending:
+		_result_waiting = false
+		if still.call() and _result == null:
+			_show_result(_client.snapshot)
 
 
 func _show_result(snapshot: XomDaoRoomSnapshot) -> void:
 	_result = HubResult.new()
-	if _game.has_method("result_reopen_theme"):
-		var reopen_theme: Variant = _game.call("result_reopen_theme")
-		if reopen_theme is Dictionary:
-			_result.set_reopen_theme(reopen_theme as Dictionary)
-	if _game.has_method("result_area"):
-		_result.dock(Callable(_game, "result_area"))
-		if _game.has_method("set_result_visible"):
-			_result.board_visibility_changed.connect(Callable(_game, "set_result_visible"))
+	_result.follow(_game)
 	_screen.add_child(_result)
 	_result.money.settings_pressed.connect(_menu.open_settings)
 	_result.again_pressed.connect(_client.start_game)
 	_result.home_pressed.connect(_leave)
-	_result.board_view_changed.connect(_set_result_board_view)
 	var card: XomDaoGameCard = _catalog.card(snapshot.game_id)
 	var detail: Variant = _game.call("result_detail") if _game.has_method("result_detail") else {}
 	_result.show_result(
@@ -812,11 +820,6 @@ func _show_result(snapshot: XomDaoRoomSnapshot) -> void:
 		_on_rewarded(null)
 
 
-func _set_result_board_view(looking: bool) -> void:
-	if _game != null and _game.has_method("set_result_view"):
-		_game.call("set_result_view", looking)
-
-
 ## Achievements a game got you: one notice naming them; their coins join the balance.
 func _on_achieved(notice: XomDaoAchievementNotice) -> void:
 	var names: Array[String] = []
@@ -829,6 +832,9 @@ func _on_achieved(notice: XomDaoAchievementNotice) -> void:
 
 
 func _on_rewarded(_notice: XomDaoRewardNotice) -> void:
+	# During the end beat the old balance stays: the board shows it, then the coins fly.
+	if _result_waiting and _result == null:
+		return
 	var balance: int = _balance()
 	if _result != null and is_instance_valid(_result):
 		_result.receive(balance)
@@ -892,12 +898,7 @@ func _leave() -> void:
 
 
 func _invite() -> void:
-	var link: String = _client.room_code
-	if OS.has_feature("web"):
-		var page: String = str(JavaScriptBridge.eval("location.origin + location.pathname", true))
-		link = "%s?room=%s" % [page, _client.room_code]
-	DisplayServer.clipboard_set(link)
-	XomDaoToast.show_on(self, "Đã sao chép link mời")
+	_friends.open_invite(self)
 
 
 # ── Screens ───────────────────────────────────────────────────────────────────────────────
@@ -915,8 +916,7 @@ func _show_status(text: String, game_id: String = "") -> void:
 
 
 ## Puts `screen` on in place of the one before (the game stays: it lives across rounds).
-## Transitions (HubTransition) are reserved for entering a room or game; navigation between hub
-## places (Sảnh, Chọn trò, Nhà, Chợ, Đình, Bến) and back buttons swap instantly.
+## The curtain (HubTransition) is for entering a room or game; hub places swap instantly.
 func _set_screen(shown: String, screen: Control) -> void:
 	var before: String = _shown
 	_shown = shown
@@ -974,11 +974,22 @@ func _finish_swap() -> void:
 
 func _drop_game() -> void:
 	_music.quiet()
+	_ending += int(_result_waiting)
+	_result_waiting = false
+	_coins = _balance()
 	if _game != null:
 		_game.queue_free()
 		_game = null
 	_game_id_shown = ""
 	_result = null
+
+
+## New balances after a payment: the coins the screens show follow (the lobby's at once).
+func _paid(balances: Dictionary) -> void:
+	_client.balances = balances
+	_coins = _balance()
+	if _current is HubLobby:
+		(_current as HubLobby).money.show_balance(_coins)
 
 
 func _balance() -> int:
@@ -987,11 +998,3 @@ func _balance() -> int:
 
 func _say(text: String) -> void:
 	XomDaoToast.show_on(self, text, "warning")
-
-
-## A query parameter of the page's URL; off the web, `-- --<key>=<value>` on the command line.
-func _query(key: String) -> String:
-	if not OS.has_feature("web"):
-		return TestBridge.user_arg(key)
-	var js: String = "new URLSearchParams(location.search).get('%s') || ''" % key
-	return str(JavaScriptBridge.eval(js, true))

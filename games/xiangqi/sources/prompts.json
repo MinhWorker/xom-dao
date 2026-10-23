@@ -1,5 +1,5 @@
 {
-  "$comment": "Prompts for this game's art: npm run gen:asset -- xiangqi/<name> (the style in assets/prompts.json is added).",
+  "$comment": "Prompts for this game's art: npm run gen:asset -- xiangqi/<name> (the style in assets/prompts.json is added). emblem (the result board's picture) was made with Antigravity (agy, its built-in image tool: Codex had no image tool on this account), asked for on flat #00FF00 and keyed out with Pillow (only the green touching the border, so green parts of the object stay).",
   "assets": {
     "island": {
       "transparent": true,
@@ -15,6 +15,12 @@
       "transparent": false,
       "maxSize": 2048,
       "prompt": "A landscape 16:9 background for a Vietnamese xiangqi board game, viewed straight down at a 90-degree top-down orthographic angle: a tranquil moonlit Chinese lotus pond in a refined 3D animated interpretation of traditional ink-wash landscape painting (shui-mo). Show only the pond surface, never the sky or horizon. The whole central area, about 60 percent of the image width and the full height, is open calm deep jade-teal water with only faint broad ripples and a soft moonlit sheen: it stays empty, darker and low contrast because a separate chessboard is placed on top of it later. Nothing floats in the center: no raft, platform, table, mat, board, frame or rectangle of any kind. Keep all detail in the outer margins: soft charcoal-blue ink-wash willow canopies, a few subdued pink lotus flowers and lily pads, shoreline stones, and tiny traditional pavilion roof plans near the upper corners, all seen from directly above. Use broad painterly water washes, visible soft ink diffusion and brush strokes, delicate paper-like texture, graceful simplified 3D forms and tiny restrained amber lantern glows. Keep the side margins and lower corners dark, uncluttered and low contrast for HUD. No perspective tilt, no skyline, no chessboard, wooden surface, grid, pieces, people, calligraphy, UI, text, symbols, frame or watermark."
+    },
+    "emblem": {
+      "transparent": true,
+      "maxSize": 512,
+      "generator": "agy",
+      "prompt": "A game emblem: a square cinnabar-red lacquered stone seal stamp (a Chinese chop) in front three-quarter view, an ivory-cream carved guardian lion sitting on top as its knob, the seal face edge showing an ivory-cream square border, one small pink lotus flower with a round green lily pad resting at the seal's base. Style: toy-like Vietnamese 2.5D cartoon game art, soft rounded chunky volumes like a carved wooden toy, clean flat color blocks with gentle cel shading, sunlight from the top left, short soft shadow, each outline a darker shade of its own fill (never black), no text, no letters, no numbers. Centered, the object fills about 80% of a square frame. Background: perfectly flat pure green #00FF00 everywhere around the object, no gradient, no floor, no cast shadow on the background."
     }
   }
 }

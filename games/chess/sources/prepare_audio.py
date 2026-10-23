@@ -21,7 +21,12 @@ SOUNDS = {
     'chess-draw': ('xiangqi', 'xiangqi-draw'),
     'chess-win': ('xiangqi', 'xiangqi-game-win'),
 }
+# The end beat's outcome sounds come from the app's own (assets/app/audio).
+APP_SOUNDS = {'chess-victory': 'game-win', 'chess-lose': 'game-lose'}
 for target, (game, source) in SOUNDS.items():
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(GAMES / game / 'assets' / f'{source}.wav'),
+                    '-ac', '1', '-ar', '48000', '-c:a', 'pcm_s16le', str(GAME / 'assets' / f'{target}.wav')], check=True)
+for target, source in APP_SOUNDS.items():
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(GAMES.parent / 'assets' / 'app' / 'audio' / f'{source}.wav'),
                     '-ac', '1', '-ar', '48000', '-c:a', 'pcm_s16le', str(GAME / 'assets' / f'{target}.wav')], check=True)
 shutil.copyfile(GAMES / 'go' / 'assets' / 'music-go.mp3', GAME / 'assets' / 'music-chess.mp3')

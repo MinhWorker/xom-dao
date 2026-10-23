@@ -133,6 +133,13 @@ export class AccountsService {
     return this.store.userById(userId);
   }
 
+  /** An account by its username (any case, spaces trimmed), or `null`. */
+  async userByUsername(username: string): Promise<User | null> {
+    const wanted = username.trim().toLowerCase();
+    if (!wanted) return null;
+    return (await this.store.findLogin(wanted))?.user ?? null;
+  }
+
   /**
    * Changes how the player shows (their avatar, frame or card back). Only Túi đồ calls this, after
    * checking they own the item.

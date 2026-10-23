@@ -29,6 +29,12 @@ func games_of(genre_id: String) -> Array[XomDaoGameCard]:
 	return ready + later
 
 
+## A game's name, or its id when the catalog doesn't have it.
+func name_of(game_id: String) -> String:
+	var found: XomDaoGameCard = card(game_id)
+	return found.name if found != null else game_id
+
+
 func card(game_id: String) -> XomDaoGameCard:
 	for item: XomDaoGameCard in catalog.games:
 		if item.id == game_id:

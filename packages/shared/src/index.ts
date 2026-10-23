@@ -5,4 +5,5 @@ export * from './game.js';
 export * from './history.js';
 export * from './items.js';
 export * from './protocol.js';
+export * from './quests.js';
 export * from './registry.js';

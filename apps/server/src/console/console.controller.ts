@@ -16,6 +16,7 @@ import {
 import { ITEM_LOOKS, ITEM_SLOTS } from '@xomdao/shared';
 import { ACCOUNT_PAGE_SIZE, AccountError, AccountsService } from '../accounts/accounts.service.js';
 import { ItemError, ItemsService } from '../items/items.service.js';
+import { MailError, MailService } from '../mail/mail.service.js';
 import { bearer, ConsoleGuard } from './console.guard.js';
 import { CONSOLE_QUESTION, ConsoleAuthError, ConsoleAuthService } from './console-auth.service.js';
 
@@ -34,6 +35,7 @@ async function run<T>(fn: () => Promise<T>) {
     if (
       err instanceof AccountError ||
       err instanceof ItemError ||
+      err instanceof MailError ||
       err instanceof ConsoleAuthError
     ) {
       throw new BadRequestException(err.message);
@@ -125,6 +127,31 @@ export class ConsoleItemsController {
   remove(@Param('id') id: string) {
     return run(async () => {
       await this.items.remove(id);
+      return { ok: true };
+    });
+  }
+}
+
+/** Thư: letters to one account or to everyone, maybe with coins (Hộp thư in the hub). */
+@Controller('api/console/mail')
+@UseGuards(ConsoleGuard)
+export class ConsoleMailController {
+  constructor(private readonly mail: MailService) {}
+
+  @Get()
+  async list() {
+    return { letters: await this.mail.sent() };
+  }
+
+  @Post()
+  send(@Body() body: unknown) {
+    return run(async () => ({ letter: await this.mail.send(body) }));
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return run(async () => {
+      await this.mail.remove(id);
       return { ok: true };
     });
   }

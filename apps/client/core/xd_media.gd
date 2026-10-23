@@ -45,10 +45,11 @@ func _process(_delta: float) -> void:
 func _listen() -> void:
 	for id: int in _players.keys():
 		var entry: Dictionary = _players[id]
-		var player: Node = entry["node"]
-		if not is_instance_valid(player):
+		var held: Variant = entry["node"]
+		if not is_instance_valid(held):
 			_players.erase(id)
 			continue
+		var player: Node = held
 		var playback: int = 0
 		if player.call("has_stream_playback"):
 			playback = (player.call("get_stream_playback") as Object).get_instance_id()

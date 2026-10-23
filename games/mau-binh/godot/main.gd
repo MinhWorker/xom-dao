@@ -1,10 +1,10 @@
 extends Control
-## Mậu Binh on the Godot client, in the **Bàn** layout (docs/experience.md): the sedge mat
-## (XomDaoMat), you at the bottom with your 13 cards in three rows (chi 3 on top, chi 1 nearest
-## you), the others round the table with theirs small; the round at the top, what is going on in
-## the middle, Hoàn tác / Tự xếp / Xong at the bottom right. It draws `snapshot.view` (View in
-## src/game/model.ts: your hand and rows, who is done, the round results) and sends
-## `submit {rows}` and `cancel`.
+## Mậu Binh on the Godot client, in the **Bàn** layout (docs/experience.md): an indigo cloth
+## (backdrop.gd, which also holds the table's HUD skin; finale.gd is the end beat), you at the
+## bottom with your 13 cards in three rows (chi 3 on top, chi 1 nearest you), the others round
+## the table with theirs small; the round at the top, what is going on in the middle, Hoàn tác
+## / Tự xếp / Xong at the bottom right. It draws `snapshot.view` (View in src/game/model.ts: your
+## hand and rows, who is done, the round results) and sends `submit {rows}` and `cancel`.
 ##
 ## Tap a card, then another, to swap them, or drag one onto another; each row shows its hand,
 ## red where it breaks the order (binh lủng). Xong on binh lủng asks once more ("Vẫn nộp").
@@ -20,25 +20,17 @@ extends Control
 const Rules := preload("res://content/mau-binh/rules.gd")
 const Boards := preload("res://content/mau-binh/boards.gd")
 const Drag := preload("res://content/mau-binh/drag.gd")
+const EMBLEM: Texture2D = preload("res://content/mau-binh/art/emblem.webp")
 
-## Where each seat sits, from yours (bottom) round the table, by how many play.
-const SLOTS: Dictionary = {
-	1: ["bottom"],
-	2: ["bottom", "top"],
-	3: ["bottom", "right", "left"],
-	4: ["bottom", "right", "top", "left"],
-}
 const SOUNDS: Array[String] = [
-	"deal", "place", "reveal", "scoop", "special", "submit", "swap", "tick", "win", "standings"
+	"deal", "place", "reveal", "scoop", "special", "submit", "swap", "tick", "win", "lose"
 ]
 const ROW_START: Array[int] = [0, 5, 10]
 const ROW_LENGTH: Array[int] = [5, 5, 3]
-const MY_CARD := 76.0
-const THEIR_CARD := 36.0
-## Cards in a row overlap: the next one starts this far on (in card widths), rows this far up
-## (in card heights).
-const STEP_X := 0.8
-const STEP_Y := 0.6
+## The widest name of a row while arranging ("Chi 2 · Thùng phá sảnh").
+const ROW_NAMES := 230.0
+## How long the cards take to move between arranging and comparing.
+const SHIFT := 0.45
 const BUTTON_WIDTH := 190.0
 const GOLD := Color("#FFD54F")
 const PALE := Color("#FFE8A3")
@@ -58,11 +50,12 @@ var _view: Dictionary = {}
 ## Your seat, or -1 for a spectator (who looks from seat 0).
 var _me: int = -1
 
-var _mat := XomDaoMat.new()
-var _round_label := Label.new()
+var _backdrop := MauBinhBackdrop.new()
+var _skin: XomDaoTableSkin = MauBinhBackdrop.skin()
+var _finale := MauBinhFinale.new()
+## The round on a small indigo plate at the top.
+var _clock: MauBinhClockBar = MauBinhClockBar.new(_skin)
 var _status := Label.new()
-var _info := Label.new()
-var _countdown := Label.new()
 var _word := Label.new()
 var _undo: XomDaoButton = XomDaoButton.create("Hoàn tác", XomDaoUi.Kind.BACK)
 var _auto: XomDaoButton = XomDaoButton.create("Tự xếp", XomDaoUi.Kind.SOCIAL)
@@ -97,6 +90,11 @@ var _auto_sent: int = -1
 var _chi_shown: int = 0
 var _totals_shown: bool = false
 var _center := Vector2.ZERO
+## "arrange" or "compare": the table's layout now (a change animates the cards).
+var _mode: String = ""
+## The arranging clock under the seats (its share left), and the band over the chi compared.
+var _band := Control.new()
+var _band_rect := Rect2()
 
 
 ## Options for a sandbox room (`?play=mau-binh` in a debug build): three computer players.
@@ -106,34 +104,37 @@ func sandbox_options() -> Dictionary:
 
 ## The hub's Tạo phòng board (`optionsSchema` in src/game/model.ts, with its defaults).
 func room_setup() -> Array:
-	return [
-		{
-			"key": "bots",
-			"label": "Máy chơi cùng",
-			"options": [["Không", 0], ["1", 1], ["2", 2], ["3", 3]],
-		},
-		{
-			"key": "rounds",
-			"label": "Số vòng",
-			"options": [["1", 1], ["3", 3], ["5", 5]],
-			"default": 2,
-		},
-		{
-			"key": "arrangeSeconds",
-			"label": "Thời gian xếp",
-			"options": [["60 giây", 60], ["90 giây", 90]],
-			"default": 1,
-		},
-	]
+	return Rules.ROOM_SETUP
 
 
-## The figures for the hub's result board.
+## The figures for the hub's result board: everyone placed by points (level points share a
+## place, whoever left comes last), with their points.
 func result_detail() -> Dictionary:
 	if _client != null and _client.snapshot != null:
 		_show(_client.snapshot)
-	if _view.is_empty():
+	if _view.is_empty() or _snapshot == null:
 		return {}
-	return {"reason": "Sau %d vòng" % (_view["results"] as Array).size(), "rows": []}
+	var left: Array = (_view["gone"] as Array) + (_view["forfeits"] as Array)
+	var detail: Dictionary = XomDaoPlaces.by_points(_snapshot, _view["points"], left)
+	detail.merge({"reason": "Sau %d vòng" % (_view["results"] as Array).size(), "rows": []})
+	return detail
+
+
+## Hub hook: the end beat (the indigo scroll) before the result board.
+func wait_for_result_panel() -> void:
+	if _client != null and _client.snapshot != null:
+		_show(_client.snapshot)
+	await _finale.wait()
+
+
+## Hub hook: the result board in the cloth's indigo and brass.
+func result_theme() -> Dictionary:
+	return MauBinhFinale.theme(EMBLEM)
+
+
+## Hub hook: the ☰ button and the seats in indigo and brass.
+func table_skin() -> XomDaoTableSkin:
+	return _skin
 
 
 func bind(client: XomDaoClient) -> void:
@@ -147,16 +148,16 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = XomDaoUi.theme()
 	clip_contents = true
-	add_child(_mat)
-	for label: Label in [_round_label, _status, _info, _countdown]:
-		_hud(label, XomDaoUi.TEXT_MIN)
-		add_child(label)
-	_round_label.name = "Round"
+	add_child(_backdrop)
+	_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_band.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_band.draw.connect(func() -> void: MauBinhLayout.draw_band(_band, _band_rect))
+	add_child(_band)
+	add_child(_clock)
+	MauBinhBackdrop.hud(_status, XomDaoUi.TEXT_MIN)
+	add_child(_status)
 	_status.name = "Status"
 	_status.add_theme_font_size_override("font_size", XomDaoUi.TEXT)
-	_info.name = "Info"
-	_countdown.name = "Countdown"
-	_countdown.add_theme_color_override("font_color", PALE)
 	for k: int in 13:
 		var card := XomDaoCard.new()
 		card.name = "Mine_%d" % k
@@ -173,7 +174,7 @@ func _ready() -> void:
 	for row: int in 3:
 		var label := Label.new()
 		label.name = "Row_%d" % (row + 1)
-		_hud(label, XomDaoUi.TEXT_MIN)
+		MauBinhBackdrop.hud(label, XomDaoUi.TEXT_MIN)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		add_child(label)
 		_my_rows.append(label)
@@ -182,22 +183,30 @@ func _ready() -> void:
 	_auto.name = "Auto"
 	_auto.pressed.connect(_on_auto)
 	_done.name = "Done"
+	_done.tooltip_text = "Phím Enter"
 	_done.pressed.connect(_on_done)
 	_cancel.name = "Cancel"
 	_cancel.pressed.connect(_on_cancel)
 	for button: XomDaoButton in [_undo, _auto, _done, _cancel]:
 		button.custom_minimum_size = Vector2(BUTTON_WIDTH, XomDaoUi.TOUCH)
 		add_child(button)
+	_skin.dress_button(_done, "primary")
+	_skin.dress_button(_auto, "secondary")
+	_skin.dress_button(_undo, "danger")
+	_skin.dress_button(_cancel, "danger")
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_fx)
 	_word.name = "Word"
-	_hud(_word, XomDaoUi.TITLE)
+	MauBinhBackdrop.hud(_word, XomDaoUi.TITLE)
 	_word.add_theme_color_override("font_color", GOLD)
 	_word.add_theme_constant_override("outline_size", 12)
 	_word.visible = false
 	add_child(_word)
 	add_child(_boards)
+	for button: XomDaoIconButton in [_boards.get("rules_button"), _boards.get("results_button")]:
+		_skin.dress_icon_button(button)
+	add_child(_finale)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
 		player.bus = XomDaoSettings.SFX_BUS
@@ -214,21 +223,12 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_show_countdown()
-	_info.visible = not _word.visible
-	_status.visible = not _word.visible
+	# Arranging, your seat already says how you stand: the line is only for a warning.
+	_status.visible = (
+		not _word.visible and (_mode == "compare" or _status.text.begins_with("Binh lủng"))
+	)
 	if _done.text == "Vẫn nộp" and Time.get_ticks_msec() - _foul_warned_at > FOUL_CONFIRM_MS:
 		_done.text = "Xong"
-
-
-static func _hud(label: Label, font_size: int) -> void:
-	label.theme_type_variation = "HudLabel"
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_override("font", XomDaoUi.display_font(800))
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", XomDaoUi.CREAM)
-	label.add_theme_color_override("font_outline_color", XomDaoUi.INK)
-	label.add_theme_constant_override("outline_size", 8)
 
 
 func _show(snapshot: XomDaoRoomSnapshot) -> void:
@@ -263,10 +263,10 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	_refresh()
 	if fresh and live and phase == "deal":
 		_deal.call_deferred(round_number)
-	var ended: bool = snapshot.result != null
-	if ended and not _ended and live:
-		_sfx("standings")
-	_ended = ended
+	_ended = snapshot.result != null
+	# The end beat once the last reveal is over.
+	if _finale.follow(snapshot):
+		get_tree().create_timer(0.5).timeout.connect(_play_end.bind(snapshot))
 
 
 ## A new round: nothing picked, nothing shown yet.
@@ -362,20 +362,30 @@ func _deal(round_number: int) -> void:
 	for k: int in 13:
 		for step: int in count:
 			var seat: int = (maxi(_me, 0) + 1 + step) % count
-			var card: Control = _mine[k] if seat == _me else _seats[seat]["cards"][k]
-			if card.visible:
-				cards.append(card)
+			if not bool((_view["inRound"] as Array)[seat]):
+				continue
+			cards.append(_mine[k] if seat == _me else _seats[seat]["cards"][k])
 	for n: int in cards.size():
 		var card: Control = cards[n]
+		var mine: bool = _mine.has(card)
 		var target: Vector2 = card.position
 		card.position = _center - card.size / 2.0
 		card.modulate.a = 0.0
-		var tween: Tween = card.create_tween().set_parallel()
-		var delay: float = n * 0.028
-		tween.tween_property(card, "position", target, 0.24).set_delay(delay).set_trans(
-			Tween.TRANS_QUAD
+		card.visible = true
+		card.set_meta("flying", true)
+		var tween: Tween = card.create_tween()
+		tween.tween_interval(n * 0.028)
+		tween.tween_property(card, "modulate:a", 1.0, 0.08)
+		tween.parallel().tween_property(card, "position", target, 0.24).set_trans(Tween.TRANS_QUAD)
+		if not mine:
+			# The others' cards land in their hands (their seats) and are kept out of the way.
+			tween.tween_property(card, "modulate:a", 0.0, 0.2).set_delay(0.15)
+		tween.tween_callback(
+			func() -> void:
+				card.remove_meta("flying")
+				card.visible = mine or _mode == "compare"
+				card.modulate.a = 1.0
 		)
-		tween.tween_property(card, "modulate:a", 1.0, 0.24).set_delay(delay)
 	await get_tree().create_timer(cards.size() * 0.028 + 0.3).timeout
 	if _round == round_number and is_inside_tree():
 		_announce("Vòng %d" % round_number, "place")
@@ -383,18 +393,7 @@ func _deal(round_number: int) -> void:
 
 ## A big word in the middle of the table for a moment.
 func _announce(text: String, sound: String = "") -> void:
-	_word.text = text
-	_word.visible = true
-	_word.reset_size()
-	_word.position = _center - _word.size / 2.0
-	_word.pivot_offset = _word.size / 2.0
-	_word.scale = Vector2.ONE * 0.6
-	_word.modulate.a = 1.0
-	var tween: Tween = _word.create_tween()
-	tween.tween_property(_word, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK)
-	tween.tween_interval(0.8)
-	tween.tween_property(_word, "modulate:a", 0.0, 0.25)
-	tween.tween_callback(func() -> void: _word.visible = false)
+	MauBinhBackdrop.announce(_word, text, _center)
 	if sound != "":
 		_sfx(sound)
 
@@ -417,7 +416,7 @@ func _play_reveal(round_number: int) -> void:
 		for kind: Variant in specials:
 			if kind != null:
 				names.append(Rules.SPECIAL_NAMES.get(str(kind), ""))
-		_announce(" · ".join(names), "special")
+		_announce(", ".join(names), "special")
 		await get_tree().create_timer(REVEAL_SPECIAL).timeout
 		if not still.call():
 			return
@@ -461,32 +460,27 @@ func _refresh() -> void:
 	_layout()
 
 
-## What `seat` won or lost on chi `chi` this round, against everyone (chi duels only).
-static func _chi_points(result: Dictionary, seat: int, chi: int) -> int:
-	var won: Variant = Rules.chi_won(result, seat, chi)
-	return int(won) if won != null else 0
-
-
 # ── Seats ─────────────────────────────────────────────────────────────────────────────────
 
 
 func _build_seats(count: int) -> void:
 	for seat: Dictionary in _seats:
-		for key: String in ["slot", "tag", "total"]:
+		for key: String in ["seat", "total"]:
 			(seat[key] as Node).queue_free()
 		for node: Node in (seat["cards"] as Array) + (seat["labels"] as Array):
 			node.queue_free()
 	_seats.clear()
 	for i: int in count:
-		var slot := XomDaoPlayerSlot.new()
-		slot.name = "Seat_%d" % i
-		slot.compact = true
-		add_child(slot)
-		move_child(slot, _fx.get_index())
+		var pill := XomDaoSeatPill.new()
+		pill.name = "Seat_%d" % i
+		pill.tag.name = "Tag_%d" % i
+		add_child(pill)
+		move_child(pill, _fx.get_index())
 		var cards: Array[XomDaoCard] = []
 		for k: int in 13:
 			var card := XomDaoCard.new()
 			card.name = "Card_%d_%d" % [i, k]
+			card.visible = false
 			cards.append(card)
 		for k: int in [10, 11, 12, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4]:
 			add_child(cards[k])
@@ -494,26 +488,26 @@ func _build_seats(count: int) -> void:
 		var labels: Array[Label] = []
 		for row: int in 3:
 			var label := Label.new()
-			_hud(label, XomDaoUi.TEXT_MIN)
+			MauBinhBackdrop.hud(label, XomDaoUi.TEXT_MIN - 2)
 			add_child(label)
 			labels.append(label)
-		var tag := Label.new()
-		tag.name = "Tag_%d" % i
-		_hud(tag, XomDaoUi.TEXT_MIN)
-		add_child(tag)
 		var total := Label.new()
 		total.name = "Total_%d" % i
-		_hud(total, XomDaoUi.TEXT)
+		MauBinhBackdrop.hud(total, XomDaoUi.TEXT + 4)
 		add_child(total)
-		_seats.append({"slot": slot, "cards": cards, "labels": labels, "tag": tag, "total": total})
+		_seats.append({"seat": pill, "cards": cards, "labels": labels, "total": total, "me": null})
 	move_child(_boards, -1)
 
 
-func _slot_of(seat: int) -> String:
-	var count: int = _seats.size()
-	var places: Array = SLOTS.get(count, SLOTS[4])
+## Seats in the order the table lays them out: yours first, then round the table.
+func _order_of_seats() -> Array[int]:
+	var out: Array[int] = []
 	var from: int = maxi(_me, 0)
-	return str(places[(seat - from + count) % count])
+	for step: int in _seats.size():
+		var seat: int = (from + step) % _seats.size()
+		if _mode != "compare" or bool((_view["inRound"] as Array)[seat]):
+			out.append(seat)
+	return out
 
 
 func _show_seats(turning: bool = false) -> void:
@@ -524,7 +518,7 @@ func _show_seats(turning: bool = false) -> void:
 	var result: Variant = _result()
 	for i: int in _seats.size():
 		var seat: Dictionary = _seats[i]
-		var slot: XomDaoPlayerSlot = seat["slot"]
+		var pill: XomDaoSeatPill = seat["seat"]
 		var info: XomDaoPlayerInfo = (
 			_snapshot.seats[i] if i < _snapshot.seats.size() else XomDaoPlayerInfo.new()
 		)
@@ -533,12 +527,11 @@ func _show_seats(turning: bool = false) -> void:
 		var round_points: int = 0
 		if result is Dictionary:
 			round_points = int(((result as Dictionary)["points"] as Array)[i])
-		slot.player_name = _seat_name(i)
-		slot.frame = info.frame
-		slot.host = info.id != "" and info.id == str(_snapshot.host_id)
+		if seat["me"] != (i == _me):
+			seat["me"] = i == _me
+			pill.dress(_skin, i == _me)
 		var shown_points: int = int(points[i]) - (0 if _totals_shown else round_points)
-		slot.extra = "%d điểm" % shown_points
-		slot.modulate.a = 0.45 if gone else 1.0
+		pill.modulate.a = 0.45 if gone else 1.0
 		var waiting: bool = (
 			phase == "arrange"
 			and dealt
@@ -546,13 +539,10 @@ func _show_seats(turning: bool = false) -> void:
 			and not bool(ready[i])
 			and _snapshot.result == null
 		)
-		if waiting and not slot.is_turn():
-			slot.show_turn()
-		elif not waiting and slot.is_turn():
-			slot.end_turn()
-		var tag: Label = seat["tag"]
-		tag.text = _tag_of(i, dealt, gone, result)
-		tag.add_theme_color_override("font_color", PALE if waiting else XomDaoUi.CREAM)
+		var words: String = Rules.tag_of(_view, i, dealt, gone, result)
+		var tint: Color = Color(MauBinhBackdrop.CREAM, 0.7) if waiting else Color("#F0CF7E")
+		var clock: float = _clock.share if waiting and _clock.share >= 0.0 else -1.0
+		pill.show_player(info, _seat_name(i), shown_points, words, tint, clock)
 		# The cards: face down until the reveal; yours are drawn by _show_mine.
 		var rows: Variant = null
 		if result is Dictionary:
@@ -566,11 +556,12 @@ func _show_seats(turning: bool = false) -> void:
 		var back: Texture2D = XomDaoLooks.card_back(_card_back_of(info.id))
 		for k: int in 13:
 			var card: XomDaoCard = cards[k]
-			card.visible = dealt and i != _me
+			if not card.has_meta("flying"):
+				card.visible = dealt and i != _me and _mode == "compare"
 			card.back = back
 			card.dim = false
 			if k < order.size():
-				_turn_over(card, int(order[k]), turning)
+				MauBinhBackdrop.turn_over(card, int(order[k]), turning and is_inside_tree())
 			else:
 				card.show_face("", 0)
 		# Each row's hand and its points, chi by chi as the reveal goes.
@@ -579,12 +570,17 @@ func _show_seats(turning: bool = false) -> void:
 		for row: int in 3:
 			var label: Label = labels[row]
 			label.text = ""
+			label.visible = _mode == "compare" and i != _me
 			if order.size() == 13 and row < _chi_shown and i != _me:
-				label.text = _row_text(result, i, row, Rules.rows_of(order)[row], false)
-				label.add_theme_color_override("font_color", _row_color(result, i, row))
+				label.text = Rules.row_text(
+					result, i, row, Rules.rows_of(order)[row], false, _chi_shown
+				)
+				label.add_theme_color_override(
+					"font_color", Rules.row_color(result, i, row, _chi_shown)
+				)
 			if order.size() == 13 and _chi_shown > 0 and not _totals_shown:
 				for k: int in ROW_LENGTH[row]:
-					cards[ROW_START[row] + k].dim = row != _chi_shown - 1
+					MauBinhBackdrop.dim(cards[ROW_START[row] + k], row != _chi_shown - 1)
 		var total: Label = seat["total"]
 		total.text = ""
 		if _totals_shown and result is Dictionary and dealt:
@@ -592,59 +588,6 @@ func _show_seats(turning: bool = false) -> void:
 			total.add_theme_color_override(
 				"font_color", WIN if round_points > 0 else (LOSE if round_points < 0 else PALE)
 			)
-
-
-## The word under a seat: what they are doing, or how their round went.
-func _tag_of(seat: int, dealt: bool, gone: bool, result: Variant) -> String:
-	var text: String = ""
-	if gone:
-		text = "Rời bàn"
-	elif not dealt:
-		text = "Ngồi ngoài"
-	elif result is Dictionary:
-		var round: Dictionary = result
-		var special: Variant = (round["specials"] as Array)[seat]
-		if special != null:
-			text = Rules.SPECIAL_NAMES.get(str(special), "")
-		elif bool((round["fouls"] as Array)[seat]):
-			text = "Binh lủng"
-		elif bool((round["auto"] as Array)[seat]):
-			text = "Máy xếp"
-	elif str(_view["phase"]) == "arrange":
-		text = "Xong" if bool((_view["ready"] as Array)[seat]) else "Đang xếp"
-	return text
-
-
-## "Thùng +2": a row's hand, and once its chi is compared, the points on it.
-func _row_text(result: Variant, seat: int, row: int, cards: Array, mine: bool) -> String:
-	var text: String = Rules.hand_name(cards)
-	if mine:
-		text = "Chi %d · %s" % [row + 1, text]
-	if result is Dictionary and row < _chi_shown:
-		var points: int = _chi_points(result as Dictionary, seat, row)
-		text += " %s" % (XomDaoUi.delta(points) if points != 0 else "0")
-	return text
-
-
-func _row_color(result: Variant, seat: int, row: int) -> Color:
-	if result is not Dictionary or row >= _chi_shown:
-		return XomDaoUi.CREAM
-	var points: int = _chi_points(result as Dictionary, seat, row)
-	return WIN if points > 0 else (LOSE if points < 0 else XomDaoUi.CREAM)
-
-
-## Flips a card to its face (turning it over when `animate`).
-func _turn_over(card: XomDaoCard, value: int, animate: bool) -> void:
-	var rank: String = Rules.RANKS[Rules.rank_of(value)]
-	if card.rank == rank and card.suit == value % 4:
-		return
-	if not animate or not is_inside_tree():
-		_face(card, value)
-		return
-	var tween: Tween = card.create_tween()
-	tween.tween_property(card, "scale:x", 0.0, 0.13)
-	tween.tween_callback(_face.bind(card, value))
-	tween.tween_property(card, "scale:x", 1.0, 0.13)
 
 
 ## The card back a member of the room wears ("" when unknown: the default).
@@ -680,16 +623,20 @@ func _show_mine() -> void:
 		if not dealt:
 			continue
 		var cards: Array = Rules.rows_of(_order)[row]
-		label.text = _row_text(result, _me, row, cards, true)
+		var naming: bool = _mode != "compare"
+		label.text = Rules.row_text(result, _me, row, cards, naming, _chi_shown)
+		if not naming and row >= _chi_shown:
+			label.text = ""
 		var broken: bool = (
 			(foul.begins_with("Chi 2") and row == 1) or (foul.begins_with("Chi 3") and row == 2)
 		)
 		label.add_theme_color_override(
-			"font_color", LOSE if broken and result == null else _row_color(result, _me, row)
+			"font_color",
+			LOSE if broken and result == null else Rules.row_color(result, _me, row, _chi_shown)
 		)
 		if result is Dictionary and _chi_shown > 0 and not _totals_shown:
 			for k: int in ROW_LENGTH[row]:
-				_mine[ROW_START[row] + k].dim = row != _chi_shown - 1
+				MauBinhBackdrop.dim(_mine[ROW_START[row] + k], row != _chi_shown - 1)
 
 
 ## Tap a card to pick it, another to swap the two (the same card again puts it down); or drag
@@ -735,6 +682,25 @@ func _swap(a: int, b: int) -> void:
 		var home: Vector2 = card.position
 		card.position = from[n]
 		Drag.slide(card, home, 0.18)
+
+
+## Desktop keys: Enter hands your rows in, A arranges them, Z takes back a swap, L and K open
+## the rules and the rounds' results.
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo or _view.is_empty():
+		return
+	var actions: Dictionary = {
+		KEY_ENTER: _on_done,
+		KEY_A: _on_auto,
+		KEY_Z: _on_undo,
+		KEY_L: Callable(_boards, "open_rules"),
+		KEY_K: Callable(_boards, "open_results"),
+	}
+	if not actions.has(key.keycode):
+		return
+	(actions[key.keycode] as Callable).call()
+	get_viewport().set_input_as_handled()
 
 
 func _on_undo() -> void:
@@ -793,7 +759,7 @@ func _show_hud() -> void:
 	var over: bool = _snapshot.result != null
 	var in_round: Array = _view["inRound"]
 	var ready: Array = _view["ready"]
-	_round_label.text = "Vòng %d/%d" % [int(_view["round"]), int(_view["rounds"])]
+	_clock.round_label.text = "Vòng %d/%d" % [int(_view["round"]), int(_view["rounds"])]
 	var playing: int = 0
 	var done: int = 0
 	for i: int in in_round.size():
@@ -826,7 +792,7 @@ func _show_hud() -> void:
 		status = "%s điểm" % XomDaoUi.delta(int(((result as Dictionary)["points"] as Array)[_me]))
 	if over:
 		status = ""
-	_info.text = info
+	_clock.info.text = info
 	_status.text = status
 	var arranging: bool = _arranging()
 	_undo.visible = arranging
@@ -851,11 +817,19 @@ func _show_countdown() -> void:
 		timer != null and _snapshot.result == null and timer.event == "arrange-over"
 	)
 	if not counting:
-		_countdown.text = ""
+		_clock.countdown.text = ""
+		_clock.share = -1.0
 		return
 	var left_ms: float = timer.left - (Time.get_ticks_msec() - _shown_at)
 	var left: int = ceili(maxf(0.0, left_ms) / 1000.0)
-	_countdown.text = "%d giây" % left
+	_clock.countdown.text = "%d giây" % left
+	# The bar and the rings round the seats still arranging run down with it.
+	_clock.total = timer.ms / 1000.0
+	_clock.share = clampf(left_ms / maxf(timer.ms, 1.0), 0.0, 1.0)
+	var ready: Array = _view["ready"]
+	for i: int in _seats.size():
+		var waiting: bool = i < ready.size() and not bool(ready[i]) and not _left(i)
+		(_seats[i]["seat"] as XomDaoSeatPill).avatar.turn = _clock.share if waiting else -1.0
 	var arranging: bool = _arranging()
 	if arranging and left <= 5 and left > 0 and left != _tick:
 		_sfx("tick")
@@ -873,124 +847,154 @@ func _sfx(sound: String) -> void:
 # ── Layout ────────────────────────────────────────────────────────────────────────────────
 
 
-## Puts 13 cards in rows from `at` (the top left of chi 3's row), chi 3 centred over the others.
-static func _place_rows(cards: Array, at: Vector2, width: float) -> void:
-	var height: float = width * XomDaoCard.RATIO
-	for k: int in 13:
-		var row: int = 0 if k < 5 else (1 if k < 10 else 2)
-		var column: int = k - ROW_START[row]
-		var x: float = at.x + column * width * STEP_X + (width * STEP_X if row == 2 else 0.0)
-		var y: float = at.y + (2 - row) * height * STEP_Y
-		var card: Control = cards[k]
-		card.size = Vector2(width, height)
-		card.pivot_offset = card.size / 2.0
-		card.position = Vector2(x, y)
-
-
-## How big a block of 13 cards is.
-static func _block_size(width: float) -> Vector2:
-	var height: float = width * XomDaoCard.RATIO
-	return Vector2(width + 4.0 * width * STEP_X, height + 2.0 * height * STEP_Y)
-
-
+## Lays the table out for the phase: arranging (your cards big, the seats in a strip) or
+## comparing (a column per seat). Moving from one to the other slides every card into place.
 func _layout() -> void:
 	if not is_inside_tree():
 		return
 	var inset: Vector2 = XomDaoFrame.safe_inset(self)
 	var edge: float = float(XomDaoSettings.current().margin)
-	var left: float = inset.x + edge
-	var right: float = size.x - inset.x - edge
-	var top: float = edge
-	var bottom: float = size.y - edge
-	_center = Vector2(size.x / 2.0, size.y * 0.42)
+	var frame := Rect2(
+		Vector2(inset.x + edge, edge), Vector2(size.x - 2.0 * (inset.x + edge), size.y - 2.0 * edge)
+	)
+	var mode: String = "compare" if _result() is Dictionary else "arrange"
+	var shifting: bool = _mode != "" and mode != _mode and is_visible_in_tree()
+	_mode = mode
+	_boards.call("place", Rect2(frame.position, Vector2(frame.size.x, frame.size.y)))
+	for card: XomDaoCard in MauBinhLayout.all_cards(_mine, _seats):
+		card.set_meta("from", Rect2(card.position, card.size))
+	if mode == "arrange":
+		_lay_arranging(frame)
+	else:
+		_lay_comparing(frame)
+	for card: XomDaoCard in MauBinhLayout.all_cards(_mine, _seats):
+		var from: Rect2 = card.get_meta("from")
+		card.pivot_offset = card.size / 2.0
+		if shifting and card.visible and from.size.x > 0.0:
+			var to := Rect2(card.position, card.size)
+			card.position = from.position
+			card.size = from.size
+			var tween: Tween = card.create_tween().set_parallel()
+			tween.tween_property(card, "position", to.position, SHIFT).set_trans(Tween.TRANS_CUBIC)
+			tween.tween_property(card, "size", to.size, SHIFT).set_trans(Tween.TRANS_CUBIC)
+	_band.queue_redraw()
 
-	_round_label.reset_size()
-	_round_label.position = Vector2((size.x - _round_label.size.x) / 2.0, top)
 
-	# Bottom right: Hoàn tác, Tự xếp, Xong (or Xếp lại).
-	var y: float = bottom
-	for button: XomDaoButton in [_done, _auto, _undo]:
-		button.reset_size()
-		y -= button.size.y
-		button.position = Vector2(right - button.size.x, y)
-		y -= 10.0
-	_cancel.reset_size()
-	_cancel.position = Vector2(right - _cancel.size.x, bottom - _cancel.size.y)
-
-	# The middle: what is going on, your status and the seconds left.
-	_boards.call("place", Rect2(left, top, right - left, bottom - top))
-	var middle: float = size.y * 0.37
-	for label: Label in [_info, _status, _countdown]:
-		label.reset_size()
-		label.size.x = 320.0
-		label.position = Vector2((size.x - label.size.x) / 2.0, middle)
-		middle += label.size.y
-
-	# Your cards: three rows in the bottom middle, each row's hand on its left.
-	var mine: Vector2 = _block_size(MY_CARD)
-	var mine_at := Vector2((size.x - mine.x) / 2.0, bottom - mine.y)
-	_place_rows(_mine, mine_at, MY_CARD)
+func _lay_arranging(frame: Rect2) -> void:
+	var spot: Dictionary = MauBinhLayout.arranging(frame, _seats.size(), ROW_NAMES, BUTTON_WIDTH)
+	_center = Vector2(size.x / 2.0, size.y * 0.5)
+	# The seats in a strip at the top, yours first.
+	var strip: Rect2 = spot["strip"]
+	var pills: Array[XomDaoSeatPill] = []
+	for i: int in _order_of_seats():
+		pills.append(_seats[i]["seat"])
+	MauBinhLayout.place_strip(pills, strip, spot["seat_width"], spot["right"])
+	for i: int in _order_of_seats():
+		var pill: XomDaoSeatPill = _seats[i]["seat"]
+		for card: XomDaoCard in _seats[i]["cards"]:
+			# Their cards wait in their hands, behind their seats.
+			card.size = Vector2(28.0, 42.0)
+			card.position = pill.position + Vector2(18.0, 14.0)
+		(_seats[i]["total"] as Label).text = ""
+	# The clock: the round on the left, who is done and the seconds round the bar.
+	var clock: Rect2 = spot["clock"]
+	_clock.fit(clock, true, Vector2.ZERO)
+	_status.reset_size()
+	_status.size.x = 520.0
+	_status.position = Vector2((size.x - 520.0) / 2.0, spot["status_y"])
+	# Your cards, big, with each row's hand on its left.
+	var width: float = spot["hand_width"]
+	var at: Vector2 = spot["hand_at"]
+	MauBinhLayout.place_block(_mine, at, width, MauBinhLayout.STEP_Y)
 	_drag.homes.clear()
 	for card: XomDaoCard in _mine:
 		_drag.homes.append(card.position)
 	_drag.place()
 	for row: int in 3:
 		var label: Label = _my_rows[row]
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		label.reset_size()
-		var row_y: float = mine_at.y + (2 - row) * MY_CARD * XomDaoCard.RATIO * STEP_Y
-		var row_x: float = mine_at.x + (MY_CARD * STEP_X if row == 2 else 0.0)
-		label.position = Vector2(row_x - label.size.x - 10.0, row_y)
+		var first: Rect2 = MauBinhLayout.card_rect(ROW_START[row], at, width)
+		label.position = Vector2(spot["labels_right"] - label.size.x, first.position.y + 6.0)
 	if _picked >= 0:
-		_mine[_picked].position.y -= 14.0
+		_mine[_picked].position.y -= 18.0
+	# The buttons down the right.
+	var y: float = frame.end.y
+	for button: XomDaoButton in [_done, _auto, _undo]:
+		button.reset_size()
+		y -= button.size.y
+		button.position = Vector2(frame.end.x - button.size.x, y)
+		y -= 10.0
+	_cancel.reset_size()
+	_cancel.position = Vector2(frame.end.x - _cancel.size.x, frame.end.y - _cancel.size.y)
+	_band_rect = Rect2()
 
-	# Seats round the table, each with its block of cards.
-	var block: Vector2 = _block_size(THEIR_CARD)
-	var row_height: float = THEIR_CARD * XomDaoCard.RATIO * STEP_Y
-	for i: int in _seats.size():
-		var seat: Dictionary = _seats[i]
-		var slot: XomDaoPlayerSlot = seat["slot"]
-		slot.reset_size()
-		var box: Vector2 = slot.get_combined_minimum_size()
-		var at := Vector2.ZERO
-		var labels_right: bool = true
-		var place: String = _slot_of(i)
-		match place:
-			"bottom":
-				slot.position = Vector2(left, bottom - box.y)
-				at = Vector2((size.x - block.x) / 2.0, bottom - block.y)
-			"top":
-				at = Vector2((size.x - block.x) / 2.0, top + 48.0)
-				slot.position = Vector2(at.x - 24.0 - box.x, top)
-			"left":
-				slot.position = Vector2(left, top + XomDaoUi.TOUCH + 24.0)
-				at = slot.position + Vector2(0.0, box.y + 10.0)
-			"right":
-				slot.position = Vector2(right - box.x, top + XomDaoUi.TOUCH + 24.0)
-				at = Vector2(right - block.x, slot.position.y + box.y + 10.0)
-				labels_right = false
-		_place_rows(seat["cards"], at, THEIR_CARD)
-		var labels: Array[Label] = []
-		labels.assign(seat["labels"])
+
+func _lay_comparing(frame: Rect2) -> void:
+	var seats: Array[int] = _order_of_seats()
+	var spot: Dictionary = MauBinhLayout.comparing(frame, seats.size())
+	var width: float = spot["width"]
+	var step: float = spot["step"]
+	var columns: Array[Rect2] = spot["columns"]
+	_center = Vector2(size.x / 2.0, frame.position.y + MauBinhLayout.CORNER / 2.0)
+	_clock.fit(
+		frame, false, frame.position + Vector2(MauBinhLayout.CORNER + MauBinhLayout.GAP, 20.0)
+	)
+	var block: Vector2 = MauBinhLayout.block(width, step, MauBinhLayout.OPEN_STEP_X)
+	var height: float = width * XomDaoCard.RATIO
+	for n: int in seats.size():
+		var i: int = seats[n]
+		var column: Rect2 = columns[n]
+		var pill: XomDaoSeatPill = _seats[i]["seat"]
+		pill.custom_minimum_size.x = minf(XomDaoSeatPill.WIDTH, column.size.x)
+		pill.reset_size()
+		var fit: float = minf(1.0, column.size.x / pill.size.x)
+		pill.pivot_offset = Vector2.ZERO
+		pill.scale = Vector2.ONE * fit
+		pill.position = Vector2(column.get_center().x - pill.size.x * fit / 2.0, column.position.y)
+		var at := Vector2(
+			column.get_center().x - block.x / 2.0, pill.position.y + spot["seat_height"] + 10.0
+		)
+		var cards: Array = _mine if i == _me else _seats[i]["cards"]
+		MauBinhLayout.place_block(cards, at, width, step, MauBinhLayout.OPEN_STEP_X)
+		var labels: Array = _my_rows if i == _me else _seats[i]["labels"]
 		for row: int in 3:
 			var label: Label = labels[row]
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			label.reset_size()
-			var row_y: float = at.y + (2 - row) * row_height
-			label.position = Vector2(
-				at.x + block.x + 8.0 if labels_right else at.x - label.size.x - 8.0, row_y
+			label.size.x = column.size.x
+			var first: Rect2 = MauBinhLayout.card_rect(
+				ROW_START[row], at, width, step, MauBinhLayout.OPEN_STEP_X
 			)
-		var tag: Label = seat["tag"]
-		tag.reset_size()
-		tag.position = slot.position + Vector2((box.x - tag.size.x) / 2.0, -tag.size.y + 6.0)
-		if place == "top":
-			tag.position.y = slot.position.y + box.y
-		var total: Label = seat["total"]
+			label.position = Vector2(column.position.x, first.end.y + 1.0)
+		var total: Label = _seats[i]["total"]
 		total.reset_size()
 		total.pivot_offset = total.size / 2.0
-		if i == _me:
-			total.position = Vector2(
-				size.x / 2.0 - total.size.x / 2.0, mine_at.y - total.size.y - 4.0
+		total.position = Vector2(
+			column.get_center().x - total.size.x / 2.0, at.y + block.y + MauBinhLayout.LINE + 2.0
+		)
+		if _chi_shown > 0 and not _totals_shown:
+			var row_rect: Rect2 = MauBinhLayout.card_rect(
+				ROW_START[_chi_shown - 1], at, width, step
 			)
-		elif place == "bottom":
-			total.position = Vector2(size.x / 2.0 - total.size.x / 2.0, at.y - total.size.y)
+			_band_rect = Rect2(
+				Vector2(frame.position.x, row_rect.position.y - 6.0),
+				Vector2(frame.size.x, height + MauBinhLayout.LINE + 8.0)
+			)
 		else:
-			total.position = Vector2(at.x + (block.x - total.size.x) / 2.0, at.y + block.y + 2.0)
+			_band_rect = Rect2()
+	_status.reset_size()
+	_status.size.x = 520.0
+	_status.position = Vector2((size.x - 520.0) / 2.0, frame.end.y - _status.size.y)
+
+
+## The end beat: a brass ring round the winners and the indigo scroll in the middle.
+func _play_end(snapshot: XomDaoRoomSnapshot) -> void:
+	if not is_inside_tree() or not _finale.armed():
+		return
+	var seats: Array[Dictionary] = []
+	for seat: int in mini(_seats.size(), snapshot.seats.size()):
+		var avatar: Control = (_seats[seat]["seat"] as XomDaoSeatPill).avatar
+		var at: Vector2 = avatar.global_position - global_position + avatar.size / 2.0
+		seats.append({"id": snapshot.seats[seat].id, "name": _seat_name(seat), "at": at})
+	_finale.play_points(snapshot, _client.player_id, seats, _view["points"], _center, _sfx)

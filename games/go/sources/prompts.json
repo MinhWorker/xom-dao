@@ -1,10 +1,16 @@
 {
-  "$comment": "Đảo sinh bằng Image Gen. Bàn, quân, vải và nút do render_assets.py kết xuất bằng Blender; hộp/nắp mây đan do render_bowls.py.",
+  "$comment": "Đảo sinh bằng Image Gen. Bàn, quân, vải và nút do render_assets.py kết xuất bằng Blender; hộp/nắp mây đan do render_bowls.py. emblem (the result board's picture) was made with Antigravity (agy, its built-in image tool: Codex had no image tool on this account), asked for on flat #00FF00 and keyed out with Pillow (only the green touching the border, so green parts of the object stay).",
   "assets": {
     "island": {
       "transparent": true,
       "maxSize": 640,
       "prompt": "A floating Go island for a Vietnamese mobile board game world map, entire silhouette visible. Warm rocky underside tapering to a point, mossy grass edge and sparse dangling roots. A honey-colored natural wood Go board with an extremely thin beveled rim, standard dense 19x19 grid, nine small star points and a handful of polished slate black and creamy white Go stones at intersections. Two simple wood stone bowls and one sculptural pine tree. Isometric three-quarter view for the map island, tactile premium 3D mobile-game render, soft upper-left light. No text, logos, characters or buildings. Transparent background with real alpha and no ground plane."
+    },
+    "emblem": {
+      "transparent": true,
+      "maxSize": 512,
+      "generator": "agy",
+      "prompt": "A game emblem: a round lidded go stone bowl of pale honey kaya wood, lid tilted open resting against it, glossy black go stones heaped inside, three smooth white and black go stones lying in front, a tiny red ribbon tied around the bowl. Style: toy-like Vietnamese 2.5D cartoon game art, soft rounded chunky volumes like a carved wooden toy, clean flat color blocks with gentle cel shading, sunlight from the top left, short soft shadow, each outline a darker shade of its own fill (never black), no text, no letters, no numbers. Centered, the object fills about 80% of a square frame. Background: perfectly flat pure green #00FF00 everywhere around the object, no gradient, no floor, no cast shadow on the background."
     }
   }
 }

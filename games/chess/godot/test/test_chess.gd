@@ -120,6 +120,21 @@ func test_the_top_of_a_piece_still_targets_its_square() -> void:
 		touch, letters.keys(), letters, false, board.position, board.size, false
 	)
 	assert_eq(picked, 52, "the pawn's raised silhouette still selects e2")
+	# With a piece picked, a legal target behind that silhouette takes the tap (a capture on e7
+	# behind a tall piece on e6).
+	var top := point
+	while PROJECTION.square_at_point(top, false, board.position, board.size) == 52:
+		top.y -= 2.0
+	touch.position = top
+	var front: int = CHESS_INPUT.square_for_event(
+		touch, letters.keys(), letters, false, board.position, board.size, false
+	)
+	assert_eq(front, 52, "the pawn's head reaches over e3")
+	var plane: int = PROJECTION.square_at_point(top, false, board.position, board.size)
+	var aimed: int = CHESS_INPUT.square_for_event(
+		touch, letters.keys(), letters, false, board.position, board.size, false, [plane]
+	)
+	assert_eq(aimed, plane, "the legal target under the finger wins")
 
 
 func test_a_pawn_on_the_last_rank_asks_what_it_becomes() -> void:
@@ -163,3 +178,26 @@ func test_check_shows_in_the_status_and_the_end_on_the_result_board() -> void:
 		"res://content/chess/art/royal-button.svg"
 	)
 	assert_false((ended.find_child("Resign", true, false) as Control).visible)
+
+
+func test_a_live_loss_tips_the_king_over_before_the_result() -> void:
+	var table := _table(_view(["me", "bot"], "w", [{"from": 52, "to": 36}]))
+	var client: XomDaoClient = table.get("_client")
+	var lost := _view(["me", "bot"], "w", [], {"end": {"reason": "resign", "winner": "b"}})
+	client.snapshot = _snapshot(lost, "finished")
+	var waited: Array[bool] = [false]
+	var waiter: Callable = func() -> void:
+		await table.call("wait_for_result_panel")
+		waited[0] = true
+	waiter.call()
+	await wait_seconds(0.9)
+	var banner: Control = table.find_child("EndBanner", true, false)
+	assert_true(banner.visible, "the royal banner says how it ended")
+	assert_eq((banner.find_child("EndHeadline", true, false) as Label).text, "THUA RỒI")
+	assert_eq((banner.find_child("EndReason", true, false) as Label).text, "ĐẦU HÀNG")
+	var king: TextureRect = table.find_child("Piece_60", true, false)
+	assert_gt(absf(king.rotation), 1.0, "your king lies on the board")
+	assert_false(waited[0], "the result board waits for the beat")
+	await wait_seconds(2.2)
+	assert_true(waited[0])
+	assert_eq((table.call("result_theme") as Dictionary)["title"], "Tàn cuộc")

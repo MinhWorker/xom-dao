@@ -20,6 +20,8 @@ var color: Color = XomDaoUi.HUD:
 
 var _label := Label.new()
 var _icon := TextureRect.new()
+var _edge := Color.TRANSPARENT
+var _small: bool = false
 
 
 static func create(
@@ -56,12 +58,22 @@ func _init() -> void:
 
 ## A smaller chip for crowded rows (a card's foot): 40 tall, text 24.
 func compact() -> void:
+	_small = true
 	custom_minimum_size.y = 40.0
 	_label.add_theme_font_size_override("font_size", XomDaoUi.TEXT_MIN)
 	_icon.custom_minimum_size = Vector2(24.0, 24.0)
-	var style: StyleBoxFlat = get_theme_stylebox("panel")
-	style.content_margin_left = 10.0
-	style.content_margin_right = 12.0
+	_restyle()
+
+
+## Paints the chip in a table's own colours (XomDaoTableSkin): fill, border (TRANSPARENT: a
+## darker fill) and words.
+func dress(fill: Color, border: Color, words: Color, font: Font = null) -> void:
+	_edge = border
+	_label.add_theme_color_override("font_color", words)
+	_icon.modulate = words
+	if font != null:
+		_label.add_theme_font_override("font", font)
+	color = fill
 
 
 func set_icon(texture: Texture2D) -> void:
@@ -70,9 +82,10 @@ func set_icon(texture: Texture2D) -> void:
 
 
 func _restyle() -> void:
-	var style: StyleBoxFlat = XomDaoUi.box(color, color.darkened(0.3), 2, HEIGHT / 2.0)
-	style.content_margin_left = 18.0
-	style.content_margin_right = 18.0
+	var border: Color = _edge if _edge != Color.TRANSPARENT else color.darkened(0.3)
+	var style: StyleBoxFlat = XomDaoUi.box(color, border, 2, custom_minimum_size.y / 2.0)
+	style.content_margin_left = 10.0 if _small else 18.0
+	style.content_margin_right = 12.0 if _small else 18.0
 	style.content_margin_top = 2.0
 	style.content_margin_bottom = 4.0
 	add_theme_stylebox_override("panel", style)

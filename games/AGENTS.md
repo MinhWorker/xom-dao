@@ -121,7 +121,18 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
   previous game ended.
 - **Tables**: the hub draws the ☰ menu, the room, the result and Luật; the game's Godot table
   draws only its board, from `client.snapshot`. Optional `result_area() -> Rect2` docks the shared
-  result HUD beside the board; `set_result_visible(shown: bool)` follows Xem bàn / Kết quả. Follow `docs/experience.md` (layouts, HUD) and
+  result HUD beside the board; `set_result_visible(shown: bool)` follows Xem bàn / Kết quả.
+  Optional `wait_for_result_panel()` (may await) is the game's own end beat: the hub awaits it on
+  every ending (win, loss, draw, resign, leave, timeout), capped at 8 s, so it must return
+  promptly when there is nothing to play; a game with it plays its own outcome sound. Without it
+  the hub plays a default beat (pause, outcome ribbon, the app's win/lose sound), so don't also
+  play a win/lose sound at the end. Optional `result_theme() -> Dictionary` skins the result
+  board: `paper`, `ink`, `accent`, `shade` (Colors), `title` (String), `emblem` (Texture2D).
+  `result_detail()` may add `ranks` and `scores` ({player id: …}) to place everyone on the board
+  (`XomDaoPlaces.by_points` builds them for a points game).
+  Optional `table_skin() -> XomDaoTableSkin` dresses the hub's ☰ in the table's materials; give
+  the same skin to the game's seats and buttons so no shared HUD piece breaks the table's look. See
+  `apps/client/AGENTS.md`. Follow `docs/experience.md` (layouts, HUD) and
   `docs/ui-guide.md` (landscape frame, sizes), and build every button and panel from the UI kit in
   `apps/client/addons/xomdao_sdk/ui/` (`apps/client/AGENTS.md`).
 - **`testGame`** takes a plugin or a `Game`. It offers:

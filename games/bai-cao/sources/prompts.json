@@ -1,10 +1,22 @@
 {
-  "$comment": "Đảo riêng tạo bằng công cụ tạo ảnh của Codex; npm run gen:asset -- bai-cao/island để tạo lại.",
+  "$comment": "Đảo riêng tạo bằng công cụ tạo ảnh của Codex; npm run gen:asset -- bai-cao/island để tạo lại. lamplight, emblem: Made with Antigravity (agy, its built-in image tool), which saves into ~/.gemini/antigravity-cli/brain/; transparent ones were asked for on flat #00FF00 and keyed with games/checkers/sources/key_green.py.",
   "assets": {
     "island": {
       "transparent": true,
       "maxSize": 640,
       "prompt": "Polished 3D cartoon Vietnamese mobile board-game style, warm soft lighting, rounded toy materials. A floating sky island with brown faceted rocky underside tapering to a point, hanging vines, lush green grass and tiny white flowers. On top a round low wooden table with a woven straw mat, exactly three large upright playing cards fanned at center: one red heart, one black spade, one red diamond, no ranks or letters. Small stacks of red, jade green and gold betting chips beside the cards, a round golden dealer token and a little red paper lantern. Isometric three-quarter camera, full island visible, clear silhouettes readable at icon size. Single isolated object, no text, transparent background."
+    },
+    "lamplight": {
+      "transparent": false,
+      "maxSize": 1376,
+      "generator": "agy",
+      "prompt": "A wide landscape 16:9 game background, polished stylized 3D cartoon art for a cheerful Vietnamese casual mobile card game: a low dark walnut wooden table seen straight down from directly above (top-down orthographic, no horizon, no walls), wide warm wood planks running left to right with soft grain, lit at night by a warm amber oil lamp glow from the top left that pools in the middle and fades to deep brown at the edges. The whole central area, about 70 percent of the width and height, is plain empty wood with only soft grain (no objects, cards, chips, cloth, board or rectangle in the middle). Only in the corners: at the top left corner a small brass Vietnamese oil lamp (den dau) with a glass chimney and its glow; at the bottom left a little clay teapot and two tiny tea cups; at the top right a small dish of roasted watermelon seeds; at the bottom right a few scattered brass coins. Soft rounded chunky shapes, clean color areas, corners kept dark and quiet. No text, letters, people, playing cards, UI, frame or watermark."
+    },
+    "emblem": {
+      "transparent": true,
+      "maxSize": 320,
+      "generator": "agy",
+      "prompt": "A single game emblem icon, polished stylized 3D cartoon art for a cheerful Vietnamese casual mobile card game: three chunky cream playing cards with rounded corners fanned slightly, the top one with its corner lifted and peeked open showing a red nine of diamonds, resting on a short stack of round red-and-cream clay gambling chips, with a small brass oil lamp glow behind. Front view, slightly from above, centered, compact, filling about 80 percent of a square frame, light from the top left, soft rounded chunky shapes, each outline a darker shade of its own fill (never black). Background: perfectly flat solid pure green #00FF00 everywhere, no shadow on the background, no gradient. No text, letters except the card corner, frame or watermark."
     }
   }
 }

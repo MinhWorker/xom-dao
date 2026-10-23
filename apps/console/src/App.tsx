@@ -3,6 +3,7 @@ import { api, savedToken, whenLoggedOut } from './api';
 import { Gate } from './Gate';
 import { Events } from './pages/Events';
 import { Items } from './pages/Items';
+import { Mail } from './pages/Mail';
 import { Users } from './pages/Users';
 import { go, PAGES, usePage } from './router';
 
@@ -54,6 +55,7 @@ export function App() {
       <main className="content">
         {page === 'users' && <Users />}
         {page === 'items' && <Items />}
+        {page === 'mail' && <Mail />}
         {page === 'events' && <Events />}
       </main>
     </div>

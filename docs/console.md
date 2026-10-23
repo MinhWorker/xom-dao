@@ -1,6 +1,6 @@
 # Trang quản lý (/console)
 
-Trang web để quản lý dữ liệu của Xóm Đảo: người dùng, vật phẩm và sự kiện. Bản thật ở
+Trang web để quản lý dữ liệu của Xóm Đảo: người dùng, vật phẩm, thư và sự kiện. Bản thật ở
 https://xomdao.vercel.app/console, trên máy ở http://localhost:5033/console khi chạy `npm run dev`.
 
 ## Vào trang
@@ -34,6 +34,15 @@ Mọi món có trong Chợ và Túi đồ, lưu ở bảng `items` trong databas
   vì túi đồ của người đã mua vẫn nhớ mã đó.
 - **Xoá**: món biến mất khỏi Chợ và Túi đồ. Ai đang đeo thì vẫn giữ tới khi đổi sang món khác.
 
+## Thư
+
+Thư gửi vào Hộp thư trong game (nút phong bì ở sảnh). Danh sách hiện những thư gửi gần nhất.
+
+- **Gửi thư**: tên đăng nhập người nhận (bỏ trống thì gửi cả xóm), tiêu đề, nội dung và quà bằng
+  xu (0 là không có quà). Người đang online nhận ngay, kèm thông báo "Có thư mới".
+- Thư gửi cả xóm hiện với mọi tài khoản, kể cả tài khoản tạo sau. Mỗi người nhận quà một lần.
+- **Xoá**: thư biến mất khỏi Hộp thư. Xu ai đã nhận thì vẫn giữ.
+
 ## Sự kiện
 
 Chưa làm; trang đang để trống.
@@ -42,4 +51,5 @@ Chưa làm; trang đang để trống.
 
 - Trang: `apps/console` (Vite + React). `npm run build -w @xomdao/console` build vào
   `apps/console/dist`; `npm run dev` tự build lại khi sửa.
-- API: `apps/server/src/console` (`/api/console/*`), danh sách vật phẩm ở `apps/server/src/items`.
+- API: `apps/server/src/console` (`/api/console/*`), danh sách vật phẩm ở `apps/server/src/items`,
+  thư ở `apps/server/src/mail`.

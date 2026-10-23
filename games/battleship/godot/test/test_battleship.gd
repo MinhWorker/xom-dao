@@ -169,3 +169,41 @@ func test_the_end_names_the_winner() -> void:
 	)
 	assert_eq(_text(table, "Status"), "Máy đầu hàng")
 	assert_false((table.find_child("Resign", true, false) as Control).visible)
+
+
+func test_a_live_win_runs_up_the_signal_flags_before_the_result() -> void:
+	var table := _table(_view({"phase": "battle", "ready": [true, true]}))
+	var client: XomDaoClient = table.get("_client")
+	var over := _snapshot(
+		_view({"phase": "battle", "ready": [true, true], "end": {"reason": "resign", "winner": 0}})
+	)
+	over.status = "finished"
+	over.result = XomDaoGameResult.from_dict({"winners": ["me"], "rewards": []})
+	client.snapshot = over
+	var waited: Array[bool] = [false]
+	var waiter: Callable = func() -> void:
+		await table.call("wait_for_result_panel")
+		waited[0] = true
+	waiter.call()
+	await wait_seconds(1.6)
+	assert_true(table.find_child("EndStrip", true, false).visible)
+	assert_eq(_text(table, "EndHeadline"), "Thắng rồi!")
+	assert_eq(_text(table, "EndLine"), "Máy đầu hàng")
+	assert_false(waited[0], "the result board waits for the beat")
+	await wait_seconds(1.8)
+	assert_true(waited[0])
+	var rows: Array = (table.call("result_detail") as Dictionary)["rows"]
+	assert_eq(rows[0], ["Bạn bắn", "0 phát"], "each figure on its own row")
+	assert_true(table.call("table_skin") is XomDaoTableSkin)
+
+
+func test_arrow_keys_aim_on_your_turn() -> void:
+	var table := _table(_view({"phase": "battle", "ready": [true, true], "turn": 0}))
+	var big: Control = table.find_child("Big", true, false)
+	for code: Key in [KEY_RIGHT, KEY_RIGHT, KEY_DOWN]:
+		var key := InputEventKey.new()
+		key.keycode = code
+		key.pressed = true
+		table.call("_unhandled_key_input", key)
+	assert_eq(big.get("aim"), 55, "the sight starts mid-sea and follows the arrows")
+	assert_true(big.get("aiming"))

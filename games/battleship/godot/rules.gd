@@ -69,3 +69,9 @@ static func is_sunk(ship: Array, shots: Array) -> bool:
 		if bool((shot as Dictionary)["hit"]):
 			hit[int((shot as Dictionary)["cell"])] = true
 	return ship.all(func(cell: Variant) -> bool: return hit.has(int(cell)))
+
+
+## A ship turned a quarter round its first cell (it may not fit where it lands).
+static func turned(cells: Array) -> Array:
+	var first: int = int(cells.min())
+	return ship_at(first / SIZE, first % SIZE, cells.size(), not is_vertical(cells))

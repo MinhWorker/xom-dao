@@ -116,10 +116,44 @@ func test_check_rings_the_general_and_the_end_fills_the_result_board() -> void:
 	)
 	var detail: Dictionary = ended.call("result_detail")
 	assert_eq(detail["reason"], "Máy chiếu dai")
-	assert_eq(detail["rows"], [["Số nước", "4"], ["Quân đã ăn", "Đỏ 2 · Đen 1"]])
+	assert_eq(detail["rows"], [["Số nước", "4"], ["Đỏ ăn", "2 quân"], ["Đen ăn", "1 quân"]])
 	assert_false((ended.find_child("Resign", true, false) as Control).visible)
 	# Red (you, at the bottom) took two soldiers, Black a horse: each in its taker's tray.
 	var mine: Control = ended.find_child("Taken_0", true, false)
 	var theirs: Control = ended.find_child("Taken_1", true, false)
 	assert_eq(mine.find_children("TakenPiece_*", "", true, false).size(), 2)
 	assert_eq(theirs.find_children("TakenPiece_*", "", true, false).size(), 1)
+
+
+func test_a_live_ending_topples_the_general_and_stamps_a_seal_before_the_result() -> void:
+	var table := _table(_view(["me", "bot"], "r", [{"from": 85, "to": 76}]))
+	var client: XomDaoClient = table.get("_client")
+	var won := _view(["me", "bot"], "b", [], {"end": {"reason": "resign", "winner": "r"}})
+	client.snapshot = _snapshot(won, "finished")
+	var waited: Array[bool] = [false]
+	var waiter: Callable = func() -> void:
+		await table.call("wait_for_result_panel")
+		waited[0] = true
+	waiter.call()
+	assert_false(waited[0], "the result board waits for the beat")
+	await wait_seconds(0.8)
+	var finale: Control = table.find_child("Finale", true, false)
+	assert_true((finale.find_child("EndSeal", true, false) as Control).visible)
+	assert_eq((finale.find_child("EndHeadline", true, false) as Label).text, "Thắng rồi!")
+	assert_eq((finale.find_child("EndLine", true, false) as Label).text, "Máy đầu hàng")
+	# Black's general (on point 4 from Black's side) lies on its side.
+	assert_eq(table.get("_fallen"), 4)
+	assert_true(finale.get("toppled"))
+	await wait_seconds(2.0)
+	assert_true(waited[0], "then the result board may come up")
+	var theme: Dictionary = table.call("result_theme")
+	assert_eq(theme["title"], "Tàn cuộc")
+	assert_true(theme["emblem"] is Texture2D)
+
+
+func test_joining_a_finished_table_skips_the_beat() -> void:
+	var ended := _table(
+		_view(["me", "bot"], "r", [], {"end": {"reason": "agreement", "winner": null}}), "finished"
+	)
+	await ended.call("wait_for_result_panel")
+	assert_false((ended.find_child("EndSeal", true, false) as Control).visible)

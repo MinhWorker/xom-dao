@@ -10,7 +10,7 @@
   9 là cao nhất). **Ba Tây** (ba lá J, Q, K bất kỳ) lớn hơn mọi bài.
 - **So bài**: mỗi người so với nhà cái; bài lớn hơn ăn tiền cược, thắng bằng Ba Tây thì ăn gấp đôi.
   Bằng nút thì so lá lớn nhất: K > Q > J > 10 > … > 2 > A, cùng hạng thì rô > cơ > bích > tép.
-  Nên không bao giờ hoà.
+  Nên không bao giờ hoà. Lượt so kéo dài 8 giây: bài nhà cái lật trước, rồi lần lượt từng người.
 - Hết các ván con, người nhiều điểm nhất thắng (bằng nhau thì cùng thắng).
 - Người rời bàn thì ngồi ngoài từ đó (tiền cược ván đang chơi không tính); nhà cái rời bàn thì
   ván con đó huỷ. Còn một người thì ván kết thúc.

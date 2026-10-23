@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 /** The console lives under /console; pages are /console/<page>. */
 export const BASE = '/console';
 
-export type Page = 'users' | 'items' | 'events';
+export type Page = 'users' | 'items' | 'mail' | 'events';
 export const PAGES: { id: Page; label: string }[] = [
   { id: 'users', label: 'Người dùng' },
   { id: 'items', label: 'Vật phẩm' },
+  { id: 'mail', label: 'Thư' },
   { id: 'events', label: 'Sự kiện' },
 ];
 
