@@ -93,6 +93,7 @@ func _ready() -> void:
 	add_child(_menu)
 	add_child(_music)
 	add_child(_transition)
+	add_child(HubWait.new())
 	_transition.covered.connect(_finish_swap)
 	_client.state_changed.connect(func(_s: XomDaoRoomSnapshot) -> void: _refresh())
 	_client.room_changed.connect(_on_room_changed)
@@ -374,19 +375,19 @@ func _show_profile_of(user_id: String) -> void:
 ## (`history:recent`).
 func _fill_home(home: HubHome, user_id: String) -> bool:
 	var data: Dictionary = {} if user_id == "" else {"userId": user_id}
-	var reply: Dictionary = await _client.request(XomDaoProtocol.INVENTORY_GET, data)
-	var list: Dictionary = await _client.request(XomDaoProtocol.SHOP_LIST)
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.INVENTORY_GET, data)
+	var list: Dictionary = await HubWait.ask(XomDaoProtocol.SHOP_LIST)
 	if reply.get("ok") != true or list.get("ok") != true:
 		_say(str(reply.get("error", list.get("error", "Không tải được"))))
 		return false
 	if not is_instance_valid(home):
 		return true
 	home.show_profile(XomDaoProfile.from_dict(reply), XomDaoShopList.from_dict(list).items)
-	var stats: Dictionary = await _client.request(XomDaoProtocol.STATS_GET, data)
+	var stats: Dictionary = await HubWait.ask(XomDaoProtocol.STATS_GET, data)
 	if stats.get("ok") == true and is_instance_valid(home):
 		home.show_stats(XomDaoPlayerStats.from_dict(stats), _catalog.names())
 	if user_id == "" and is_instance_valid(home):
-		var history: Dictionary = await _client.request(XomDaoProtocol.HISTORY_RECENT)
+		var history: Dictionary = await HubWait.ask(XomDaoProtocol.HISTORY_RECENT)
 		if history.get("ok") == true and is_instance_valid(home):
 			var matches: Array[XomDaoMatchRecord] = []
 			for item: Variant in history.get("matches", []):
@@ -419,7 +420,7 @@ func _show_dinh() -> void:
 
 
 func _fill_ranking(board: String, dinh: HubDinh) -> void:
-	var reply: Dictionary = await _client.request(XomDaoProtocol.RANKING_GET, {"board": board})
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.RANKING_GET, {"board": board})
 	if reply.get("ok") != true:
 		_say(str(reply.get("error", "Không tải được")))
 		return
@@ -430,9 +431,7 @@ func _fill_ranking(board: String, dinh: HubDinh) -> void:
 
 
 func _equip(item_id: String, home: HubHome) -> void:
-	var reply: Dictionary = await _client.request(
-		XomDaoProtocol.INVENTORY_EQUIP, {"itemId": item_id}
-	)
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.INVENTORY_EQUIP, {"itemId": item_id})
 	if reply.get("ok") != true:
 		_say(str(reply.get("error", "")))
 		return
@@ -448,7 +447,7 @@ func _change_name(name: String, home: HubHome) -> void:
 		if is_instance_valid(home):
 			home.name_change_failed("Không tìm thấy tài khoản")
 		return
-	var reply: Dictionary = await _client.request(
+	var reply: Dictionary = await HubWait.ask(
 		XomDaoProtocol.PROFILE_UPDATE,
 		{"name": name, "avatar": _client.user.avatar, "frame": _client.user.frame}
 	)
@@ -480,7 +479,7 @@ func _show_shop() -> void:
 
 
 func _fill_shop(shop: HubShop) -> void:
-	var reply: Dictionary = await _client.request(XomDaoProtocol.SHOP_LIST)
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.SHOP_LIST)
 	if reply.get("ok") != true:
 		_say(str(reply.get("error", "Không tải được")))
 		return
@@ -493,7 +492,7 @@ func _buy(item_id: String, shop: HubShop) -> void:
 	if _buying:
 		return
 	_buying = true
-	var reply: Dictionary = await _client.request(XomDaoProtocol.SHOP_BUY, {"itemId": item_id})
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.SHOP_BUY, {"itemId": item_id})
 	_buying = false
 	if reply.get("ok") != true:
 		_say(str(reply.get("error", "")))
@@ -526,7 +525,7 @@ func _show_select(genre_id: String) -> void:
 
 ## An event's progress (`event:get`) on the select's detail board.
 func _fill_progress(game_id: String, select: HubGameSelect) -> void:
-	var reply: Dictionary = await _client.request(XomDaoProtocol.EVENT_GET, {"eventId": game_id})
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.EVENT_GET, {"eventId": game_id})
 	if reply.get("ok") == true and is_instance_valid(select):
 		select.show_progress(XomDaoEventProgress.from_dict(reply))
 
@@ -536,7 +535,7 @@ func _claim(game_id: String, tier: int, select: HubGameSelect) -> void:
 	if _claiming:
 		return
 	_claiming = true
-	var reply: Dictionary = await _client.request(
+	var reply: Dictionary = await HubWait.ask(
 		XomDaoProtocol.EVENT_CLAIM, {"eventId": game_id, "tier": tier}
 	)
 	_claiming = false
@@ -924,10 +923,10 @@ func _set_screen(shown: String, screen: Control) -> void:
 	for child: Node in _screen.get_children():
 		if child != _game and child != screen and not _outgoing.has(child):
 			_outgoing.append(child)
-	if _result != null and not is_instance_valid(_result):
+	if _result != null and (not is_instance_valid(_result) or shown != "game"):
 		_result = null
-	if shown != "game" and _result != null:
-		_result = null
+	if shown == "game":
+		HubIsland.forget()
 	if _ben != null and shown != "ben":
 		_ben = null
 	if screen.get_parent() == null:

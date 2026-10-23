@@ -70,21 +70,21 @@ func attention() -> int:
 
 ## Asks someone by username; "" when it went through, else the reason.
 func add(username: String) -> String:
-	return _take(await _client.request(XomDaoProtocol.FRIENDS_ADD, {"username": username}))
+	return _take(await HubWait.ask(XomDaoProtocol.FRIENDS_ADD, {"username": username}, _client))
 
 
 func answer(id: String, accept: bool) -> String:
 	var data: Dictionary = {"userId": id, "accept": accept}
-	return _take(await _client.request(XomDaoProtocol.FRIENDS_ANSWER, data))
+	return _take(await HubWait.ask(XomDaoProtocol.FRIENDS_ANSWER, data, _client))
 
 
 func remove(id: String) -> String:
-	return _take(await _client.request(XomDaoProtocol.FRIENDS_REMOVE, {"userId": id}))
+	return _take(await HubWait.ask(XomDaoProtocol.FRIENDS_REMOVE, {"userId": id}, _client))
 
 
 ## The newest messages with a friend, oldest first (they become read).
 func history(id: String) -> Array[XomDaoChatMessage]:
-	var reply: Dictionary = await _client.request(XomDaoProtocol.CHAT_HISTORY, {"userId": id})
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.CHAT_HISTORY, {"userId": id}, _client)
 	var out: Array[XomDaoChatMessage] = []
 	if bool(reply.get("ok", false)):
 		out = XomDaoChatHistory.from_dict(reply).messages
@@ -108,7 +108,9 @@ func send(id: String, text: String) -> String:
 
 ## Asks a friend to your room; "" when it went through, else the reason.
 func invite(id: String) -> String:
-	var reply: Dictionary = await _client.request(XomDaoProtocol.FRIENDS_INVITE, {"userId": id})
+	var reply: Dictionary = await HubWait.ask(
+		XomDaoProtocol.FRIENDS_INVITE, {"userId": id}, _client
+	)
 	return "" if bool(reply.get("ok", false)) else str(reply.get("error", "Không mời được"))
 
 

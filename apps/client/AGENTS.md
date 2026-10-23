@@ -35,6 +35,8 @@ hub/                main.gd routes the screens: lobby (island ring + HUD), selec
                     pushes; `attention()` drives Bến's dot), HubFriendsPanel (Bến › Bạn bè),
                     HubInvitePicker (Mời bạn in a room), HubInviteCard (a friend's invitation)
   launch.gd         HubLaunch: the URL / command line the hub opened with, room links
+  wait.gd           HubWait: the "Đang tải" badge at the bottom when a request the player waits
+                    on is slow; screens call `HubWait.ask(event, data)` instead of `client.request`
   quests/           HubQuests: Nhiệm vụ hằng ngày over the lobby (Quà and Nhiệm vụ open it)
   home/ shop/       Nhà (HubHome: tabs stacked down the left beside one page, someone else's
                     read-only; avatar and frame equipment lives in Túi đồ) and Chợ (HubShop:

@@ -38,7 +38,7 @@ func read(id: String) -> void:
 
 ## Takes a letter's coins; "" when it went through, else the reason.
 func claim(id: String) -> String:
-	var reply: Dictionary = await _client.request(XomDaoProtocol.MAIL_CLAIM, {"id": id})
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.MAIL_CLAIM, {"id": id}, _client)
 	if not bool(reply.get("ok", false)):
 		return str(reply.get("error", "Không nhận được"))
 	var taken := XomDaoMailClaim.from_dict(reply)
