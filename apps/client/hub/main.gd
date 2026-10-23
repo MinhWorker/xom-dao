@@ -235,6 +235,8 @@ func _choose_game(game_id: String) -> void:
 	_pick_game(game_id)
 	if _client.user != null and _game_id != "":
 		HubPrefs.set_selected_game(_client.user.id, _game_id)
+	if _game_id != "" and (_catalog == null or _catalog.can_play(_game_id)):
+		HubRoomOptions.load_spec(_game_id)
 
 
 func _refresh() -> void:
@@ -675,19 +677,18 @@ func _show_waiting_room(snapshot: XomDaoRoomSnapshot) -> void:
 
 ## Fills the room's plate with the game's own options, once its pack is loaded.
 func _load_setup(room: HubWaitingRoom, game_id: String) -> void:
+	if HubRoomOptions.has_spec(game_id):
+		room.show_setup(game_id, HubRoomOptions.spec_for(game_id))
+		return
 	if room.loading_game == game_id:
 		return
-	room.loading_game = game_id
-	var scene: PackedScene = await ContentLoader.load_game(game_id)
-	# Gone, or in another game's room by now.
+	room.show_setup_loading(game_id)
+	var spec: Array = await HubRoomOptions.load_spec(game_id)
 	if not is_instance_valid(room) or room.loading_game != game_id:
 		return
-	if scene == null:
-		room.loading_game = ""
+	if spec.is_empty() and not HubRoomOptions.has_spec(game_id):
+		room.show_setup_failed(game_id)
 		return
-	var probe: Node = scene.instantiate()
-	var spec: Array = probe.call("room_setup") if probe.has_method("room_setup") else []
-	probe.free()
 	room.show_setup(game_id, spec)
 
 

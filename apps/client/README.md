@@ -104,7 +104,8 @@ phải để mở màn chọn trò. HUD: hồ sơ trên trái, số xu và ⚙ t
 - **Chọn trò**: dãy thẻ trò kéo ngang ở giữa (tranh splash phủ kín, logo và tên trò), hàng thể
   loại ở góc dưới trái. Chạm một thẻ là vào thẳng phòng của trò đó; thẻ sự kiện mở bảng sự kiện.
 - Tuỳ chọn của trò (`room_setup()`) hiện trên tấm giấy của phòng (`hub/room/room_option.gd`):
-  công tắc, − giá trị +, các ô, hoặc ‹ giá trị › tuỳ loại tuỳ chọn.
+  công tắc, − giá trị +, các ô, hoặc ‹ giá trị › tuỳ loại tuỳ chọn; tấm giấy hiển thị trạng thái
+  đang tải trong lúc nạp trò và được ghi nhớ để mở tức thì ở các lần sau.
   Focus lưu trò và tải ngầm `.pck`. Luật là bảng phân trang có vùng hình minh họa tùy chọn,
   chặn và làm mờ/tối nền. Trò chưa có bản Godot hiện khóa. Touch có ngưỡng phân biệt vuốt với
   chạm; `hub/touch_cancel.gd` xử lý DOM touchcancel của bản web.
