@@ -94,12 +94,64 @@ def place(buffer):
 
 
 def explode(buffer):
-    # A soft comic-book "poof", with two little rubbery pops inside the cloud.
-    puff(buffer, 0, 0.32, gain=1.15, cutoff=650, seed=104)
-    tone(buffer, 0, 0.26, 220, 65, gain=0.48, decay=4.8, overtone=0.1)
-    tone(buffer, 0.025, 0.15, 420, 155, gain=0.15, decay=5)
-    tone(buffer, 0.12, 0.13, 280, 105, gain=0.09, decay=5)
-    puff(buffer, 0.045, 0.2, gain=0.2, cutoff=1900, seed=105)
+    # A round cartoon boom: a falling low thump under a burst of soft noise, then crackles.
+    tone(buffer, 0, 0.5, 150, 38, gain=0.95, decay=3.2, attack=0.002, overtone=0.22)
+    puff(buffer, 0, 0.55, gain=1.25, cutoff=900, seed=104)
+    puff(buffer, 0.0, 0.09, gain=0.55, cutoff=3200, seed=105)
+    rng = random.Random(106)
+    for i in range(7):
+        at = 0.08 + rng.uniform(0, 0.32)
+        puff(buffer, at, 0.035, gain=0.22 * (1 - at), cutoff=2600, seed=107 + i)
+
+
+def count(buffer):
+    mallet(buffer, 0, 659.25, gain=0.7, length=0.32)
+    tone(buffer, 0, 0.18, 1318.5, gain=0.06, decay=6)
+
+
+def go(buffer):
+    for i, pitch in enumerate((523.25, 659.25, 783.99, 1046.5)):
+        mallet(buffer, i * 0.045, pitch, gain=0.5, length=0.5)
+    tone(buffer, 0.12, 0.42, 880, 1320, gain=0.12, decay=2.2, wobble=0.012)
+    puff(buffer, 0.1, 0.35, gain=0.35, cutoff=2400, seed=300, swell=True)
+
+
+def rumble(buffer):
+    # The ground starts to shake: slow low rolls and pebbles.
+    puff(buffer, 0, 1.1, gain=1.2, cutoff=180, seed=310, swell=True)
+    tone(buffer, 0, 1.1, 52, 44, gain=0.4, decay=0.8, attack=0.25, wobble=0.08)
+    rng = random.Random(311)
+    for i in range(9):
+        puff(buffer, rng.uniform(0.15, 0.95), 0.05, gain=0.18, cutoff=2200, seed=312 + i)
+
+
+def thud(buffer):
+    # A laterite rock landing on the paving.
+    tone(buffer, 0, 0.3, 110, 46, gain=1.0, decay=4.5, attack=0.002, overtone=0.3)
+    puff(buffer, 0, 0.28, gain=0.9, cutoff=700, seed=330)
+    puff(buffer, 0.02, 0.06, gain=0.4, cutoff=3000, seed=331)
+
+
+def crate(buffer):
+    # Planks cracking apart: short bright knocks over a dry rustle.
+    rng = random.Random(340)
+    for i in range(5):
+        at = i * 0.028 + rng.uniform(0, 0.01)
+        tone(buffer, at, 0.07, rng.uniform(380, 620), rng.uniform(180, 260), gain=0.4,
+             decay=6, attack=0.001, overtone=0.4)
+    puff(buffer, 0, 0.25, gain=0.55, cutoff=2600, seed=341)
+
+
+def ko(buffer):
+    # Someone is out: a descending sting with a soft gong.
+    for at, pitch in ((0, 987.77), (0.09, 783.99), (0.18, 587.33)):
+        mallet(buffer, at, pitch, gain=0.55, length=0.36)
+    tone(buffer, 0.18, 0.7, 196, 190, gain=0.32, decay=2.6, overtone=0.35, wobble=0.004)
+
+
+def tick(buffer):
+    mallet(buffer, 0, 1760, gain=0.45, length=0.07)
+    tone(buffer, 0, 0.05, 880, gain=0.2, decay=8)
 
 
 def skill(buffer):
@@ -153,7 +205,14 @@ if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     for name, duration, compose, peak in (
         ("place", 0.21, place, 0.42),
-        ("explode", 0.4, explode, 0.5),
+        ("explode", 0.62, explode, 0.55),
+        ("count", 0.36, count, 0.42),
+        ("go", 0.62, go, 0.46),
+        ("rumble", 1.15, rumble, 0.5),
+        ("thud", 0.34, thud, 0.52),
+        ("crate", 0.3, crate, 0.4),
+        ("ko", 0.9, ko, 0.45),
+        ("tick", 0.1, tick, 0.32),
         ("skill", 0.58, skill, 0.45),
         ("start", 0.83, start, 0.46),
         ("pickup", 0.42, pickup, 0.43),

@@ -1,0 +1,233 @@
+{
+  "cell": 128,
+  "frames": {
+    "pillar-0": {
+      "frame": {
+        "x": 4,
+        "y": 4,
+        "w": 192,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": [96, 150]
+    },
+    "pillar-0-shadow": {
+      "frame": {
+        "x": 4,
+        "y": 236,
+        "w": 256,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 224
+      },
+      "anchor": [96, 120]
+    },
+    "pillar-1": {
+      "frame": {
+        "x": 268,
+        "y": 4,
+        "w": 192,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": [96, 150]
+    },
+    "pillar-1-shadow": {
+      "frame": {
+        "x": 268,
+        "y": 236,
+        "w": 256,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 224
+      },
+      "anchor": [96, 120]
+    },
+    "crate-0": {
+      "frame": {
+        "x": 532,
+        "y": 4,
+        "w": 192,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": [96, 150]
+    },
+    "crate-0-shadow": {
+      "frame": {
+        "x": 532,
+        "y": 236,
+        "w": 256,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 224
+      },
+      "anchor": [96, 120]
+    },
+    "crate-1": {
+      "frame": {
+        "x": 796,
+        "y": 4,
+        "w": 192,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": [96, 150]
+    },
+    "crate-1-shadow": {
+      "frame": {
+        "x": 796,
+        "y": 236,
+        "w": 256,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 224
+      },
+      "anchor": [96, 120]
+    },
+    "rock-0": {
+      "frame": {
+        "x": 1060,
+        "y": 4,
+        "w": 192,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": [96, 150]
+    },
+    "rock-0-shadow": {
+      "frame": {
+        "x": 1060,
+        "y": 236,
+        "w": 256,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 224
+      },
+      "anchor": [96, 120]
+    },
+    "rock-1": {
+      "frame": {
+        "x": 1324,
+        "y": 4,
+        "w": 192,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 192,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 192,
+        "h": 224
+      },
+      "anchor": [96, 150]
+    },
+    "rock-1-shadow": {
+      "frame": {
+        "x": 1324,
+        "y": 236,
+        "w": 256,
+        "h": 224
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 224
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 224
+      },
+      "anchor": [96, 120]
+    }
+  }
+}

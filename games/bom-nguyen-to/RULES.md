@@ -1,13 +1,15 @@
 # Bom Nguyên Tố
 
-Khu vườn 11 × 9 ô trong hàng rào gỗ, nhìn từ trên xuống hơi nghiêng, cho 1–4 nhân vật. Một nhân vật là chế độ luyện tập;
+Sân gạch 11 × 9 ô trong bức tường gạch mái ngói trên một hòn đảo, nhìn từ trên xuống hơi nghiêng, cho 1–4 nhân vật. Một nhân vật là chế độ luyện tập;
 **Sinh tồn đơn** có người sống sót cuối cùng thắng. **Đấu đội 2v2** có đội còn người
 sống sót thắng. Các ghế 1 và 3 thuộc đội A, ghế 2 và 4 thuộc đội B. Thành viên
 đã bị loại vẫn được tính thắng nếu đồng đội giành chiến thắng. Thiếu người
 thì máy tự bổ sung; có thể chọn 0–3 máy trong phòng để dành ghế cho bạn bè.
 
-Mỗi người chọn một bạn nhỏ (mỗi bạn mang một nguyên tố) trước mỗi trận rồi bấm **Sẵn sàng**. Sau 20 giây,
-trận tự bắt đầu với lựa chọn hiện tại. Mỗi nhân vật có 100 HP, 2 bom đồng thời,
+Đầu mỗi trận, mỗi người chọn một bạn nhỏ (mỗi bạn mang một nguyên tố) rồi bấm **Sẵn sàng**;
+bảng chọn mô tả kỹ năng và vẽ vùng nổ của từng bạn. Bạn chọn lần trước được chọn sẵn. Khi mọi
+người sẵn sàng, hoặc sau 20 giây, trận đếm ngược 3 giây rồi bắt đầu; lúc đếm chưa ai di chuyển
+hay đặt bom được. Mỗi nhân vật có 100 HP, 2 bom đồng thời,
 tầm nổ 2 ô và tốc độ 3,2 ô/giây.
 
 ## Điều khiển
@@ -23,8 +25,8 @@ tầm nổ 2 ô và tốc độ 3,2 ô/giây.
 Nhân vật đi theo hàng và cột, luôn ở giữa lối, nên không lắc qua lại giữa hai bức tường;
 rẽ gần một góc thì tự căn vào lối còn mở. Bom căn vào ô đang đứng, nổ sau **2,5 giây**,
 gây **35 sát thương** và tồn tại vùng nổ 0,65 giây. Vùng sáng báo phạm vi; chuyển đỏ và nhấp nháy khi sắp nổ.
-Bom thường nổ hình chữ thập. Hàng rào và khối đá chặn vụ nổ; thùng quà bị phá và chặn phần tiếp
-của tia. Bom trúng vụ nổ kích hoạt phản ứng dây chuyền. Người đặt được bước
+Bom thường nổ hình chữ thập. Tường và cột đá chặn vụ nổ; thùng gỗ và thúng tre bị phá và chặn phần
+tiếp của tia. Bom trúng vụ nổ kích hoạt phản ứng dây chuyền. Người đặt được bước
 ra khỏi bom nhưng không thể quay xuyên qua nó; bom chặn người khác.
 
 Trúng sát thương có 0,7 giây bảo vệ, tránh nhận lặp sát thương của cùng vụ nổ.
@@ -44,17 +46,17 @@ Kỹ năng hồi **14 giây**. Bốn kỹ năng cường hóa tác dụng lên b
 | Cánh Cụt Băng | Băng | Băng Bộc | Đóng băng nhân vật 1,5 giây; đóng băng bom trúng phải 1,5 giây và giữ lại thời gian ngòi nổ còn lại |
 | Mèo Gió | Phong | Cuồng Phong | Đẩy bom phía trước tối đa 2 ô; gây 20 sát thương và đẩy đối thủ. Bom đặt trong 6 giây cũng đẩy mục tiêu khi nổ |
 
-Hàng rào và khối đá vẫn chắn các tia nguyên tố; kỹ năng gió và lướt không xuyên qua chúng.
+Tường và cột đá vẫn chắn các tia nguyên tố; kỹ năng gió và lướt không xuyên qua chúng.
 Nhân vật đóng băng hoặc choáng không thể di chuyển, đặt bom, lướt hay dùng kỹ năng.
 
 ## Vật phẩm và kết thúc trận
 
-Thùng quà có 55% cơ hội rơi vật phẩm. Bình hồi **30 HP** (tối đa 100);
+Thùng gỗ và thúng tre có 55% cơ hội rơi vật phẩm. Bình hồi **30 HP** (tối đa 100);
 tầm nổ tăng tối đa 5 ô, số bom tối đa 4, tốc độ tối đa 4,5 ô/giây.
 Vụ nổ tiếp theo phá vật phẩm nằm trong vùng nổ.
 
-Trận tối đa **3 phút**. Sau 2 phút, khối đá đỏ lấp dần từ ngoài vào trong mỗi 12 giây
-(5 giây trước đó, các ô sắp bị lấp nhấp nháy đỏ);
+Trận tối đa **3 phút**. Sau 2 phút, đá ong rơi lấp dần từ ngoài vào trong mỗi 12 giây
+(5 giây trước đó, các ô sắp bị lấp đỏ lên và bóng đá lớn dần);
 nhân vật trong ô bị đóng sẽ bị loại. Nếu hết giờ mà còn nhiều bên, bên có
 HP còn lại cao nhất thắng (đội cộng HP các thành viên sống); bằng nhau thì hòa.
 Nếu tất cả bị loại cùng nhịp thì hòa. Luyện tập kết thúc khi bị loại hoặc hết giờ.

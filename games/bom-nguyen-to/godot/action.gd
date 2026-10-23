@@ -1,6 +1,7 @@
 extends Control
-## A round action button of the arena (Bom, Kỹ năng, Lướt): a painted button with its icon and
-## name, a shade that sweeps back while it recharges and seconds left instead of the name. The
+## A round action button of the arena (Bom, Kỹ năng, Lướt): a disc of the HUD's dark glass on a
+## darker lip, ringed in the action's colour, with its icon and name; a shade sweeps back while
+## it recharges and the seconds left replace the name. A ready skill breathes a soft glow. The
 ## table presses it (`press`), since a finger on the D-pad must not stop another from tapping.
 
 signal pressed
@@ -19,17 +20,24 @@ var seconds: int = 0
 ## A gold ring while a skill's boost lasts.
 var glowing: bool = false
 
-var _face: Texture2D
+## The ring's colour (the skill's follows your friend's element).
+var rim: Color = XomDaoUi.LACQUER:
+	set(value):
+		rim = value
+		queue_redraw()
+## Breathes when the action just came back (the skill).
+var eager: bool = false
+
 var _icon: Texture2D
 var _down: bool = false
 var _text := Label.new()
 
 
-static func create(id: String, text: String, face: String, icon: String) -> Control:
+static func create(id: String, text: String, ring: Color, icon: String) -> Control:
 	var button: Control = load("res://content/bom-nguyen-to/action.gd").new()
 	button.name = id
 	button.set("label", text)
-	button.set("_face", load(ART + face + ".webp"))
+	button.set("rim", ring)
 	button.set("_icon", load(ART + icon + ".webp"))
 	return button
 
@@ -39,7 +47,7 @@ func _ready() -> void:
 	_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_text.add_theme_font_override("font", XomDaoUi.display_font(800))
 	_text.add_theme_color_override("font_color", Color.WHITE)
-	_text.add_theme_color_override("font_outline_color", Color("#5b3a2e"))
+	_text.add_theme_color_override("font_outline_color", Color("#2a180c"))
 	_text.add_theme_constant_override("outline_size", 6)
 	add_child(_text)
 	resized.connect(_layout)
@@ -72,29 +80,44 @@ func covers(at: Vector2) -> bool:
 
 
 func _layout() -> void:
-	var font_size: int = maxi(24, int(size.x * 0.22))
+	var font_size: int = maxi(24, int(size.x * 0.2))
 	_text.add_theme_font_size_override("font_size", font_size)
 	_text.size = Vector2(size.x * 1.4, font_size * 1.4)
-	_text.position = Vector2(-size.x * 0.2, size.y * 0.62)
+	_text.position = Vector2(-size.x * 0.2, size.y * 0.6)
+
+
+func _process(_delta: float) -> void:
+	if eager and enabled and cooldown <= 0.0:
+		queue_redraw()
 
 
 func _draw() -> void:
-	var d: float = size.x * (0.94 if _down else 1.0)
-	var at: Vector2 = (size - Vector2(d, d)) / 2.0
-	var tint := Color.WHITE if enabled else Color(0.75, 0.72, 0.72, 0.85)
-	var face_h: float = d * _face.get_height() / _face.get_width()
-	draw_texture_rect(_face, Rect2(at, Vector2(d, face_h)), false, tint)
-	var icon: float = d * 0.42
+	var r: float = size.x / 2.0
+	var centre: Vector2 = size / 2.0
+	var sink: float = 4.0 if _down else 0.0
+	var face: Vector2 = centre + Vector2(0, sink - 2.0)
+	# A short dense shadow and the dark lip under the face.
+	draw_circle(centre + Vector2(0, 7.0), r * 0.98, Color(0.16, 0.09, 0.05, 0.42))
+	draw_circle(centre + Vector2(0, 3.0), r * 0.97, rim.darkened(0.55))
+	var glass := XomDaoUi.HUD if enabled else Color(0.25, 0.2, 0.18, 0.8)
+	draw_circle(face, r * 0.95, rim if enabled else rim.lerp(Color(0.5, 0.5, 0.5), 0.6))
+	draw_circle(face, r * 0.95 - 4.0, glass)
+	# A thin lighter edge on top: lit from above.
+	draw_arc(face, r * 0.95 - 6.0, PI * 1.15, PI * 1.85, 24, Color(1, 1, 1, 0.12), 3.0, true)
+	if eager and enabled and cooldown <= 0.0:
+		var breath: float = 0.5 + 0.5 * sin(Time.get_ticks_msec() / 260.0)
+		draw_arc(face, r * 0.95 + 3.0, 0, TAU, 48, Color(rim, 0.35 + 0.4 * breath), 4.0, true)
+	var tint := Color.WHITE if enabled else Color(0.7, 0.68, 0.66, 0.8)
+	var icon: float = r * 0.9
 	var ratio: float = float(_icon.get_width()) / _icon.get_height()
 	var icon_size := Vector2(icon * minf(ratio, 1.4), icon * minf(ratio, 1.4) / ratio)
-	var centre: Vector2 = size / 2.0 - Vector2(0, d * 0.12)
-	draw_texture_rect(_icon, Rect2(centre - icon_size / 2.0, icon_size), false, tint)
-	var r: float = d * 0.36
+	var at: Vector2 = face - Vector2(0, r * 0.14)
+	draw_texture_rect(_icon, Rect2(at - icon_size / 2.0, icon_size), false, tint)
 	if cooldown > 0.0:
-		var points := PackedVector2Array([centre])
+		var points := PackedVector2Array([face])
 		for i: int in 41:
 			var angle: float = -PI / 2.0 + TAU * cooldown * i / 40.0
-			points.append(centre + Vector2(cos(angle), sin(angle)) * r)
-		draw_colored_polygon(points, Color(0.23, 0.16, 0.29, 0.45))
+			points.append(face + Vector2(cos(angle), sin(angle)) * (r * 0.95 - 4.0))
+		draw_colored_polygon(points, Color(0.1, 0.06, 0.04, 0.55))
 	if glowing:
-		draw_arc(centre, r + 3.0, 0, TAU, 48, Color("#fff1a0"), 4.0, true)
+		draw_arc(face, r * 0.95 + 4.0, 0, TAU, 48, Color("#fff1a0"), 4.0, true)
