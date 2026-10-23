@@ -30,14 +30,17 @@ describe('declining an unowned street', () => {
     expect(game.state.phase).toBe('roll');
   });
 
-  it('ends the whole turn even if the declined landing followed doubles', () => {
+  it('preserves the extra roll if the declined landing followed doubles', () => {
     const game = fixture();
     game.state.after = 'roll';
     game.state.doubles = 1;
     move(game.state, 0, 3, false, 2);
     game.send('a', 'end-turn');
-    expect(game.state.turn).toBe(1);
-    expect(game.state.doubles).toBe(0);
+    expect(game.state.turn).toBe(0);
+    expect(game.state.phase).toBe('roll');
+    expect(game.state.pending).toBeNull();
+    expect(game.state.doubles).toBe(1);
+    expect(game.state.after).toBe('roll');
   });
 
   it('lets a cash-poor bot end the purchase decision', () => {

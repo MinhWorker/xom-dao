@@ -214,6 +214,27 @@ describe('Cờ tỷ phú Classic', () => {
     expect(game.state.specialEvent).toBeNull();
   });
 
+  it('allows rolling again when declining an unowned property after rolling doubles', () => {
+    const game = testGame(plugin, ['a', 'b']);
+    game.state.devDice = [1, 1];
+    game.send('a', 'roll');
+    expect(game.state.turn).toBe(0);
+    expect(game.state.doubles).toBe(1);
+    expect(game.state.players[0]).toMatchObject({ position: 2 });
+    expect(game.state.phase).toBe('buy');
+
+    game.send('a', 'end-turn');
+    expect(game.state.turn).toBe(0);
+    expect(game.state.doubles).toBe(1);
+    expect(game.state.phase).toBe('roll');
+    expect(game.state.pending).toBeNull();
+
+    game.state.devDice = [2, 3];
+    game.send('a', 'roll');
+    expect(game.state.turn).toBe(0);
+    expect(game.state.players[0]).toMatchObject({ position: 7 });
+  });
+
   it('jails a player if the second double lands on the go-to-jail square', () => {
     const game = testGame(plugin, ['a', 'b']);
     const player = game.state.players[0];

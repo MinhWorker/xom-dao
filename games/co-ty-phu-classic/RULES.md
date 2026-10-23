@@ -26,10 +26,10 @@ Vào tù làm mất lần gieo thêm. Khi không còn lần gieo thêm, bấm **
 Khi vừa ra đôi và đến đất phố của mình, có thể **Bỏ qua** việc xây để gieo tiếp; thao tác này
 không kết thúc lượt.
 
-Đến đất phố, Điện lực hoặc Cấp nước chưa có chủ, có thể **Mua** nếu đủ tiền hoặc bấm **Hết lượt** ở tâm bàn.
-Hết lượt kết thúc ngay lượt, kể cả vừa ra đôi, và giữ đất chưa có chủ.
-Có thể quản lý tài sản để lấy tiền trước khi mua; không đủ tiền vẫn được kết thúc lượt. Nếu hết giờ
-trong lúc chọn mua, lượt kết thúc và ô chưa có chủ vẫn để trống.
+Đến đất phố, Điện lực hoặc Cấp nước chưa có chủ, có thể **Mua** nếu đủ tiền hoặc bấm **Bỏ qua** ở tâm bàn.
+Bỏ qua giữ đất chưa có chủ; nếu vừa ra đôi thì được gieo tiếp, ngược lại lượt sẽ kết thúc.
+Có thể quản lý tài sản để lấy tiền trước khi mua; không đủ tiền vẫn được bỏ qua. Nếu hết giờ
+trong lúc chọn mua, hệ thống tự bỏ qua (nếu vừa ra đôi thì được gieo tiếp).
 
 Đến tài sản người khác chưa thế chấp thì trả tiền thuê. Chủ đang ở tù không thu tiền thuê.
 Đến đất mình đã sở hữu có thể xây theo quy tắc công trình bên dưới.
