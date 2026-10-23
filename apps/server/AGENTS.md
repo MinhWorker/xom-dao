@@ -151,6 +151,10 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   accepted) and `friend_messages`. Memory stores without `DATABASE_URL`.
 - `friends:add { username }` asks someone (or accepts their request to you); `friends:answer`,
   `friends:remove`; each replies with your list and pushes `friends:changed` to the other side.
+- `friends:suggest` lists people to add: accounts you sat with in your last `HISTORY_LIMIT` games
+  (`MatchesService.partners`, newest first), then others connected; never you or your friends, at
+  most `SUGGEST_MAX`. `friends:find { username }` returns the one account with exactly that
+  username (any case), or nobody; display names are never searched.
   Who is online and in which room (`Presence`) comes from the gateway's sockets and
   `RoomsService.roomOf`, and only friends see it. An account's friends get a fresh list
   `FRIEND_PUSH_MS` after it comes online, goes or changes rooms (one push per burst).

@@ -3,7 +3,7 @@ extends RefCounted
 ## Generated from packages/shared/src/protocol.ts by npm run gen:protocol. Do not edit.
 ## Requests (`{ id, event, data }` on /ws) and the events the server pushes (`{ event, data }`).
 
-const VERSION := 11
+const VERSION := 12
 const MISMATCH := "protocol-mismatch"
 const COIN := "core:coin"
 
@@ -42,6 +42,8 @@ const FRIENDS_LIST := "friends:list"
 const FRIENDS_ADD := "friends:add"
 const FRIENDS_ANSWER := "friends:answer"
 const FRIENDS_REMOVE := "friends:remove"
+const FRIENDS_SUGGEST := "friends:suggest"
+const FRIENDS_FIND := "friends:find"
 const CHAT_HISTORY := "chat:history"
 const CHAT_SEND := "chat:send"
 const QUESTS_GET := "quests:get"
@@ -88,6 +90,8 @@ static var _replies: Dictionary = {
 	"friends:add": XomDaoFriendList,
 	"friends:answer": XomDaoFriendList,
 	"friends:remove": XomDaoFriendList,
+	"friends:suggest": XomDaoPeopleList,
+	"friends:find": XomDaoPeopleList,
 	"chat:history": XomDaoChatHistory,
 	"quests:get": XomDaoQuestBoard,
 	"quests:claim": XomDaoQuestClaim,

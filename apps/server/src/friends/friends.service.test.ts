@@ -80,4 +80,35 @@ describe('Bạn bè', () => {
     await friends.remove(lan.id, minh.id);
     await expect(friends.history(lan.id, minh.id)).rejects.toThrow('bạn bè');
   });
+
+  it('suggests people played with lately, then others online, never yourself or friends', async () => {
+    const { friends, minh, lan, hoa } = await setup();
+    await friends.add(minh.id, 'lan');
+    await friends.answer(lan.id, minh.id, true);
+    const presence: Presence = (id) => ({ online: id === hoa.id });
+    const people = await friends.suggest(minh.id, [lan.id, hoa.id], [minh.id, hoa.id], presence);
+    expect(people).toEqual([
+      {
+        id: hoa.id,
+        username: 'hoa',
+        name: 'Hoa',
+        avatar: 'boy',
+        frame: expect.any(String),
+        online: true,
+        recent: true,
+      },
+    ]);
+    expect(await friends.suggest(lan.id, [], [hoa.id, minh.id], nobody)).toMatchObject([
+      { id: hoa.id, recent: false },
+    ]);
+  });
+
+  it('finds only the exact username, in any case, and never yourself', async () => {
+    const { friends, minh, lan } = await setup();
+    expect(await friends.find(minh.id, ' LAN ', [], nobody)).toMatchObject([
+      { id: lan.id, name: 'Lan', online: false, recent: false },
+    ]);
+    expect(await friends.find(minh.id, 'la', [], nobody)).toEqual([]);
+    expect(await friends.find(minh.id, 'minh', [], nobody)).toEqual([]);
+  });
 });

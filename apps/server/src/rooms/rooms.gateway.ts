@@ -361,6 +361,28 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  @On('friends:suggest')
+  friendsSuggest(socket: Client) {
+    return this.handle(async () => {
+      const me = socket.data.user.id;
+      const online = [...new Set(this.clients().map((s) => s.data.user?.id))].filter(
+        (id): id is string => Boolean(id),
+      );
+      const recent = await this.matches.partners(me);
+      return { people: await this.friends.suggest(me, recent, online, this.presence) };
+    });
+  }
+
+  @On('friends:find')
+  friendsFind(socket: Client, req: { username?: unknown }) {
+    return this.handle(async () => {
+      const me = socket.data.user.id;
+      const recent = await this.matches.partners(me);
+      const username = String(req?.username ?? '');
+      return { people: await this.friends.find(me, username, recent, this.presence) };
+    });
+  }
+
   @On('chat:history')
   chatHistory(socket: Client, req: { userId?: unknown }) {
     return this.handle(() => this.friends.history(socket.data.user.id, String(req?.userId ?? '')));

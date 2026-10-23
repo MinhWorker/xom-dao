@@ -6,6 +6,9 @@ import {
   type ChatMessage,
   FRIENDS_MAX,
   type Friend,
+  type Person,
+  SUGGEST_MAX,
+  type User,
 } from '@xomdao/shared';
 import { AccountsService } from '../accounts/accounts.service.js';
 import type { FriendsStore } from './friends.store.js';
@@ -64,6 +67,47 @@ export class FriendsService {
         Number(b.online) - Number(a.online) ||
         a.name.localeCompare(b.name, 'vi'),
     );
+  }
+
+  /**
+   * People you might add: `recent` (accounts you played with lately, newest first), then
+   * `online`; never yourself or your friends, at most `SUGGEST_MAX`.
+   */
+  async suggest(
+    userId: string,
+    recent: string[],
+    online: string[],
+    presence: Presence,
+  ): Promise<Person[]> {
+    const friends = new Set(await this.friendIds(userId));
+    const lately = new Set(recent);
+    const ids = [...new Set([...recent, ...online])].filter(
+      (id) => id !== userId && !friends.has(id),
+    );
+    const out: Person[] = [];
+    for (const id of ids) {
+      if (out.length >= SUGGEST_MAX) break;
+      const user = await this.accounts.userById(id);
+      if (user) out.push(this.person(user, presence, lately.has(id)));
+    }
+    return out;
+  }
+
+  /** The account with exactly this username (any case); empty when there is none. */
+  async find(
+    userId: string,
+    username: string,
+    recent: string[],
+    presence: Presence,
+  ): Promise<Person[]> {
+    const user = await this.accounts.userByUsername(String(username ?? ''));
+    if (!user || user.id === userId) return [];
+    return [this.person(user, presence, recent.includes(user.id))];
+  }
+
+  private person(user: User, presence: Presence, recent: boolean): Person {
+    const { id, username, name, avatar, frame } = user;
+    return { id, username, name, avatar, frame, online: presence(id).online, recent };
   }
 
   /** The ids of your friends (accepted both ways). */

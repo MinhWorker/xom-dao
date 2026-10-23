@@ -31,6 +31,17 @@ export class MatchesService {
     });
   }
 
+  /** The accounts the player sat with in their recent games, most recent first, once each. */
+  async partners(userId: string): Promise<string[]> {
+    const seen = new Set<string>();
+    for (const match of await this.store.recent(userId, HISTORY_LIMIT)) {
+      for (const p of match.players) {
+        if (p.userId && p.userId !== userId) seen.add(p.userId);
+      }
+    }
+    return [...seen];
+  }
+
   /** The player's most recent games, newest first, as they see them. */
   async recent(userId: string): Promise<MatchRecord[]> {
     const matches = await this.store.recent(userId, HISTORY_LIMIT);
