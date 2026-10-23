@@ -122,8 +122,7 @@ func _start() -> void:
 	_coins = _balance()
 	if _client.user != null:
 		var cached: Dictionary = HubPrefs.player_stats(_client.user.id)
-		if not cached.is_empty():
-			_stats = XomDaoPlayerStats.from_dict(cached)
+		_stats = XomDaoPlayerStats.from_dict(cached) if not cached.is_empty() else null
 	var reply: Dictionary = await _client.request(XomDaoProtocol.CATALOG_GET)
 	if reply.get("ok") != true:
 		_show_status("Không tải được danh sách trò")
@@ -169,14 +168,10 @@ func _show_update() -> void:
 		func() -> void:
 			reload.disabled = true
 			label.text = "Đang tải lại…"
-			_reload_page()
+			Net.reload_fresh()
 	)
 	column.add_child(reload)
 	_set_screen("status", center)
-
-
-func _reload_page() -> void:
-	Net.reload_fresh()
 
 
 ## Nobody is logged in: the login board over the loading screen's pictures, until they are.
@@ -214,9 +209,9 @@ func _sandbox(id: String) -> void:
 		_show_status("Không tải được %s" % id)
 		return
 	var probe: Node = scene.instantiate()
-	var options: Variant = null
-	if probe.has_method("sandbox_options"):
-		options = probe.call("sandbox_options")
+	var options: Variant = (
+		probe.call("sandbox_options") if probe.has_method("sandbox_options") else null
+	)
 	probe.free()
 	if await _client.create_room(id, options):
 		await _client.start_game()
@@ -294,10 +289,6 @@ func _show_lobby() -> void:
 	var lobby := HubLobby.new()
 	_set_screen("lobby", lobby)
 	lobby.show_user(_client.user)
-	if _stats == null and _client.user != null:
-		var cached: Dictionary = HubPrefs.player_stats(_client.user.id)
-		if not cached.is_empty():
-			_stats = XomDaoPlayerStats.from_dict(cached)
 	if _stats != null:
 		lobby.show_level(_stats.level, _stats.xp, _stats.level_xp, _stats.next_xp, false)
 	_fill_level(lobby)
@@ -417,12 +408,11 @@ func _fill_home(home: HubHome, user_id: String) -> bool:
 func _fill_level(lobby: HubLobby) -> void:
 	var reply: Dictionary = await _client.request(XomDaoProtocol.STATS_GET)
 	if reply.get("ok") == true:
-		var stats: XomDaoPlayerStats = XomDaoPlayerStats.from_dict(reply)
-		_stats = stats
+		_stats = XomDaoPlayerStats.from_dict(reply)
 		if _client.user != null:
-			HubPrefs.set_player_stats(_client.user.id, stats.to_dict())
+			HubPrefs.set_player_stats(_client.user.id, _stats.to_dict())
 		if is_instance_valid(lobby):
-			lobby.show_level(stats.level, stats.xp, stats.level_xp, stats.next_xp, true)
+			lobby.show_level(_stats.level, _stats.xp, _stats.level_xp, _stats.next_xp, true)
 
 
 ## Đình: the rankings, Cả xóm first.
@@ -445,9 +435,8 @@ func _fill_ranking(board: String, dinh: HubDinh) -> void:
 		_say(str(reply.get("error", "Không tải được")))
 		return
 	if is_instance_valid(dinh):
-		dinh.show_ranking(
-			XomDaoRanking.from_dict(reply), _client.user.id if _client.user != null else ""
-		)
+		var uid: String = _client.user.id if _client.user != null else ""
+		dinh.show_ranking(XomDaoRanking.from_dict(reply), uid)
 
 
 func _equip(item_id: String, home: HubHome) -> void:
@@ -467,10 +456,10 @@ func _change_name(name: String, home: HubHome) -> void:
 		if is_instance_valid(home):
 			home.name_change_failed("Không tìm thấy tài khoản")
 		return
-	var reply: Dictionary = await HubWait.ask(
-		XomDaoProtocol.PROFILE_UPDATE,
-		{"name": name, "avatar": _client.user.avatar, "frame": _client.user.frame}
-	)
+	var data: Dictionary = {
+		"name": name, "avatar": _client.user.avatar, "frame": _client.user.frame
+	}
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.PROFILE_UPDATE, data)
 	if reply.get("ok") != true:
 		var message: String = str(reply.get("error", "Không đổi được tên"))
 		if is_instance_valid(home):
@@ -611,12 +600,8 @@ func _watch_ben_rooms(game_id: String) -> void:
 		return
 	_ben.show_rooms(title, [], game_id)
 	var reply: Dictionary = await _client.request(XomDaoProtocol.LOBBY_WATCH, {"gameId": game_id})
-	if (
-		reply.get("ok") == true
-		and is_instance_valid(_ben)
-		and _shown == "ben"
-		and _game_id == game_id
-	):
+	var match_ben: bool = is_instance_valid(_ben) and _shown == "ben" and _game_id == game_id
+	if reply.get("ok") == true and match_ben:
 		_ben.show_rooms(title, XomDaoRoomList.from_dict(reply).rooms, game_id)
 
 
@@ -648,23 +633,19 @@ func _quick_match(game_id: String) -> void:
 
 
 func _show_rules(game_id: String) -> void:
-	if _opening_rules or has_node("RulesBoard"):
-		return
 	var card: XomDaoGameCard = _catalog.card(game_id)
-	if card == null:
+	if _opening_rules or has_node("RulesBoard") or card == null:
 		return
 	_opening_rules = true
 	var origin: Node = _current
 	var text: String = card.tagline
 	if _catalog.can_play(game_id) and await ContentLoader.load_game(game_id) != null:
 		var rules: String = "res://content/%s/RULES.md" % game_id
-		if FileAccess.file_exists(rules):
-			text = FileAccess.get_file_as_string(rules)
+		text = FileAccess.get_file_as_string(rules) if FileAccess.file_exists(rules) else text
 	_opening_rules = false
 	if not is_instance_valid(origin) or origin != _current:
 		return
-	var board: HubRulesBoard = HubRulesBoard.create("Luật %s" % card.name, text)
-	add_child(board)
+	add_child(HubRulesBoard.create("Luật %s" % card.name, text))
 
 
 # ── In a room ─────────────────────────────────────────────────────────────────────────────
@@ -824,14 +805,11 @@ func _show_result(snapshot: XomDaoRoomSnapshot) -> void:
 	_result.again_pressed.connect(_client.start_game)
 	_result.home_pressed.connect(_leave)
 	var card: XomDaoGameCard = _catalog.card(snapshot.game_id)
-	var detail: Variant = _game.call("result_detail") if _game.has_method("result_detail") else {}
-	_result.show_result(
-		snapshot,
-		_client.player_id,
-		_coins,
-		card != null and card.kind == "event",
-		detail if detail is Dictionary else {}
+	var detail: Dictionary = (
+		_game.call("result_detail") if _game.has_method("result_detail") else {}
 	)
+	var is_event: bool = card != null and card.kind == "event"
+	_result.show_result(snapshot, _client.player_id, _coins, is_event, detail)
 	_result.present()
 	# The ledger may have paid before the board came up.
 	if _balance() != _coins:
@@ -843,8 +821,7 @@ func _on_achieved(notice: XomDaoAchievementNotice) -> void:
 	var names: Array[String] = []
 	for info: XomDaoAchievementInfo in notice.achievements:
 		names.append(info.name)
-	var toast: XomDaoToast = XomDaoToast.show_on(self, "Thành tích: " + ", ".join(names), "trophy")
-	toast.name = "AchievementToast"
+	XomDaoToast.show_on(self, "Thành tích: " + ", ".join(names), "trophy").name = "AchievementToast"
 	XomDaoUi.play(self, XomDaoUi.SOUND_COIN)
 	_on_rewarded(null)
 
@@ -871,14 +848,15 @@ func _leave_game() -> void:
 		and _game.has_method("can_declare_bankruptcy")
 		and bool(_game.call("can_declare_bankruptcy"))
 	)
+	var prompt: String = (
+		"Tài sản sẽ về ngân hàng, số dư về 0 và bạn bị loại khỏi ván trước khi rời phòng."
+		if can_declare
+		else "Bạn sẽ rời khỏi phòng đang chơi."
+	)
 	_menu.call(
 		"confirm_leave",
 		"Phá sản và rời phòng?" if can_declare else "Rời ván?",
-		(
-			"Tài sản sẽ về ngân hàng, số dư về 0 và bạn bị loại khỏi ván trước khi rời phòng."
-			if can_declare
-			else "Bạn sẽ rời khỏi phòng đang chơi."
-		),
+		prompt,
 		"Phá sản & rời" if can_declare else "Rời phòng",
 		can_declare
 	)
@@ -898,12 +876,11 @@ func _confirm_leave(declare_bankruptcy: bool) -> void:
 		):
 			await _leave()
 			return
-		var declared: bool = await _game.call("declare_bankruptcy")
-		if not declared:
+		if not await _game.call("declare_bankruptcy"):
 			if _client.snapshot == null or _client.snapshot.status != "playing":
 				await _leave()
-				return
-			_say("Không thể tuyên bố phá sản lúc này.")
+			else:
+				_say("Không thể tuyên bố phá sản lúc này.")
 			return
 	await _leave()
 
@@ -961,10 +938,9 @@ func _set_screen(shown: String, screen: Control) -> void:
 		_transition.play("", null, HubTransition.Style.FADE)
 		return
 	var card: XomDaoGameCard = null
-	if shown == "room" and _catalog != null and _client.snapshot != null:
-		card = _catalog.card(_client.snapshot.game_id)
-	if shown == "room" and card == null and _catalog != null:
-		card = _catalog.card(_game_id)
+	if shown == "room" and _catalog != null:
+		var gid: String = _client.snapshot.game_id if _client.snapshot != null else _game_id
+		card = _catalog.card(gid)
 	if card != null:
 		screen.visible = false
 		_transition.play(card.name, HubGameArt.logo(card.id))
