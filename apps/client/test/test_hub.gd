@@ -510,3 +510,15 @@ func test_the_selected_game_is_kept_per_account() -> void:
 	assert_eq(HubPrefs.selected_game("u2", path), "tien-len")
 	assert_eq(HubPrefs.selected_game("u3", path), "")
 	DirAccess.remove_absolute(path)
+
+
+func test_player_stats_are_kept_per_account() -> void:
+	var path: String = "user://test_stats.cfg"
+	var stats1: Dictionary = {"level": 5, "xp": 1200, "levelXp": 1000, "nextXp": 1500}
+	var stats2: Dictionary = {"level": 2, "xp": 150, "levelXp": 100, "nextXp": 300}
+	HubPrefs.set_player_stats("u1", stats1, path)
+	HubPrefs.set_player_stats("u2", stats2, path)
+	assert_eq(HubPrefs.player_stats("u1", path), stats1)
+	assert_eq(HubPrefs.player_stats("u2", path), stats2)
+	assert_eq(HubPrefs.player_stats("u3", path), {})
+	DirAccess.remove_absolute(path)

@@ -70,6 +70,11 @@ var _event_tag: XomDaoChip
 var _event_id: String = ""
 var _card := HubGameCard.new()
 var _settings: XomDaoSettings
+var _current_level: int = 1
+var _current_into: int = 0
+var _current_span: int = 1
+var _has_level: bool = false
+var _exp_tween: Tween
 
 
 func _init(settings: XomDaoSettings = null) -> void:
@@ -201,15 +206,93 @@ func show_user(user: XomDaoUser) -> void:
 
 ## The level chip and the EXP bar under the name (`stats:get`): `xp` is the total, `level_xp`
 ## where this level starts and `next_xp` where the next one does.
-func show_level(level: int, xp: int = 0, level_xp: int = 0, next_xp: int = 0) -> void:
-	_level.text = "Cấp %d" % level
-	_level.visible = true
+func show_level(
+	level: int, xp: int = 0, level_xp: int = 0, next_xp: int = 0, animate: bool = true
+) -> void:
 	var span: int = maxi(1, next_xp - level_xp)
 	var into: int = clampi(xp - level_xp, 0, span)
-	_exp.max_value = span
-	_exp.value = into
-	_exp_text.text = "%s/%s" % [XomDaoUi.money(into), XomDaoUi.money(span)]
-	_exp.visible = next_xp > level_xp
+	var max_level: bool = next_xp <= level_xp
+
+	if not _has_level or not animate or not is_inside_tree():
+		if _exp_tween != null and _exp_tween.is_valid():
+			_exp_tween.kill()
+		_has_level = true
+		_current_level = level
+		_current_into = into
+		_current_span = span
+		_level.text = "Cấp %d" % level
+		_level.visible = true
+		_exp.max_value = span
+		_exp.value = into
+		_exp_text.text = "%s/%s" % [XomDaoUi.money(into), XomDaoUi.money(span)]
+		_exp.visible = not max_level
+		return
+
+	_level.visible = true
+	_exp.visible = not max_level
+
+	if level == _current_level and into == _current_into and span == _current_span:
+		return
+
+	if _exp_tween != null and _exp_tween.is_valid():
+		_exp_tween.kill()
+
+	_exp_tween = create_tween()
+
+	if level > _current_level:
+		var old_span: int = _current_span if _current_span > 0 else span
+		var start_val: float = _exp.value
+		(
+			_exp_tween
+			. tween_method(
+				func(v: float) -> void: _set_exp_display(v, old_span),
+				start_val,
+				float(old_span),
+				0.35
+			)
+			. set_trans(Tween.TRANS_QUAD)
+			. set_ease(Tween.EASE_IN)
+		)
+		_exp_tween.tween_callback(
+			func() -> void:
+				_level.text = "Cấp %d" % level
+				XomDaoUi.bounce(_level)
+				XomDaoUi.play(self, XomDaoUi.SOUND_COIN)
+				_exp.max_value = span
+				_set_exp_display(0.0, span)
+		)
+		if not max_level:
+			(
+				_exp_tween
+				. tween_method(
+					func(v: float) -> void: _set_exp_display(v, span), 0.0, float(into), 0.5
+				)
+				. set_trans(Tween.TRANS_QUAD)
+				. set_ease(Tween.EASE_OUT)
+			)
+	else:
+		if level != _current_level:
+			_level.text = "Cấp %d" % level
+			XomDaoUi.bounce(_level)
+		_exp.max_value = span
+		var start_val: float = _exp.value
+		(
+			_exp_tween
+			. tween_method(
+				func(v: float) -> void: _set_exp_display(v, span), start_val, float(into), 0.5
+			)
+			. set_trans(Tween.TRANS_QUAD)
+			. set_ease(Tween.EASE_OUT)
+		)
+
+	_current_level = level
+	_current_into = into
+	_current_span = span
+
+
+func _set_exp_display(val: float, span_val: int) -> void:
+	_exp.value = val
+	_exp_text.text = "%s/%s" % [XomDaoUi.money(roundi(val)), XomDaoUi.money(span_val)]
 
 
 ## The card at the bottom right: the selected game, or "Sắp có" when there is none to play.
@@ -281,6 +364,8 @@ func _build_profile() -> void:
 	avatar.z_index = 1
 	_profile.add_child(avatar)
 	var plate := PanelContainer.new()
+	plate.name = "Plate"
+	plate.custom_minimum_size = Vector2(284.0, 103.0)
 	plate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style: StyleBoxFlat = XomDaoUi.box(Color("#111827", 0.96), Color("#C4922F", 0.8), 2, 24.0)
@@ -301,10 +386,11 @@ func _build_profile() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.custom_minimum_size = Vector2(230.0, 0.0)
+	column.custom_minimum_size = Vector2(230.0, 85.0)
 	plate.add_child(column)
 	var name_row := HBoxContainer.new()
 	name_row.name = "NameRow"
+	name_row.custom_minimum_size = Vector2(0.0, 36.0)
 	name_row.add_theme_constant_override("separation", 8)
 	name_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(name_row)
@@ -325,12 +411,14 @@ func _build_profile() -> void:
 	_username.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_row.add_child(_username)
 	var row := HBoxContainer.new()
+	row.name = "LevelRow"
+	row.custom_minimum_size = Vector2(230.0, 40.0)
 	row.add_theme_constant_override("separation", -14)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(row)
 	_level.name = "LobbyLevel"
 	_level.compact()
-	_level.custom_minimum_size.y = 34.0
+	_level.custom_minimum_size.y = 40.0
 	_level.z_index = 1
 	_level.visible = false
 	row.add_child(_level)

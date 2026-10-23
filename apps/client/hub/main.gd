@@ -38,6 +38,7 @@ var _genre: String = ""
 var _place: String = "lobby"
 ## The balance the screens show; the result rolls it up to the ledger's.
 var _coins: int = 0
+var _stats: XomDaoPlayerStats
 ## Quick match is looking for players for the room we are in.
 var _quick: bool = false
 var _game: Control
@@ -119,6 +120,10 @@ func _start() -> void:
 		return
 	await _load_owned_emotes()
 	_coins = _balance()
+	if _client.user != null:
+		var cached: Dictionary = HubPrefs.player_stats(_client.user.id)
+		if not cached.is_empty():
+			_stats = XomDaoPlayerStats.from_dict(cached)
 	var reply: Dictionary = await _client.request(XomDaoProtocol.CATALOG_GET)
 	if reply.get("ok") != true:
 		_show_status("Không tải được danh sách trò")
@@ -289,6 +294,12 @@ func _show_lobby() -> void:
 	var lobby := HubLobby.new()
 	_set_screen("lobby", lobby)
 	lobby.show_user(_client.user)
+	if _stats == null and _client.user != null:
+		var cached: Dictionary = HubPrefs.player_stats(_client.user.id)
+		if not cached.is_empty():
+			_stats = XomDaoPlayerStats.from_dict(cached)
+	if _stats != null:
+		lobby.show_level(_stats.level, _stats.xp, _stats.level_xp, _stats.next_xp, false)
 	_fill_level(lobby)
 	lobby.money.show_balance(_coins)
 	lobby.money.settings_pressed.connect(_menu.open_settings)
@@ -385,7 +396,12 @@ func _fill_home(home: HubHome, user_id: String) -> bool:
 	home.show_profile(XomDaoProfile.from_dict(reply), XomDaoShopList.from_dict(list).items)
 	var stats: Dictionary = await HubWait.ask(XomDaoProtocol.STATS_GET, data)
 	if stats.get("ok") == true and is_instance_valid(home):
-		home.show_stats(XomDaoPlayerStats.from_dict(stats), _catalog.names())
+		var player_stats: XomDaoPlayerStats = XomDaoPlayerStats.from_dict(stats)
+		if user_id == "":
+			_stats = player_stats
+			if _client.user != null:
+				HubPrefs.set_player_stats(_client.user.id, player_stats.to_dict())
+		home.show_stats(player_stats, _catalog.names())
 	if user_id == "" and is_instance_valid(home):
 		var history: Dictionary = await HubWait.ask(XomDaoProtocol.HISTORY_RECENT)
 		if history.get("ok") == true and is_instance_valid(home):
@@ -400,9 +416,13 @@ func _fill_home(home: HubHome, user_id: String) -> bool:
 ## The level chip and EXP bar by your name in the lobby.
 func _fill_level(lobby: HubLobby) -> void:
 	var reply: Dictionary = await _client.request(XomDaoProtocol.STATS_GET)
-	if reply.get("ok") == true and is_instance_valid(lobby):
+	if reply.get("ok") == true:
 		var stats: XomDaoPlayerStats = XomDaoPlayerStats.from_dict(reply)
-		lobby.show_level(stats.level, stats.xp, stats.level_xp, stats.next_xp)
+		_stats = stats
+		if _client.user != null:
+			HubPrefs.set_player_stats(_client.user.id, stats.to_dict())
+		if is_instance_valid(lobby):
+			lobby.show_level(stats.level, stats.xp, stats.level_xp, stats.next_xp, true)
 
 
 ## Đình: the rankings, Cả xóm first.
@@ -837,6 +857,8 @@ func _on_rewarded(_notice: XomDaoRewardNotice) -> void:
 	if _result != null and is_instance_valid(_result):
 		_result.receive(balance)
 	_coins = balance
+	if _current is HubLobby:
+		_fill_level(_current)
 
 
 ## ☰ → Rời phòng: confirm voluntary bankruptcy for games that support it.
