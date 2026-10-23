@@ -88,7 +88,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/3', '2/3', '3/3']
+        include:
+          - shard: '1/3'
+            id: '1-3'
+          - shard: '2/3'
+            id: '2-3'
+          - shard: '3/3'
+            id: '3-3'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -161,7 +167,7 @@ jobs:
       - if: steps.plan.outputs.skip != 'true' && always()
         uses: actions/upload-artifact@v7
         with:
-          name: godot-e2e-shard-${{ replace(matrix.shard, '/', '-') }}
+          name: godot-e2e-shard-${{ matrix.id }}
           path: |
             .shots/
             .e2e/
