@@ -71,6 +71,8 @@ var _spec: Array = []
 var _picture: Texture2D
 var _can_change: bool = false
 var _room_options: Variant = null
+var _spin: float = 0.0
+var _options_spinner: Control
 
 
 ## How many seats go on one row.
@@ -104,10 +106,68 @@ func _ready() -> void:
 	_layout()
 
 
+func _process(delta: float) -> void:
+	if (
+		_options_spinner != null
+		and is_instance_valid(_options_spinner)
+		and _options_spinner.is_visible_in_tree()
+	):
+		_spin = fmod(_spin + delta * 5.0, TAU)
+		_options_spinner.queue_redraw()
+
+
+func _draw_options_spinner(spinner: Control) -> void:
+	var c := spinner.size / 2.0
+	var r: float = 8.0
+	spinner.draw_arc(c, r, 0.0, TAU, 24, Color(XomDaoUi.HONEY_DARK, 0.28), 2.5, true)
+	spinner.draw_arc(c, r, _spin, _spin + TAU * 0.3, 12, XomDaoUi.HONEY_DARK, 2.5, true)
+
+
+## Shows the loading state on the options plate while the game's setup arrives.
+func show_setup_loading(game_id: String = "") -> void:
+	_clear_options()
+	setup_game = ""
+	loading_game = game_id
+	var box := HBoxContainer.new()
+	box.name = "OptionsLoading"
+	box.alignment = BoxContainer.ALIGNMENT_BEGIN
+	box.add_theme_constant_override("separation", 10)
+	var spinner := Control.new()
+	spinner.name = "OptionsSpinner"
+	spinner.custom_minimum_size = Vector2(24.0, 24.0)
+	spinner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spinner.draw.connect(_draw_options_spinner.bind(spinner))
+	_options_spinner = spinner
+	box.add_child(spinner)
+	var label := Label.new()
+	label.name = "OptionsLoadingLabel"
+	label.text = "Đang tải tuỳ chọn…"
+	label.theme_type_variation = "SmallLabel"
+	label.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.7))
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	box.add_child(label)
+	_options.add_child(box)
+
+
+## Shows an error message if the game's setup failed to load.
+func show_setup_failed(_game_id: String = "") -> void:
+	_clear_options()
+	setup_game = ""
+	loading_game = ""
+	var failed := Label.new()
+	failed.name = "OptionsFailed"
+	failed.text = "Không tải được tuỳ chọn."
+	failed.theme_type_variation = "SmallLabel"
+	failed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	failed.add_theme_color_override("font_color", Color(XomDaoUi.LACQUER, 0.85))
+	_options.add_child(failed)
+
+
 ## The game's own options (`room_setup()` rows, [] for none), one row of choices each.
 func show_setup(game_id: String, spec: Array) -> void:
 	_clear_options()
 	setup_game = game_id
+	loading_game = ""
 	_spec = spec
 	for option: Variant in spec:
 		if option is not Dictionary:
@@ -132,8 +192,7 @@ func show_room(snapshot: XomDaoRoomSnapshot, me: String, card: XomDaoGameCard, q
 	_code.text = snapshot.code
 	if setup_game != "" and setup_game != snapshot.game_id:
 		# Another game's room now: its options come with show_setup.
-		_clear_options()
-		setup_game = ""
+		show_setup_loading(snapshot.game_id)
 	_game.text = card.name if card != null else ""
 	_show_art(HubGameArt.splash(snapshot.game_id))
 	var host: bool = snapshot.host_id == me
@@ -221,6 +280,7 @@ func _build_plate() -> void:
 	_options.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_options.add_theme_constant_override("separation", 12)
 	_scroll.add_child(_options)
+	show_setup_loading("")
 	_rules.name = "RoomRules"
 	_rules.pressed.connect(rules_pressed.emit)
 	_plate.add_child(_rules)
@@ -269,6 +329,7 @@ func _show_options() -> void:
 
 
 func _clear_options() -> void:
+	_options_spinner = null
 	_spec = []
 	choices.clear()
 	for child: Node in _options.get_children():

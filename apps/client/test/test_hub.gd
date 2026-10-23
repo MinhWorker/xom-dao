@@ -36,6 +36,9 @@ func test_room_options_read_the_picked_values_and_find_the_rooms_own() -> void:
 	assert_eq(HubRoomOptions.index_of(spec[0], "bot"), 1)
 	assert_eq(HubRoomOptions.index_of(spec[1], 3.0), 1, "the server's numbers are floats")
 	assert_eq(HubRoomOptions.index_of(spec[1], "other"), 1, "its default when none holds it")
+	HubRoomOptions.cache_spec("test-game", spec)
+	assert_true(HubRoomOptions.has_spec("test-game"))
+	assert_eq(HubRoomOptions.spec_for("test-game"), spec)
 
 
 func _room(players: Array, options: Variant = null) -> XomDaoRoomSnapshot:
@@ -105,7 +108,17 @@ func test_the_host_changes_the_room_options_and_guests_read_them() -> void:
 	]
 	var held: Dictionary = {"opponent": "human", "rounds": 3.0}
 	var room: HubWaitingRoom = _waiting_room()
+	assert_not_null(
+		room.find_child("OptionsLoading", true, false), "options plate shows loading by default"
+	)
+	assert_not_null(room.find_child("OptionsSpinner", true, false))
+	assert_eq(room.find_child("OptionsLoadingLabel", true, false).text, "Đang tải tuỳ chọn…")
+	room.show_setup_failed("tic-tac-toe")
+	assert_null(room.find_child("OptionsLoading", true, false))
+	assert_not_null(room.find_child("OptionsFailed", true, false))
 	room.show_setup("tic-tac-toe", spec)
+	assert_null(room.find_child("OptionsLoading", true, false))
+	assert_null(room.find_child("OptionsFailed", true, false))
 	room.show_room(_room(players, held), "minh", _caro(), false)
 	var rounds: HubRoomOption = room.choices["rounds"]
 	assert_eq(rounds.selected, 1, "the room's own value is the one picked")
