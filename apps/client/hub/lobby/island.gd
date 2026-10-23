@@ -12,6 +12,8 @@ extends Control
 ## Every island bobs gently. A .tscn root may define `set_selected(on: bool)`.
 ##
 ## The ring sizes and places it (HubIslandRing); the island only draws.
+## The art scenes stay loaded after the lobby goes (their frames take about a second to decode),
+## so coming back is quick; the hub calls `forget()` on the way into a game to free them.
 
 ## Size at scale 1: a square, like the art's canvas.
 const BASE := Vector2(240.0, 240.0)
@@ -27,6 +29,8 @@ const SIGN := Vector2(170.0, 54.0)
 const TAIL := 16.0
 
 static var _dim_shader: Shader = preload("res://hub/lobby/island_dim.gdshader")
+## Loaded art scenes by path, kept between lobby visits.
+static var _kept: Dictionary = {}
 
 var genre_id: String = ""
 var title: String = "":
@@ -143,6 +147,16 @@ func _process(delta: float) -> void:
 	_overlay.position.y = bob
 
 
+## Lets go of the kept art scenes (they free once no island shows them).
+static func forget() -> void:
+	_kept.clear()
+
+
+## True while some island art is kept loaded.
+static func keeping() -> bool:
+	return not _kept.is_empty()
+
+
 ## Where the island itself is inside the control: the tap target.
 func body_rect() -> Rect2:
 	return Rect2(size.x * 0.08, size.y * 0.12, size.x * 0.84, size.y * 0.76)
@@ -153,7 +167,9 @@ func _load_art(art: String) -> void:
 	var scene_path: String = "res://hub/genres/%s.tscn" % art
 	var picture_path: String = "res://hub/genres/%s.webp" % art
 	if art != "" and ResourceLoader.exists(scene_path):
-		var packed: PackedScene = load(scene_path)
+		if not _kept.has(scene_path):
+			_kept[scene_path] = load(scene_path)
+		var packed: PackedScene = _kept[scene_path]
 		var root: Node = packed.instantiate()
 		if root is Node2D:
 			_scene = root

@@ -139,6 +139,11 @@ Mở game ─► Sảnh (vòng đảo)
   tên trò và vài dòng về gốc gác của trò đó, tự chuyển sau vài giây, chạm hoặc vuốt để chuyển
   sớm. Khi tải một trò thì mở đầu bằng tranh của chính trò đó. Trạng thái nằm ở góc dưới phải.
   Thêm trò mới thì thêm một dòng vào `SLIDES` trong `apps/client/hub/loading.gd`.
+- **Chờ máy chủ**: khi mở một bảng hay làm một việc cần máy chủ trả lời (Chợ, Nhà, Đình, Nhiệm
+  vụ, nhận thư, bạn bè) mà câu trả lời tới chậm hơn khoảng một phần ba giây, một huy hiệu "Đang
+  tải" có vòng xoay hiện ở giữa cạnh dưới, trên một dải xanh đậm nhạt dần lên trên. Huy hiệu không
+  chặn thao tác và đã hiện thì ở lại ít nhất gần nửa giây cho khỏi chớp. Màn mới gọi máy chủ qua
+  `HubWait.ask` (`apps/client/hub/wait.gd`); việc chạy ngầm thì gọi thẳng client.
 - **Chuyển màn**: các nơi chốn trong sảnh (Chọn trò, Nhà, Chợ, Đình, Bến) và nút ← đổi màn ngay lập
   tức để thao tác nhanh gọn. Tấm màn xanh đậm viền vàng quét chéo mang logo và tên trò khi vào
   phòng. Bấm Bắt đầu thì tới **màn riêng của trò**: tranh splash phủ kín, logo và tên trò ở giữa,

@@ -97,7 +97,7 @@ func _place() -> void:
 
 
 func _load() -> void:
-	var reply: Dictionary = await _client.request(XomDaoProtocol.QUESTS_GET)
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.QUESTS_GET, {}, _client)
 	if not is_inside_tree():
 		return
 	if not bool(reply.get("ok", false)):
@@ -201,7 +201,7 @@ func _claim(id: String) -> void:
 	if _claiming:
 		return
 	_claiming = true
-	var reply: Dictionary = await _client.request(XomDaoProtocol.QUESTS_CLAIM, {"id": id})
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.QUESTS_CLAIM, {"id": id}, _client)
 	_claiming = false
 	if not is_inside_tree():
 		return

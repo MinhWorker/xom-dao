@@ -238,3 +238,14 @@ func test_the_exp_bar_shows_progress_in_this_level() -> void:
 	assert_eq(bar.value, 40.0)
 	assert_eq(bar.max_value, 150.0)
 	assert_eq((lobby.find_child("LobbyExpText", true, false) as Label).text, "40/150")
+
+
+func test_island_art_stays_loaded_until_forgotten() -> void:
+	HubIsland.forget()
+	var first := HubIsland.create({"id": "co", "name": "Cờ", "island": "co"})
+	first.free()
+	assert_true(HubIsland.keeping(), "kept after the island went")
+	var again := HubIsland.create({"id": "co", "name": "Cờ", "island": "co"})
+	again.free()
+	HubIsland.forget()
+	assert_false(HubIsland.keeping())
