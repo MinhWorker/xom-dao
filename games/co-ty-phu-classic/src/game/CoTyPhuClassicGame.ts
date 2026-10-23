@@ -377,7 +377,14 @@ export class CoTyPhuClassicGame extends Game<State, Options, View> {
     requireTurn(ctx);
     if (ctx.state.phase !== 'end' && ctx.state.phase !== 'buy') ctx.reject('Thao tác chưa hợp lệ');
     const s = copy(ctx.state);
+    const declinedSquare = s.pending;
     s.pending = null;
+    if (ctx.state.phase === 'buy' && s.after === 'roll') {
+      s.phase = 'roll';
+      s.notice =
+        declinedSquare !== null ? `Bỏ qua ${BOARD[declinedSquare]!.name}.` : 'Bỏ qua mua đất.';
+      return this.complete(s, ctx);
+    }
     const previous = s.turn;
     const expired = expireMortgages(s, previous);
     startTurn(s, next(s, s.turn));
