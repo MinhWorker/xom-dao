@@ -51,6 +51,7 @@ func _view(extra: Dictionary = {}) -> Dictionary:
 	var view: Dictionary = {
 		"phase": "playing",
 		"time": 5000,
+		"startAt": 3000,
 		"elapsed": 1000,
 		"cells": _cells([Vector2i(3, 1)]),
 		"fighters": [_fighter("me", 0, Vector2(1, 1)), _fighter("b1", 1, Vector2(11, 9))],
@@ -158,3 +159,32 @@ func test_choosing_shows_the_friends() -> void:
 	assert_false((table.find_child("Pad", true, false) as Control).visible)
 	assert_eq((table.find_child("Status", true, false) as Label).text, "Chọn bạn nhỏ")
 	assert_eq((table.find_child("Clock", true, false) as Label).text, "00:18")
+
+
+func test_the_select_board_describes_the_friend() -> void:
+	var table := _table(_view({"phase": "select", "time": 2000}))
+	await wait_process_frames(2)
+	var about: Control = table.find_child("About", true, false)
+	assert_gt(about.get_child_count(), 0, "the skill's lines are on the sheet")
+	assert_eq((table.find_child("SkillName", true, false) as Label).text, "Thiêu Đốt")
+	assert_true((table.find_child("Ready", true, false) as Control).visible)
+	assert_not_null(table.find_child("Pick_wind", true, false))
+
+
+func test_the_countdown_counts_before_play() -> void:
+	var table := _table(_view({"phase": "countdown", "time": 1000, "startAt": 3000}))
+	await wait_process_frames(3)
+	var count: Label = table.find_child("Count", true, false)
+	assert_true(count.visible)
+	assert_eq(count.text, "2")
+	assert_false((table.find_child("Select", true, false) as Control).visible)
+	assert_eq((table.find_child("Clock", true, false) as Label).text, "03:00")
+
+
+func test_the_room_has_no_friend_row() -> void:
+	var table := _table(_view())
+	await wait_process_frames(1)
+	var keys: Array = (table.call("room_setup") as Array).map(
+		func(row: Dictionary) -> String: return str(row["key"])
+	)
+	assert_false(keys.has("element"))

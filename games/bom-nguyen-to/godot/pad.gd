@@ -1,8 +1,7 @@
 extends Control
-## The wooden D-pad at the bottom left: a round plate with four cream keys. The table reads where
-## a finger is (`direction_at`) and shows the key held down (`held`).
+## The D-pad at the bottom left: a disc of the HUD's dark glass with four cream arrow keys. The
+## table reads where a finger is (`direction_at`) and shows the key held down (`held`).
 
-const ART := "res://content/bom-nguyen-to/art/"
 const KEYS: Dictionary = {
 	"up": Vector2(0, -1), "left": Vector2(-1, 0), "down": Vector2(0, 1), "right": Vector2(1, 0)
 }
@@ -12,9 +11,6 @@ var held: String = "none":
 		if held != value:
 			held = value
 			queue_redraw()
-
-var _plate: Texture2D = load(ART + "dpad.webp")
-var _key: Texture2D = load(ART + "dpad-key.webp")
 
 
 func _ready() -> void:
@@ -42,20 +38,23 @@ func covers(at: Vector2) -> bool:
 func _draw() -> void:
 	var d: float = size.x
 	var centre: Vector2 = size / 2.0
-	draw_texture_rect(
-		_plate, Rect2(Vector2.ZERO, Vector2(d, d * _plate.get_height() / _plate.get_width())), false
-	)
-	var key: float = d * 0.3
+	draw_circle(centre + Vector2(0, 6.0), d * 0.49, Color(0.16, 0.09, 0.05, 0.35))
+	draw_circle(centre, d * 0.49, Color(0.227, 0.141, 0.086, 0.62))
+	draw_arc(centre, d * 0.49 - 2.0, 0, TAU, 64, Color(1, 1, 1, 0.1), 3.0, true)
+	draw_circle(centre, d * 0.12, Color(0, 0, 0, 0.25))
 	for dir: String in KEYS:
 		var down: bool = held == dir
-		var k: float = key * (0.94 if down else 1.0)
-		var at: Vector2 = centre + KEYS[dir] * d * 0.27
-		var tint := Color(1, 1, 1, 0.85 if down else 1.0)
-		draw_texture_rect(_key, Rect2(at - Vector2(k, k) / 2.0, Vector2(k, k)), false, tint)
 		var along: Vector2 = KEYS[dir]
 		var side := Vector2(-along.y, along.x)
-		var r: float = k * 0.22
+		var at: Vector2 = centre + along * d * 0.3
+		var k: float = d * 0.25 * (0.92 if down else 1.0)
+		var key := Rect2(at - Vector2(k, k) / 2.0, Vector2(k, k))
+		var style := StyleBoxFlat.new()
+		style.set_corner_radius_all(int(k * 0.3))
+		style.bg_color = XomDaoUi.CREAM if down else Color(1.0, 0.965, 0.89, 0.22)
+		draw_style_box(style, key.grow(2.0) if down else key)
+		var r: float = k * 0.24
 		var arrow := PackedVector2Array(
 			[at + along * r, at - along * r * 0.7 + side * r, at - along * r * 0.7 - side * r]
 		)
-		draw_colored_polygon(arrow, Color("#9c6236"))
+		draw_colored_polygon(arrow, XomDaoUi.INK if down else XomDaoUi.CREAM)

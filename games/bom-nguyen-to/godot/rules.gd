@@ -8,6 +8,9 @@ const WIDTH := 13
 const HEIGHT := 11
 const MATCH_TIME := 180000
 const SELECT_TIME := 20000
+const COUNTDOWN := 3000
+const SKILL_COOLDOWN := 14000
+const SKILL_BOOST := 6000
 const SHRINK_START := 120000
 const SHRINK_EVERY := 12000
 const SMALLEST_RING := 4
@@ -22,14 +25,23 @@ const DIRECTIONS: Dictionary = {
 	"right": Vector2i(1, 0),
 	"none": Vector2i.ZERO,
 }
-## The five elemental friends: their name, element, skill, what it does and their colours.
+## The five elemental friends: their name, element, skill, its role, what it does (`about`,
+## one line; `details`, the select board's lines) and their colours. `shape` names the blast the
+## select board draws for a boosted bomb.
 const CHARACTERS: Dictionary = {
 	"fire":
 	{
 		"name": "Cáo Lửa",
 		"element": "Hỏa",
 		"skill": "Thiêu Đốt",
+		"role": "Sát thương",
 		"about": "Bom +1 tầm nổ và +15 sát thương trong 6 giây",
+		"details":
+		[
+			"Bom đặt trong 6 giây nổ xa thêm 1 ô.",
+			"Mỗi tia gây 50 sát thương thay vì 35.",
+		],
+		"shape": "long-cross",
 		"color": Color("#ff8256"),
 		"bar": Color("#f25f6b"),
 		"pastel": Color("#ffe0cc"),
@@ -39,7 +51,14 @@ const CHARACTERS: Dictionary = {
 		"name": "Hải Cẩu Nước",
 		"element": "Thủy",
 		"skill": "Thủy Vực",
+		"role": "Phủ vùng",
 		"about": "Bom nổ hình chữ nhật, làm chậm 2 giây",
+		"details":
+		[
+			"Bom đặt trong 6 giây nổ thành ba tia song song theo hướng nhìn.",
+			"Ai trúng nước bị chậm một nửa trong 2 giây.",
+		],
+		"shape": "band",
 		"color": Color("#56bcff"),
 		"bar": Color("#4aa8f0"),
 		"pastel": Color("#d3efff"),
@@ -49,7 +68,17 @@ const CHARACTERS: Dictionary = {
 		"name": "Thỏ Sét",
 		"element": "Lôi",
 		"skill": "Lôi Kích",
+		"role": "Tầm xa",
 		"about": "Bom nổ thẳng dài, nhảy điện hoặc choáng",
+		"details":
+		[
+			"Bom đặt trong 6 giây nổ thành một đường thẳng dài theo hướng nhìn.",
+			(
+				"Điện nhảy sang đối thủ gần đó gây 20 sát thương,"
+				+ " không có ai thì người trúng bị choáng 0,9 giây."
+			),
+		],
+		"shape": "line",
 		"color": Color("#b895ff"),
 		"bar": Color("#a77cf0"),
 		"pastel": Color("#ebdfff"),
@@ -59,7 +88,14 @@ const CHARACTERS: Dictionary = {
 		"name": "Cánh Cụt Băng",
 		"element": "Băng",
 		"skill": "Băng Bộc",
+		"role": "Khống chế",
 		"about": "Đóng băng đối thủ và giữ bom lại",
+		"details":
+		[
+			"Bom đặt trong 6 giây đóng băng người trúng 1,5 giây.",
+			"Bom khác trúng băng bị giữ lại 1,5 giây rồi mới nổ.",
+		],
+		"shape": "frost",
 		"color": Color("#a9edff"),
 		"bar": Color("#37c2d6"),
 		"pastel": Color("#d8f6fb"),
@@ -69,7 +105,14 @@ const CHARACTERS: Dictionary = {
 		"name": "Mèo Gió",
 		"element": "Phong",
 		"skill": "Cuồng Phong",
+		"role": "Đẩy lùi",
 		"about": "Đẩy bom và đối thủ phía trước, 20 sát thương",
+		"details":
+		[
+			"Thổi ngay 3 ô phía trước: đẩy bom đi 2 ô, đẩy lùi đối thủ và gây 20 sát thương.",
+			"Bom đặt trong 6 giây cũng đẩy lùi người trúng.",
+		],
+		"shape": "gust",
 		"color": Color("#6ce7c2"),
 		"bar": Color("#55c98a"),
 		"pastel": Color("#d9f5df"),
@@ -297,11 +340,28 @@ static func mode_name(view: Dictionary) -> String:
 	return "Luyện tập" if (view["fighters"] as Array).size() == 1 else "Sinh tồn đơn"
 
 
+## Seconds left of the 3, 2, 1 before play (0 once it is over).
+static func countdown(view: Dictionary, now: float) -> int:
+	if str(view.get("phase", "")) != "countdown":
+		return 0
+	return maxi(0, ceili((float(view.get("startAt", 0)) - now) / 1000.0))
+
+
+## Play time passed (ms), counting the moments since the last snapshot.
+static func played(view: Dictionary, now: float) -> float:
+	var out: float = float(view.get("elapsed", 0))
+	if str(view.get("phase", "")) == "playing":
+		out += now - float(view["time"])
+	return out
+
+
 ## The clock: time left to choose, or of the match, as mm:ss.
 static func clock(view: Dictionary, now: float) -> String:
 	var left: float
 	if str(view["phase"]) == "select":
 		left = SELECT_TIME - now
+	elif str(view["phase"]) == "countdown":
+		left = MATCH_TIME
 	else:
 		left = MATCH_TIME - (float(view["elapsed"]) + now - float(view["time"]))
 		if str(view["phase"]) != "playing":

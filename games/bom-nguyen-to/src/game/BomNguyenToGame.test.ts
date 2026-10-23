@@ -36,6 +36,11 @@ function arena(mode: 'solo' | 'teams' = 'solo'): State {
         x === 0 || y === 0 || x === WIDTH - 1 || y === HEIGHT - 1 ? 'wall' : 'floor';
   return s;
 }
+/** Fires the countdown's ticks until play begins. */
+const play = <G extends { state: State; fireTimer: () => unknown }>(g: G): G => {
+  for (let i = 0; i < 40 && g.state.phase === 'countdown'; i++) g.fireTimer();
+  return g;
+};
 const actor = (s: State, seat = 0) => {
   const p = s.fighters[seat];
   if (!p) throw new Error('Missing test actor');
@@ -43,6 +48,11 @@ const actor = (s: State, seat = 0) => {
 };
 
 describe('authoritative match lifecycle', () => {
+  it('seats start with five different friends and the room has no friend option', () => {
+    const g = testGame(plugin, ['a', 'b', 'c', 'd'], { options: { total: 4, bots: 0 } });
+    expect(g.state.fighters.map((p) => p.element)).toEqual(['fire', 'water', 'lightning', 'ice']);
+    expect(optionsSchema.parse({ element: 'ice' })).not.toHaveProperty('element');
+  });
   it('accepts 1–4 characters, fills missing seats and forces four for teams', () => {
     for (let n = 1; n <= 4; n++)
       expect(testGame(plugin, ['a'], { options: { total: n } }).state.fighters).toHaveLength(n);
@@ -56,7 +66,12 @@ describe('authoritative match lifecycle', () => {
     g.send('a', 'choose', { element: 'water' }).send('a', 'ready');
     expect(g.state.phase).toBe('select');
     g.send('b', 'choose', { element: 'ice' }).send('b', 'ready');
+    expect(g.state.phase).toBe('countdown');
+    g.send('a', 'bomb');
+    expect(g.state.bombs).toHaveLength(0);
+    play(g);
     expect(g.state.phase).toBe('playing');
+    expect(g.state.fighters.map((p) => p.element)).toEqual(['water', 'ice']);
     expect(g.error('a', 'choose', { element: 'fire' })).toBeTruthy();
     expect(g.error('a', 'tick')).toBeTruthy();
     expect(g.error('a', 'input', { direction: 'teleport' })).toBeTruthy();
@@ -66,7 +81,7 @@ describe('authoritative match lifecycle', () => {
     const before = JSON.stringify(g.state);
     g.send('a', 'choose', { element: 'wind' });
     expect(before).toContain('fire');
-    for (let i = 0; i < 200; i++) g.fireTimer();
+    for (let i = 0; i < 230; i++) g.fireTimer();
     expect(g.state.phase).toBe('playing');
     const snapshot = g.state;
     const serialized = JSON.stringify(snapshot);
@@ -423,7 +438,7 @@ describe('tactical bots', () => {
 describe('walking off a bomb', () => {
   it('a player keeps going until no part of them touches their own bomb', () => {
     const g = testGame(plugin, ['a'], { options: { total: 1 } });
-    g.send('a', 'ready').send('a', 'bomb');
+    play(g.send('a', 'ready')).send('a', 'bomb');
     for (let i = 0; i < 6; i++) g.send('a', 'input', { direction: 'right' }).fireTimer();
     expect(g.state.fighters[0]?.x).toBeGreaterThan(2.5);
   });

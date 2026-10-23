@@ -29,6 +29,15 @@ const EFFECT_CLIPS: Dictionary = {
 	"skill-wind": [16.0, false],
 }
 
+const FX_ANCHOR := Vector2(128, 168)
+const FX_CLIPS: Dictionary = {
+	"puff": [28.0, false],
+	"splash": [24.0, false],
+	"swirl": [24.0, true],
+	"aura-back": [16.0, true],
+	"aura-front": [16.0, true],
+}
+
 static var _cache: Dictionary = {}
 
 
@@ -102,6 +111,37 @@ static func arena() -> SpriteFrames:
 			clips["blast-" + element] = [12.0, true]
 		_cache["frames:arena"] = sprite_frames("arena-fx", clips)
 	return _cache["frames:arena"]
+
+
+## The Blender effects of arena-fx3d (sources/render_fx.py): grey flipbooks the table tints
+## per element (`puff`, `splash`, `swirl`, `aura-back`, `aura-front`). Every frame keeps the
+## bake's 256 px canvas, anchored at FX_ANCHOR (the cell's centre on the ground).
+static func fx3d() -> SpriteFrames:
+	if not _cache.has("frames:fx3d"):
+		_cache["frames:fx3d"] = sprite_frames("arena-fx3d", FX_CLIPS)
+	return _cache["frames:fx3d"]
+
+
+## A still of arena-fx3d (`shards-0`, `ice`, `debris-plank`, …), on its full canvas.
+static func fx3d_still(name: String) -> Texture2D:
+	return textures("arena-fx3d").get(name)
+
+
+## The arena's block sprites (sources/render_arena.py): name → [texture, anchor]. The anchor
+## is the pixel of the cell's centre on the ground; shadows are `<name>-shadow`.
+static func blocks() -> Dictionary:
+	if _cache.has("blocks"):
+		return _cache["blocks"]
+	var all: Dictionary = textures("arena-blocks")
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(ART + "arena-blocks.json"))
+	var out: Dictionary = {}
+	if data is Dictionary:
+		var frames: Dictionary = data["frames"]
+		for name: String in frames:
+			var anchor: Array = frames[name]["anchor"]
+			out[name] = [all[name], Vector2(anchor[0], anchor[1])]
+	_cache["blocks"] = out
+	return out
 
 
 ## One still frame of arena-fx (`item-heal-00`, …).

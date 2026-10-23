@@ -21,6 +21,7 @@ import {
 } from './arena.js';
 import { thinkBot } from './bot.js';
 import {
+  COUNTDOWN,
   cloneState,
   DIRECTIONS,
   distance,
@@ -85,7 +86,7 @@ export class BomNguyenToGame extends Game<State, Options> {
         seat,
         bot,
         team: seat % 2,
-        element: bot ? (ELEMENTS[(seat + 1) % ELEMENTS.length] ?? 'fire') : ctx.options.element,
+        element: ELEMENTS[seat % ELEMENTS.length] ?? 'fire',
         hp: 100,
         ready: bot,
         dir: 'none',
@@ -113,6 +114,7 @@ export class BomNguyenToGame extends Game<State, Options> {
     return {
       phase: 'select',
       time: 0,
+      startAt: 0,
       elapsed: 0,
       cells,
       fighters,
@@ -142,7 +144,7 @@ export class BomNguyenToGame extends Game<State, Options> {
     const s = cloneState(ctx.state);
     const p = s.fighters.find((p) => p.id === ctx.player.id);
     if (p) p.ready = true;
-    if (s.fighters.every((p) => p.ready)) s.phase = 'playing';
+    if (s.fighters.every((p) => p.ready)) this.countdown(s);
     return s;
   }
   onInput(ctx: EventContext<State, z.infer<typeof inputSchema>, Options>): State {
@@ -189,9 +191,14 @@ export class BomNguyenToGame extends Game<State, Options> {
     s.time += TICK;
     if (s.phase === 'select') {
       if (s.time >= SELECT_TIME) {
-        s.phase = 'playing';
         for (const p of s.fighters) p.ready = true;
+        this.countdown(s);
       }
+      ctx.setTimer(TICK, 'tick');
+      return s;
+    }
+    if (s.phase === 'countdown') {
+      if (s.time >= s.startAt) s.phase = 'playing';
       ctx.setTimer(TICK, 'tick');
       return s;
     }
@@ -234,6 +241,10 @@ export class BomNguyenToGame extends Game<State, Options> {
     if (!this.finishIfOver({ ...ctx, state: s })) ctx.setTimer(TICK, 'tick');
     return s;
   }
+  private countdown(s: State) {
+    s.phase = 'countdown';
+    s.startAt = s.time + COUNTDOWN;
+  }
   onLeave(ctx: LeaveContext<State, Options>): State {
     const s = cloneState(ctx.state);
     const p = s.fighters.find((p) => p.id === ctx.player.id);
@@ -247,7 +258,7 @@ export class BomNguyenToGame extends Game<State, Options> {
   }
   private finishIfOver(ctx: Ctx): boolean {
     const s = ctx.state;
-    if (s.phase !== 'playing') return false;
+    if (s.phase !== 'playing' && s.phase !== 'countdown') return false;
     const alive = s.fighters.filter((p) => p.hp > 0);
     const sides = new Set(alive.map((p) => (s.mode === 'teams' ? p.team : p.id)));
     const practice = s.fighters.length === 1;

@@ -16,6 +16,8 @@ export const TICK = 100;
 export const FUSE = 2500;
 export const MATCH_TIME = 180000;
 export const SELECT_TIME = 20000;
+/** The 3, 2, 1 between choosing and play: nobody moves yet. */
+export const COUNTDOWN = 3000;
 export const ELEMENT_INFO: Record<
   Element,
   { name: string; skill: string; color: number; hex: string; description: string }
@@ -61,7 +63,6 @@ export const optionsSchema = z.object({
   total: z.number().int().min(1).max(4).default(4),
   bots: z.number().int().min(0).max(3).default(3),
   level: z.enum(['easy', 'normal', 'hard']).default('normal'),
-  element: z.enum(ELEMENTS).default('fire'),
   friendlyFire: z.boolean().default(false),
 });
 export type Options = z.infer<typeof optionsSchema>;
@@ -126,8 +127,10 @@ export interface Pickup extends Point {
   kind: 'heal' | 'range' | 'capacity' | 'speed';
 }
 export interface State {
-  phase: 'select' | 'playing' | 'ended';
+  phase: 'select' | 'countdown' | 'playing' | 'ended';
   time: number;
+  /** When the countdown ends and play begins (`time`), 0 before it starts. */
+  startAt: number;
   elapsed: number;
   cells: ('floor' | 'wall' | 'crate')[];
   fighters: Fighter[];
