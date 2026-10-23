@@ -88,7 +88,7 @@ func _press(card: XomDaoCard, at: Vector2, down: bool) -> void:
 
 
 func _press_button(table: Control, name_of: String) -> void:
-	(table.find_child(name_of, true, false) as XomDaoButton).pressed.emit()
+	(table.find_child(name_of, true, false) as BaseButton).pressed.emit()
 
 
 func _shown(table: Control, name_of: String) -> bool:
@@ -255,3 +255,48 @@ func test_standings_and_results_after_a_round() -> void:
 		)
 	)
 	assert_false(_shown(last, "Standings"))
+
+
+func test_a_live_end_drops_the_indigo_scroll_before_the_result() -> void:
+	var table := _table(_view())
+	var client: XomDaoClient = table.get("_client")
+	var over := _snapshot(_view({"phase": "show", "points": [-6, 6]}))
+	over.status = "finished"
+	over.result = XomDaoGameResult.from_dict({"winners": ["b1"], "rewards": []})
+	client.snapshot = over
+	var waited: Array[bool] = [false]
+	var waiter: Callable = func() -> void:
+		await table.call("wait_for_result_panel")
+		waited[0] = true
+	waiter.call()
+	await wait_seconds(1.4)
+	assert_true(table.find_child("EndScroll", true, false).visible, "the scroll hangs")
+	assert_eq(_text(table, "EndHeadline"), "Thua rồi")
+	assert_eq(_text(table, "EndLine"), "Máy 1 nhiều điểm nhất, 6 điểm")
+	assert_false(waited[0], "the result board waits for the beat")
+	await wait_seconds(1.8)
+	assert_true(waited[0])
+	var detail: Dictionary = table.call("result_detail")
+	assert_eq(detail["ranks"], {"b1": 1, "me": 2})
+	assert_eq(detail["scores"]["b1"], "6 điểm")
+	assert_eq((table.call("result_theme") as Dictionary)["title"], "Mãn cuộc")
+
+
+func test_keys_arrange_take_back_and_open_the_rules() -> void:
+	var table := _table(_view())
+	for code: Key in [KEY_A]:
+		var key := InputEventKey.new()
+		key.keycode = code
+		key.pressed = true
+		table.call("_unhandled_key_input", key)
+	assert_eq(_text(table, "Status"), "Đang xếp", "A arranges the rows")
+	var undo := InputEventKey.new()
+	undo.keycode = KEY_Z
+	undo.pressed = true
+	table.call("_unhandled_key_input", undo)
+	assert_eq(_rank(table, "Mine_0"), "A", "Z takes it back")
+	var rules := InputEventKey.new()
+	rules.keycode = KEY_L
+	rules.pressed = true
+	table.call("_unhandled_key_input", rules)
+	assert_true(_shown(table, "Scoring"), "L opens the rules")

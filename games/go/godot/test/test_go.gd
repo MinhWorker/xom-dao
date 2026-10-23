@@ -124,8 +124,10 @@ func test_the_end_fills_the_result_board() -> void:
 		detail["rows"],
 		[
 			["Số nước", "2"],
-			["Quân đã bắt", "Đen 3 · Trắng 1"],
-			["Đếm điểm", "Đen 180 · Trắng 188,5"]
+			["Đen bắt", "3 quân"],
+			["Trắng bắt", "1 quân"],
+			["Điểm Đen", "180"],
+			["Điểm Trắng", "188,5"]
 		]
 	)
 	assert_false((counted.find_child("Resign", true, false) as Control).visible)
@@ -142,3 +144,36 @@ func test_resign_asks_first() -> void:
 	assert_true((table.find_child("ResignDialog", true, false) as Control).visible)
 	(table.find_child("KeepPlaying", true, false) as Button).pressed.emit()
 	assert_false((table.find_child("ResignDialog", true, false) as Control).visible)
+
+
+func test_a_counted_ending_reveals_the_count_before_the_result() -> void:
+	var table := _table(_view(["me", "bot"], "b"))
+	var client: XomDaoClient = table.get("_client")
+	var owner: String = "b".repeat(180) + "w".repeat(181)
+	var counted := _view(
+		["me", "bot"],
+		"b",
+		{
+			"moves": [],
+			"count": {"b": 180, "w": 188.5, "owner": owner},
+			"end": {"reason": "score", "winner": "w", "score": {"b": 180, "w": 188.5}},
+		}
+	)
+	client.snapshot = _snapshot(counted, "finished")
+	var waited: Array[bool] = [false]
+	var waiter: Callable = func() -> void:
+		await table.call("wait_for_result_panel")
+		waited[0] = true
+	waiter.call()
+	await wait_seconds(0.5)
+	var plaque: Control = table.find_child("EndPlaque", true, false)
+	assert_false(plaque.visible, "the territory comes first")
+	await wait_seconds(1.3)
+	assert_true(plaque.visible)
+	assert_eq((plaque.find_child("EndHeadline", true, false) as Label).text, "Thua rồi")
+	assert_eq((plaque.find_child("EndLine", true, false) as Label).text, "Hơn 8,5 điểm")
+	assert_eq((plaque.find_child("EndCount_w", true, false) as Label).text, "188,5")
+	assert_false(waited[0], "the result board waits for the beat")
+	await wait_seconds(1.6)
+	assert_true(waited[0])
+	assert_eq((table.call("result_theme") as Dictionary)["title"], "Đếm mục")

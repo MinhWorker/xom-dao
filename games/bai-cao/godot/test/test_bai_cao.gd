@@ -108,3 +108,57 @@ func test_the_count_shows_hands_and_points() -> void:
 	assert_eq(_text(table, "Status"), "+10 điểm")
 	assert_eq(_text(table, "Delta_1"), XomDaoUi.delta(-20))
 	assert_eq((table.find_child("Card_1_0", true, false) as XomDaoCard).rank, "A")
+
+
+func _finished(points: Array, winners: Array) -> XomDaoRoomSnapshot:
+	var over := _snapshot(_view({"phase": "showdown", "points": points}), "finished")
+	over.result = XomDaoGameResult.from_dict({"winners": winners, "rewards": []})
+	return over
+
+
+func test_a_live_end_slides_the_chips_to_the_winner_before_the_result() -> void:
+	var table := _table(_view())
+	var client: XomDaoClient = table.get("_client")
+	client.snapshot = _finished([20, -5, -15], ["me"])
+	var waited: Array[bool] = [false]
+	var waiter: Callable = func() -> void:
+		await table.call("wait_for_result_panel")
+		waited[0] = true
+	waiter.call()
+	await wait_seconds(1.8)
+	assert_true(table.find_child("EndStrip", true, false).visible, "the strip says it")
+	assert_eq(_text(table, "EndHeadline"), "Thắng rồi!")
+	assert_eq(_text(table, "EndLine"), "Nhiều điểm nhất, 20 điểm")
+	assert_false(waited[0], "the result board waits for the beat")
+	await wait_seconds(2.0)
+	assert_true(waited[0])
+
+
+func test_the_result_board_places_everyone_by_points() -> void:
+	var table := _table(_view())
+	(table.get("_client") as XomDaoClient).snapshot = _finished([-5, 10, 10], ["b1", "b2"])
+	var detail: Dictionary = table.call("result_detail")
+	assert_eq(detail["ranks"], {"b1": 1, "b2": 1, "me": 3}, "level points share a place")
+	assert_eq(detail["scores"]["me"], "-5 điểm")
+	assert_eq((table.call("result_theme") as Dictionary)["title"], "Tàn canh")
+	assert_true(table.call("table_skin") is XomDaoTableSkin)
+
+
+func test_keys_bet_and_open_cards() -> void:
+	var table := _table(_view())
+	assert_true((table.find_child("Bet_10", true, false) as Control).is_visible_in_tree())
+	var two := InputEventKey.new()
+	two.keycode = KEY_2
+	two.pressed = true
+	table.call("_unhandled_key_input", two)
+	assert_false(
+		(table.find_child("BetTray", true, false) as Control).visible, "2 bets 10: the chips go"
+	)
+	var squeezing := _table(
+		_view({"phase": "reveal", "bets": [5, null, 10], "hands": [[32, 37, 50], null, null]})
+	)
+	var one := InputEventKey.new()
+	one.keycode = KEY_1
+	one.pressed = true
+	squeezing.call("_unhandled_key_input", one)
+	assert_eq(_text(squeezing, "Status"), "Đã nặn 1/3", "1 opens the first card")

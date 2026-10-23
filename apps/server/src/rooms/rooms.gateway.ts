@@ -13,10 +13,13 @@ import { CatalogService } from '../catalog/catalog.service.js';
 import { DevConsoleService } from '../dev/dev-console.service.js';
 import { followRoomLog } from '../dev/room-log.js';
 import { EventError, EventsService } from '../events/events.service.js';
+import { FriendsError, FriendsService, type Presence } from '../friends/friends.service.js';
 import { InventoryError, InventoryService } from '../inventory/inventory.service.js';
 import { ItemsService } from '../items/items.service.js';
 import { LedgerService } from '../ledger/ledger.service.js';
+import { MailError, MailService } from '../mail/mail.service.js';
 import { MatchesService } from '../matches/matches.service.js';
+import { QuestsError, QuestsService } from '../quests/quests.service.js';
 import { ShopError, ShopService } from '../shop/shop.service.js';
 import { StatsError, StatsService } from '../stats/stats.service.js';
 import { type Room, RoomError, RoomsService } from './rooms.service.js';
@@ -70,6 +73,9 @@ const BOT_DELAY_MS = Number(process.env.BOT_DELAY_MS) || 700;
  */
 const QUICK_WAIT_MS = Number(process.env.QUICK_WAIT_MS) || 6000;
 const EMOTE_COOLDOWN_MS = 700;
+const CHAT_COOLDOWN_MS = 400;
+/** Friends hear of an account coming online, going or changing rooms this long after. */
+const FRIEND_PUSH_MS = 300;
 
 /**
  * Translates client requests into RoomsService calls. Each handler's return value is sent back as
@@ -90,6 +96,10 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   private readonly quickTimers = new Map<string, NodeJS.Timeout>();
   /** Per-account cooldowns for room emotes, stored as their expiry time. */
   private readonly emoteCooldowns = new Map<string, number>();
+  /** Per-account cooldowns for chat messages (their expiry time). */
+  private readonly chatCooldowns = new Map<string, number>();
+  /** Pending "tell my friends" pushes, by account. */
+  private readonly friendPushes = new Map<string, NodeJS.Timeout>();
   /** Logged-in clients (`WsGateway`). */
   private readonly connected = new Set<Client>();
   private pruner?: NodeJS.Timeout;
@@ -106,6 +116,9 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     private readonly items: ItemsService,
     private readonly events: EventsService,
     private readonly stats: StatsService,
+    private readonly friends: FriendsService,
+    private readonly quests: QuestsService,
+    private readonly mail: MailService,
   ) {
     rooms.onFinished((game) => {
       this.matches.record(game).catch((err) => console.error('Could not save a match', err));
@@ -134,6 +147,17 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     rooms.onFinished((game) => {
       this.events.recordMatch(game).catch((err) => console.error('Could not count points', err));
     });
+    rooms.onFinished((game) => {
+      this.quests.recordMatch(game).catch((err) => console.error('Could not count quests', err));
+    });
+    mail.onSent((userId) => {
+      const ids = new Set(
+        (userId ? this.socketsOf(userId) : this.clients()).map((s) => s.data.user.id),
+      );
+      for (const id of ids) {
+        this.pushMail(id).catch((err) => console.error('Could not push mail', err));
+      }
+    });
   }
 
   onModuleInit() {
@@ -147,12 +171,16 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
 
   /** A WebSocket client that just logged in. */
   attach(client: Client) {
+    const first = this.socketsOf(client.data.user.id).length === 0;
     this.connected.add(client);
+    if (first) this.friendsMoved(client.data.user.id);
   }
 
   /** A WebSocket client that closed (after `handleDisconnect`). */
   detach(client: Client) {
     this.connected.delete(client);
+    const userId = client.data.user?.id;
+    if (userId && this.socketsOf(userId).length === 0) this.friendsMoved(userId);
   }
 
   /** The handler of a client event (an `@On` method), for `WsGateway`; `undefined` if unknown. */
@@ -272,6 +300,111 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   @On('history:recent')
   history(socket: Client) {
     return this.handle(async () => ({ matches: await this.matches.recent(socket.data.user.id) }));
+  }
+
+  @On('quests:get')
+  questsGet(socket: Client) {
+    return this.handle(() => this.quests.board(socket.data.user.id));
+  }
+
+  @On('quests:claim')
+  questsClaim(socket: Client, req: { id?: unknown }) {
+    return this.handle(() => this.quests.claim(socket.data.user.id, String(req?.id ?? '')));
+  }
+
+  @On('mail:get')
+  mailGet(socket: Client) {
+    return this.handle(() => this.mail.mailbox(socket.data.user.id));
+  }
+
+  @On('mail:read')
+  mailRead(socket: Client, req: { id?: unknown }) {
+    return this.handle(() => this.mail.read(socket.data.user.id, String(req?.id ?? '')));
+  }
+
+  @On('mail:claim')
+  mailClaim(socket: Client, req: { id?: unknown }) {
+    return this.handle(() => this.mail.claim(socket.data.user.id, String(req?.id ?? '')));
+  }
+
+  @On('friends:list')
+  friendsList(socket: Client) {
+    return this.handle(() => this.friendList(socket.data.user.id));
+  }
+
+  @On('friends:add')
+  friendsAdd(socket: Client, req: { username?: unknown }) {
+    return this.handle(async () => {
+      const other = await this.friends.add(socket.data.user.id, String(req?.username ?? ''));
+      void this.pushFriends(other);
+      return this.friendList(socket.data.user.id);
+    });
+  }
+
+  @On('friends:answer')
+  friendsAnswer(socket: Client, req: { userId?: unknown; accept?: unknown }) {
+    return this.handle(async () => {
+      const other = String(req?.userId ?? '');
+      await this.friends.answer(socket.data.user.id, other, req?.accept === true);
+      void this.pushFriends(other);
+      return this.friendList(socket.data.user.id);
+    });
+  }
+
+  @On('friends:remove')
+  friendsRemove(socket: Client, req: { userId?: unknown }) {
+    return this.handle(async () => {
+      const other = String(req?.userId ?? '');
+      await this.friends.remove(socket.data.user.id, other);
+      void this.pushFriends(other);
+      return this.friendList(socket.data.user.id);
+    });
+  }
+
+  @On('chat:history')
+  chatHistory(socket: Client, req: { userId?: unknown }) {
+    return this.handle(() => this.friends.history(socket.data.user.id, String(req?.userId ?? '')));
+  }
+
+  @On('chat:send')
+  chatSend(socket: Client, req: { userId?: unknown; text?: unknown }) {
+    return this.handle(async () => {
+      const me = socket.data.user.id;
+      const now = Date.now();
+      if ((this.chatCooldowns.get(me) ?? 0) > now) throw new FriendsError('Gửi chậm lại một chút');
+      this.chatCooldowns.set(me, now + CHAT_COOLDOWN_MS);
+      const to = String(req?.userId ?? '');
+      const message = await this.friends.send(me, to, String(req?.text ?? ''));
+      for (const s of this.socketsOf(to)) s.emit('chat:message', message);
+      // Your other tabs show it too.
+      for (const s of this.socketsOf(me)) if (s !== socket) s.emit('chat:message', message);
+      return { message };
+    });
+  }
+
+  @On('friends:invite')
+  invite(socket: Client, req: { userId?: unknown }) {
+    return this.handle(async () => {
+      const me = socket.data.user;
+      const room = this.rooms.roomOf(me.id);
+      if (!room) throw new RoomError('Bạn chưa ở trong phòng nào');
+      const other = String(req?.userId ?? '');
+      if (!(await this.friends.areFriends(me.id, other)))
+        throw new FriendsError('Chỉ mời được bạn bè');
+      const sockets = this.socketsOf(other);
+      if (!sockets.length) throw new FriendsError('Bạn ấy đang không online');
+      for (const s of sockets) {
+        s.emit('room:invite', {
+          fromId: me.id,
+          fromName: me.name,
+          avatar: me.avatar,
+          frame: me.frame,
+          roomCode: room.code,
+          gameId: room.game.id,
+        });
+      }
+      return {};
+    });
   }
 
   @On('catalog:get')
@@ -509,6 +642,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     socket.data.roomCode = room.code;
     this.rooms.setConnected(room.code, userId, true);
     this.broadcast(room);
+    this.friendsMoved(userId);
     return { roomCode: room.code, playerId: userId };
   }
 
@@ -542,12 +676,57 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     }
     if (closed) this.disband(room);
     else this.broadcast(room);
+    this.friendsMoved(userId);
   }
 
   private requireSeat(socket: Client) {
     const { roomCode, user } = socket.data;
     if (!roomCode) throw new RoomError('Bạn chưa ở trong phòng nào');
     return { roomCode, playerId: user.id };
+  }
+
+  /** Whether an account is connected, and the room it is in (for its friends' lists). */
+  private readonly presence: Presence = (userId) => {
+    const room = this.rooms.roomOf(userId);
+    return {
+      online: this.socketsOf(userId).length > 0,
+      ...(room && { gameId: room.game.id, roomCode: room.code }),
+    };
+  };
+
+  private async friendList(userId: string) {
+    return { friends: await this.friends.list(userId, this.presence) };
+  }
+
+  /** Sends an account's sockets its fresh Bạn bè list. */
+  private async pushFriends(userId: string) {
+    const sockets = this.socketsOf(userId);
+    if (!sockets.length) return;
+    const list = await this.friendList(userId);
+    for (const s of sockets) s.emit('friends:changed', list);
+  }
+
+  /** Sends an account's sockets its fresh Hộp thư (a letter came). */
+  private async pushMail(userId: string) {
+    const box = await this.mail.mailbox(userId);
+    for (const s of this.socketsOf(userId)) s.emit('mail:changed', box);
+  }
+
+  /**
+   * An account came online, went, or changed rooms: a moment later, its friends online get their
+   * fresh lists (one push for a burst of changes).
+   */
+  private friendsMoved(userId: string) {
+    clearTimeout(this.friendPushes.get(userId));
+    const timer = setTimeout(() => {
+      this.friendPushes.delete(userId);
+      this.friends
+        .friendIds(userId)
+        .then((ids) => Promise.all(ids.map((id) => this.pushFriends(id))))
+        .catch((err) => console.error('Could not tell friends', err));
+    }, FRIEND_PUSH_MS);
+    timer.unref();
+    this.friendPushes.set(userId, timer);
   }
 
   private socketsOf(userId: string) {
@@ -580,6 +759,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       socket.emit('room:closed', { gameId: room.game.id, reason: 'Phòng đã giải tán' });
       this.stopDevLogs(socket);
       socket.data.roomCode = undefined;
+      this.friendsMoved(socket.data.user.id);
     }
     this.broadcastLobby(room.game.id);
   }
@@ -660,6 +840,9 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
         err instanceof InventoryError ||
         err instanceof ShopError ||
         err instanceof EventError ||
+        err instanceof FriendsError ||
+        err instanceof QuestsError ||
+        err instanceof MailError ||
         err instanceof StatsError
       ) {
         return { ok: false, error: err.message };

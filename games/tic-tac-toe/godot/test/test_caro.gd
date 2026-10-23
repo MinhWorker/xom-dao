@@ -175,10 +175,17 @@ func test_finished_board_slides_left_and_view_board_restores_it() -> void:
 	snapshot.options = {"swap": true}
 	snapshot.status = "finished"
 	snapshot.result = XomDaoGameResult.from_dict({"winners": ["me"], "rewards": []})
+	(board.get("_client") as XomDaoClient).snapshot = snapshot
 	board.call("_show", snapshot)
 	assert_eq(
 		board.get("_board_center"), before, "transition starts at the original board position"
 	)
+	await wait_seconds(0.5)
+	assert_eq(board.get("_board_center"), before, "the board holds still for the end beat")
+	var stamp: Control = board.find_child("EndStamp", true, false)
+	assert_true(stamp.visible, "the outcome is stamped on the page")
+	assert_eq(stamp.get_parent().get("_word"), "Thắng rồi!", "from your side")
+	await board.call("wait_for_result_panel")
 	await wait_seconds(0.8)
 	var after: Vector2 = board.get("_board_center")
 	assert_lt(after.x, before.x, "the entire board slides left")
@@ -225,3 +232,15 @@ func test_finished_board_slides_left_and_view_board_restores_it() -> void:
 		0.1,
 		"rematch restores the centred board"
 	)
+
+
+func test_a_finger_on_small_cells_marks_before_it_plays() -> void:
+	var board := _board("me", ["X", null, null, null, "O", null])
+	var cell: Button = board.find_child("Cell_1_1", true, false)
+	board.set("_cell", 40.0)
+	board.set("_touching", true)
+	board.call("_tap", Vector2i(1, 1))
+	assert_false(cell.disabled, "the first tap only marks the cell")
+	assert_eq(board.get("_armed"), Vector2i(1, 1))
+	board.call("_tap", Vector2i(1, 1))
+	assert_true(cell.disabled, "the second tap on it plays")

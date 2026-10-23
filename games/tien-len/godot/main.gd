@@ -1,5 +1,6 @@
 extends Control
-## Tiến Lên on the Godot client, in the **Bàn** layout (docs/experience.md): a sedge mat, the
+## Tiến Lên on the Godot client, in the **Bàn** layout (docs/experience.md): a sedge mat on a Tết
+## afternoon (decor.gd, with the table's HUD skin; finale.gd is the lì xì end beat), the
 ## others' seats at the sides and across, your cards at the bottom and Đánh / Bỏ lượt at the
 ## bottom right. It draws `snapshot.view` (the View in src/game/model.ts: your hand and the
 ## others' card counts) and sends `play {cards}` and `pass`. The hub adds this scene when the
@@ -11,6 +12,7 @@ extends Control
 const Rules := preload("res://content/tien-len/rules.gd")
 const CardView := preload("res://content/tien-len/card.gd")
 const HandView := preload("res://content/tien-len/hand.gd")
+const EMBLEM: Texture2D = preload("res://content/tien-len/art/emblem.webp")
 
 ## Where each seat sits, from yours (bottom) round the table, by how many play.
 const SLOTS: Dictionary = {
@@ -35,6 +37,7 @@ const SOUNDS: Array[String] = [
 	"trick-clear",
 	"turn",
 	"win",
+	"lose",
 ]
 ## The deal on screen, as in src/game/model.ts (DEAL, INTRO): the server starts play after it.
 const DEAL_SHUFFLE := 0.76
@@ -54,13 +57,17 @@ var _view: Dictionary = {}
 ## Your seat, or -1 for a spectator (who looks from seat 0).
 var _me: int = -1
 
-var _mat := XomDaoMat.new()
+var _decor := TienLenDecor.new()
+var _skin: XomDaoTableSkin = TienLenDecor.skin()
+var _finale := TienLenFinale.new()
+## The status words on a lacquer plate above your hand.
+var _status_plate := PanelContainer.new()
 var _pile := Control.new()
 var _fx := Control.new()
 var _hand: HandView
 var _status := Label.new()
 var _play: XomDaoButton = XomDaoButton.create("Đánh", XomDaoUi.Kind.CONFIRM)
-var _pass: XomDaoButton = XomDaoButton.create("Bỏ lượt", XomDaoUi.Kind.DANGER)
+var _pass: XomDaoButton = XomDaoButton.create("Bỏ lượt", XomDaoUi.Kind.BACK)
 var _round_board: XomDaoBoard = XomDaoBoard.create("")
 var _slots: Array[XomDaoPlayerSlot] = []
 var _stamps: Array[Label] = []
@@ -79,6 +86,7 @@ var _out: Array = []
 var _turn: int = -1
 ## Play is held until the deal on screen is over.
 var _dealing: bool = false
+## The room's status last time, to tell an ending seen live from a finished table joined.
 
 
 ## Options for a sandbox room (`?play=tien-len` in a debug build): three computer players.
@@ -115,6 +123,64 @@ func room_setup() -> Array:
 	]
 
 
+## Hub hook: the end beat (the lì xì envelope) before the result board, on every ending.
+func wait_for_result_panel() -> void:
+	if _client != null and _client.snapshot != null:
+		_show(_client.snapshot)
+	await _finale.wait()
+
+
+## Hub hook: the figures on the result board: every seat placed by points (then rounds won
+## first), as the server ranks them, with their points.
+func result_detail() -> Dictionary:
+	if _client != null and _client.snapshot != null:
+		_show(_client.snapshot)
+	if _view.is_empty() or _snapshot == null:
+		return {}
+	var points: Array = _view.get("points", [])
+	var firsts: Array = _view.get("firsts", [])
+	var gone: Array = _view.get("gone", [])
+	var order: Array[int] = []
+	for seat: int in points.size():
+		if not gone.has(seat):
+			order.append(seat)
+	order.sort_custom(
+		func(a: int, b: int) -> bool:
+			if int(points[a]) != int(points[b]):
+				return int(points[a]) > int(points[b])
+			var first_a: int = int(firsts[a]) if a < firsts.size() else 0
+			var first_b: int = int(firsts[b]) if b < firsts.size() else 0
+			return first_a > first_b if first_a != first_b else a < b
+	)
+	for i: int in range(gone.size() - 1, -1, -1):
+		order.append(int(gone[i]))
+	var ranks: Dictionary = {}
+	var scores: Dictionary = {}
+	for place: int in order.size():
+		var seat: int = order[place]
+		if seat < _snapshot.seats.size():
+			var id: String = _snapshot.seats[seat].id
+			ranks[id] = place + 1
+			scores[id] = "%d điểm" % int(points[seat])
+	var rounds: int = int(_view.get("round", 1))
+	return {
+		"reason": "Sau %d vòng" % rounds if rounds > 1 else "",
+		"rows": [],
+		"ranks": ranks,
+		"scores": scores,
+	}
+
+
+## Hub hook: the result board on red-edged paper.
+func result_theme() -> Dictionary:
+	return TienLenFinale.theme(EMBLEM)
+
+
+## Hub hook: the ☰ button and the seats in the mat's lacquer, brass and red paper.
+func table_skin() -> XomDaoTableSkin:
+	return _skin
+
+
 func bind(client: XomDaoClient) -> void:
 	_client = client
 	client.state_changed.connect(_show)
@@ -126,30 +192,40 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = XomDaoUi.theme()
 	clip_contents = true
-	add_child(_mat)
+	add_child(_decor)
 	_pile.name = "Pile"
 	_pile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_pile)
 
+	_status_plate.name = "StatusPlate"
+	_status_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var plate: StyleBoxFlat = XomDaoUi.with_shadow(_skin.plate_box(2))
+	plate.content_margin_left = 22.0
+	plate.content_margin_right = 22.0
+	plate.content_margin_top = 2.0
+	plate.content_margin_bottom = 4.0
+	_status_plate.add_theme_stylebox_override("panel", plate)
+	add_child(_status_plate)
 	_status.name = "Status"
-	_status.theme_type_variation = "HudLabel"
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_font_override("font", XomDaoUi.display_font(800))
-	_status.add_theme_font_size_override("font_size", XomDaoUi.TEXT)
-	_status.add_theme_color_override("font_color", XomDaoUi.CREAM)
-	_status.add_theme_color_override("font_outline_color", XomDaoUi.INK)
-	_status.add_theme_constant_override("outline_size", 8)
-	add_child(_status)
+	_status.add_theme_font_size_override("font_size", XomDaoUi.TEXT_MIN + 4)
+	_status.add_theme_color_override("font_color", _skin.ink)
+	_status_plate.add_child(_status)
 
 	_hand = HandView.new()
 	_hand.picked_changed.connect(_refresh_buttons)
 	add_child(_hand)
 	_play.name = "PlayCards"
+	_play.tooltip_text = "Phím Enter"
+	_pass.tooltip_text = "Phím B"
 	_play.pressed.connect(_on_play)
 	add_child(_play)
 	_pass.name = "Pass"
 	_pass.pressed.connect(_on_pass)
 	add_child(_pass)
+	_skin.dress_button(_play, "primary")
+	_skin.dress_button(_pass, "secondary")
 
 	_round_board.name = "RoundBoard"
 	_round_board.visible = false
@@ -158,6 +234,7 @@ func _ready() -> void:
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_fx)
+	add_child(_finale)
 
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
@@ -221,6 +298,47 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 	_refresh_buttons()
 	# Names and card counts change the seats' widths.
 	_layout()
+	# The end beat once the last move has landed.
+	if _finale.follow(snapshot):
+		get_tree().create_timer(THROW_SECONDS + 0.9).timeout.connect(_play_end.bind(snapshot))
+
+
+func _play_end(snapshot: XomDaoRoomSnapshot) -> void:
+	if not is_inside_tree() or not _finale.armed():
+		return
+	var winner: int = -1
+	if snapshot.result != null and not snapshot.result.winners.is_empty():
+		for seat: int in snapshot.seats.size():
+			if snapshot.seats[seat].id == snapshot.result.winners[0]:
+				winner = seat
+	var outcome: String = "draw"
+	if winner >= 0:
+		outcome = "watch" if _me < 0 else ("win" if winner == _me else "lose")
+	var totals: Array = _view.get("points", [])
+	var line: String = ""
+	var headline: String = {"win": "Thắng rồi!", "lose": "Thua rồi", "draw": "Hoà"}.get(outcome, "")
+	if winner >= 0:
+		var points: int = int(totals[winner]) if winner < totals.size() else 0
+		if outcome == "win":
+			line = "Nhất trận, %d điểm" % points
+		else:
+			line = "%s nhất trận, %d điểm" % [_seat_name(winner), points]
+		if outcome == "watch":
+			headline = "%s thắng" % _seat_name(winner)
+			line = "%d điểm" % points
+	(
+		_finale
+		. play(
+			{
+				"outcome": outcome,
+				"headline": headline,
+				"line": line,
+				"middle": size / 2.0,
+				"winner_at": _seat_center(winner) if winner >= 0 and winner != _me else null,
+				"sound": _sfx.bind("win" if outcome == "win" else "lose"),
+			}
+		)
+	)
 
 
 ## A new round: the pile is cleared and the hand is dealt again.
@@ -365,7 +483,7 @@ func _follow_seats(view: Dictionary) -> void:
 	for i: int in range(_out.size(), out.size()):
 		var seat: int = int(out[i])
 		var place: String = _place_name(i, _in_round(view))
-		if seat == _me and i == 0:
+		if seat == _me and i == 0 and _snapshot.status == "playing":
 			_sfx("win")
 		_callout(
 			"Về %s!" % place.to_lower(), _seat_spot(seat), 40, _place_color(i, _in_round(view))
@@ -409,6 +527,8 @@ func _show_seats() -> void:
 		)
 		slot.player_name = _seat_name(seat)
 		slot.frame = info.frame
+		if info.id != "":
+			slot.picture = XomDaoLooks.avatar("bot" if info.bot else info.avatar)
 		var fan: Control = _fans[seat]
 		fan.visible = seat != _me and int(counts[seat]) > 0 and phase != "over"
 		fan.set_meta("back", XomDaoLooks.card_back(_card_back_of(info.id)))
@@ -425,6 +545,10 @@ func _show_seats() -> void:
 			slot.show_turn()
 		elif not on_turn and slot.is_turn():
 			slot.end_turn()
+		# The seat whose turn it is stands out; the others step back.
+		var quiet: bool = phase == "play" and not on_turn and _snapshot.status == "playing"
+		slot.modulate = Color(1.0, 1.0, 1.0, 0.62) if quiet else Color.WHITE
+		fan.modulate = slot.modulate
 		var stamp: Label = _stamps[seat]
 		stamp.visible = true
 		if gone.has(seat):
@@ -531,6 +655,32 @@ func _refresh_buttons() -> void:
 	_pass.visible = _me >= 0
 
 
+## Desktop keys: ←/→ walk the hand, Space (or ↑) picks the card under the cursor, Enter plays
+## the picked cards, B passes. Each works only when its button would.
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or _me < 0:
+		return
+	match key.keycode:
+		KEY_LEFT, KEY_RIGHT:
+			_hand.move_cursor(-1 if key.keycode == KEY_LEFT else 1)
+		KEY_SPACE, KEY_UP:
+			if key.echo:
+				return
+			_hand.toggle_cursor()
+		KEY_ENTER, KEY_KP_ENTER:
+			if _play.disabled or not _play.visible:
+				return
+			_on_play()
+		KEY_B:
+			if _pass.disabled or not _pass.visible:
+				return
+			_on_pass()
+		_:
+			return
+	get_viewport().set_input_as_handled()
+
+
 func _on_play() -> void:
 	var cards: Array[int] = _hand.picked.duplicate()
 	if cards.is_empty():
@@ -560,6 +710,7 @@ func _build_seats(count: int) -> void:
 		var slot := XomDaoPlayerSlot.new()
 		slot.name = "Seat_%d" % seat
 		slot.compact = true
+		slot.skin = _skin
 		add_child(slot)
 		move_child(slot, _hand.get_index())
 		_slots.append(slot)
@@ -642,10 +793,13 @@ func _layout() -> void:
 	_hand.position = Vector2(hand_left, bottom - hand_height)
 	_hand.size = Vector2(maxf(CARD_WIDTH, hand_right - hand_left), hand_height)
 	_hand.card_width = CARD_WIDTH
-	_status.reset_size()
-	_status.position = Vector2((size.x - _status.size.x) / 2.0, _hand.position.y - _status.size.y)
+	_status_plate.visible = _status.text != ""
+	_status_plate.reset_size()
+	_status_plate.position = Vector2(
+		(size.x - _status_plate.size.x) / 2.0, _hand.position.y - _status_plate.size.y - 6.0
+	)
 
-	var pile_y: float = (maxf(top_bottom, top + XomDaoUi.TOUCH) + _status.position.y) / 2.0
+	var pile_y: float = (maxf(top_bottom, top + XomDaoUi.TOUCH) + _status_plate.position.y) / 2.0
 	_pile.position = Vector2(size.x / 2.0, pile_y)
 	_round_board.reset_size()
 	_round_board.position = (Vector2(size.x / 2.0, pile_y) - _round_board.size / 2.0)

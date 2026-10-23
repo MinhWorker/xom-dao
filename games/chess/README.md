@@ -25,8 +25,20 @@ chiếu hết, huy hiệu vương miện và khiên đỏ thẫm hiện cùng qu
 quân lóe sáng, có hạt vàng khi đổi thành Hậu, Xe, Tượng hoặc Mã. **Hiệu ứng: Tắt** bỏ chuyển động
 và hạt nhưng giữ âm thanh.
 
-Kết thúc ván, bảng kết quả của hub nằm bên phải để vẫn thấy bàn cờ; bảng nêu lý do kết thúc, số
-nước và số quân mỗi bên ăn (`result_detail()`). **Xem bàn** đóng bảng, **Kết quả** mở lại.
+Kết thúc ván, đợi nước cuối đặt xuống xong rồi mới tới khoảnh khắc hết ván (`chess_finale.gd`,
+hub đợi qua `wait_for_result_panel()`): Vua bên thua lắc lư rồi ngã nằm xuống bàn kèm tiếng cộp
+(nằm luôn tới ván sau), vòng vàng dẹt theo phối cảnh loang ra quanh Vua bên thắng, rồi banner hoàng
+gia đỏ thẫm viền đồng hiện ra với khiên vương miện mang Vua bên thắng, dòng nhỏ ghi cách kết thúc
+(CHIẾU HẾT, ĐẦU HÀNG, RỜI BÀN, HẾT NƯỚC ĐI…) và dòng lớn ghi kết quả theo phía mình: THẮNG RỒI!,
+THUA RỒI hoặc HOÀ; người xem thấy bên thắng. Banner hiện cùng tiếng kết quả (kèn thắng, tiếng thua,
+tiếng hoà); thắng thì có thêm hạt vàng bắn ra từ Vua. Hoà thì hai Vua đứng nguyên. Chừng hai giây
+rưỡi, chạm để bỏ qua; chiếu hết không còn cut-in riêng vì banner đã nói. **Hiệu ứng: Tắt** đặt Vua
+nằm ngay và chỉ phát tiếng. Vào xem một ván đã xong thì không có khoảnh khắc này.
+
+Sau đó bảng kết quả của hub nằm bên phải để vẫn thấy bàn cờ, trên nền giấy da, chữ nâu đỏ, nhấn
+đỏ thẫm (`result_theme()`), tiêu đề "Chiếu hết!" hoặc "Tàn cuộc", trên cùng là huy hiệu khiên đỏ
+vương miện vàng. Bảng nêu lý do kết thúc, số nước và số quân mỗi bên ăn (`result_detail()`).
+**Xem bàn** đóng bảng, **Kết quả** mở lại.
 
 ## Thành phần
 
@@ -37,6 +49,7 @@ nước và số quân mỗi bên ăn (`result_detail()`). **Xem bàn** đóng b
 | Máy chơi alpha-beta | `src/game/bot.ts` |
 | Lượt, xin hoà, đầu hàng | `src/game/ChessGame.ts` |
 | Bàn chơi: bàn, quân, phối cảnh, âm thanh, phong cấp, HUD, cut-in, hiệu ứng, `room_setup()` và `result_detail()` | `godot/main.gd`, `godot/projection.gd`, `godot/chess_piece_atlas.gd`, `godot/chess_effects.gd`, `godot/royal_cutin.gd`, `godot/royal_crest.gd`, `godot/main.tscn` (test: `godot/test/`) |
+| Khoảnh khắc hết ván và màu bảng kết quả (`wait_for_result_panel()`, `result_theme()`) | `godot/chess_finale.gd` |
 | Cảnh tĩnh phòng và bàn cờ | `sources/render_scene.py`, `godot/preview.tscn` |
 | Mô hình Staunton dùng chung, atlas 64 góc mỗi quân | `sources/chess_models.py`, `sources/render_position_atlas.py` |
 | Hình, âm thanh và nhạc của bàn | `godot/art/`, `godot/sounds/`, `godot/music/` |
@@ -84,6 +97,9 @@ và script tái tạo.
   Mở ảnh trong scene preview bằng `npm run godot:preview -- open 0 res://content/chess/preview.tscn`.
 - Đảo Cờ Vua: imagegen, prompt trong `sources/prompts.json`. Sinh lại bằng
   `npm run gen:asset -- chess/island`.
+- Huy hiệu trên bảng kết quả (`emblem`: khiên đỏ thẫm viền vàng, vương miện, Vua ngà và hai cành
+  nguyệt quế) sinh bằng Antigravity (`agy`) trên nền xanh lá phẳng rồi khử nền bằng Pillow; prompt
+  trong `sources/prompts.json`, ảnh gốc đã khử nền ở `sources/emblem.png`.
 - `royal-panel.svg` và các trạng thái `royal-button*.svg` là viền 9-slice riêng cho thẻ người chơi,
   trạng thái và nút hành động. Bàn vẫn dùng font và tương tác nút của SDK; các SVG có bản gốc trong
   `assets/` và bản dùng trong game trong `godot/art/`.
@@ -97,6 +113,7 @@ và script tái tạo.
 | `chess-move`, `chess-capture`, `chess-castle` | Cờ Vây: `go-place-1`, `go-capture`, `go-place-3` |
 | `chess-promote`, `chess-check`, `chess-mate` | Cờ Tướng: `xiangqi-decisive-move`, `xiangqi-check`, `xiangqi-checkmate` |
 | `chess-draw`, `chess-win` | Cờ Tướng: `xiangqi-draw`, `xiangqi-game-win` |
+| `chess-victory`, `chess-lose` | Ứng dụng: `assets/app/audio/game-win.wav`, `game-lose.wav` |
 | `music-chess` | Cờ Vây: `music-go` (gốc `music-xiangqi-a`) |
 
 Tài nguyên theo [giấy phép của dự án](../../LICENSE-ASSETS.md).

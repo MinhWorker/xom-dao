@@ -2,6 +2,8 @@ extends Control
 ## Your cards at the bottom of the table, weakest on the left, overlapping when they need to.
 ## Tap a card to pick it (it rises) or put it back; press and slide across cards to pick or put
 ## back all of them at once. Each card is a child named Card_<n> (the card's number, 0–51).
+## On a keyboard ←/→ move a gold cursor along the hand and `toggle_cursor()` picks the card under
+## it; the cursor shows only once a key moved it, and hides again on a tap.
 
 signal picked_changed
 
@@ -29,6 +31,12 @@ var back: Texture2D = XomDaoLooks.card_back(""):
 var cards: Array[int] = []
 ## The picked cards, in the order they were picked.
 var picked: Array[int] = []
+
+## The keyboard cursor (an index into `cards`), or -1 when it is hidden.
+var cursor: int = -1:
+	set(value):
+		cursor = value
+		queue_redraw()
 
 var _views: Dictionary = {}
 ## Running moves per card, ended when the hand lays out again.
@@ -76,6 +84,8 @@ func set_cards(next: Array[int]) -> void:
 	var changed: bool = kept.size() != picked.size()
 	picked = kept
 	cards = sorted
+	if cursor >= cards.size():
+		cursor = cards.size() - 1
 	_layout(is_inside_tree())
 	if changed:
 		picked_changed.emit()
@@ -102,6 +112,22 @@ func set_picked(next: Array[int]) -> void:
 	picked.assign(next.filter(func(card: int) -> bool: return cards.has(card)))
 	_layout(true)
 	picked_changed.emit()
+
+
+## Moves the keyboard cursor `step` cards along (it appears on the first card the first time).
+func move_cursor(step: int) -> void:
+	if cards.is_empty():
+		return
+	cursor = 0 if cursor < 0 else clampi(cursor + step, 0, cards.size() - 1)
+
+
+## Picks or puts back the card under the keyboard cursor.
+func toggle_cursor() -> void:
+	if cursor < 0 or cursor >= cards.size():
+		move_cursor(0)
+		return
+	var card: int = cards[cursor]
+	_toggle(card, not picked.has(card))
 
 
 func clear_picks() -> void:
@@ -191,9 +217,23 @@ func card_at(point: Vector2) -> int:
 	return -1
 
 
+## The keyboard cursor: a gold bar under the card it is on.
+func _draw() -> void:
+	if cursor < 0 or cursor >= cards.size():
+		return
+	var rect: Rect2 = slot_rect(cursor)
+	# Under the card's visible strip: up to where the next card starts.
+	var shown: float = rect.size.x
+	if cursor < cards.size() - 1:
+		shown = minf(shown, slot_rect(cursor + 1).position.x - rect.position.x)
+	var bar := Rect2(rect.position.x + 4.0, size.y + 4.0, shown - 8.0, 6.0)
+	draw_rect(bar, XomDaoUi.GOLD, true)
+
+
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			cursor = -1
 			var card: int = card_at(event.position)
 			if card >= 0:
 				_paint = not picked.has(card)

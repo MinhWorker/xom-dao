@@ -31,6 +31,11 @@ hub/                main.gd routes the screens: lobby (island ring + HUD), selec
   touch_cancel.gd   DOM touchcancel capture for web gestures (before Godot releases the touch)
   xd_nav.gd         xd's `go`: opens hub places and sandboxes through main.gd's own methods
   ben/ room/        Bến; waiting room (seat cards, option rows), result, paged Luật board
+  friends/          Bạn bè: HubFriends (the hub's list, chat and invites from the server's
+                    pushes; `attention()` drives Bến's dot), HubFriendsPanel (Bến › Bạn bè),
+                    HubInvitePicker (Mời bạn in a room), HubInviteCard (a friend's invitation)
+  launch.gd         HubLaunch: the URL / command line the hub opened with, room links
+  quests/           HubQuests: Nhiệm vụ hằng ngày over the lobby (Quà and Nhiệm vụ open it)
   home/ shop/       Nhà (HubHome: tabs stacked down the left beside one page, someone else's
                     read-only; avatar and frame equipment lives in Túi đồ) and Chợ (HubShop:
                     avatars, frames, card backs, emotes)
@@ -62,7 +67,11 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   (`{key, label, options: [[label, value], …], default?}`: the first
   option is picked, or the one at index `default`), and `result_detail() -> Dictionary`, what
   the result board adds under its title: `{reason: String, rows: [[label, value], …], layout?: "right"}` after the
-  hub's own Thời gian row. `layout: "right"` docks the panel on the right for a game's end-of-game presentation.
+  hub's own Thời gian row (one figure per row: never join values with "·"). A game that places
+  everyone (points tables) adds `ranks: {player id: rank}` (0 a draw, level players share a rank)
+  and `scores: {player id: String}` ("12 điểm" on that player's row); without them the board
+  ranks the winners 1 and everyone else 2. `XomDaoPlaces` (`addons/xomdao_sdk/places.gd`) builds
+  them from points (`by_points`) and gives a points game's end-beat words (`outcome`, `words`). `layout: "right"` docks the panel on the right for a game's end-of-game presentation.
   `layout: "right"` docks the shared result HUD on the right and leaves uncovered table controls
   interactive. Optional `result_area() -> Rect2` docks it in a game-provided area without a screen
   shade and also leaves uncovered table controls interactive. Pair it with
@@ -71,6 +80,20 @@ export_presets.cfg  The Web preset: single-threaded, PWA
   its `normal`, `hover`, `pressed`, `hover_pressed` and `disabled` states, plus an optional
   `font_color: Color`; the button sits at the bottom right while the result board is hidden.
   Games without this hook keep the centred result overlay.
+  **End beat** (`hub/room/end_beat.gd`, `HubEndBeat.run`): when the room turns `finished`, the
+  hub never shows the result at once. A game with `wait_for_result_panel()` is awaited on every
+  ending (win, loss, draw, resign, someone left, timeout), at most `HubEndBeat.WAIT_CAP` (8 s),
+  and stops waiting if the room leaves `finished` or the screen changes; that game owns its end
+  beat and its outcome sound. Other games get the default beat: 0.8 s pause, then a ribbon over
+  the table for 1.6 s ("Thắng rồi!", "Thua rồi", "Hoà", "<name> thắng" for spectators) with the
+  hub's `hub/room/sounds/win.wav` / `lose.wav` (from `assets/app/audio/game-*.wav`); a tap skips
+  it. A table that opens on an already finished game skips the beat. The board then arrives
+  (shade fades, board rises with an overshoot, lines stagger, coins fly after) with only the
+  paper sound. Rewards that land during the beat wait for the board. Optional
+  `result_theme() -> Dictionary` skins the board (`HubResult.apply_theme`), every key optional:
+  `paper`, `ink`, `accent` (headline and your row), `shade` (Colors, alpha included), `title`
+  (String in place of "Hết ván"), `emblem` (Texture2D, 96 tall on top). `HubResult.follow(game)`
+  wires all the result hooks.
   Games with voluntary elimination may also define `can_declare_bankruptcy() -> bool` and
   `declare_bankruptcy() -> bool`; the hub uses these hooks to confirm and apply bankruptcy before
   leaving a live room.
@@ -115,6 +138,16 @@ export_presets.cfg  The Web preset: single-threaded, PWA
     `XomDaoMoney`, `XomDaoDelta`, `XomDaoChip`, `XomDaoAvatar`, `XomDaoPlayerSlot`,
     `XomDaoGameTile`, `XomDaoChoice`, `XomDaoSlider`, `XomDaoToast`, `XomDaoDot`, `XomDaoDivider`, `XomDaoMenu`;
   - card games: `XomDaoCard` (a playing card, face or back) and `XomDaoMat` (the straw mat);
+  - `XomDaoSeatPill`: a player kept small on a card table (avatar with an optional badge, name,
+    tag, points chip), dressed in the table's skin; card tables put everyone in a strip with it
+    while you play your own hand;
+  - `XomDaoTableSkin`: a table's own materials for the kit's HUD pieces, so they belong to its
+    world instead of the hub's dark pills: `XomDaoPlayerSlot.skin` (name plate, chips, turn
+    timer), `dress_button(button, "primary" | "secondary" | "danger")` (`XomDaoButton.dress`),
+    `dress_icon_button()`, `dress_panel()` (a game's own plaque), `plate_box()`; `XomDaoChip.dress`
+    for a lone chip. A game's optional `table_skin() -> XomDaoTableSkin` also dresses the hub's
+    ☰ button while the table is up (`round_button`). Colours stay the game's choice, the
+    shapes and sizes stay the kit's;
   - `XomDaoSettings`: music and sound effects (a switch and a volume each), HUD scale, margin,
     picture quality (user://settings.cfg). The quality is saved but does not change the
     rendering yet. Music plays on the `Music` bus and every sound effect on the `Sfx` bus

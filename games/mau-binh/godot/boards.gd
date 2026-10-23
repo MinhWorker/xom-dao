@@ -24,8 +24,8 @@ const ENTRY_WIDTH := 440.0
 const CHI_WIDTH := 270.0
 const GAP := 12.0
 
-var rules_button: XomDaoButton = XomDaoButton.create("Luật", XomDaoUi.Kind.INFO)
-var results_button: XomDaoButton = XomDaoButton.create("Kết quả", XomDaoUi.Kind.INFO)
+var rules_button: XomDaoIconButton = XomDaoIconButton.create("book-open")
+var results_button: XomDaoIconButton = XomDaoIconButton.create("ranking")
 
 var _shade := ColorRect.new()
 var _scoring: XomDaoBoard = XomDaoBoard.create("Luật tính điểm", true)
@@ -57,8 +57,9 @@ func _ready() -> void:
 	rules_button.pressed.connect(open_rules)
 	results_button.name = "ResultsButton"
 	results_button.pressed.connect(open_results)
-	for button: XomDaoButton in [rules_button, results_button]:
-		button.custom_minimum_size = Vector2(0.0, XomDaoUi.TOUCH)
+	rules_button.tooltip_text = "Luật tính điểm (phím L)"
+	results_button.tooltip_text = "Kết quả các vòng (phím K)"
+	for button: XomDaoIconButton in [rules_button, results_button]:
 		button.visible = false
 		add_child(button)
 	_standings.name = "Standings"
@@ -145,7 +146,7 @@ func show_view(
 func place(area: Rect2) -> void:
 	_area = area
 	var x: float = area.end.x
-	for button: XomDaoButton in [results_button, rules_button]:
+	for button: XomDaoIconButton in [results_button, rules_button]:
 		button.reset_size()
 		x -= button.size.x
 		button.position = Vector2(x, area.position.y)
@@ -301,15 +302,17 @@ func _fill_standings() -> void:
 	)
 	for place: int in seats.size():
 		var seat: int = seats[place]
-		var marks: Array[String] = []
+		# Each figure on its own: the mark (binh lủng…), the match total, against you.
+		var marks: Array = []
 		var mark: Array = _mark_of(result, seat)
 		if not mark.is_empty():
-			marks.append(str(mark[0]))
-		marks.append("Tổng %d" % int((_view["points"] as Array)[seat]))
+			marks.append(mark)
+		marks.append(["Tổng %d" % int((_view["points"] as Array)[seat]), Color(XomDaoUi.INK, 0.75)])
 		if _me >= 0 and seat != _me and (result["rows"] as Array)[_me] != null:
 			var against: int = _against(result, seat, _me)
-			marks.append("với bạn %s" % (XomDaoUi.delta(against) if against != 0 else "0"))
-		var row: Control = _standing_row(place, seat, int(points[seat]), " · ".join(marks))
+			var says: String = XomDaoUi.delta(against) if against != 0 else "0"
+			marks.append(["Với bạn %s" % says, XomDaoUi.delta_color(against, true)])
+		var row: Control = _standing_row(place, seat, int(points[seat]), marks)
 		row.name = "Standing_%d" % place
 		_standings.content.add_child(row)
 		row.modulate.a = 0.0
@@ -320,7 +323,7 @@ func _fill_standings() -> void:
 	_standings.content.add_child(_footer)
 
 
-func _standing_row(place: int, seat: int, points: int, note: String) -> Control:
+func _standing_row(place: int, seat: int, points: int, marks: Array) -> Control:
 	var back := PanelContainer.new()
 	var fill: Color = Color(XomDaoUi.GOLD, 0.35) if seat == _me else Color(XomDaoUi.INK, 0.08)
 	var style: StyleBoxFlat = XomDaoUi.box(fill, Color.TRANSPARENT, 0, 14.0)
@@ -340,7 +343,9 @@ func _standing_row(place: int, seat: int, points: int, note: String) -> Control:
 	avatar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	avatar.initial = _names[seat] if seat < _names.size() else "?"
 	if seat < _snapshot.seats.size():
-		avatar.frame = _snapshot.seats[seat].frame
+		var info: XomDaoPlayerInfo = _snapshot.seats[seat]
+		avatar.frame = info.frame
+		avatar.picture = XomDaoLooks.avatar("bot" if info.bot else info.avatar)
 	row.add_child(avatar)
 	var words := VBoxContainer.new()
 	words.add_theme_constant_override("separation", -4)
@@ -350,11 +355,15 @@ func _standing_row(place: int, seat: int, points: int, note: String) -> Control:
 	var who := _label(_names[seat] if seat < _names.size() else "", 28)
 	who.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	words.add_child(who)
-	var under := Label.new()
-	under.theme_type_variation = "SmallLabel"
-	under.text = note
-	under.add_theme_color_override("font_color", Color(XomDaoUi.INK, 0.75))
+	var under := HBoxContainer.new()
+	under.add_theme_constant_override("separation", 18)
 	words.add_child(under)
+	for mark: Array in marks:
+		var part := Label.new()
+		part.theme_type_variation = "SmallLabel"
+		part.text = str(mark[0])
+		part.add_theme_color_override("font_color", mark[1])
+		under.add_child(part)
 	row.add_child(
 		_label(
 			XomDaoUi.delta(points) if points != 0 else "0",

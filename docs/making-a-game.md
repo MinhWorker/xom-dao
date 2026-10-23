@@ -135,11 +135,33 @@ Mỗi game có `godot/main.tscn`, gốc là một `Control` có script `main.gd`
   `{key, label, options: [[nhãn, giá trị], …], default?}`, khớp `room.options`.
 - `result_detail() -> Dictionary`: phần game thêm vào bảng kết quả, dưới dòng Thời gian của hub:
   `{reason: "Đen thắng · Trắng hết nước", rows: [["Số lượt đi", 42], …], layout?: "right"}`.
-  `layout: "right"` đặt bảng kết quả bên phải và giữ vùng bàn còn lộ ra có thể chạm được.
+  `layout: "right"` đặt bảng kết quả bên phải và giữ vùng bàn còn lộ ra có thể chạm được. Mỗi
+  dòng một số liệu, đừng gộp nhiều giá trị bằng "·". Trò tính điểm cho mọi người (bài, nhiều
+  người) thêm `ranks: {id người chơi: hạng}` (0 là hoà, bằng điểm thì cùng hạng) và
+  `scores: {id người chơi: "12 điểm"}` để bảng xếp đủ hạng và ghi điểm trên từng hàng; không có
+  thì người thắng hạng 1, còn lại hạng 2.
+- Phím tắt (máy tính): xử lý trong `_unhandled_key_input` của bàn, chỉ cho việc lặp lại hợp lý
+  (đánh, bỏ lượt, cược, lật bài, gieo xúc xắc, ngắm), ghi phím ở `tooltip_text` của nút. Phân biệt
+  chạm với chuột bằng `event.device == InputEvent.DEVICE_ID_EMULATION`.
+- `table_skin() -> XomDaoTableSkin` (tuỳ chọn): bộ "áo" HUD của bàn: tấm tên, chip, vòng giờ,
+  các nút (`primary`, `secondary`, `danger`) và nút tròn. Hub dùng nó cho nút ☰ khi bàn đang
+  mở; trò dùng cùng bộ đó cho `XomDaoPlayerSlot.skin`, `skin.dress_button(...)`,
+  `skin.dress_panel(...)` để không mảnh HUD chung nào lạc tông với bàn. Chỉ đổi màu, hình dạng
+  và kích thước vẫn theo bộ UI chung.
 - `result_area() -> Rect2` (tuỳ chọn): vùng trong khung của game để đặt HUD kết quả, không
   phủ tối bàn chơi; vùng bàn còn lộ ra vẫn nhận thao tác. `set_result_visible(shown: bool) -> void`
   nhận trạng thái **Xem bàn** / **Kết quả** để game trượt bàn sang bên hoặc đưa về giữa. Không
   khai báo thì bảng vẫn ở giữa.
+- `wait_for_result_panel() -> void` (tuỳ chọn, có thể `await`): màn kết thúc riêng của trò. Hub
+  gọi nó ở **mọi** kiểu kết thúc (thắng, thua, hoà, đầu hàng, rời phòng, hết giờ) và chờ tối đa 8
+  giây rồi mới đưa bảng kết quả lên. Trò có hàm này tự lo hình và âm thanh thắng/thua; hub không
+  phát thêm. Hàm phải trả về nhanh khi không có gì để diễn. Không khai báo thì hub diễn màn mặc
+  định: dừng 0,8 giây rồi dải "Thắng rồi!" / "Thua rồi" / "Hoà" giữa bàn kèm tiếng thắng/thua của
+  ứng dụng; trò khi đó đừng tự phát tiếng thắng/thua lúc hết ván.
+- `result_theme() -> Dictionary` (tuỳ chọn): khoác áo cho bảng kết quả, mọi khoá đều không bắt
+  buộc: `paper: Color` (nền giấy), `ink: Color` (chữ), `accent: Color` (dòng tiêu đề và hàng của
+  bạn), `shade: Color` (nền tối phía sau, có độ trong), `title: String` (thay cho "Hết ván"),
+  `emblem: Texture2D` (hình nhỏ của trò ở đầu bảng, cao 96).
 - `result_reopen_theme() -> Dictionary` (tuỳ chọn): giao diện cho nút **Kết quả** dùng chung khi
   người chơi đang xem bàn; nhận các `StyleBox` theo trạng thái (`normal`, `hover`, `pressed`,
   `hover_pressed`, `disabled`) và `font_color: Color`. Nút nằm ở góc dưới phải trong lúc bảng kết

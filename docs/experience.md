@@ -94,7 +94,8 @@ Mắt đi theo thứ tự: đảo giữa → thẻ trò đang chọn → **CHƠI
 
 HUD sảnh: nền xanh navy đậm trong mờ, chữ và icon màu kem; mục đang chọn là bảng vàng có viền sáng
 và quầng nhẹ; nút chính vàng, nút phụ xanh dương sáng. Thẻ và lối tắt bo góc, viền mảnh, bóng nhẹ.
-Hộp thư, quà và Nhiệm vụ chưa có: chạm vào hiện "Sắp có".
+Phong bì mở **Hộp thư** (xem dưới), có chấm đỏ khi có thư chưa đọc hoặc quà chưa nhận. Quà và
+Nhiệm vụ mở bảng **Nhiệm vụ hằng ngày** (xem dưới); cả hai có chấm đỏ khi có phần thưởng chờ nhận.
 
 Các màn khác ngoài sảnh và ván đấu (chọn trò, Nhà, Chợ, Bến, kết quả) chỉ có ← ở trên trái và hàng
 icon tiền + ⚙ ở trên phải.
@@ -181,6 +182,23 @@ Trò chọn một trong hai bố cục mẫu, để các trò cùng loại trôn
 
 - Ô người chơi dùng thành phần chung: ảnh đại diện, tên, cấp, vòng thời gian vàng cho người đang
   tới lượt, 👑 cho chủ phòng. Thông tin riêng của trò (số lá bài, xúc xắc) nằm trong ô đó.
+- Các mảnh HUD chung (ô người chơi, chip, nút, nút ☰) **khoác vật liệu của bàn** (`table_skin()`):
+  hình dạng và cỡ giữ nguyên, chỉ đổi màu và viền cho hợp thế giới của trò, ví dụ gỗ sơn mài
+  viền đồng và chip giấy đỏ trên chiếu Tết của Tiến Lên, gỗ óc chó dưới đèn dầu ở Bài Cào, khăn
+  chàm viền đồng ở Mậu Binh, thép xanh viền đồng thau ở Bắn Tàu, giấy vở mực xanh ở Caro. Không
+  để một tấm tên tối hay chip xanh lá mặc định lạc giữa bàn.
+- Người đang tới lượt nổi rõ; ở trò nhiều người đi lần lượt (Tiến Lên), ô của những người khác
+  lùi lại (mờ đi một chút).
+- Trò bài **đổi bố cục theo pha** để người chơi luôn tập trung vào thứ đang quan trọng: lúc tự xếp
+  hay nặn bài thì người khác thu thành dải thẻ nhỏ trên cùng và bài của mình to giữa bàn; lúc so
+  bài thì bàn thu lại thành cột (hoặc nhà cái đối diện hàng người chơi), lật lần lượt từng người.
+  Chuyển pha bằng chuyển động trượt, không nhảy cảnh.
+- **Điều khiển**: trên máy tính có phím tắt cho việc lặp lại (đánh, bỏ lượt, cược, lật bài, gieo
+  xúc xắc, ngắm và bắn), ghi ở tooltip của nút; không làm phím cho từng quân cờ. Trên điện thoại,
+  vùng chạm tối thiểu khoảng 64 đơn vị; lưới nhỏ hơn thế thì chạm hai bước (chạm đánh dấu, chạm lại
+  để đi) hoặc nhấn giữ có kính lúp (cờ vây).
+- Nút hành động theo mức rủi ro: nút chính nổi nhất (Đánh, Xong, Lật bài), nút phụ trầm (Bỏ lượt,
+  Tự xếp), nút nguy hiểm (Đầu hàng) màu trầm và tách ra một khoảng.
 - Trong ván không hiện tên trò, tên phòng hay số dư xu.
 - Biểu cảm: chạm vào ô của mình, hoặc mở từ menu.
 
@@ -222,10 +240,42 @@ chơi. Bến có thêm ô nhập mã phòng:
 
 ![Bến: nhập mã phòng và danh sách phòng đang mở](concepts/room-list.webp)
 
+### Bạn bè
+
+Bến có hai tab ở giữa thanh trên: **Phòng** (như trên) và **Bạn bè**. Tab Bạn bè ghi số lời mời và
+tin nhắn đang chờ ("Bạn bè (2)"); khi có thì vào Bến là mở thẳng tab này, và nút Bến ở sảnh có
+chấm đỏ.
+
+- Bên trái: ô **Tên đăng nhập** với nút kết bạn, rồi danh sách theo nhóm: **Lời mời kết bạn**
+  (Đồng ý / ✕), **Bạn bè** (người đang online lên đầu, có chấm xanh trên ảnh; dòng dưới tên ghi
+  "Đang chơi Tiến Lên", "Đang online" hoặc "Không online"; số tin chưa đọc ở bên phải), **Đã gửi
+  lời mời** (✕ để huỷ). Mời một người đã mời mình thì thành bạn luôn.
+- Bên phải: trò chuyện với người bạn đang chọn. Đầu khung là ảnh, tên, đang ở đâu, nút **Vào
+  phòng** khi bạn ấy đang ở một phòng, và **Xoá bạn** (hỏi lại "Chắc chưa?"). Tin của mình là bong
+  bóng vàng bên phải, của bạn là bong bóng xanh bên trái. Enter để gửi; tin tối đa 300 ký tự.
+- Chỉ nhắn được cho bạn bè; trong ván vẫn chỉ có biểu cảm.
+- Trong phòng chờ, **Mời bạn** mở bảng các bạn (người online có nút **Mời**, người khác mờ đi) và
+  nút **Sao chép link** cho cách mời cũ. Người được mời thấy một thẻ trượt xuống từ trên: ảnh,
+  "Lan mời bạn chơi Tiến Lên", nút **Vào** và ✕; thẻ tự đi sau khoảng 14 giây.
+
 ## Kết thúc ván và phần thưởng
 
 ![Kết quả ván đấu](concepts/match-result.webp)
 
+- **Khoảnh khắc kết thúc** luôn đến trước bảng kết quả, ở mọi kiểu kết thúc (thắng, thua, hoà,
+  đầu hàng, đối thủ rời phòng, hết giờ):
+  - Trò có màn kết thúc riêng (`wait_for_result_panel()`) tự diễn và tự phát âm thanh thắng/thua;
+    hub chờ trò xong, tối đa 8 giây, rồi mới đưa bảng lên. Hub không phát thêm tiếng thắng/thua.
+  - Trò không có thì hub diễn màn mặc định: dừng khoảng 0,8 giây cho nước cuối kịp hiện, rồi một
+    dải lụa sơn mài giữa bàn chừng 1,6 giây: "Thắng rồi!" (đỏ sơn mài viền vàng đồng, vụn vàng bay
+    ra, tiếng thắng), "Thua rồi" (xám xanh, rơi xuống hơi lệch, tiếng thua), "Hoà" (gỗ mật ong).
+    Người xem thấy "<tên> thắng" trên dải xanh biển. Chạm để bỏ qua.
+  - Vào lại một phòng đã xong ván thì bảng hiện luôn, không diễn lại.
+- Bảng kết quả **đi lên** chứ không bật ra: nền tối dần, bảng trồi từ dưới lên hơi nảy, các dòng
+  hiện lần lượt, xong mới tới xu bay (khoảng nửa giây). Lúc này chỉ có tiếng giấy.
+- Mỗi trò có thể **khoác áo** cho bảng bằng `result_theme()`: màu giấy, màu chữ, màu nhấn (dòng
+  tiêu đề và hàng của bạn), màu nền tối, tên bảng thay cho "Hết ván" (ví dụ "Tàn cuộc") và một
+  hình nhỏ của trò ở đầu bảng.
 - Phần khung vẽ bảng kết quả. Trò chỉ trả về **thứ hạng** và tuỳ chọn một dòng tóm tắt
   ("Tới trắng!", "Thắng 3 cây"). Trò nào cần màn kết quả riêng (bảng điểm chi tiết) thì khai báo,
   và vẫn phải kết thúc bằng phần phần thưởng chung.
@@ -287,10 +337,37 @@ chơi. Bến có thêm ô nhập mã phòng:
 
 ## Đình: xếp hạng
 
-- Một bảng gỗ "Xếp hạng" với tab Cả xóm rồi từng trò. Mỗi hàng có hạng (vương miện cho hạng 1),
-  ảnh đại diện, tên và con số xếp hạng. Ai bằng điểm thì cùng hạng.
-- Hàng của chính bạn tô màu cát; nếu bạn ngoài top, hàng của bạn nằm dưới danh sách.
+- Bên trái là ngôi đình nổi trên mặt nước, dưới có tấm biển sơn son "Đình làng". Bên phải là một
+  bảng gỗ "Xếp hạng" với tab Cả xóm rồi từng trò.
+- Ba người đầu đứng trên bục vinh danh (nhì, nhất, ba từ trái sang): ảnh đại diện, tên, con số
+  xếp hạng, bậc bục vàng, bạc, đồng ghi hạng. Hạng 1 đội vương miện. Ai bằng điểm thì cùng hạng
+  và cùng màu bục.
+- Từ hạng 4 trở đi là các hàng: hạng, ảnh đại diện, tên và con số xếp hạng.
+- Tên bạn ghi thêm "(bạn)", hàng của bạn tô màu cát; nếu bạn ngoài top, hàng của bạn nằm dưới
+  danh sách.
 - Hồ sơ của người khác (chạm vào ô người chơi) dùng cùng thẻ, chỉ đọc.
+
+## Nhiệm vụ hằng ngày
+
+- Một bảng gỗ "Nhiệm vụ hằng ngày" mở đè lên sảnh. Hàng đầu luôn là **Điểm danh** (vào game là
+  xong), rồi ba nhiệm vụ đổi mỗi nửa đêm giờ Việt Nam, rút từ một danh sách: Chơi 3 ván, Chơi 5
+  ván, Thắng 1 ván, Thắng 3 ván, Chơi 2 ván bài, Chơi 2 ván cờ, Chơi 1 ván với người thật. Một
+  ngày không có hai nhiệm vụ cùng đếm một thứ.
+- Mỗi hàng: hình, tên, thanh tiến độ với "2/3", thưởng xu, nút **Nhận** (sáng khi xong, rồi thành
+  "Đã nhận"). Dưới cùng ghi "Đổi nhiệm vụ sau 5 giờ 12 phút".
+- Ván chơi với máy cũng được tính (trừ nhiệm vụ "với người thật"), mỗi ván xong cộng một vào
+  từng nhiệm vụ nó khớp.
+
+## Hộp thư
+
+- Thư từ Xóm Đảo, gửi từ trang quản lý: cho một người hoặc cả xóm, có khi kèm xu. Thư tới lúc
+  đang online thì hiện thông báo "Có thư mới".
+- Một bảng gỗ "Hộp thư" mở đè lên sảnh. Bên trái là danh sách thư, mới nhất trên cùng: phong bì
+  đỏ khi chưa đọc, tiêu đề, lúc nhận ("3 giờ trước"), đồng xu khi còn quà chưa nhận. Bên phải là
+  tờ thư đang mở trên giấy kem: tiêu đề, "Xóm Đảo · lúc nhận", nội dung, rồi quà xu với nút
+  **Nhận** (rồi "Đã nhận").
+- Mở bảng thì tờ thư đầu tiên là thư mới nhất còn chờ (chưa đọc hoặc còn quà). Mở một thư là đã
+  đọc. Không có thư thì tờ giấy ghi "Chưa có thư".
 
 ## Sự kiện
 
@@ -358,4 +435,4 @@ Một trò hay sự kiện **không được**:
 ## Còn để ngỏ
 
 - Ngọc (tài nguyên thứ hai) dùng vào việc gì.
-- Có chat chữ hay chỉ biểu cảm.
+- Chat chữ đã có giữa bạn bè (Bến › Bạn bè); trong ván có nên mở chat chữ hay giữ biểu cảm.

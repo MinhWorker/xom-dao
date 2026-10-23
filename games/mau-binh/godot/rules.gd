@@ -14,6 +14,27 @@ const FLUSH := 5
 const FULL_HOUSE := 6
 const QUADS := 7
 const STRAIGHT_FLUSH := 8
+## The hub's Tạo phòng board (`optionsSchema` in src/game/model.ts, with its defaults).
+const ROOM_SETUP: Array = [
+	{
+		"key": "bots",
+		"label": "Máy chơi cùng",
+		"options": [["Không", 0], ["1", 1], ["2", 2], ["3", 3]],
+	},
+	{
+		"key": "rounds",
+		"label": "Số vòng",
+		"options": [["1", 1], ["3", 3], ["5", 5]],
+		"default": 2,
+	},
+	{
+		"key": "arrangeSeconds",
+		"label": "Thời gian xếp",
+		"options": [["60 giây", 60], ["90 giây", 90]],
+		"default": 1,
+	},
+]
+
 const HAND_NAMES: Array[String] = [
 	"Mậu thầu", "Đôi", "Thú", "Sám cô", "Sảnh", "Thùng", "Cù lũ", "Tứ quý", "Thùng phá sảnh"
 ]
@@ -222,3 +243,50 @@ static func _cards_of(hand: Array, mask: int) -> Array:
 		if mask & (1 << i):
 			cards.append(int(hand[i]))
 	return cards
+
+
+## What `seat` won or lost on chi `chi` this round, against everyone (chi duels only).
+static func chi_result(result: Dictionary, seat: int, chi: int) -> int:
+	var won: Variant = chi_won(result, seat, chi)
+	return int(won) if won != null else 0
+
+
+## The words under a seat: left, sitting out, its special hand, binh lủng, arranged by the
+## computer; while arranging, whether it is done.
+static func tag_of(view: Dictionary, seat: int, dealt: bool, gone: bool, result: Variant) -> String:
+	if gone:
+		return "Rời bàn"
+	if not dealt:
+		return "Ngồi ngoài"
+	if result is Dictionary:
+		var shown: Dictionary = result
+		var special: Variant = (shown["specials"] as Array)[seat]
+		if special != null:
+			return SPECIAL_NAMES.get(str(special), "")
+		if bool((shown["fouls"] as Array)[seat]):
+			return "Binh lủng"
+		return "Máy xếp" if bool((shown["auto"] as Array)[seat]) else ""
+	if str(view["phase"]) == "arrange":
+		return "Xong" if bool((view["ready"] as Array)[seat]) else "Đang xếp"
+	return ""
+
+
+## "Thùng +2": a row's hand, and once its chi is compared (`shown` chi so far), its points.
+static func row_text(
+	result: Variant, seat: int, row: int, cards: Array, mine: bool, shown: int
+) -> String:
+	var text: String = hand_name(cards)
+	if mine:
+		text = "Chi %d · %s" % [row + 1, text]
+	if result is Dictionary and row < shown:
+		var points: int = chi_result(result as Dictionary, seat, row)
+		text += " %s" % (XomDaoUi.delta(points) if points != 0 else "0")
+	return text
+
+
+## A row's words: green won, red lost, cream until its chi is compared.
+static func row_color(result: Variant, seat: int, row: int, shown: int) -> Color:
+	if result is not Dictionary or row >= shown:
+		return XomDaoUi.CREAM
+	var points: int = chi_result(result as Dictionary, seat, row)
+	return Color("#8DFF8A") if points > 0 else (Color("#FF8A80") if points < 0 else XomDaoUi.CREAM)

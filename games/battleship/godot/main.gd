@@ -18,7 +18,7 @@ extends Control
 const Rules := preload("res://content/battleship/rules.gd")
 const Sea := preload("res://content/battleship/sea.gd")
 const EmotePicker := preload("res://content/battleship/emote_picker.gd")
-const SOUNDS: Array[String] = ["fire", "hit", "miss", "place", "ready", "sunk", "win"]
+const SOUNDS: Array[String] = ["fire", "hit", "miss", "place", "ready", "sunk", "win", "lose"]
 const INFO_WIDTH := 252.0
 const COMMAND_WIDTH := 360.0
 const INFO_BASE_HEIGHT := 84.0
@@ -41,6 +41,8 @@ var _view: Dictionary = {}
 var _me: int = -1
 
 var _ocean := TextureRect.new()
+var _skin: XomDaoTableSkin = BattleshipFinale.skin()
+var _finale := BattleshipFinale.new()
 var _big: Control = Sea.new()
 var _small: Control = Sea.new()
 var _slots: Array[XomDaoPlayerSlot] = []
@@ -121,17 +123,34 @@ func result_detail() -> Dictionary:
 	if _view.is_empty() or _view.get("end") == null:
 		return {}
 	var waters: Array = _view["waters"]
-	var fired: Array[String] = []
-	var sunk: Array[String] = []
+	var rows: Array = []
 	for seat: int in 2:
 		var target: Dictionary = waters[1 - seat]
-		fired.append("%s %d" % [_seat_name(seat), (target["shots"] as Array).size()])
-		sunk.append("%s %d" % [_seat_name(seat), (target["sunk"] as Array).size()])
+		var shots: Array = target["shots"]
+		rows.append(["%s bắn" % _seat_name(seat), "%d phát" % shots.size()])
+		rows.append(
+			["%s đánh chìm" % _seat_name(seat), "%d tàu" % (target["sunk"] as Array).size()]
+		)
 	var sank: bool = str((_view["end"] as Dictionary)["reason"]) == "sunk"
-	return {
-		"reason": "Cả hạm đội bị đánh chìm" if sank else _status.text,
-		"rows": [["Phát bắn", " · ".join(fired)], ["Tàu đã đánh chìm", " · ".join(sunk)]],
-	}
+	return {"reason": "Cả hạm đội bị đánh chìm" if sank else _status.text, "rows": rows}
+
+
+## Hub hook: the end beat (signal flags, or the fleet going down) before the result board.
+func wait_for_result_panel() -> void:
+	if _client != null and _client.snapshot != null:
+		_show(_client.snapshot)
+	await _finale.wait()
+
+
+## Hub hook: the result board on chart paper.
+func result_theme() -> Dictionary:
+	var path := "res://content/battleship/art/emblem.webp"
+	return BattleshipFinale.theme(load(path) if ResourceLoader.exists(path) else null)
+
+
+## Hub hook: the ☰ button and the seats in steel and brass.
+func table_skin() -> XomDaoTableSkin:
+	return _skin
 
 
 func bind(client: XomDaoClient) -> void:
@@ -161,6 +180,7 @@ func _ready() -> void:
 	for seat: int in 2:
 		var slot := XomDaoPlayerSlot.new()
 		slot.name = "Seat_%d" % seat
+		slot.skin = _skin
 		slot.avatar.gui_input.connect(_on_avatar_input.bind(seat))
 		add_child(slot)
 		_slots.append(slot)
@@ -188,7 +208,7 @@ func _ready() -> void:
 		_emote_tweens.append(null)
 	_info_panel.name = "CommandPanel"
 	_info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var panel_style := XomDaoUi.box(XomDaoUi.NAVY_HUD, XomDaoUi.NAVY_LINE, 2, 20.0)
+	var panel_style := _skin.plate_box(2)
 	panel_style.set_content_margin_all(12.0)
 	_info_panel.add_theme_stylebox_override("panel", XomDaoUi.with_shadow(panel_style))
 	add_child(_info_panel)
@@ -234,26 +254,34 @@ func _ready() -> void:
 		_fleet.add_child(ship)
 		_fleet_rows.append(ship)
 	_action_panel.name = "ActionDock"
-	var action_style := XomDaoUi.box(XomDaoUi.NAVY_HUD, XomDaoUi.SEA_DEEP, 3, 20.0)
+	var action_style := _skin.plate_box(2)
 	action_style.set_content_margin_all(10.0)
 	_action_panel.add_theme_stylebox_override("panel", XomDaoUi.with_shadow(action_style))
 	add_child(_action_panel)
 	_action_tiles.append(
-		_make_action_tile(_shuffle, "Xếp lại", XomDaoUi.SEA_DEEP, XomDaoUi.SEA, _on_shuffle)
-	)
-	_action_tiles.append(
 		_make_action_tile(
-			_ready_button, "Sẵn sàng", XomDaoUi.BAMBOO_DARK, XomDaoUi.BAMBOO, _on_ready
+			_shuffle, "Xếp lại", BattleshipFinale.STEEL_LIGHT, BattleshipFinale.BRASS, _on_shuffle
 		)
 	)
 	_action_tiles.append(
-		_make_action_tile(_resign, "Đầu hàng", XomDaoUi.LACQUER_DARK, XomDaoUi.LANTERN, _on_resign)
+		_make_action_tile(
+			_ready_button,
+			"Sẵn sàng",
+			BattleshipFinale.SIGNAL_GREEN,
+			BattleshipFinale.BRASS,
+			_on_ready
+		)
+	)
+	_action_tiles.append(
+		_make_action_tile(_resign, "Đầu hàng", Color("#4A1C1C"), Color("#8A3A32"), _on_resign)
 	)
 	_action_tiles[0].name = "ShuffleTile"
 	_action_tiles[1].name = "ReadyTile"
 	_action_tiles[2].name = "ResignTile"
 	_shuffle.name = "Shuffle"
 	_ready_button.name = "Ready"
+	_ready_button.tooltip_text = "Sẵn sàng (phím Enter)"
+	_shuffle.tooltip_text = "Xếp lại (R xoay tàu đang chọn)"
 	_resign.name = "Resign"
 	_resign_label = _action_tiles[2].get_node("ActionLabel") as Label
 	_action_buttons.append(_shuffle)
@@ -264,6 +292,7 @@ func _ready() -> void:
 	_fx.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_fx)
 	add_child(_emote_picker)
+	add_child(_finale)
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
 		player.bus = XomDaoSettings.SFX_BUS
@@ -281,7 +310,9 @@ func _make_action_tile(
 	button.background = face
 	button.edge = edge
 	button.border = 2
-	button.lit = true
+	button.lit = false
+	for state: String in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
+		button.add_theme_color_override(state, BattleshipFinale.CHART)
 	button.tooltip_text = label_text
 	button.pressed.connect(action)
 	var tile := Control.new()
@@ -342,12 +373,49 @@ func _show(snapshot: XomDaoRoomSnapshot) -> void:
 		_picked = -1
 	_draw_seas()
 	_show_hud()
-	var ended: bool = view.get("end") != null
-	if ended and not _ended and live and _me >= 0:
-		if int((view["end"] as Dictionary)["winner"]) == _me:
-			_sfx("win")
-	_ended = ended
+	_ended = view.get("end") != null
 	_layout()
+	# The end beat once the last move has landed.
+	if _finale.follow(snapshot):
+		get_tree().create_timer(0.9).timeout.connect(_play_end)
+
+
+func _play_end() -> void:
+	if not is_inside_tree() or not _finale.armed():
+		return
+	var end: Variant = _view.get("end")
+	var winner: int = int((end as Dictionary)["winner"]) if end is Dictionary else -1
+	var loser: int = 1 - winner
+	var outcome: String = "watch" if _me < 0 else ("win" if winner == _me else "lose")
+	var headline: String = {"win": "Thắng rồi!", "lose": "Thua rồi"}.get(
+		outcome, "%s thắng" % _seat_name(winner)
+	)
+	var line: String = ""
+	match str((end as Dictionary).get("reason", "")) if end is Dictionary else "":
+		"resign":
+			line = "%s đầu hàng" % _seat_name(loser)
+		"left":
+			line = "%s rời trận" % _seat_name(loser)
+		_:
+			if outcome == "lose":
+				line = "Hạm đội của bạn chìm hết"
+			elif outcome == "win":
+				line = "Hạm đội đối phương chìm hết"
+			else:
+				line = "Hạm đội %s chìm hết" % _seat_name(loser)
+	var cell: float = float(_big.get("cell"))
+	(
+		_finale
+		. play(
+			{
+				"outcome": outcome,
+				"headline": headline,
+				"line": line,
+				"sea": Rect2(_big.position, Vector2.ONE * cell * Rules.SIZE),
+				"sound": _sfx.bind("win" if outcome != "lose" else "lose"),
+			}
+		)
+	)
 
 
 static func _to_int(value: Variant) -> int:
@@ -580,6 +648,8 @@ func _on_big_input(event: InputEvent) -> void:
 			_release(cell)
 		return
 	var motion := event as InputEventMouseMotion
+	if motion != null and _my_turn():
+		_big.set("aim", _big.call("cell_at", motion.position))
 	if motion != null and _pressing and _press_ship >= 0:
 		_press_moved = _press_moved or motion.position.distance_to(_press_from) > DRAG
 		if not _press_moved:
@@ -616,12 +686,7 @@ func _release(cell: int) -> void:
 			var moved: Array = _moved(ship, _press_part, cell, Rules.is_vertical(_draft[ship]))
 			changed = _place(ship, moved)
 	elif ship >= 0 and ship == _picked:
-		var cells: Array = _draft[ship]
-		var first: int = int(cells.min())
-		var turned: Array = Rules.ship_at(
-			first / Rules.SIZE, first % Rules.SIZE, cells.size(), not Rules.is_vertical(cells)
-		)
-		changed = _place(ship, turned)
+		changed = _place(ship, Rules.turned(_draft[ship]))
 	elif ship >= 0:
 		_picked = ship
 	elif _picked >= 0 and cell >= 0:
@@ -632,6 +697,36 @@ func _release(cell: int) -> void:
 	if changed:
 		_sfx("place")
 		_send_fleet()
+
+
+## Desktop keys. In battle: the arrows move the sight on the other side's sea, Enter or Space
+## fires. Setting up: R turns the picked ship (the first one when none is), Enter is Sẵn sàng.
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or _view.is_empty() or _me < 0:
+		return
+	var steps: Dictionary = {KEY_LEFT: -1, KEY_RIGHT: 1, KEY_UP: -Rules.SIZE, KEY_DOWN: Rules.SIZE}
+	var aim: int = int(_big.get("aim"))
+	if _my_turn() and steps.has(key.keycode):
+		var step: int = steps[key.keycode]
+		var next: int = 44 if aim < 0 else aim + step
+		var wraps: bool = absi(step) == 1 and (next / Rules.SIZE != aim / Rules.SIZE)
+		if aim < 0 or (next >= 0 and next < Rules.SIZE * Rules.SIZE and not wraps):
+			_big.set("aim", next)
+	elif _my_turn() and key.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE] and not key.echo:
+		_fire(aim)
+	elif _arranging() and key.keycode == KEY_R and not key.echo:
+		var ship: int = maxi(_picked, 0)
+		_picked = ship
+		if _place(ship, Rules.turned(_draft[ship])):
+			_sfx("place")
+			_send_fleet()
+		_draw_seas()
+	elif _arranging() and key.keycode in [KEY_ENTER, KEY_KP_ENTER] and _ready_button.visible:
+		_on_ready()
+	else:
+		return
+	get_viewport().set_input_as_handled()
 
 
 func _place(ship: int, cells: Array) -> bool:
@@ -754,6 +849,7 @@ func _show_hud() -> void:
 		if gone:
 			left.erase(length)
 		_fleet_rows[k].modulate.a = 0.35 if gone else 1.0
+	_big.set("aiming", _my_turn())
 	var arranging: bool = _arranging()
 	_action_tiles[0].visible = arranging
 	_action_tiles[1].visible = arranging
@@ -870,7 +966,12 @@ func _layout() -> void:
 	if visible_tiles.size() > 1:
 		tiles_width += float(visible_tiles.size() - 1) * tile_spacing
 	var tile_x := (action_width - tiles_width) / 2.0
+	# Đầu hàng stands a little apart from the others.
+	if visible_tiles.size() > 1 and visible_tiles.has(_action_tiles[2]):
+		tile_x -= 8.0
 	for tile: Control in visible_tiles:
+		if tile == _action_tiles[2] and visible_tiles.size() > 1:
+			tile_x += 16.0
 		tile.position = Vector2(tile_x, 10.0)
 		tile.size = Vector2(ACTION_TILE_WIDTH, ACTION_TILE_HEIGHT)
 		tile_x += ACTION_TILE_WIDTH + tile_spacing

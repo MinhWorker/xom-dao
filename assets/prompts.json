@@ -289,6 +289,11 @@
       "transparent": false,
       "maxSize": 512,
       "prompt": "Square application icon for Xóm Đảo. A large circular badge showing a compact floating green island with a cozy terracotta-roof house, one broad leafy tree, a small turquoise waterfall and a few colored game tokens. Preserve a polished, cheerful 3D cartoon game illustration with rounded forms and crisp detail. The circular badge is centered and fills most of the square. The corners outside the circle are solid black (#000000), with no text, lettering, border, extra objects or watermark."
+    },
+    "dinh": {
+      "transparent": true,
+      "maxSize": 900,
+      "prompt": "A single isometric diorama of a small traditional Vietnamese village communal house (dinh lang): a finished red-tiled roof with deeply curved upturned eaves ending in little carved dragon finials, dark red lacquered wooden pillars, a raised stone base with three steps, a small red lantern hanging at each of two corners, a carved wooden plaque above the entrance with no readable letters, two small potted kumquat trees by the steps, and a brick courtyard edge. No scaffolding, tools or construction. Three-quarter view from above, centered, compact."
     }
   }
 }

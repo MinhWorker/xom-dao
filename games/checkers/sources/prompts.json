@@ -1,0 +1,17 @@
+{
+  "$comment": "Prompts for this game's art. harbor and emblem were made with Antigravity (agy, its built-in image tool) because Codex had no image tool on this account; emblem was asked for on flat #00FF00 and keyed with key_green.py. With Codex: npm run gen:asset -- checkers/<name> (the style in assets/prompts.json is added). Pieces, board and island are Blender bakes (render_assets.py).",
+  "assets": {
+    "harbor": {
+      "transparent": false,
+      "maxSize": 1600,
+      "generator": "agy",
+      "prompt": "A wide landscape 16:9 game background, polished stylized 3D cartoon art for a cheerful Vietnamese casual mobile board game: a quiet Vietnamese fishing-village harbor at dusk seen straight down from directly above (top-down orthographic, no horizon, no sky). The whole central area, about 60 percent of the width and the full height, is calm open deep teal sea water, darker and low contrast with only faint soft ripples and a warm dusk sheen, completely empty (no boat, raft, platform, table, board or rectangle in the middle). All detail stays in the outer margins: along the left edge a weathered honey-brown wooden plank pier with coiled hemp rope, a woven bamboo fish basket and a glowing red paper lantern; on the right side two round woven bamboo basket boats (thuyen thung) with dark rims moored on ropes; in the top right corner a curve of pale sand beach with a fishing net drying on bamboo poles and smooth dark rocks with seaweed. Soft rounded chunky shapes, clean color areas, light from the top left, small warm amber lantern glows. Side margins and lower corners kept dark and uncluttered. No text, letters, people, chessboard, game pieces, UI, frame or watermark."
+    },
+    "emblem": {
+      "transparent": true,
+      "maxSize": 320,
+      "generator": "agy",
+      "prompt": "A single game emblem icon, polished stylized 3D cartoon art for a cheerful Vietnamese casual mobile board game: a round glowing red Vietnamese paper lantern (red #D3603F with darker ribs and brass-gold #E7B53C caps and a short gold tassel) hanging in front of a stack of two round draughts (checkers) pieces, one dark ebony and one ivory, the top ivory piece carrying a small brass-gold crown inlay. Front view, slightly from above, centered, compact, filling about 80 percent of a square frame, light from the top left, soft rounded chunky shapes, clean edges. Background: perfectly flat solid pure green #00FF00 everywhere, no shadow on the background, no gradient. No text, letters, numbers, frame or watermark."
+    }
+  }
+}

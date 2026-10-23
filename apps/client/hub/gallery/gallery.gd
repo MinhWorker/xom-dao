@@ -136,6 +136,18 @@ func _players_page() -> Control:
 	hoa.level = 3
 	hoa.show_turn()
 	slots.add_child(hoa)
+	# A card table's small seat, in a table's own skin (a walnut table here).
+	var skin := XomDaoTableSkin.new()
+	skin.plate = Color("#2E1B10")
+	skin.edge = Color("#C99A4A")
+	skin.chip = Color("#4A2C18")
+	skin.chip_ink = Color("#FFC870")
+	var pill := XomDaoSeatPill.new()
+	pill.dress(skin, true)
+	var info := XomDaoPlayerInfo.new()
+	info.avatar = "fox"
+	pill.show_player(info, "Mai", 15, "Đang nặn", Color("#F6E6C6"), 0.6)
+	slots.add_child(pill)
 	row.add_child(slots)
 	var cards := _column(12)
 	for face: Array in [["A", 3], ["10", 0], ["", 0]]:

@@ -25,6 +25,9 @@ var pad: float = 0.0:
 ## The raised body behind the label.
 var body: XomDaoPuff
 
+## A table's own colours in place of the kind's ([face, edge, words]; `dress`).
+var _dress: Array[Color] = []
+
 
 static func create(label: String, button_kind: XomDaoUi.Kind = XomDaoUi.Kind.GO) -> XomDaoButton:
 	var button := XomDaoButton.new()
@@ -49,13 +52,19 @@ func _on_down() -> void:
 	XomDaoUi.play(self, XomDaoUi.SOUND_TAP)
 
 
+## Paints the button in a table's own colours (XomDaoTableSkin) instead of its kind's.
+func dress(face: Color, edge: Color, words: Color) -> void:
+	_dress = [face, edge, words]
+	_restyle()
+
+
 func _restyle() -> void:
 	if body == null:
 		return
 	var play: bool = kind == XomDaoUi.Kind.PLAY
 	var home_play: bool = kind == XomDaoUi.Kind.HOME_PLAY
-	var text: Color = XomDaoUi.kind_text(kind)
-	var colors: Array[Color] = XomDaoUi.kind_colors(kind)
+	var text: Color = XomDaoUi.kind_text(kind) if _dress.is_empty() else _dress[2]
+	var colors: Array[Color] = XomDaoUi.kind_colors(kind) if _dress.is_empty() else _dress
 	body.face = colors[0]
 	body.edge = colors[1]
 	body.border = 4 if play else XomDaoUi.BORDER

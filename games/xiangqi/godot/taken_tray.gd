@@ -43,3 +43,15 @@ func show_pieces(letters: Array[String], textures: Array[Texture2D]) -> bool:
 		_grid.add_child(piece)
 	visible = not letters.is_empty()
 	return true
+
+
+## Just the disc of a piece's picture (the picture has room round it for the shadow); `share` is
+## the disc's width as a share of the picture.
+static func disc_of(picture: Texture2D, share: float) -> Texture2D:
+	var side: float = picture.get_width() * share * 1.1
+	var disc := AtlasTexture.new()
+	disc.atlas = picture
+	disc.region = Rect2(
+		(Vector2(picture.get_size()) - Vector2.ONE * side) / 2.0, Vector2.ONE * side
+	)
+	return disc

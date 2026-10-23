@@ -45,7 +45,10 @@ writes the `.uid` files, and commit them.
    `XomDaoPlayerSlot`, `XomDaoChip`, `XomDaoUi` colours and fonts), never your own. Leave the top
    left 88 × 88 for the hub's ☰. Update `sandbox_options()` and `room_setup()` to match the
    options. Split helpers into more scripts in `godot/` and `preload("res://content/<id>/x.gd")`
-   them; never reach outside the game's folder or `addons/xomdao_sdk`.
+   them; never reach outside the game's folder or `addons/xomdao_sdk`. For the end of a game,
+   either rely on the hub's default end beat (then play no win/lose sound yourself) or define
+   `wait_for_result_panel()` for every ending and own the sound; optionally `result_detail()` and
+   `result_theme()` to fit the result board to the game (`games/AGENTS.md`).
 4. **GUT test** (`godot/test/test_main.gd`): build a snapshot by hand, check what is shown and
    which buttons are enabled.
 5. **E2E** (`scripts/e2e/scenarios/godot-<id>.mjs`): play the sandbox to the end through named

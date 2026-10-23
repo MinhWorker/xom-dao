@@ -3,7 +3,7 @@ extends RefCounted
 ## Generated from packages/shared/src/protocol.ts by npm run gen:protocol. Do not edit.
 ## Requests (`{ id, event, data }` on /ws) and the events the server pushes (`{ event, data }`).
 
-const VERSION := 10
+const VERSION := 11
 const MISMATCH := "protocol-mismatch"
 const COIN := "core:coin"
 
@@ -38,6 +38,18 @@ const GAME_START := "game:start"
 const GAME_MOVE := "game:move"
 const GAME_RESTART := "game:restart"
 const EMOTE_SEND := "emote:send"
+const FRIENDS_LIST := "friends:list"
+const FRIENDS_ADD := "friends:add"
+const FRIENDS_ANSWER := "friends:answer"
+const FRIENDS_REMOVE := "friends:remove"
+const CHAT_HISTORY := "chat:history"
+const CHAT_SEND := "chat:send"
+const QUESTS_GET := "quests:get"
+const QUESTS_CLAIM := "quests:claim"
+const MAIL_GET := "mail:get"
+const MAIL_READ := "mail:read"
+const MAIL_CLAIM := "mail:claim"
+const FRIENDS_INVITE := "friends:invite"
 
 ## Events the server pushes.
 const ROOM_STATE := "room:state"
@@ -46,9 +58,14 @@ const ROOM_CLOSED := "room:closed"
 const ROOM_EMOTE := "room:emote"
 const REWARD := "reward"
 const ACHIEVEMENT := "achievement"
+const FRIENDS_CHANGED := "friends:changed"
+const CHAT_MESSAGE := "chat:message"
+const ROOM_INVITE := "room:invite"
+const MAIL_CHANGED := "mail:changed"
 
 const ROOM_STATUS: Array[String] = ["lobby", "playing", "finished"]
 const ROOM_ROLE: Array[String] = ["player", "spectator"]
+const FRIEND_STATE: Array[String] = ["friend", "incoming", "outgoing"]
 
 static var _replies: Dictionary = {
 	"auth:token": XomDaoAuthReply,
@@ -67,6 +84,16 @@ static var _replies: Dictionary = {
 	"room:create": XomDaoJoinedRoom,
 	"room:quick": XomDaoJoinedRoom,
 	"room:join": XomDaoJoinedRoom,
+	"friends:list": XomDaoFriendList,
+	"friends:add": XomDaoFriendList,
+	"friends:answer": XomDaoFriendList,
+	"friends:remove": XomDaoFriendList,
+	"chat:history": XomDaoChatHistory,
+	"quests:get": XomDaoQuestBoard,
+	"quests:claim": XomDaoQuestClaim,
+	"mail:get": XomDaoMailbox,
+	"mail:read": XomDaoMailbox,
+	"mail:claim": XomDaoMailClaim,
 }
 static var _events: Dictionary = {
 	"room:state": XomDaoRoomSnapshot,
@@ -75,6 +102,10 @@ static var _events: Dictionary = {
 	"room:emote": XomDaoRoomEmote,
 	"reward": XomDaoRewardNotice,
 	"achievement": XomDaoAchievementNotice,
+	"friends:changed": XomDaoFriendList,
+	"chat:message": XomDaoChatMessage,
+	"room:invite": XomDaoRoomInvite,
+	"mail:changed": XomDaoMailbox,
 }
 
 

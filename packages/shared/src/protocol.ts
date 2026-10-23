@@ -22,7 +22,7 @@ import { ITEM_SLOTS } from './items.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 10;
+export const PROTOCOL_VERSION = 11;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
@@ -369,6 +369,110 @@ export const AchievementNotice = z.object({
 });
 export type AchievementNotice = z.infer<typeof AchievementNotice>;
 
+// ── Bạn bè (friends) ───────────────────────────────────────────────────────────────────────
+
+/** The longest chat message, in characters. */
+export const CHAT_MAX = 300;
+/** How many messages `chat:history` returns (the newest). */
+export const CHAT_HISTORY = 50;
+/** How many friends (and requests) an account may have. */
+export const FRIENDS_MAX = 100;
+
+/** Where someone stands with you: a friend, or a request one way or the other. */
+export const FriendState = z.enum(['friend', 'incoming', 'outgoing']);
+export type FriendState = z.infer<typeof FriendState>;
+
+/** Someone in your Bạn bè list. Online and room are only told between friends. */
+export const Friend = z.object({
+  id: z.string(),
+  username: z.string(),
+  name: z.string(),
+  avatar: z.string(),
+  frame: z.string(),
+  state: FriendState,
+  online: z.boolean(),
+  /** The game whose room they are in, and its code (friends only). */
+  gameId: z.string().optional(),
+  roomCode: z.string().optional(),
+  /** Their messages you haven't read. */
+  unread: z.int(),
+});
+export type Friend = z.infer<typeof Friend>;
+
+export const FriendList = z.object({ friends: z.array(Friend) });
+export type FriendList = z.infer<typeof FriendList>;
+
+/** One chat message between two friends; `at` in ms since the epoch. */
+export const ChatMessage = z.object({
+  id: z.string(),
+  from: z.string(),
+  to: z.string(),
+  text: z.string(),
+  at: z.number(),
+});
+export type ChatMessage = z.infer<typeof ChatMessage>;
+
+export const ChatHistory = z.object({ userId: z.string(), messages: z.array(ChatMessage) });
+export type ChatHistory = z.infer<typeof ChatHistory>;
+
+/** A friend asks you to their room. */
+export const RoomInvite = z.object({
+  fromId: z.string(),
+  fromName: z.string(),
+  avatar: z.string(),
+  frame: z.string(),
+  roomCode: z.string(),
+  gameId: z.string(),
+});
+export type RoomInvite = z.infer<typeof RoomInvite>;
+
+// ── Nhiệm vụ (daily quests) ─────────────────────────────────────────────────────────────────
+
+/** One of today's quests, with how far you are and whether you took its reward. */
+export const Quest = z.object({
+  id: z.string(),
+  title: z.string(),
+  goal: z.int(),
+  progress: z.int(),
+  /** Coins. */
+  reward: z.int(),
+  claimed: z.boolean(),
+});
+export type Quest = z.infer<typeof Quest>;
+
+/** Today's quests (`questsOf`), and how long until they change (ms). */
+export const QuestBoard = z.object({ day: z.string(), endsIn: z.number(), quests: z.array(Quest) });
+export type QuestBoard = z.infer<typeof QuestBoard>;
+
+export const QuestClaim = z.object({ board: QuestBoard, balances: Balances });
+
+// ── Hộp thư (mailbox) ───────────────────────────────────────────────────────────────────────
+
+/** How long a letter's title and body may be, and the most coins one may carry. */
+export const MAIL_TITLE_MAX = 60;
+export const MAIL_BODY_MAX = 1000;
+export const MAIL_COINS_MAX = 100_000;
+
+/** A letter from Xóm Đảo: to you or to everyone, maybe with coins to take (`mail:claim`). */
+export const Letter = z.object({
+  id: z.string(),
+  title: z.string(),
+  body: z.string(),
+  coins: z.number(),
+  /** When it was sent (ms since 1970). */
+  sentAt: z.number(),
+  read: z.boolean(),
+  claimed: z.boolean(),
+});
+export type Letter = z.infer<typeof Letter>;
+
+/** Your newest letters, newest first, and how many want you: unread or with coins to take. */
+export const Mailbox = z.object({ letters: z.array(Letter), waiting: z.number() });
+export type Mailbox = z.infer<typeof Mailbox>;
+
+export const MailClaim = z.object({ mailbox: Mailbox, balances: Balances });
+export type MailClaim = z.infer<typeof MailClaim>;
+
 // ── Requests and events ─────────────────────────────────────────────────────────────────────
 
 const Empty = z.object({});
@@ -485,6 +589,38 @@ export const requests = {
   'game:restart': { req: Empty, res: Empty },
   /** Send an owned emote to everyone currently in your room. */
   'emote:send': { req: z.object({ emote: z.string() }), res: Empty },
+  /**
+   * Bạn bè: your friends and requests, friends online first. `friends:add` asks someone by their
+   * username (or accepts their request to you); `friends:answer` accepts or turns down a request
+   * to you; `friends:remove` ends a friendship or takes back a request. Each replies with your
+   * new list; the other side gets `friends:changed`.
+   */
+  'friends:list': { req: Empty, res: FriendList },
+  'friends:add': { req: z.object({ username: z.string() }), res: FriendList },
+  'friends:answer': { req: z.object({ userId: z.string(), accept: z.boolean() }), res: FriendList },
+  'friends:remove': { req: z.object({ userId: z.string() }), res: FriendList },
+  /** The newest `CHAT_HISTORY` messages with a friend, oldest first; marks theirs read. */
+  'chat:history': { req: z.object({ userId: z.string() }), res: ChatHistory },
+  /** Sends a friend a message (1–`CHAT_MAX` characters); they get `chat:message`. */
+  'chat:send': {
+    req: z.object({ userId: z.string(), text: z.string() }),
+    res: z.object({ message: ChatMessage }),
+  },
+  /**
+   * Nhiệm vụ hằng ngày: today's quests with your progress. `quests:claim` pays a finished
+   * quest's reward through the ledger, once a day ("Chưa xong nhiệm vụ", "Bạn đã nhận rồi").
+   */
+  'quests:get': { req: Empty, res: QuestBoard },
+  'quests:claim': { req: z.object({ id: z.string() }), res: QuestClaim },
+  /**
+   * Hộp thư: your newest letters. `mail:read` marks one read; `mail:claim` pays its coins
+   * through the ledger, once ("Thư này không có quà", "Bạn đã nhận rồi").
+   */
+  'mail:get': { req: Empty, res: Mailbox },
+  'mail:read': { req: z.object({ id: z.string() }), res: Mailbox },
+  'mail:claim': { req: z.object({ id: z.string() }), res: MailClaim },
+  /** Asks a friend to the room you are in; they get `room:invite`. */
+  'friends:invite': { req: z.object({ userId: z.string() }), res: Empty },
 };
 
 /** What the server pushes. */
@@ -499,6 +635,14 @@ export const events = {
   reward: RewardNotice,
   /** A game you played got you achievements; their rewards are paid. */
   achievement: AchievementNotice,
+  /** Your Bạn bè list changed: a request, an answer, a friend coming online or into a room. */
+  'friends:changed': FriendList,
+  /** A friend sent you a message (also sent to your own other tabs when you send one). */
+  'chat:message': ChatMessage,
+  /** A friend asks you to their room. */
+  'room:invite': RoomInvite,
+  /** A letter came: your fresh Hộp thư. */
+  'mail:changed': Mailbox,
 };
 
 /**
@@ -545,6 +689,18 @@ export const types = {
   RoomList,
   LobbyRooms,
   RoomClosed,
+  FriendState,
+  Friend,
+  FriendList,
+  ChatMessage,
+  ChatHistory,
+  RoomInvite,
+  Quest,
+  QuestBoard,
+  QuestClaim,
+  Letter,
+  Mailbox,
+  MailClaim,
 };
 
 /** Every request gets either `{ ok: true, ...data }` or `{ ok: false, error }`. */

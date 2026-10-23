@@ -91,6 +91,29 @@ func test_the_table_shows_the_turn_and_the_horses() -> void:
 	assert_true(red.position.y < yellow.position.y)
 
 
+func test_the_dice_the_note_and_the_horses_home() -> void:
+	var table := _table(_state())
+	await wait_frames(2)
+	var tray: Control = table.find_child("DiceTray", true, false)
+	assert_true(tray.visible)
+	assert_true(tray.get("ready_to_roll"))
+	var state := _state(
+		{"turn": 1, "phase": "pause", "dice": 6, "notice": "Không có nước đi · Thêm lượt"}
+	)
+	state["horses"][1] = _team([57, 56, -1, -1])
+	var client: XomDaoClient = table.get("_client")
+	var snapshot: XomDaoRoomSnapshot = client.snapshot
+	snapshot.view = state
+	client.state_changed.emit(snapshot)
+	assert_false(tray.get("ready_to_roll"))
+	assert_eq(
+		(table.find_child("Notice", true, false) as Label).text, "Không có nước đi\nThêm lượt"
+	)
+	assert_eq((table.find_child("Status", true, false) as Label).text, "Lượt Máy 1")
+	assert_eq(table.find_child("Home_1", true, false).get("home"), 2)
+	assert_eq(table.find_child("Home_0", true, false).get("home"), 0)
+
+
 func test_the_winner_is_named() -> void:
 	var state := _state({"winner": 1, "rankings": [1]})
 	state["horses"][1] = _team([57, 56, 55, 54])
@@ -161,8 +184,17 @@ func test_a_team_home_gets_its_plaque() -> void:
 	await wait_seconds(0.5)
 	var rank: Label = table.find_child("BadgeRank", true, false)
 	assert_not_null(rank)
+	# Máy 1 won, so for you it is a loss: its plaque says so, without fireworks.
 	if rank != null:
-		assert_eq(rank.text, "HẠNG 1")
+		assert_eq(rank.text, "BẠN THUA")
 		assert_eq((table.find_child("BadgeName", true, false) as Label).text, "Máy 1")
+		assert_eq((table.find_child("BadgeHeading", true, false) as Label).text, "VỀ NHẤT")
 	assert_eq(table.find_children("Celebration", "", true, false).size(), 1)
 	assert_eq(table.call("rank_of", done, 0), 0)
+	# The result board waits for the end beat, then the table is quiet.
+	await table.call("wait_for_result_panel")
+	assert_eq(table.find_children("Celebration", "", true, false).size(), 0)
+	assert_false(table.get("_running"))
+	var theme: Dictionary = table.call("result_theme")
+	assert_eq(theme["title"], "Hết cuộc đua")
+	assert_true(theme["emblem"] is Texture2D)

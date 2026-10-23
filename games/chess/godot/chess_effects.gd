@@ -2,6 +2,7 @@ extends RefCounted
 ## Small, non-blocking board effects shared by moves and captures.
 
 static var _spark_texture: Texture2D
+static var _shadow_texture: Texture2D
 
 
 static func castle_rook(from: int, to: int) -> Array:
@@ -118,3 +119,21 @@ static func _get_spark_texture() -> Texture2D:
 			image.set_pixel(x, y, Color(1.0, 0.88, 0.52, alpha * alpha))
 	_spark_texture = ImageTexture.create_from_image(image)
 	return _spark_texture
+
+
+## A soft round contact shadow for a piece, made once.
+static func piece_shadow_texture() -> Texture2D:
+	if _shadow_texture != null:
+		return _shadow_texture
+	const WIDTH := 96
+	const HEIGHT := 64
+	var image := Image.create(WIDTH, HEIGHT, false, Image.FORMAT_RGBA8)
+	for y: int in HEIGHT:
+		for x: int in WIDTH:
+			var dx: float = (float(x) + 0.5 - WIDTH * 0.5) / (WIDTH * 0.5)
+			var dy: float = (float(y) + 0.5 - HEIGHT * 0.5) / (HEIGHT * 0.5)
+			var radius: float = sqrt(dx * dx + dy * dy)
+			var alpha: float = pow(maxf(1.0 - radius, 0.0), 2.2) * 0.58
+			image.set_pixel(x, y, Color(0.035, 0.022, 0.014, alpha))
+	_shadow_texture = ImageTexture.create_from_image(image)
+	return _shadow_texture

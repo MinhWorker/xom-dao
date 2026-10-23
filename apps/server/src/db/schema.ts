@@ -1,7 +1,8 @@
 // Database tables (Drizzle ORM). After changing this file run `npm run db:generate -w @xomdao/server`
 // to write a migration into `apps/server/drizzle/`; the server applies pending migrations on start.
 // Rooms and games still live in memory (see rooms.service.ts); accounts, finished games
-// (match history), the ledger, Túi đồ, event progress, stats and achievements are stored here. Each module owns its
+// (match history), the ledger, Túi đồ, event progress, stats, achievements, Bạn bè (friends,
+// chat), Nhiệm vụ and Hộp thư are stored here. Each module owns its
 // own tables (docs/adr/0002-modules.md).
 import {
   bigint,
@@ -226,4 +227,99 @@ export const achievements = pgTable(
     unlockedAt: timestamp('unlocked_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.achievementId] })],
+);
+
+/**
+ * Bạn bè: one row per pair of accounts (see friends.service.ts). `requesterId` asked
+ * `addresseeId`; the row is a pending request until `acceptedAt` is set.
+ */
+export const friendships = pgTable(
+  'friendships',
+  {
+    requesterId: uuid('requester_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    addresseeId: uuid('addressee_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.requesterId, t.addresseeId] }),
+    index('friendships_addressee_idx').on(t.addresseeId),
+  ],
+);
+
+/** Chat between friends, kept for good (the client reads the newest few). */
+export const friendMessages = pgTable(
+  'friend_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    fromId: uuid('from_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    toId: uuid('to_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    text: text('text').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+    /** When the receiver read it (`chat:history`), or null. */
+    readAt: timestamp('read_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('friend_messages_pair_idx').on(t.fromId, t.toId, t.sentAt),
+    index('friend_messages_to_idx').on(t.toId, t.readAt),
+  ],
+);
+
+/**
+ * Nhiệm vụ hằng ngày: how far each account is with each of a day's quests, and whether it took the
+ * reward (see quests.service.ts). `day` is the date in Vietnam ("2026-10-23").
+ */
+export const questProgress = pgTable(
+  'quest_progress',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    day: text('day').notNull(),
+    questId: text('quest_id').notNull(),
+    count: integer('count').notNull().default(0),
+    claimed: boolean('claimed').notNull().default(false),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day, t.questId] })],
+);
+
+/**
+ * Hộp thư: letters from Xóm Đảo (sent from the console, see mail.service.ts). `userId` null is a
+ * letter to everyone. Coins are paid through the ledger when taken (`mail:claim`).
+ */
+export const letters = pgTable(
+  'letters',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    coins: integer('coins').notNull().default(0),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('letters_user_idx').on(t.userId, t.sentAt)],
+);
+
+/** Who read or took the coins of which letter (a letter to everyone has one row per reader). */
+export const letterReceipts = pgTable(
+  'letter_receipts',
+  {
+    letterId: uuid('letter_id')
+      .notNull()
+      .references(() => letters.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    claimed: boolean('claimed').notNull().default(false),
+  },
+  (t) => [primaryKey({ columns: [t.letterId, t.userId] })],
 );

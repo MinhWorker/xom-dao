@@ -35,6 +35,18 @@ var picked: int = -1
 ## Where a dragged ship would land, and whether it may.
 var ghost: Array = []
 var ghost_ok: bool = true
+## The cell aimed at (the mouse over it, or the arrow keys), -1 none: a brass sight.
+var aim: int = -1:
+	set(value):
+		if value != aim:
+			aim = value
+			_marks.queue_redraw()
+## Whether the sight shows (your turn to fire).
+var aiming: bool = false:
+	set(value):
+		if value != aiming:
+			aiming = value
+			_marks.queue_redraw()
 ## Letters and numbers round the grid.
 var labels: bool = true:
 	set(value):
@@ -175,3 +187,10 @@ func _draw_marks() -> void:
 		_marks.draw_rect(
 			Rect2(cell_position(last) + Vector2.ONE, Vector2.ONE * (cell - 2.0)), PICKED, false, 2.0
 		)
+	if aim >= 0 and aiming:
+		# A gunsight: a ring and four ticks on the cell aimed at.
+		var middle: Vector2 = cell_position(aim) + Vector2.ONE * cell / 2.0
+		var sight := Color("#F0CF7E")
+		_marks.draw_arc(middle, cell * 0.36, 0.0, TAU, 32, sight, maxf(2.0, cell * 0.06), true)
+		for side: Vector2 in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+			_marks.draw_line(middle + side * cell * 0.22, middle + side * cell * 0.5, sight, 2.0)

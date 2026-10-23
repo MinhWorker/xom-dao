@@ -163,3 +163,38 @@ static func other(side: String) -> String:
 
 static func side_of(letter: String) -> String:
 	return "w" if letter == letter.to_upper() else "b"
+
+
+## Phong cấp: the four pieces a pawn may become (Promote_<kind>), on `board`; a tap calls
+## `on_pick` with the kind.
+static func build_promotion(
+	board: XomDaoBoard, kinds: Array[String], names: Dictionary, on_pick: Callable
+) -> void:
+	board.name = "Promotion"
+	board.visible = false
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	board.content.add_child(row)
+	for kind: String in kinds:
+		var button: XomDaoButton = XomDaoButton.create(names[kind], XomDaoUi.Kind.BACK)
+		button.name = "Promote_" + kind
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		button.expand_icon = true
+		button.custom_minimum_size = Vector2(110.0, 140.0)
+		skin_royal_button(button, false)
+		button.pressed.connect(on_pick.bind(kind))
+		row.add_child(button)
+
+
+## A centred HUD label in `color` with a dark outline, which never takes taps.
+static func hud_label(label: Label, label_name: String, font_size: int, color: Color) -> void:
+	label.name = label_name
+	label.theme_type_variation = "HudLabel"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_outline_color", Color(0.07, 0.05, 0.04, 0.82))
+	label.add_theme_constant_override("outline_size", 2)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE

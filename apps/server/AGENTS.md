@@ -14,10 +14,13 @@ src/ledger/     Ledger: the only module that changes balances (`ledger_entries`,
 src/inventory/  Túi đồ: what each account owns (`inventory_items`), equipping looks, profiles
 src/items/      Vật phẩm: the item list (`items` table), read by Túi đồ and Chợ, edited from the console
 src/shop/       Chợ: `shop:list` and `shop:buy`, paid through the Ledger
-src/console/    The console's HTTP API (/api/console/*): question gate, accounts and items CRUD
+src/console/    The console's HTTP API (/api/console/*): question gate, accounts, items and letters
 src/events/     Sự kiện: event points (`event_points`), claimed tiers (`event_claims`), EventClock
 src/stats/      Stats, achievements, rankings (`player_stats`, `stat_matches`, `achievements`)
 src/matches/    Match history: finished games (fed by RoomsService.onFinished), `history:recent`
+src/friends/    Bạn bè: requests, friendships and chat (`friendships`, `friend_messages`)
+src/quests/     Nhiệm vụ hằng ngày: progress on the day's quests (`quest_progress`)
+src/mail/       Hộp thư: letters from the console, read and coin receipts (`letters`, `letter_receipts`)
 src/db/         Drizzle schema; migrations in drizzle/
 src/version.ts  For /api/health
 packages/shared/src/protocol.ts   The protocol as zod schemas (types, requests, events) + PROTOCOL_VERSION
@@ -142,6 +145,43 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - `history:recent` returns the caller's last `HISTORY_LIMIT` (20) games, newest first, each with
   the caller's own `outcome`.
 
+## Bạn bè
+
+- `FriendsService` owns `friendships` (one row per pair: requester, addressee, `acceptedAt` once
+  accepted) and `friend_messages`. Memory stores without `DATABASE_URL`.
+- `friends:add { username }` asks someone (or accepts their request to you); `friends:answer`,
+  `friends:remove`; each replies with your list and pushes `friends:changed` to the other side.
+  Who is online and in which room (`Presence`) comes from the gateway's sockets and
+  `RoomsService.roomOf`, and only friends see it. An account's friends get a fresh list
+  `FRIEND_PUSH_MS` after it comes online, goes or changes rooms (one push per burst).
+- `chat:send` (friends only, 1–`CHAT_MAX` characters, a short per-account cooldown) pushes
+  `chat:message` to the friend and to your other sockets; `chat:history` returns the newest
+  `CHAT_HISTORY` and marks theirs read (`unread` in the list counts the rest).
+- `friends:invite { userId }` pushes `room:invite` with your room's code to an online friend.
+
+## Nhiệm vụ
+
+- The day's quests are data in `packages/shared/src/quests.ts`: `CHECKIN` (Điểm danh, done by
+  coming) and `QUESTS_PER_DAY` drawn from `QUEST_POOL` by the Vietnam date (`questsOf`,
+  `dayOf`), one per kind of count. The day goes by `EventClock`, so `dev:clock` moves it.
+- `QuestsService.recordMatch` (on `RoomsService.onFinished`) adds one to each of today's quests a
+  finished game counts for (`played`, `won`, a `genre`, `people`: two or more accounts), for
+  people only, never past the goal. It owns `quest_progress` (user, day, quest, count, claimed).
+- `quests:get` returns `QuestBoard`; `quests:claim { id }` pays a done quest's coins through
+  `LedgerService.apply` with key `quest:<user>:<day>:<quest>` ("Chưa xong nhiệm vụ", "Bạn đã
+  nhận rồi").
+
+## Hộp thư
+
+- `MailService` owns `letters` (title, body, coins, `userId` null for everyone) and
+  `letter_receipts` (per reader: `readAt`, `claimed`). Letters are written in the console
+  (`MailService.send`, `to` a username or empty); its `onSent` listener in the rooms gateway
+  pushes `mail:changed` (the fresh `Mailbox`) to the receiver's sockets, or to everyone online.
+- `mail:get` returns the newest `MAILBOX_SIZE` letters with `waiting` (unread, or coins not taken);
+  `mail:read { id }` marks one read; `mail:claim { id }` pays its coins through
+  `LedgerService.apply` with key `mail:<letter>:<user>` ("Thư này không có quà", "Bạn đã nhận
+  rồi").
+
 ## Changing things
 
 - New platform features (wallet, shop, inventory, achievements…) are separate Nest modules
@@ -174,7 +214,8 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   per address per 10 minutes, and returns a random token kept in memory for 12 hours.
 - Every other route needs `Authorization: Bearer <token>` (`ConsoleGuard`): `users` (list with
   `q`/`page`, create, `PATCH` name/password, delete) through `AccountsService`, and `items`
-  (list with `slots`/`looks`, create, `PATCH`, delete) through `ItemsService`. Refusals are 400
+  (list with `slots`/`looks`, create, `PATCH`, delete) through `ItemsService`, and `mail` (the
+  newest sent letters, send, delete) through `MailService`. Refusals are 400
   `{ message }` in Vietnamese. A new password logs the account out everywhere; deleting an
   account cascades to its rows (match history keeps the name).
 - Sự kiện is an empty page for now.

@@ -9,14 +9,29 @@ Game ở trạng thái `ready`. Xem [luật chơi](RULES.md).
 Bảng Tạo phòng có **Đối thủ**, **Máy chơi** và **Lượt đi**. Đen đi trước, mỗi bên 12 quân;
 người đi sau thấy bàn xoay ngược.
 
-Quân đi được có vòng vàng. Chọn quân rồi chọn ô có chấm xanh; với nước ăn nhiều quân, chọn lần
-lượt từng ô đáp. Ô nước vừa đi tô vàng, đường đang chọn tô xanh. Quân di chuyển từng bước, quân
-bị ăn bay về cột thống kê, phong Vua có vòng sáng và dấu vương miện vàng trên quân.
+Bàn đặt trên mặt nước một bến cá làng chài lúc chạng vạng (cầu gỗ, đèn lồng, thuyền thúng, bãi
+cát), mép tối dần và bàn có bóng đổ. Quân có bóng mềm dưới chân.
 
-Cột trái hiển thị tên, chủ phòng, số ván thắng, số quân đã ăn và số nước. Viền vàng đánh dấu
-người đang đi. Bên phải có trạng thái, **Xin hoà**, **Đầu hàng** (xác nhận lần hai trong ba giây)
-và **Hiệu ứng: Bật/Tắt**. Tắt hiệu ứng giữ âm thanh. Kết thúc ván, bảng kết quả của hub thêm số
-lượt và quân đã ăn (`result_detail()`); **Xem bàn** đóng bảng, **Kết quả** mở lại.
+Quân đi được có vòng vàng nhấp nháy. Chọn quân (quân nhấc lên) rồi chọn ô có chấm xanh; với nước ăn
+nhiều quân, chọn lần lượt từng ô đáp, quân sắp bị ăn có vòng đỏ. Chạm quân không đi được hoặc ô
+không tới được thì quân rung và có tiếng báo. Nước vừa đi tô vàng kèm đường nối các ô.
+
+Quân nhảy từng bước (nhảy cao hơn khi ăn), quân bị ăn bật ra và bay vào khay của người ăn cạnh ô
+người chơi. Ăn từ hai quân trong một nước hiện mảnh giấy "Ăn N quân!". Phong Vua: quân lật mặt có
+vương miện, vòng sáng, tia lấp lánh và cuộn giấy **PHONG VUA!** mở ra trên bàn. Hết ván (thắng, thua, hoà, đầu hàng hay đối thủ rời bàn), sau khi nước cuối hạ xuống, mặt nước tối
+lại và một tấm sơn mài có đèn lồng đung đưa rơi xuống giữa bàn: **Thắng rồi!** (đèn lồng bay lên,
+tia lửa quanh tấm), **Thua rồi**, **Hoà**, hoặc tên người thắng với người xem, kèm lý do kết thúc và
+âm thanh thắng/thua/hoà. Quân bên thắng nhảy lượn sóng, quân bên thua xám đi. Khoảng 2,5 giây,
+chạm để bỏ qua; hub chờ xong (`wait_for_result_panel()`) mới hiện bảng kết quả. Vào phòng khi ván
+đã xong thì không có màn này. Bảng kết quả mang màu bến cá, tiêu đề "Thu lưới" và hình đèn lồng
+(`result_theme()`).
+
+Cột trái: ảnh đại diện, chủ phòng, chip số ván thắng, đĩa quân của bên đó trên góc ảnh và khay quân
+đã ăn (đĩa xếp chồng kèm số). Người đang chờ mờ đi, người đang đi có vòng vàng. Cột phải: bảng lượt
+(lượt ai, đĩa quân bên đi, số nước, lời xin hoà hoặc lý do kết thúc) và nút **Hiệu ứng** hình lấp
+lánh (mờ khi tắt); dưới cùng **Xin hoà**, **Từ chối** và **Đầu hàng** đứng tách riêng (xác nhận
+lần hai trong ba giây). Tắt hiệu ứng giữ âm thanh. Kết thúc ván, bảng kết quả của hub thêm số
+lượt, số quân Đen ăn và Trắng ăn (`result_detail()`); **Xem bàn** đóng bảng, **Kết quả** mở lại.
 
 ## Thành phần
 
@@ -26,7 +41,10 @@ lượt và quân đã ăn (`result_detail()`); **Xem bàn** đóng bảng, **K�
 | Luật đi quân, ăn tùy chọn, Vua đi xa và phong Vua | `src/game/rules.ts` |
 | Máy chơi alpha-beta | `src/game/bot.ts` |
 | Lượt đi, xin hoà, đầu hàng | `src/game/CheckersGame.ts` |
-| Bàn chơi: bàn, quân, thống kê, hiệu ứng, âm thanh, `room_setup()` và `result_detail()` | `godot/main.gd`, `godot/main.tscn` (test: `godot/test/`) |
+| Bàn chơi: bàn, quân, ô người chơi, âm thanh, `room_setup()` và `result_detail()` | `godot/main.gd`, `godot/main.tscn` (test: `godot/test/`) |
+| Nền bến cá, bảng lượt, khay quân đã ăn | `godot/backdrop.gd`, `godot/turn_plaque.gd`, `godot/taken_tray.gd` |
+| Hiệu ứng: nhảy, ăn quân, "Ăn N quân!", phong Vua, sóng thắng, rung | `godot/flourish.gd` |
+| Màn kết thúc ván (tấm sơn mài, đèn lồng), màu bảng kết quả | `godot/end_beat.gd` |
 | Hình, âm thanh và nhạc của bàn | `godot/art/`, `godot/sounds/`, `godot/music/` |
 
 ## Hình và âm thanh
@@ -39,10 +57,15 @@ lượt và quân đã ăn (`result_detail()`); **Xem bàn** đóng bảng, **K�
   PNG trung gian ở `.blender/checkers/`; WebP ở `assets/`, bản bàn dùng chép vào `godot/art/`.
 - Bàn walnut/maple là bản sao tài nguyên Blender của Cờ Vua (`games/chess/assets/board.webp`).
   Mặt chơi chiếm 94% ảnh bàn.
-- Nền vải xanh đêm là tile 256×256 POT liền mép của riêng Cờ Đam, lát kín màn hình; tái tạo bằng
-  `npm run blender -- checkers cloth`.
+- Nền bến cá chạng vạng (`harbor`) và hình đèn lồng bên chồng quân (`emblem`, dùng ở màn kết thúc
+  và bảng kết quả) được tạo bằng công cụ tạo ảnh của Antigravity (`agy`), vì tài khoản Codex không có
+  công cụ tạo ảnh. Prompt nằm ở `sources/prompts.json`, ảnh gốc PNG ở `sources/`; `emblem` được tạo
+  trên nền xanh lá phẳng rồi tách nền bằng `python3 games/checkers/sources/key_green.py <ảnh.jpg>
+  games/checkers/sources/emblem.png`. `npm run assets -- checkers` làm WebP trong `assets/`, bàn
+  chép bản dùng vào `godot/art/`. Bàn làm tối nền một chút cho không khí chạng vạng. Nền vải
+  `assets/cloth.webp` cũ không còn dùng trên bàn.
 - Quân và đảo giữ thông số kết xuất cũ (96 mẫu, `LEGACY_RIG`) để kết xuất lại khớp hình đã có.
-- Âm thanh lấy từ dự án, không dùng nguồn ngoài. Tái tạo bằng
+- Âm thanh lấy từ dự án hoặc tổng hợp bằng code, không dùng nguồn ngoài. Tái tạo bằng
   `python3 games/checkers/sources/prepare_audio.py`. Hiệu ứng mono PCM 16-bit WAV 48 kHz,
   nhạc MP3 128 kbps.
 
@@ -51,6 +74,9 @@ lượt và quân đã ăn (`result_detail()`); **Xem bàn** đóng bảng, **K�
 | `checkers-start`, `checkers-select` | Cờ Tướng: `xiangqi-start`, `xiangqi-piece-select` |
 | `checkers-move`, `checkers-capture` | Cờ Vây: `go-place-1`, `go-capture` |
 | `checkers-promote`, `checkers-draw`, `checkers-win` | Cờ Tướng: `xiangqi-decisive-move`, `xiangqi-draw`, `xiangqi-game-win` |
+| `checkers-illegal`, `checkers-turn` | Cờ Tướng: `xiangqi-illegal`, `xiangqi-turn` |
+| `checkers-victory`, `checkers-lose` | Ứng dụng: `assets/app/audio/game-win.wav`, `game-lose.wav` |
+| `checkers-combo` | Tổng hợp bằng numpy trong `prepare_audio.py` (ba tiếng mõ gỗ đi lên và tiếng ngân) |
 | `music-checkers` | Cờ Vây: `music-go` (gốc `music-xiangqi-a`) |
 
 Tài nguyên theo [giấy phép của dự án](../../LICENSE-ASSETS.md).

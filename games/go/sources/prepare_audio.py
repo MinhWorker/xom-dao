@@ -63,5 +63,9 @@ for name, game, asset, peak in [
 ]:
     write(name, read(ROOT / "games" / game / "assets" / f"{asset}.wav"), peak)
 
+# The end beat's loss: the app's own lose sound (assets/app/audio), unchanged.
+subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(ROOT / "assets" / "app" / "audio" / "game-lose.wav"),
+                "-ac", "1", "-ar", str(RATE), "-c:a", "pcm_s16le", str(OUT / "go-lose.wav")], check=True)
+
 # Already encoded at 128 kbps; keep this calm existing soundtrack without another lossy encode.
 (OUT / "music-go.mp3").write_bytes((ROOT / "games" / "xiangqi" / "assets" / "music-xiangqi-a.mp3").read_bytes())

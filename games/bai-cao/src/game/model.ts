@@ -16,7 +16,7 @@ export const BETS = [5, 10, 20] as const;
 export const DEFAULT_BET = 5;
 
 /** How long each part of a round lasts, in ms. */
-export const TIMES = { bet: 15_000, reveal: 20_000, showdown: 5_000 } as const;
+export const TIMES = { bet: 15_000, reveal: 20_000, showdown: 8_000 } as const;
 
 export interface Result {
   seat: number;

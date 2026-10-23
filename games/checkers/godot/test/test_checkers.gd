@@ -87,6 +87,37 @@ func test_the_end_gives_the_result_board_its_words() -> void:
 		_view(["me", "bot"], "w", [], {"reason": "resign", "winner": "b"}), "finished"
 	)
 	var detail: Dictionary = table.call("result_detail")
-	assert_eq(detail["reason"], "Bạn thắng · Máy đầu hàng")
-	assert_eq(detail["rows"], [["Số lượt đi", "4"], ["Quân đã ăn", "Trắng 0 · Đen 2"]])
+	assert_eq(detail["reason"], "Máy đầu hàng")
+	assert_eq(detail["rows"], [["Số lượt đi", "4"], ["Đen ăn", "2 quân"], ["Trắng ăn", "0 quân"]])
+	assert_eq((table.find_child("Status", true, false) as Label).text, "Bạn thắng")
 	assert_false((table.find_child("Resign", true, false) as Control).visible)
+
+
+func test_the_result_board_gets_the_harbor_theme() -> void:
+	var table := _table(_view(["me", "bot"], "b", []))
+	var theme: Dictionary = table.call("result_theme")
+	assert_eq(theme["title"], "Thu lưới")
+	assert_true(theme["emblem"] is Texture2D, "the lantern emblem")
+
+
+func test_an_ending_seen_live_plays_its_beat_before_the_result() -> void:
+	var table := _table(_view(["me", "bot"], "b", []))
+	var client: XomDaoClient = table.get("_client")
+	client.snapshot = _snapshot(
+		_view(["me", "bot"], "w", [], {"reason": "resign", "winner": "b"}), "finished"
+	)
+	client.state_changed.emit(client.snapshot)
+	var beat: Node = table.find_child("EndBeat", true, false)
+	assert_not_null(beat, "the end beat is on the table")
+	assert_eq((beat.find_child("Outcome", true, false) as Label).text, "Thắng rồi!")
+	(beat as CheckersEndBeat).skip()
+	await table.call("wait_for_result_panel")
+	assert_false(table.get("_beat_pending"), "the hub may show the result now")
+
+
+func test_an_ending_seen_first_has_no_beat() -> void:
+	var table := _table(
+		_view(["me", "bot"], "w", [], {"reason": "resign", "winner": "b"}), "finished"
+	)
+	await table.call("wait_for_result_panel")
+	assert_null(table.find_child("EndBeat", true, false))
