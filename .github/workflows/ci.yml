@@ -22,9 +22,8 @@ jobs:
       - run: npm run check
       - run: npm run build
 
-  # The Godot client (apps/client, games/*/godot): the pinned toolchain, its checks, the web export
-  # and one headless look at the exported build.
-  godot:
+  # Godot client quality checks and GUT unit tests. Runs in parallel with check and web exports.
+  godot-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -38,11 +37,33 @@ jobs:
           path: |
             .tools/godot
             .tools/gdtoolkit
-          key: godot-${{ runner.os }}-${{ hashFiles('tools/godot/version.json') }}
+            apps/client/addons/gut
+          key: godot-check-${{ runner.os }}-${{ hashFiles('tools/godot/version.json') }}
       - run: npm run setup:godot
       - run: npm run godot:check
       # The SDK against a real server (dev, no database): two clients play Caro by room code.
       - run: npm run godot:net
+
+  # Production web export and headless smoke test.
+  godot-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .tools/godot
+            .tools/export/packs
+          key: godot-export-${{ runner.os }}-${{ hashFiles('tools/godot/version.json') }}-${{ github.sha }}
+          restore-keys: |
+            godot-export-${{ runner.os }}-${{ hashFiles('tools/godot/version.json') }}-
+            godot-export-${{ runner.os }}-
+      - run: npm run setup:godot -- --export-only
       - run: npm run godot:export
       - id: playwright
         run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
@@ -52,10 +73,68 @@ jobs:
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - run: npx playwright install --with-deps --only-shell chromium
       - run: npm run godot:smoke
-      # The e2e scenarios (scripts/e2e/scenarios/) in the debug build (it has the test bridge),
-      # against the dev app, which serves the build at /.
-      - run: npm run godot:export -- --debug
-      - name: Start the app
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: godot-smoke
+          path: .shots/
+          include-hidden-files: true
+          retention-days: 7
+
+  # The e2e scenarios (scripts/e2e/scenarios/) in the debug build, sharded across parallel runners.
+  e2e-run:
+    name: e2e (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/3', '2/3', '3/3']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Check affected scenarios
+        id: plan
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            list=$(node scripts/e2e.mjs --list --changed origin/${{ github.base_ref }} --shard ${{ matrix.shard }})
+            echo "scenarios=$list" >> "$GITHUB_OUTPUT"
+            if [ "$list" = "[]" ]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "No scenarios in shard ${{ matrix.shard }} affected by PR changes. Skipping."
+            fi
+          fi
+      - if: steps.plan.outputs.skip != 'true'
+        uses: actions/cache@v6
+        with:
+          path: |
+            .tools/godot
+            .tools/export/packs
+          key: godot-export-${{ runner.os }}-${{ hashFiles('tools/godot/version.json') }}-${{ github.sha }}
+          restore-keys: |
+            godot-export-${{ runner.os }}-${{ hashFiles('tools/godot/version.json') }}-
+            godot-export-${{ runner.os }}-
+      - if: steps.plan.outputs.skip != 'true'
+        run: npm run setup:godot -- --export-only
+      - if: steps.plan.outputs.skip != 'true'
+        run: npm run godot:export -- --debug
+      - if: steps.plan.outputs.skip != 'true'
+        id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - if: steps.plan.outputs.skip != 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - if: steps.plan.outputs.skip != 'true'
+        run: npx playwright install --with-deps --only-shell chromium
+      - if: steps.plan.outputs.skip != 'true'
+        name: Start the app
         env:
           BOT_DELAY_MS: 200
         run: |
@@ -66,15 +145,23 @@ jobs:
           done
           cat dev.log; exit 1
       # Bots play Caro over the WebSocket against the running server.
-      - run: npm run smoke
-      - run: npm run e2e -- --retries 1
-      - name: Dev server log
-        if: failure()
+      - if: steps.plan.outputs.skip != 'true'
+        run: npm run smoke
+      - if: steps.plan.outputs.skip != 'true'
+        name: Run e2e scenarios
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            npm run e2e -- --changed origin/${{ github.base_ref }} --shard ${{ matrix.shard }} --retries 1
+          else
+            npm run e2e -- --shard ${{ matrix.shard }} --retries 1
+          fi
+      - if: steps.plan.outputs.skip != 'true' && failure()
+        name: Dev server log
         run: cat dev.log
-      - uses: actions/upload-artifact@v7
-        if: always()
+      - if: steps.plan.outputs.skip != 'true' && always()
+        uses: actions/upload-artifact@v7
         with:
-          name: godot-web
+          name: godot-e2e-shard-${{ replace(matrix.shard, '/', '-') }}
           path: |
             .shots/
             .e2e/
@@ -82,14 +169,17 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  # The required check (branch protection): the godot job above runs every e2e scenario.
+  # The required check (branch protection): verifies that all checks and e2e shards passed.
   e2e:
-    needs: godot
+    needs: [check, godot-check, godot-smoke, e2e-run]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - env:
-          GODOT: ${{ needs.godot.result }}
+          CHECK: ${{ needs.check.result }}
+          GODOT_CHECK: ${{ needs.godot-check.result }}
+          GODOT_SMOKE: ${{ needs.godot-smoke.result }}
+          E2E_RUN: ${{ needs.e2e-run.result }}
         run: |
-          echo "godot: $GODOT"
-          [ "$GODOT" = success ]
+          echo "check: $CHECK, godot-check: $GODOT_CHECK, godot-smoke: $GODOT_SMOKE, e2e-run: $E2E_RUN"
+          [ "$CHECK" = success ] && [ "$GODOT_CHECK" = success ] && [ "$GODOT_SMOKE" = success ] && [ "$E2E_RUN" = success ]

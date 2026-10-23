@@ -9,6 +9,7 @@
 //   npm run e2e -- --changed origin/main only the scenarios the changes since that ref touch
 //   npm run e2e -- --list [...]          print the picked scenario names as JSON, run nothing
 //   --skip a,b   leave these scenarios out (godot-* works here too)
+//   --shard M/N  slice of scenarios across N machines (e.g. 1/3)
 //   --jobs N     scenarios at once (default: half the CPUs)
 //   --retries N  run a failed scenario again, up to N times (CI: 1); a pass on retry warns
 //   --timeout S  a try that takes longer fails (default 600)
@@ -28,6 +29,7 @@ const { values: args, positionals } = parseArgs({
     jobs: { type: 'string' },
     retries: { type: 'string', default: '0' },
     timeout: { type: 'string', default: '600' },
+    shard: { type: 'string' },
   },
 });
 const url = positionals[0] ?? 'http://localhost:5033';
@@ -115,6 +117,20 @@ if (args.only) {
 if (args.skip) {
   const skip = matches(args.skip);
   picked = picked.filter((s) => !skip(s.name));
+}
+if (args.shard) {
+  const match = args.shard.match(/^(\d+)\/(\d+)$/);
+  if (!match) {
+    console.error(`Invalid --shard "${args.shard}". Expected format: index/total (e.g. 1/3)`);
+    process.exit(1);
+  }
+  const index = Number(match[1]);
+  const total = Number(match[2]);
+  if (index < 1 || index > total) {
+    console.error(`--shard index ${index} out of range (1..${total})`);
+    process.exit(1);
+  }
+  picked = picked.filter((_, i) => i % total === index - 1);
 }
 if (args.list) {
   console.log(JSON.stringify(picked.map((s) => s.name)));

@@ -4,11 +4,16 @@
 
 - `ci.yml` (mọi PR và mọi lần push lên `main`):
   - `check` = `npm run check` + `npm run build`.
-  - `godot` cài Godot đã ghim, chạy `npm run godot:check`, `npm run godot:net`, xuất bản release
-    và chụp thử bằng `npm run godot:smoke`. Sau đó nó xuất bản debug, chạy `npm run dev` (không
-    database), rồi `npm run smoke` và mọi kịch bản e2e (`npm run e2e -- --retries 1`). Ảnh chụp
-    là artifact `godot-web`.
-  - `e2e` là check bắt buộc: chỉ báo lại kết quả của job `godot`.
+  - `godot-check`: chạy song song với `check`, cài Godot đã ghim, chạy `npm run godot:check` (linter,
+    format, script và GUT unit tests) và `npm run godot:net`.
+  - `godot-smoke`: chạy song song, xuất bản release (tận dụng cache `.tools/export/packs`) và chụp
+    thử bằng `npm run godot:smoke`. Ảnh chụp là artifact `godot-smoke`.
+  - `e2e-run`: chạy song song theo ma trận shard (`--shard 1/3`, `2/3`, `3/3`). Trên PR chỉ chạy
+    kịch bản bị ảnh hưởng (`--changed`), nếu PR không đụng tới e2e thì shard bỏ qua ngay. Mỗi shard
+    xuất bản debug (tận dụng pack cache), chạy `npm run dev` (không database), `npm run smoke` và
+    chạy các kịch bản e2e của shard. Ảnh chụp là artifact `godot-e2e-shard-<shard>`.
+  - `e2e` là check bắt buộc: tổng hợp và kiểm tra kết quả của cả 4 job trên (`check`, `godot-check`,
+    `godot-smoke`, `e2e-run`).
 - `pr.yml` (PR): `title` kiểm tra tiêu đề theo Conventional Commit; `protocol` báo lỗi khi
   `packages/shared/src/protocol.ts` thay đổi mà không tăng `PROTOCOL_VERSION` (gắn nhãn
   `protocol:compatible` để bỏ qua).
