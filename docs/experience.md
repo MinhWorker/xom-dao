@@ -247,17 +247,26 @@ chơi. Bến có thêm ô nhập mã phòng:
 
 ### Bạn bè
 
-Bến có hai tab ở giữa thanh trên: **Phòng** (như trên) và **Bạn bè**. Tab Bạn bè ghi số lời mời và
-tin nhắn đang chờ ("Bạn bè (2)"); khi có thì vào Bến là mở thẳng tab này, và nút Bến ở sảnh có
-chấm đỏ.
+Nút **Bạn bè** (hình hai người) nằm ở góc trên phải của sảnh, cạnh hộp thư, quà và ⚙. Nút có chấm
+đỏ khi có lời mời kết bạn hoặc tin nhắn chưa đọc. Bấm vào thì mở bảng **Bạn bè** với hai tab:
 
-- Bên trái: ô **Tên đăng nhập** với nút kết bạn, rồi danh sách theo nhóm: **Lời mời kết bạn**
-  (Đồng ý / ✕), **Bạn bè** (người đang online lên đầu, có chấm xanh trên ảnh; dòng dưới tên ghi
-  "Đang chơi Tiến Lên", "Đang online" hoặc "Không online"; số tin chưa đọc ở bên phải), **Đã gửi
-  lời mời** (✕ để huỷ). Mời một người đã mời mình thì thành bạn luôn.
-- Bên phải: trò chuyện với người bạn đang chọn. Đầu khung là ảnh, tên, đang ở đâu, nút **Vào
-  phòng** khi bạn ấy đang ở một phòng, và **Xoá bạn** (hỏi lại "Chắc chưa?"). Tin của mình là bong
-  bóng vàng bên phải, của bạn là bong bóng xanh bên trái. Enter để gửi; tin tối đa 300 ký tự.
+- **Bạn bè** (ghi số việc đang chờ, ví dụ "Bạn bè (2)"):
+  - Bên trái là danh sách theo nhóm: **Lời mời kết bạn** (Đồng ý / ✕), **Bạn bè** (người đang online
+    lên đầu, có chấm xanh trên ảnh; dòng dưới tên ghi "Đang chơi Tiến Lên", "Đang online" hoặc
+    "Không online"; số tin chưa đọc ở bên phải), **Đã gửi lời mời** (✕ để huỷ).
+  - Bên phải là khung trò chuyện với người bạn đang chọn. Đầu khung có ảnh, tên, đang ở đâu, nút
+    **Vào phòng** khi bạn ấy đang ở một phòng (vào xong thì bảng đóng), và **Xoá bạn** (hỏi lại
+    "Chắc chưa?"). Tin của mình là bong bóng vàng bên phải, của bạn là bong bóng xanh bên trái.
+    Enter để gửi; tin tối đa 300 ký tự.
+- **Tìm kiếm**: ô **Tên đăng nhập** và nút **Tìm**.
+  - Khi ô trống, danh sách **Gợi ý** hiện những người vừa chơi cùng (nhãn "Vừa chơi cùng", mới nhất
+    lên đầu), rồi tới những người đang online, tối đa 20 người. Không gợi ý chính mình hay người
+    đã là bạn.
+  - **Tìm** chỉ ra người có tên đăng nhập khớp đúng từng chữ (không phân biệt hoa thường; tên hiển
+    thị không dùng để tìm). Không có ai thì ghi "Không có ai tên đăng nhập @…". Xoá chữ trong ô
+    thì quay về Gợi ý.
+  - Mỗi dòng có nút theo quan hệ với mình: **Kết bạn**, **Đồng ý** (họ đã mời mình), hoặc chữ "Đã
+    mời" / "Bạn bè". Mời một người đã mời mình thì thành bạn luôn.
 - Chỉ nhắn được cho bạn bè; trong ván vẫn chỉ có biểu cảm.
 - Trong phòng chờ, **Mời bạn** mở bảng các bạn (người online có nút **Mời**, người khác mờ đi) và
   nút **Sao chép link** cho cách mời cũ. Người được mời thấy một thẻ trượt xuống từ trên: ảnh,
@@ -440,4 +449,4 @@ Một trò hay sự kiện **không được**:
 ## Còn để ngỏ
 
 - Ngọc (tài nguyên thứ hai) dùng vào việc gì.
-- Chat chữ đã có giữa bạn bè (Bến › Bạn bè); trong ván có nên mở chat chữ hay giữ biểu cảm.
+- Chat chữ đã có giữa bạn bè (sảnh › Bạn bè); trong ván có nên mở chat chữ hay giữ biểu cảm.

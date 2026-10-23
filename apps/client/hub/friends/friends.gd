@@ -3,7 +3,8 @@ extends Node
 ## Bạn bè for the whole hub: your friends and requests (kept fresh by the server's
 ## `friends:changed`), chat with them (`chat:message`) and their invitations to a room
 ## (`room:invite`, shown as a card at the top with Vào). Screens read `list`, call the actions and
-## follow `changed` / `message`; `attention()` is what the lobby's Bến button shows a dot for.
+## follow `changed` / `message`; `attention()` is what the lobby's Bạn bè button shows a dot for.
+## `open(host)` puts the Bạn bè board (HubFriendsBoard) over a screen.
 ##
 ##   var friends := HubFriends.new(client)
 ##   add_child(friends)                        # it refreshes on every (re)connect
@@ -60,7 +61,13 @@ func where_text(one: XomDaoFriend) -> String:
 	return "Đang online"
 
 
-## Requests to you plus unread messages: the Bến button's dot.
+## Where someone stands with you: "friend", "incoming", "outgoing", or "" for nobody yet.
+func state_of(id: String) -> String:
+	var one: XomDaoFriend = friend(id)
+	return one.state if one != null else ""
+
+
+## Requests to you plus unread messages: the Bạn bè button's dot.
 func attention() -> int:
 	var count: int = 0
 	for one: XomDaoFriend in list:
@@ -112,6 +119,32 @@ func invite(id: String) -> String:
 		XomDaoProtocol.FRIENDS_INVITE, {"userId": id}, _client
 	)
 	return "" if bool(reply.get("ok", false)) else str(reply.get("error", "Không mời được"))
+
+
+## People you might add: played with lately, then online (`friends:suggest`).
+func suggest() -> Array[XomDaoPerson]:
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.FRIENDS_SUGGEST, {}, _client)
+	if not bool(reply.get("ok", false)):
+		return []
+	return XomDaoPeopleList.from_dict(reply).people
+
+
+## The account with exactly this username, or null (`friends:find`).
+func find(username: String) -> XomDaoPerson:
+	var data: Dictionary = {"username": username}
+	var reply: Dictionary = await HubWait.ask(XomDaoProtocol.FRIENDS_FIND, data, _client)
+	var people: Array[XomDaoPerson] = []
+	if bool(reply.get("ok", false)):
+		people = XomDaoPeopleList.from_dict(reply).people
+	return people[0] if not people.is_empty() else null
+
+
+## The Bạn bè board over `host`, on Bạn bè (`tab` 0) or Tìm kiếm (1).
+func open(host: Control, tab: int = 0) -> HubFriendsBoard:
+	var me: String = _client.user.id if _client.user != null else _client.player_id
+	var board := HubFriendsBoard.new(self, me, tab)
+	host.add_child(board)
+	return board
 
 
 ## Mời bạn in a room: the friends online to ask, and the link to share.

@@ -22,7 +22,7 @@ import { ITEM_SLOTS } from './items.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 11;
+export const PROTOCOL_VERSION = 12;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
@@ -402,6 +402,28 @@ export type Friend = z.infer<typeof Friend>;
 export const FriendList = z.object({ friends: z.array(Friend) });
 export type FriendList = z.infer<typeof FriendList>;
 
+/** How many people `friends:suggest` returns at most. */
+export const SUGGEST_MAX = 20;
+
+/**
+ * Someone to add as a friend: a suggestion (`friends:suggest`) or the account a username search
+ * found (`friends:find`). Where they stand with you comes from your Bạn bè list.
+ */
+export const Person = z.object({
+  id: z.string(),
+  username: z.string(),
+  name: z.string(),
+  avatar: z.string(),
+  frame: z.string(),
+  online: z.boolean(),
+  /** You played a game together lately. */
+  recent: z.boolean(),
+});
+export type Person = z.infer<typeof Person>;
+
+export const PeopleList = z.object({ people: z.array(Person) });
+export type PeopleList = z.infer<typeof PeopleList>;
+
 /** One chat message between two friends; `at` in ms since the epoch. */
 export const ChatMessage = z.object({
   id: z.string(),
@@ -599,6 +621,13 @@ export const requests = {
   'friends:add': { req: z.object({ username: z.string() }), res: FriendList },
   'friends:answer': { req: z.object({ userId: z.string(), accept: z.boolean() }), res: FriendList },
   'friends:remove': { req: z.object({ userId: z.string() }), res: FriendList },
+  /**
+   * People you might add: those you played with lately (newest first), then others online, never
+   * yourself or your friends; at most `SUGGEST_MAX`.
+   */
+  'friends:suggest': { req: Empty, res: PeopleList },
+  /** The account with exactly this username (any case), or nobody. */
+  'friends:find': { req: z.object({ username: z.string() }), res: PeopleList },
   /** The newest `CHAT_HISTORY` messages with a friend, oldest first; marks theirs read. */
   'chat:history': { req: z.object({ userId: z.string() }), res: ChatHistory },
   /** Sends a friend a message (1–`CHAT_MAX` characters); they get `chat:message`. */
@@ -692,6 +721,8 @@ export const types = {
   FriendState,
   Friend,
   FriendList,
+  Person,
+  PeopleList,
   ChatMessage,
   ChatHistory,
   RoomInvite,

@@ -32,8 +32,10 @@ hub/                main.gd routes the screens: lobby (island ring + HUD), selec
   xd_nav.gd         xd's `go`: opens hub places and sandboxes through main.gd's own methods
   ben/ room/        Bến; waiting room (seat cards, option rows), result, paged Luật board
   friends/          Bạn bè: HubFriends (the hub's list, chat and invites from the server's
-                    pushes; `attention()` drives Bến's dot), HubFriendsPanel (Bến › Bạn bè),
-                    HubInvitePicker (Mời bạn in a room), HubInviteCard (a friend's invitation)
+                    pushes; `attention()` drives the lobby's Bạn bè dot), HubFriendsBoard (the
+                    board from the lobby's top right: HubFriendsPanel list + chat, HubFriendSearch
+                    suggestions + exact username search), HubInvitePicker (Mời bạn in a room),
+                    HubInviteCard (a friend's invitation)
   launch.gd         HubLaunch: the URL / command line the hub opened with, room links
   wait.gd           HubWait: the "Đang tải" badge at the bottom when a request the player waits
                     on is slow; screens call `HubWait.ask(event, data)` instead of `client.request`

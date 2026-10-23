@@ -7,11 +7,7 @@ extends Control
 ## Right side: header uniting active game title, room count and direct room code input,
 ## with the open rooms list (HubBenRoomCard) below.
 ##
-## Two tabs at the top: Phòng (the above) and Bạn bè (HubFriendsPanel: friends, requests and
-## chat), once `setup_friends` gave it the hub's HubFriends; the Bạn bè tab counts what waits
-## for you.
-##
-## Named nodes for tests: BenTabs, FriendsPanel, CodeInput, Join, RoomsHeading, Rooms,
+## Named nodes for tests: CodeInput, Join, RoomsHeading, Rooms,
 ## Room_<code >, Enter_<code >, Watch_<code >, NoRooms, GameList, GameCard_<id>, Category_<genre>.
 
 signal back_pressed
@@ -36,9 +32,6 @@ var _category_boxes: Dictionary = {}
 var _category_headers: Dictionary = {}
 
 var _right_panel := PanelContainer.new()
-var _tabs: XomDaoChoice = XomDaoChoice.create(["Phòng", "Bạn bè"])
-var _friends: HubFriends
-var _friends_panel: HubFriendsPanel
 var _heading := Label.new()
 var _room_count_chip: XomDaoChip
 var _scroll := ScrollContainer.new()
@@ -70,52 +63,12 @@ func _init(settings: XomDaoSettings = null) -> void:
 	_main_box.add_child(_left_panel)
 	_main_box.add_child(_right_panel)
 
-	_tabs.name = "BenTabs"
-	_tabs.compact = true
-	_tabs.visible = false
-	_tabs.changed.connect(_show_tab)
-	add_child(_tabs)
-
 	resized.connect(_layout)
 	XomDaoSettings.current().changed.connect(_layout)
 
 
 func _ready() -> void:
 	_layout()
-
-
-## Adds the Bạn bè tab (and opens it with `open`).
-func setup_friends(friends: HubFriends, me: String, open: bool = false) -> void:
-	_friends = friends
-	_friends_panel = HubFriendsPanel.new(friends, me)
-	_friends_panel.join_requested.connect(join_requested.emit)
-	_friends_panel.visible = false
-	add_child(_friends_panel)
-	_tabs.visible = true
-	friends.changed.connect(_count_tab)
-	_count_tab()
-	if open:
-		_tabs.choose(1)
-	_layout()
-
-
-func _show_tab(index: int) -> void:
-	_main_box.visible = index == 0
-	if _friends_panel != null:
-		_friends_panel.visible = index == 1
-		if index != 1:
-			_friends.chatting = ""
-	_layout()
-
-
-## "Bạn bè (2)" while requests or messages wait for you.
-func _count_tab() -> void:
-	var waiting: int = _friends.attention()
-	var label: String = "Bạn bè (%d)" % waiting if waiting > 0 else "Bạn bè"
-	if _tabs.options[1] != label:
-		var at: int = _tabs.selected
-		_tabs.options = ["Phòng", label]
-		_tabs.selected = at
 
 
 func setup(catalog: HubCatalog, selected_game_id: String = "") -> void:
@@ -414,8 +367,3 @@ func _layout() -> void:
 
 	var left_w: float = clampf(avail_w * 0.32, 260.0, 320.0)
 	_left_panel.custom_minimum_size = Vector2(left_w, 0.0)
-	# The tabs sit in the top bar's middle, between ← and the coins.
-	_tabs.reset_size()
-	_tabs.position = Vector2((size.x - _tabs.size.x) / 2.0, top.bottom() - _tabs.size.y - 4.0)
-	if _friends_panel != null:
-		_friends_panel.fit(Rect2(Vector2(left_x, top_y), Vector2(avail_w, avail_h)))

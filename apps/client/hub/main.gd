@@ -574,7 +574,6 @@ func _show_ben() -> void:
 				break
 
 	_ben.setup(_catalog, _game_id)
-	_ben.setup_friends(_friends, _client.user.id, _friends.attention() > 0)
 	if _game_id != "":
 		_watch_ben_rooms(_game_id)
 

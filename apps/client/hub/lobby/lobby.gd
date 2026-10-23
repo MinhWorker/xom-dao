@@ -5,7 +5,7 @@ extends Control
 ## - Left: a floating dock of places (Nhà, the lobby itself, on a gold plate; Chợ, Đình,
 ##   Bến), each a picture over its name (HubNavButton).
 ## - Top: the profile (avatar, name, level, EXP bar; it opens Nhà) on the left; the balance,
-##   mail, gifts and ⚙ on the right.
+##   Bạn bè, mail, gifts and ⚙ on the right.
 ## - Right, under the top row: shortcuts to Chợ, Sự kiện (red dot and days left while an event
 ##   is open) and Nhiệm vụ.
 ## - Bottom right: the selected game's card (HubGameCard): its art, its name, and CHƠI as a
@@ -51,6 +51,7 @@ var ring := HubIslandRing.new()
 var money := HubMoneyRow.new()
 var avatar := XomDaoAvatar.new()
 var play: HubPlayButton
+var friends: XomDaoIconButton = XomDaoIconButton.create("users")
 var mail: XomDaoIconButton = XomDaoIconButton.create("envelope-simple")
 var gifts: XomDaoIconButton = XomDaoIconButton.create("gift")
 
@@ -148,14 +149,16 @@ func show_quests(waiting: int) -> void:
 			dot.queue_free()
 
 
-## Follows the hub's Bạn bè: a red dot on Bến while requests or messages wait for you.
-func watch_friends(friends: HubFriends) -> void:
-	friends.changed.connect(_on_friends.bind(friends))
-	_on_friends(friends)
+## Follows the hub's Bạn bè: the people button opens its board, with a red dot while requests or
+## messages wait for you.
+func watch_friends(people: HubFriends) -> void:
+	friends.pressed.connect(func() -> void: people.open(self))
+	people.changed.connect(_on_friends.bind(people))
+	_on_friends(people)
 
 
-func _on_friends(friends: HubFriends) -> void:
-	show_friends(friends.attention())
+func _on_friends(people: HubFriends) -> void:
+	show_friends(people.attention())
 
 
 ## Follows the hub's Hộp thư: the envelope opens it, with a red dot while letters wait.
@@ -173,14 +176,11 @@ func _on_mail(letters: HubMail) -> void:
 		dot.queue_free()
 
 
-## A red dot on Bến while `waiting` (friend requests and messages) is above 0.
+## A red dot on the people button while `waiting` (friend requests and messages) is above 0.
 func show_friends(waiting: int) -> void:
-	var button: Control = _places.get_node_or_null("Place_ben")
-	if button == null:
-		return
-	var dot: Node = button.get_node_or_null("Dot")
+	var dot: Node = friends.get_node_or_null("Dot")
 	if waiting > 0 and dot == null:
-		XomDaoDot.attach(button)
+		XomDaoDot.attach(friends)
 	elif waiting <= 0 and dot != null:
 		dot.queue_free()
 
@@ -377,17 +377,20 @@ func _build_profile() -> void:
 	_profile.gui_input.connect(_on_profile_input)
 
 
-## Mail and gifts go between the balance and ⚙.
+## Bạn bè, mail and gifts go between the balance and ⚙.
 func _build_money() -> void:
 	add_child(money)
 	money.add_theme_constant_override("separation", 10)
 	money.coins.custom_minimum_size.x = 180.0
 	money.coins.background = Color("#111A29")
-	for button: XomDaoIconButton in [mail, gifts, money.settings]:
+	for button: XomDaoIconButton in [friends, mail, gifts, money.settings]:
 		button.background = Color("#141E30")
 		button.border = 2
 		button.edge = XomDaoUi.GOLD_DARK
 		button.lit = true
+	friends.name = "Friends"
+	friends.tooltip_text = "Bạn bè"
+	money.add_child(friends)
 	mail.name = "Mail"
 	money.add_child(mail)
 	gifts.name = "Gifts"
