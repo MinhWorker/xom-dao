@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.27.0](https://github.com/MinhWorker/xom-dao/compare/v0.26.1...v0.27.0) (2026-10-23)
+
+
+### Features
+
+* add friends, quests and mailbox, and refresh the board and card tables ([#185](https://github.com/MinhWorker/xom-dao/issues/185)) ([40968d3](https://github.com/MinhWorker/xom-dao/commit/40968d34ab131f38bdf0082e4f9f865bf58f2b08))
+* **bom-nguyen-to:** rebuild the arena in Blender and rework the match ([#188](https://github.com/MinhWorker/xom-dao/issues/188)) ([f2d0d97](https://github.com/MinhWorker/xom-dao/commit/f2d0d97225c451e208a0c02f31a8d9e0f2cac94f))
+* **client:** add xd CLI to drive the Godot client ([#182](https://github.com/MinhWorker/xom-dao/issues/182)) ([11b0d1f](https://github.com/MinhWorker/xom-dao/commit/11b0d1f5395de661d76e8f77d25841ade3ac57d6))
+* **client:** loading badge for slow requests and faster return to the lobby ([#186](https://github.com/MinhWorker/xom-dao/issues/186)) ([ba82279](https://github.com/MinhWorker/xom-dao/commit/ba82279d17792be8f3963d97fc71ed5283911ee5))
+* **client:** polish hub and game visuals ([#178](https://github.com/MinhWorker/xom-dao/issues/178)) ([b879722](https://github.com/MinhWorker/xom-dao/commit/b879722100a7831215b1ad072d948dd55014a8fa))
+* **console:** add /console admin dashboard ([#181](https://github.com/MinhWorker/xom-dao/issues/181)) ([27b5b9a](https://github.com/MinhWorker/xom-dao/commit/27b5b9ad07d6bcec8573d9e52d30411671cbd692))
+* **friends:** add a friends board with search to the lobby ([#187](https://github.com/MinhWorker/xom-dao/issues/187)) ([afa8aa7](https://github.com/MinhWorker/xom-dao/commit/afa8aa7782341d0c90bf9bfe6657993ecf0673ae))
+* **games:** refresh tables and simplify Monopoly rules ([#180](https://github.com/MinhWorker/xom-dao/issues/180)) ([a21db3c](https://github.com/MinhWorker/xom-dao/commit/a21db3c49912352583099833f3f50584fecbc2b1))
+* **xiangqi:** rework the table HUD and the pond background ([#183](https://github.com/MinhWorker/xom-dao/issues/183)) ([d044fb9](https://github.com/MinhWorker/xom-dao/commit/d044fb9472e4069b71b4dbef277e5c88ef7d09ed))
+
 ## [0.26.1](https://github.com/MinhWorker/xom-dao/compare/v0.26.0...v0.26.1) (2026-10-18)
 
 
