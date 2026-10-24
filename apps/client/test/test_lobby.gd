@@ -240,6 +240,43 @@ func test_the_exp_bar_shows_progress_in_this_level() -> void:
 	assert_eq((lobby.find_child("LobbyExpText", true, false) as Label).text, "40/150")
 
 
+func test_profile_maintains_shape_when_level_is_shown() -> void:
+	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
+	lobby.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	lobby.size = Vector2(1280, 720)
+	await wait_process_frames(2)
+	var profile: Control = lobby.find_child("Profile", true, false)
+	var size_before: Vector2 = profile.size
+	lobby.show_level(2, 140, 100, 250)
+	await wait_process_frames(2)
+	var size_after: Vector2 = profile.size
+	assert_almost_eq(size_after.x, size_before.x, 0.01)
+	assert_almost_eq(size_after.y, size_before.y, 0.01)
+
+
+func test_level_and_exp_animation_on_change() -> void:
+	var lobby: HubLobby = add_child_autofree(HubLobby.new(_settings()))
+	lobby.show_level(2, 140, 100, 250)
+	var bar: ProgressBar = lobby.find_child("LobbyExp", true, false)
+	var level_chip: XomDaoChip = lobby.find_child("LobbyLevel", true, false)
+	assert_eq(bar.value, 40.0)
+	assert_eq(level_chip.text, "Cấp 2")
+	# Gaining XP within the same level triggers animation.
+	lobby.show_level(2, 180, 100, 250, true)
+	assert_true(lobby._exp_tween != null and lobby._exp_tween.is_valid())
+	await wait_seconds(0.7)
+	assert_eq(bar.value, 80.0)
+	assert_eq((lobby.find_child("LobbyExpText", true, false) as Label).text, "80/150")
+	# Level up triggers animation and chip bounce.
+	lobby.show_level(3, 270, 250, 450, true)
+	assert_true(lobby._exp_tween != null and lobby._exp_tween.is_valid())
+	await wait_seconds(1.0)
+	assert_eq(level_chip.text, "Cấp 3")
+	assert_eq(bar.value, 20.0)
+	assert_eq(bar.max_value, 200.0)
+	assert_eq((lobby.find_child("LobbyExpText", true, false) as Label).text, "20/200")
+
+
 func test_island_art_stays_loaded_until_forgotten() -> void:
 	HubIsland.forget()
 	var first := HubIsland.create({"id": "co", "name": "Cờ", "island": "co"})
