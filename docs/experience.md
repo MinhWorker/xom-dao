@@ -293,7 +293,9 @@ Nút **Bạn bè** (hình hai người) nằm ở góc trên phải của sảnh
 - Phần khung vẽ bảng kết quả. Trò chỉ trả về **thứ hạng** và tuỳ chọn một dòng tóm tắt
   ("Tới trắng!", "Thắng 3 cây"). Trò nào cần màn kết quả riêng (bảng điểm chi tiết) thì khai báo,
   và vẫn phải kết thúc bằng phần phần thưởng chung.
-- Phần thưởng do server tính (sổ cái). Xu và tài nguyên **bay** từ bảng vào góc trên phải, số dư
+- Phần thưởng do server tính (sổ cái) và nằm trong **phần "Phần thưởng" riêng**, dưới danh sách
+  thứ hạng: mỗi thứ nhận được là một thẻ có icon (xu, cờ điểm sự kiện) và số xanh. Chỉ hiện thứ
+  bạn nhận được khác 0; không có gì thì cả phần ẩn. Xu **bay** từ thẻ xu vào góc trên phải, số dư
   đếm lên. Có âm thanh xu rơi.
 - Hai nút: **Chơi tiếp** (ván mới, cùng phòng) và **Về sảnh**. Ảnh concept còn ghi "Về đảo".
 - Khi chọn **Xem bàn**, bảng kết quả ẩn và nút **Kết quả** nằm ở góc dưới phải để mở lại; game có
