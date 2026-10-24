@@ -2,9 +2,9 @@ class_name HubResult
 extends Control
 ## The end of a game, over the board: how it ended and the game's own figures (its
 ## `result_detail()`, after the time played), the ranks the game gave, each player's reward from
-## the ledger (green up, red down), the balance on the top right that the coins fly into, and Chơi
-## tiếp (a new game, same room), Về sảnh and Xem bàn (put the board away to look at the table;
-## Kết quả at the top brings it back).
+## the ledger (a Phần thưởng section of icon tags, green up, red down), the balance on the top
+## right that the coins fly into, and Chơi tiếp (a new game, same room), Về sảnh and Xem bàn (put
+## the board away to look at the table; Kết quả at the top brings it back).
 ##
 ## It arrives rather than pops: the shade fades in, the board rises with a slight overshoot, its
 ## lines show one after another, then the coins fly. A game skins it with `apply_theme()` (its
@@ -23,6 +23,9 @@ var _title := Label.new()
 var _reason := Label.new()
 var _rows := GridContainer.new()
 var _ranks := VBoxContainer.new()
+var _rewards := VBoxContainer.new()
+var _reward_tags := HBoxContainer.new()
+var _reward_caption := Label.new()
 var _button_row := HBoxContainer.new()
 var _reopen: XomDaoButton = XomDaoButton.create("Kết quả", XomDaoUi.Kind.GO)
 var _again: XomDaoButton = XomDaoButton.create("Chơi tiếp", XomDaoUi.Kind.GO)
@@ -115,6 +118,16 @@ func _init(settings: XomDaoSettings = null) -> void:
 	column.add_child(_rows)
 	_ranks.add_theme_constant_override("separation", 8)
 	column.add_child(_ranks)
+	_rewards.name = "ResultRewards"
+	_rewards.add_theme_constant_override("separation", 6)
+	_rewards.visible = false
+	_reward_caption.text = "Phần thưởng"
+	_reward_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_rewards.add_child(_reward_caption)
+	_reward_tags.alignment = BoxContainer.ALIGNMENT_CENTER
+	_reward_tags.add_theme_constant_override("separation", 12)
+	_rewards.add_child(_reward_tags)
+	column.add_child(_rewards)
 	column.add_child(XomDaoDivider.new())
 	_button_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_button_row.add_theme_constant_override("separation", 8)
@@ -156,7 +169,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## Fills the board for player `me`; `balance` is the coins shown before this game's reward. An
-## event's game (`event`) is titled with the event points you got, also shown on your row.
+## event's game (`event`) is titled with the event points you got, also shown in Phần thưởng.
 ## `detail` is the game's `result_detail()`: `{reason: String, rows: [[label, value], …]}`, and
 ## optionally `ranks` ({player id: rank}, for a game that places everyone, not only the winner)
 ## and `scores` ({player id: String}, a short figure on that player's row: "15 điểm").
@@ -208,13 +221,12 @@ func show_result(
 			if rank.has(str(id)):
 				rank[str(id)] = int(placed[id])
 	var scores: Variant = detail.get("scores", {})
-	var paid: Dictionary = coins(snapshot)
 	var seated: Array[XomDaoPlayerInfo] = _seated(snapshot)
 	seated.sort_custom(
 		func(a: XomDaoPlayerInfo, b: XomDaoPlayerInfo) -> bool: return rank[a.id] < rank[b.id]
 	)
 	for player: XomDaoPlayerInfo in seated:
-		var row: Control = _row(player, int(rank[player.id]), int(paid.get(player.id, 0)), me)
+		var row: Control = _row(player, int(rank[player.id]), me)
 		if scores is Dictionary and (scores as Dictionary).has(player.id):
 			var score := Label.new()
 			score.name = "Score"
@@ -224,16 +236,8 @@ func show_result(
 			score.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			row.add_child(score)
 			row.move_child(score, row.get_child_count() - 2)
-		if event and not player.bot:
-			var got := XomDaoChip.create(
-				"+%d điểm" % int(points.get(player.id, 0)), "flag-banner", XomDaoUi.LACQUER
-			)
-			if player.id == me:
-				got.name = "EventReward"
-			got.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(got)
-			row.move_child(got, row.get_child_count() - 2)
 		_ranks.add_child(_mine(row) if player.id == me else row)
+	_show_rewards(snapshot, me, event)
 	_again.visible = snapshot.host_id == me
 	money.show_balance(balance)
 	_board.visible = true
@@ -509,7 +513,7 @@ func receive(balance: int) -> void:
 	money.receive(balance, from)
 
 
-func _row(player: XomDaoPlayerInfo, rank: int, amount: int, me: String) -> Control:
+func _row(player: XomDaoPlayerInfo, rank: int, me: String) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	var place := XomDaoChip.create(
@@ -536,16 +540,44 @@ func _row(player: XomDaoPlayerInfo, rank: int, amount: int, me: String) -> Contr
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.custom_minimum_size.x = 100.0 if _side_panel or _dock_area.is_valid() else 200.0
 	row.add_child(label)
-	var delta := XomDaoDelta.create(amount)
-	delta.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	(delta.get("_label") as Label).add_theme_font_size_override("font_size", 30)
-	if player.id == me:
-		delta.name = "Reward"
-		_reward_at = delta
-	elif player.bot:
-		delta.visible = false
-	row.add_child(delta)
 	return row
+
+
+## Phần thưởng: what you got from this game, one icon tag each (xu, then event points in an
+## event's game). A reward of 0 gets no tag, and with none the section stays away.
+func _show_rewards(snapshot: XomDaoRoomSnapshot, me: String, event: bool) -> void:
+	for tag: Node in _reward_tags.get_children():
+		_reward_tags.remove_child(tag)
+		tag.queue_free()
+	_reward_at = null
+	_reward_caption.add_theme_color_override(
+		"font_color", XomDaoUi.HONEY_DARK if _ink == XomDaoUi.INK else Color(_ink, 0.72)
+	)
+	var gained: int = int(coins(snapshot).get(me, 0))
+	if gained != 0:
+		var coin := XomDaoResourceIcon.new()
+		coin.custom_minimum_size = Vector2(44.0, 44.0)
+		_reward_at = _reward_tag("Reward", gained, coin)
+	var points: int = int(coins(snapshot, "event:point").get(me, 0))
+	if event and points != 0:
+		var flag := TextureRect.new()
+		flag.texture = XomDaoUi.icon("flag-banner")
+		flag.modulate = XomDaoUi.LACQUER
+		flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flag.custom_minimum_size = Vector2(40.0, 40.0)
+		flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_reward_tag("EventReward", points, flag)
+	_rewards.visible = _reward_tags.get_child_count() > 0
+
+
+func _reward_tag(tag_name: String, amount: int, icon: Control) -> XomDaoDelta:
+	var tag := XomDaoDelta.create(amount, icon)
+	tag.name = tag_name
+	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	(tag.get("_label") as Label).add_theme_font_size_override("font_size", 34)
+	_reward_tags.add_child(tag)
+	return tag
 
 
 ## Your row, on a soft band of the accent (gold unless the game says otherwise).

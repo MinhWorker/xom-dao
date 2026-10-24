@@ -1,7 +1,8 @@
 class_name XomDaoDelta
 extends PanelContainer
 ## A change of a resource on a paper tag: "+120" in green with an up arrow, "−20" in red with a
-## down arrow. Shown on the result board and when coins fly in.
+## down arrow. Given an icon (a coin, a flag) it shows that in place of the arrow, so the tag says
+## what changed. Shown on the result board's Phần thưởng.
 
 var amount: int = 0:
 	set(value):
@@ -14,9 +15,13 @@ var _label := Label.new()
 var _arrow := Control.new()
 
 
-static func create(value: int) -> XomDaoDelta:
+static func create(value: int, icon: Control = null) -> XomDaoDelta:
 	var tag := XomDaoDelta.new()
 	tag.amount = value
+	if icon != null:
+		tag._arrow.visible = false
+		tag._arrow.get_parent().add_child(icon)
+		tag._arrow.get_parent().move_child(icon, 0)
 	return tag
 
 
