@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.27.1](https://github.com/MinhWorker/xom-dao/compare/v0.27.0...v0.27.1) (2026-10-24)
+
+
+### Bug fixes
+
+* **client:** show room options loading state and preload game setup ([#189](https://github.com/MinhWorker/xom-dao/issues/189)) ([0011b30](https://github.com/MinhWorker/xom-dao/commit/0011b30eb761fa45232642acf05a5407ba087b74))
+* **co-ty-phu-classic:** preserve extra roll after skipping unowned property on doubles ([#190](https://github.com/MinhWorker/xom-dao/issues/190)) ([1c79ae6](https://github.com/MinhWorker/xom-dao/commit/1c79ae67f89dbf77da3c3fd2700cf76d01e80a9a))
+* **hub:** cache player stats, maintain profile shape and animate level exp changes ([#193](https://github.com/MinhWorker/xom-dao/issues/193)) ([e02c63f](https://github.com/MinhWorker/xom-dao/commit/e02c63f9ec02e0a631284f66ab67f944f5fc1910))
+
+
+### Performance
+
+* **ci:** parallelize checks and shard e2e scenarios across runners ([#192](https://github.com/MinhWorker/xom-dao/issues/192)) ([276c531](https://github.com/MinhWorker/xom-dao/commit/276c531fac33ad11e96d6e23c1444713782ef041))
+
 ## [0.27.0](https://github.com/MinhWorker/xom-dao/compare/v0.26.1...v0.27.0) (2026-10-23)
 
 
