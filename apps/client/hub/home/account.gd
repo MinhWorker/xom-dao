@@ -147,7 +147,9 @@ func _field(
 	input.max_length = length
 	input.custom_minimum_size = Vector2(320.0, FIELD_HEIGHT)
 	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	input.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_DEFAULT
+	input.virtual_keyboard_type = (
+		LineEdit.KEYBOARD_TYPE_PASSWORD if input.secret else LineEdit.KEYBOARD_TYPE_DEFAULT
+	)
 	input.add_theme_font_size_override("font_size", 28)
 	var box_normal: StyleBoxFlat = XomDaoUi.box(Color("#FFFDF7"), Color("#C8B693"), 2, 14.0)
 	box_normal.content_margin_left = 16.0

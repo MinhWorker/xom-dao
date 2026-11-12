@@ -319,13 +319,16 @@ function main() {
   const index = join(dist, 'index.html');
   run([mode, 'Web', index], index);
   // Fullscreen phones expose their notch/home-bar env() values with viewport-fit=cover.
-  writeFileSync(
-    index,
-    readFileSync(index, 'utf8').replace(
-      /(<meta name="viewport" content=")([^"]*)"/,
-      '$1$2, viewport-fit=cover"',
-    ),
-  );
+  const exportedHtml = readFileSync(index, 'utf8');
+  if (!/<meta name="viewport" content="[^"]*viewport-fit=/i.test(exportedHtml)) {
+    writeFileSync(
+      index,
+      exportedHtml.replace(
+        /(<meta name="viewport" content=")([^"]*)"/,
+        '$1$2, viewport-fit=cover"',
+      ),
+    );
+  }
   console.log(`✓ web ${modeName} build`);
 
   manifest = {};

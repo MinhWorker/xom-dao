@@ -2,7 +2,7 @@
 <html lang="vi">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
 		<meta name="theme-color" content="#000000">
 		<title>Xóm Đảo</title>
 		<style>
@@ -18,24 +18,42 @@
 			}
 
 			html,
-			body,
-			#canvas {
+			body {
+				position: fixed;
+				inset: 0;
 				width: 100%;
 				height: 100%;
 				margin: 0;
 				padding: 0;
 				border: 0;
+				overflow: hidden;
+				overscroll-behavior: none;
 			}
 
 			body {
-				overflow: hidden;
 				background: var(--sky);
 				touch-action: none;
 			}
 
 			#canvas {
 				display: block;
+				width: 100%;
+				height: 100%;
+				margin: 0;
+				padding: 0;
+				border: 0;
 				outline: none;
+			}
+
+			body > input,
+			body > textarea {
+				top: 0px !important;
+				left: 0px !important;
+				height: 44px !important;
+				font-size: 16px !important;
+				color: transparent !important;
+				background: transparent !important;
+				caret-color: transparent !important;
 			}
 
 			#status {
@@ -506,6 +524,98 @@
 					event.stopImmediatePropagation();
 				}
 			}, true);
+
+			// Keep the game screen stable on mobile so native status bar, navigation controls,
+			// and virtual keyboard overlay on top instead of shrinking or shifting the UI.
+			(() => {
+				const isMobileTouch = () =>
+					('ontouchstart' in window || navigator.maxTouchPoints > 0) &&
+					window.matchMedia('(pointer: coarse)').matches;
+				const widthDesc = Object.getOwnPropertyDescriptor(window, 'innerWidth');
+				const heightDesc = Object.getOwnPropertyDescriptor(window, 'innerHeight');
+				if (widthDesc?.get && widthDesc.configurable && heightDesc?.get && heightDesc.configurable) {
+					const readWidth = () => widthDesc.get.call(window);
+					const readHeight = () => heightDesc.get.call(window);
+					let stableWidth = 0;
+					let stableHeight = 0;
+					let stableLandscape = null;
+
+					const isKeyboardInputFocused = () => {
+						const active = document.activeElement;
+						return !!active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+					};
+
+					const syncStableSize = () => {
+						if (!isMobileTouch()) {
+							stableWidth = 0;
+							stableHeight = 0;
+							stableLandscape = null;
+							return;
+						}
+						const w = readWidth();
+						const h = readHeight();
+						if (w <= 0 || h <= 0) return;
+						const nowLandscape = w >= h;
+						if (stableLandscape === null) {
+							stableWidth = w;
+							stableHeight = h;
+							stableLandscape = nowLandscape;
+							return;
+						}
+						if (isKeyboardInputFocused()) {
+							return;
+						}
+						if (
+							nowLandscape !== stableLandscape &&
+							Math.max(w, h) >= Math.max(stableWidth, stableHeight) * 0.8 &&
+							Math.min(w, h) >= Math.min(stableWidth, stableHeight) * 0.8
+						) {
+							stableWidth = w;
+							stableHeight = h;
+							stableLandscape = nowLandscape;
+							return;
+						}
+						if (nowLandscape === stableLandscape) {
+							stableWidth = Math.max(stableWidth, w);
+							stableHeight = Math.max(stableHeight, h);
+						}
+					};
+
+					syncStableSize();
+					window.addEventListener('resize', syncStableSize);
+					window.addEventListener('orientationchange', syncStableSize);
+
+					Object.defineProperty(window, 'innerWidth', {
+						configurable: true,
+						enumerable: widthDesc.enumerable,
+						get() {
+							syncStableSize();
+							return isMobileTouch() && stableWidth > 0 ? stableWidth : readWidth();
+						},
+					});
+					Object.defineProperty(window, 'innerHeight', {
+						configurable: true,
+						enumerable: heightDesc.enumerable,
+						get() {
+							syncStableSize();
+							return isMobileTouch() && stableHeight > 0 ? stableHeight : readHeight();
+						},
+					});
+				}
+
+				const resetScroll = () => {
+					if (window.scrollX !== 0 || window.scrollY !== 0) {
+						window.scrollTo(0, 0);
+					}
+				};
+				window.addEventListener('scroll', resetScroll, { passive: true });
+				window.addEventListener('focusin', resetScroll);
+				window.addEventListener('focusout', () => setTimeout(resetScroll, 0));
+				if (window.visualViewport) {
+					window.visualViewport.addEventListener('resize', resetScroll);
+					window.visualViewport.addEventListener('scroll', resetScroll);
+				}
+			})();
 
 			const engine = new Engine(GODOT_CONFIG);
 
