@@ -32,13 +32,15 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - id: python
+        run: echo "version=$(python3 -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")')" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: |
             .tools/godot
             .tools/gdtoolkit
             apps/client/addons/gut
-          key: godot-check-${{ runner.os }}-${{ hashFiles('tools/godot/version.json') }}
+          key: godot-check-${{ runner.os }}-py${{ steps.python.outputs.version }}-${{ hashFiles('tools/godot/version.json') }}
       - run: npm run setup:godot
       - run: npm run godot:check
       # The SDK against a real server (dev, no database): two clients play Caro by room code.

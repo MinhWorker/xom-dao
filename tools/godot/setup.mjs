@@ -155,10 +155,16 @@ function installTemplates() {
   }
 }
 
+function gdtoolkitReady(stamp) {
+  if (!existsSync(stamp) || readFileSync(stamp, 'utf8') !== pin.gdtoolkit) return false;
+  // A cached venv from an older OS Python loses site-packages when Python upgrades.
+  const probe = spawnSync(gdtoolkit('python'), ['-c', 'import gdtoolkit'], { stdio: 'ignore' });
+  return probe.status === 0;
+}
+
 function installGdtoolkit() {
   const stamp = join(gdtoolkitDir, 'version');
-  if (existsSync(stamp) && readFileSync(stamp, 'utf8') === pin.gdtoolkit)
-    return console.log(`gdtoolkit ${pin.gdtoolkit}: installed`);
+  if (gdtoolkitReady(stamp)) return console.log(`gdtoolkit ${pin.gdtoolkit}: installed`);
   console.log(`gdtoolkit ${pin.gdtoolkit}: installing`);
   rmSync(gdtoolkitDir, { recursive: true, force: true });
   const python = process.env.XOMDAO_PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
