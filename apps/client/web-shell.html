@@ -3,18 +3,25 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
-		<meta name="theme-color" content="#000000">
+		<meta name="theme-color" content="#16233F">
 		<title>Xóm Đảo</title>
 		<style>
 			:root {
-				color-scheme: light;
-				font-family: "Trebuchet MS", "Arial Rounded MT Bold", Arial, sans-serif;
+				color-scheme: dark;
+				font-family: "Be Vietnam Pro", "Nunito", "Segoe UI", "Trebuchet MS", Arial, sans-serif;
 				font-synthesis: none;
-				--navy: #19344d;
-				--cream: #fff6dd;
-				--gold: #f4bd49;
-				--teal: #159eaa;
-				--sky: #68c9e8;
+				--navy: #16233F;
+				--navy-deep: #0E172C;
+				--navy-hud: rgba(22, 35, 63, 0.86);
+				--navy-line: #3B5683;
+				--cream: #FFF6E3;
+				--cream-muted: rgba(255, 246, 227, 0.82);
+				--sun: #FFD54A;
+				--gold: #E7B53C;
+				--gold-dark: #B9822A;
+				--sea: #3EC1C9;
+				--sea-deep: #1E8FA6;
+				--lantern: #E0352B;
 			}
 
 			html,
@@ -31,7 +38,7 @@
 			}
 
 			body {
-				background: var(--sky);
+				background: var(--navy);
 				touch-action: none;
 			}
 
@@ -56,236 +63,187 @@
 				caret-color: transparent !important;
 			}
 
+			/* Matches HubLoading (apps/client/hub/loading.gd): deep navy sea + warm coastal horizon + navy shade */
 			#status {
 				position: fixed;
 				inset: 0;
 				z-index: 10;
-				display: grid;
-				place-items: center;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding:
+					max(16px, calc(env(safe-area-inset-top, 0px) + 10px))
+					max(18px, calc(env(safe-area-inset-right, 0px) + 14px))
+					max(16px, calc(env(safe-area-inset-bottom, 0px) + 10px))
+					max(18px, calc(env(safe-area-inset-left, 0px) + 14px));
+				box-sizing: border-box;
 				overflow: hidden;
 				isolation: isolate;
-				color: var(--navy);
+				color: var(--cream);
 				background:
-					radial-gradient(ellipse at 50% 59%, rgba(255, 255, 255, 0.34), transparent 37%),
-					linear-gradient(180deg, #53b9ea 0%, #8bd9e8 58%, #c5eee1 76%, #55c4c5 100%);
+					radial-gradient(ellipse 80% 60% at 50% 18%, rgba(62, 193, 201, 0.22), transparent 72%),
+					radial-gradient(ellipse 58% 42% at 50% 44%, rgba(255, 213, 74, 0.14), transparent 72%),
+					linear-gradient(180deg, #1E3A63 0%, #1B4B72 38%, #194E6E 62%, #16233F 100%);
 				visibility: visible;
 			}
 
+			/* Top & bottom navy vignette matching HubLoading._draw_shade() */
 			#status::before {
 				position: absolute;
+				inset: 0;
 				z-index: -1;
-				right: -8%;
-				bottom: -9%;
-				left: -8%;
-				height: 39%;
-				border-radius: 50% 50% 0 0 / 15% 15% 0 0;
-				background: linear-gradient(180deg, rgba(51, 190, 193, 0.9), #179eaa 72%, #128894);
-				box-shadow: 0 -9px 34px rgba(33, 153, 170, 0.17);
+				background:
+					linear-gradient(180deg, rgba(22, 35, 63, 0.42) 0%, transparent 24%),
+					linear-gradient(180deg, transparent 34%, rgba(22, 35, 63, 0.94) 100%);
 				content: "";
+				pointer-events: none;
 			}
 
-			.sky-glow {
+			.backdrop-clouds {
 				position: absolute;
-				z-index: -1;
-				top: 13%;
-				left: 50%;
-				width: min(78vmin, 920px);
-				aspect-ratio: 1;
-				border-radius: 50%;
-				background: radial-gradient(circle, rgba(255, 247, 202, 0.4), rgba(255, 247, 202, 0.1) 36%, transparent 70%);
-				transform: translateX(-50%);
+				inset: 0;
+				z-index: -2;
+				pointer-events: none;
+				overflow: hidden;
 			}
 
 			.cloud {
 				position: absolute;
-				z-index: 0;
-				width: clamp(110px, 17vw, 260px);
-				color: rgba(242, 255, 250, 0.65);
-				filter: drop-shadow(0 8px 10px rgba(31, 112, 149, 0.08));
-				animation: cloud-drift 9s ease-in-out infinite alternate;
+				width: clamp(120px, 19vw, 270px);
+				color: rgba(255, 246, 227, 0.1);
+				animation: cloud-drift 12s ease-in-out infinite alternate;
 			}
 
-			.cloud svg,
-			.birds svg,
-			.island-mark svg,
-			.loading-mark svg {
+			.cloud svg {
 				display: block;
 				width: 100%;
 				height: auto;
 			}
 
 			.cloud-left {
-				top: 19%;
-				left: -1.5%;
+				top: 12%;
+				left: -2%;
 			}
 
 			.cloud-right {
-				top: 29%;
+				top: 18%;
 				right: -2%;
-				width: clamp(90px, 13vw, 205px);
-				animation-delay: -4s;
+				width: clamp(100px, 15vw, 220px);
+				animation-delay: -5s;
 			}
 
-			.birds {
+			.backdrop-islands {
 				position: absolute;
-				z-index: 1;
-				top: 27%;
-				left: calc(50% + clamp(70px, 15vw, 240px));
-				width: clamp(34px, 5vw, 70px);
-				color: #fff9d9;
-				opacity: 0.9;
-			}
-
-			.horizon {
-				position: absolute;
-				z-index: 0;
-				right: 0;
-				bottom: 22%;
-				left: 0;
-				height: clamp(42px, 11vh, 115px);
-				pointer-events: none;
-			}
-
-			.horizon svg,
-			.wave svg {
-				display: block;
-				width: 100%;
-				height: 100%;
-			}
-
-			.wave {
-				position: absolute;
-				z-index: 1;
 				right: 0;
 				bottom: 0;
 				left: 0;
-				height: 22%;
-				min-height: 62px;
+				z-index: -2;
+				height: clamp(120px, 34vh, 300px);
 				pointer-events: none;
-				opacity: 0.56;
+				opacity: 0.72;
 			}
 
-			.wave svg {
-				position: absolute;
-				bottom: 70%;
-				height: clamp(28px, 7vh, 70px);
-			}
-
-			.brand {
-				position: absolute;
-				z-index: 3;
-				top: max(14px, calc(env(safe-area-inset-top, 0px) + 8px));
-				left: 50%;
-				display: flex;
-				align-items: center;
-				gap: 9px;
-				color: white;
-				text-shadow: 0 2px 9px rgba(28, 90, 125, 0.26);
-				transform: translateX(-50%);
-				white-space: nowrap;
-			}
-
-			.island-mark {
-				width: 46px;
-				filter: drop-shadow(0 2px 4px rgba(22, 92, 112, 0.2));
-			}
-
-			.brand-copy {
-				display: grid;
-				gap: 1px;
-			}
-
-			.brand-name {
-				font-size: clamp(18px, 2.6vh, 25px);
-				font-weight: 900;
-				letter-spacing: 0.14em;
-				line-height: 1;
-			}
-
-			.brand-note {
-				color: #fff4cc;
-				font-size: 10px;
-				font-weight: 800;
-				letter-spacing: 0.16em;
-			}
-
-			.island-art {
-				position: absolute;
-				z-index: 2;
-				top: 50%;
-				left: 50%;
-				width: clamp(205px, 49vh, 520px);
-				aspect-ratio: 1;
-				transform: translate(-50%, -52%);
-				animation: island-bob 5s ease-in-out infinite;
-			}
-
-			.island-art::before {
-				position: absolute;
-				inset: -15px;
-				border: 1px dashed rgba(255, 252, 222, 0.74);
-				border-radius: 50%;
-				box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.07), 0 0 35px rgba(255, 255, 255, 0.2);
-				content: "";
-			}
-
-			.island-art::after {
-				position: absolute;
-				z-index: -1;
-				right: 12%;
-				bottom: -11%;
-				left: 12%;
-				height: 15%;
-				border-radius: 50%;
-				background: rgba(15, 104, 135, 0.28);
-				filter: blur(13px);
-				content: "";
-			}
-
-			.island-art img {
+			.backdrop-islands svg {
 				display: block;
 				width: 100%;
 				height: 100%;
-				border: 7px solid rgba(255, 248, 220, 0.98);
-				border-radius: 50%;
-				background: #58bff0;
-				box-shadow: 0 15px 34px rgba(27, 84, 119, 0.2), 0 0 0 4px rgba(229, 177, 77, 0.92);
-				object-fit: cover;
 			}
 
+			.loader-shell {
+				position: relative;
+				z-index: 2;
+				width: min(840px, 100%);
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 20px;
+			}
+
+			.brand-header {
+				display: flex;
+				align-items: center;
+				gap: 14px;
+			}
+
+			.island-badge {
+				width: 64px;
+				height: 64px;
+				flex: 0 0 auto;
+				border-radius: 50%;
+				overflow: hidden;
+				border: 3px solid var(--sun);
+				background: var(--navy);
+				box-shadow:
+					0 6px 18px rgba(10, 16, 32, 0.45),
+					0 0 0 3px rgba(22, 35, 63, 0.85);
+				animation: island-bob 4.8s ease-in-out infinite;
+			}
+
+			.island-badge img {
+				display: block;
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				transform: scale(1.22);
+			}
+
+			.brand-titles {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+			}
+
+			.brand-kicker {
+				color: var(--sun);
+				font-size: 13px;
+				font-weight: 800;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				text-shadow: 0 2px 6px rgba(10, 16, 32, 0.9);
+			}
+
+			.brand-name {
+				color: var(--cream);
+				font-size: clamp(26px, 4.2vw, 38px);
+				font-weight: 900;
+				letter-spacing: 0.06em;
+				line-height: 1.05;
+				text-shadow:
+					0 3px 0 rgba(22, 35, 63, 0.95),
+					0 6px 16px rgba(10, 16, 32, 0.65);
+			}
+
+			/* Main HUD panel matching XomDaoUi.NAVY_HUD + NAVY_LINE */
 			.loader-card {
-				position: absolute;
-				z-index: 4;
-				bottom: max(15px, calc(env(safe-area-inset-bottom, 0px) + 10px));
-				left: 50%;
-				width: min(700px, calc(100% - 36px));
+				width: 100%;
 				box-sizing: border-box;
-				padding: 19px 25px 21px;
-				border: 1px solid rgba(255, 255, 255, 0.75);
-				border-radius: 17px;
-				background: rgba(255, 248, 222, 0.9);
-				box-shadow: 0 9px 26px rgba(13, 83, 105, 0.18), inset 0 1px 0 white;
-				backdrop-filter: blur(9px);
-				transform: translateX(-50%);
+				padding: 26px 30px 24px;
+				border: 2.5px solid var(--navy-line);
+				border-radius: 24px;
+				background: linear-gradient(180deg, rgba(22, 35, 63, 0.88) 0%, rgba(14, 23, 44, 0.95) 100%);
+				box-shadow:
+					0 16px 38px rgba(8, 14, 28, 0.55),
+					inset 0 1px 0 rgba(255, 246, 227, 0.14);
+				backdrop-filter: blur(8px);
 			}
 
 			.loading-caption {
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
-				gap: 14px;
-				margin-bottom: 12px;
-				color: var(--navy);
-				font-size: 18px;
-				font-weight: 800;
-				letter-spacing: 0.025em;
+				gap: 16px;
+				margin-bottom: 14px;
 			}
 
 			.loading-label {
 				display: flex;
 				min-width: 0;
 				align-items: center;
-				gap: 10px;
+				gap: 12px;
+				color: var(--cream);
+				font-size: clamp(18px, 2.5vw, 22px);
+				font-weight: 800;
+				text-shadow: 0 2px 4px rgba(10, 16, 32, 0.9);
 			}
 
 			#status-label {
@@ -294,41 +252,103 @@
 				white-space: nowrap;
 			}
 
+			/* Godot HubLoading / HubWait circular arc spinner */
+			.spinner {
+				width: 30px;
+				height: 30px;
+				flex: 0 0 auto;
+				animation: spin 1.15s linear infinite;
+			}
+
+			.spinner svg {
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+
 			#status-percent {
+				flex: 0 0 auto;
 				min-width: 3.5ch;
-				color: #80601e;
-				font-size: 19px;
+				color: var(--sun);
+				font-size: clamp(32px, 5vw, 46px);
 				font-variant-numeric: tabular-nums;
 				font-weight: 900;
+				line-height: 1;
 				text-align: right;
+				text-shadow:
+					0 2px 0 rgba(22, 35, 63, 0.95),
+					0 4px 12px rgba(255, 213, 74, 0.25);
 			}
 
-			.loading-mark {
-				width: 24px;
-				flex: 0 0 auto;
-				color: var(--teal);
-			}
-
+			/* Hero progress bar: large, raised XomDaoPuff-style gold bar */
 			.progress-track {
 				position: relative;
-				height: 20px;
+				height: 52px;
+				padding: 5px;
+				box-sizing: border-box;
+				overflow: hidden;
+				border: 2.5px solid var(--navy-line);
+				border-radius: 999px;
+				background: var(--navy-deep);
+				box-shadow:
+					inset 0 3px 8px rgba(5, 10, 22, 0.72),
+					0 2px 0 rgba(255, 246, 227, 0.08);
+			}
+
+			.progress-inner {
+				position: relative;
+				width: 100%;
+				height: 100%;
 				overflow: hidden;
 				border-radius: 999px;
-				background: #d9e2ca;
-				box-shadow: inset 0 1px 2px rgba(39, 84, 58, 0.14);
+			}
+
+			.progress-fill {
+				position: relative;
+				width: 0%;
+				height: 100%;
+				min-width: 0;
+				border-radius: 999px;
+				background: linear-gradient(180deg, #FFE47A 0%, var(--sun) 48%, var(--gold) 100%);
+				box-shadow:
+					inset 0 2px 0 rgba(255, 255, 255, 0.52),
+					inset 0 -4px 0 var(--gold-dark),
+					0 0 18px rgba(255, 213, 74, 0.36);
+				transition: width 160ms ease-out;
+				overflow: hidden;
+			}
+
+			.progress-fill::after {
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(
+					110deg,
+					transparent 20%,
+					rgba(255, 255, 255, 0.36) 45%,
+					transparent 70%
+				);
+				transform: translateX(-100%);
+				animation: bar-shine 2.2s ease-in-out infinite;
+				content: "";
+			}
+
+			.progress-track:not(.is-measured) .progress-fill {
+				display: none;
 			}
 
 			.progress-sheen {
 				position: absolute;
-				z-index: 0;
 				top: 0;
 				left: 0;
-				width: 36%;
+				width: 34%;
 				height: 100%;
 				border-radius: 999px;
-				background: linear-gradient(90deg, #e7a632, #ffd86c);
-				box-shadow: 0 0 12px rgba(240, 182, 58, 0.5);
-				animation: sail 1.9s ease-in-out infinite;
+				background: linear-gradient(180deg, #FFE47A 0%, var(--sun) 48%, var(--gold) 100%);
+				box-shadow:
+					inset 0 2px 0 rgba(255, 255, 255, 0.52),
+					inset 0 -4px 0 var(--gold-dark),
+					0 0 16px rgba(255, 213, 74, 0.35);
+				animation: sail 1.7s ease-in-out infinite;
 			}
 
 			.progress-track.is-measured .progress-sheen {
@@ -337,42 +357,71 @@
 
 			#status-progress {
 				position: absolute;
-				z-index: 1;
 				inset: 0;
-				display: block;
 				width: 100%;
 				height: 100%;
 				margin: 0;
-				appearance: none;
-				border: 0;
-				background: transparent;
-				color: var(--gold);
+				opacity: 0;
+				pointer-events: none;
 			}
 
-			#status-progress::-webkit-progress-bar {
-				border-radius: 999px;
-				background: transparent;
+			.comfort-box {
+				display: flex;
+				align-items: flex-start;
+				gap: 12px;
+				margin-top: 18px;
+				padding-top: 16px;
+				border-top: 1px solid rgba(59, 86, 131, 0.55);
 			}
 
-			#status-progress::-webkit-progress-value {
-				border-radius: 999px;
-				background: linear-gradient(90deg, #e7a632, #ffd86c);
-				box-shadow: 0 0 12px rgba(240, 182, 58, 0.5);
+			.comfort-icon {
+				width: 22px;
+				height: 22px;
+				margin-top: 2px;
+				flex: 0 0 auto;
+				color: var(--sun);
 			}
 
-			#status-progress::-moz-progress-bar {
-				border-radius: 999px;
-				background: linear-gradient(90deg, #e7a632, #ffd86c);
-				box-shadow: 0 0 12px rgba(240, 182, 58, 0.5);
+			.comfort-icon svg {
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+
+			.comfort-copy {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+				min-width: 0;
+			}
+
+			.comfort-text {
+				margin: 0;
+				color: var(--cream);
+				font-size: 14.5px;
+				font-weight: 600;
+				line-height: 1.48;
+			}
+
+			.comfort-hint {
+				margin: 0;
+				color: rgba(255, 213, 74, 0.92);
+				font-size: 13.5px;
+				font-weight: 700;
+				line-height: 1.42;
 			}
 
 			#status-notice {
 				display: none;
-				margin: 0;
-				padding: 10px 3px 1px;
-				color: #8e3441;
-				font-size: 13px;
-				line-height: 1.45;
+				margin: 14px 0 0;
+				padding: 12px 15px;
+				border: 1.5px solid var(--lantern);
+				border-radius: 14px;
+				background: rgba(184, 38, 42, 0.25);
+				color: var(--cream);
+				font-size: 14px;
+				font-weight: 600;
+				line-height: 1.48;
 				text-align: center;
 				white-space: normal;
 			}
@@ -382,69 +431,108 @@
 				z-index: 20;
 				bottom: 18px;
 				left: 50%;
-				padding: 10px 15px;
-				border-radius: 12px;
-				background: var(--cream);
-				color: var(--navy);
-				font-size: 13px;
+				padding: 10px 16px;
+				border: 2px solid var(--navy-line);
+				border-radius: 14px;
+				background: var(--navy);
+				color: var(--cream);
+				font-size: 14px;
+				font-weight: 700;
 				transform: translateX(-50%);
 				white-space: nowrap;
 			}
 
 			@keyframes island-bob {
-				0%, 100% { margin-top: 0; }
-				50% { margin-top: -9px; }
+				0%, 100% { transform: translateY(0); }
+				50% { transform: translateY(-5px); }
 			}
 
 			@keyframes cloud-drift {
-				from { translate: 0 0; }
-				to { translate: 9px -4px; }
+				from { transform: translate3d(0, 0, 0); }
+				to { transform: translate3d(12px, -5px, 0); }
+			}
+
+			@keyframes spin {
+				to { transform: rotate(360deg); }
 			}
 
 			@keyframes sail {
-				0% { transform: translateX(-110%); }
-				100% { transform: translateX(290%); }
+				0% { transform: translateX(-115%); }
+				100% { transform: translateX(310%); }
+			}
+
+			@keyframes bar-shine {
+				0%, 35% { transform: translateX(-120%); }
+				100% { transform: translateX(220%); }
 			}
 
 			@media (max-height: 480px) {
-				.island-art {
-					width: clamp(168px, 49vh, 225px);
-					top: 49%;
+				.loader-shell {
+					gap: 10px;
 				}
 
-				.brand {
-					top: max(8px, calc(env(safe-area-inset-top, 0px) + 4px));
+				.island-badge {
+					width: 48px;
+					height: 48px;
+					border-width: 2.5px;
 				}
 
-				.island-mark {
-					width: 34px;
+				.brand-kicker {
+					font-size: 11px;
+				}
+
+				.brand-name {
+					font-size: 23px;
 				}
 
 				.loader-card {
-					bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) + 5px));
-					padding: 12px 18px 14px;
+					padding: 16px 20px 15px;
+					border-radius: 20px;
 				}
 
 				.loading-caption {
-					gap: 10px;
-					margin-bottom: 8px;
-					font-size: 15px;
+					margin-bottom: 10px;
 				}
 
-				.loading-mark {
-					width: 20px;
+				.loading-label {
+					gap: 9px;
+					font-size: 17px;
+				}
+
+				.spinner {
+					width: 24px;
+					height: 24px;
 				}
 
 				#status-percent {
-					font-size: 16px;
+					font-size: 30px;
 				}
 
 				.progress-track {
-					height: 18px;
+					height: 36px;
+					padding: 3.5px;
 				}
 
-				.cloud-left { top: 20%; }
-				.cloud-right { top: 27%; }
+				.comfort-box {
+					gap: 10px;
+					margin-top: 12px;
+					padding-top: 11px;
+				}
+
+				.comfort-icon {
+					width: 19px;
+					height: 19px;
+				}
+
+				.comfort-text {
+					font-size: 13px;
+					line-height: 1.4;
+				}
+
+				.comfort-hint {
+					font-size: 12.5px;
+					line-height: 1.35;
+				}
 			}
 
 			@media (prefers-reduced-motion: reduce) {
@@ -467,51 +555,67 @@
 		<noscript><div class="noscript">Hãy bật JavaScript để vào Xóm Đảo.</div></noscript>
 
 		<div id="status" role="status" aria-live="polite" aria-label="Đang tải Xóm Đảo">
-			<div class="sky-glow" aria-hidden="true"></div>
-			<div class="cloud cloud-left" aria-hidden="true">
-				<svg viewBox="0 0 240 100" fill="none" aria-hidden="true"><path d="M20 67c0-16 13-29 30-29 7-21 27-34 49-31 18 2 33 15 38 32 6-5 13-8 21-8 18 0 32 14 32 32h9c18 0 32 12 32 27H25C10 90 1 81 1 69c0-1 7-2 19-2Z" fill="currentColor"/></svg>
+			<div class="backdrop-clouds" aria-hidden="true">
+				<div class="cloud cloud-left">
+					<svg viewBox="0 0 240 100" fill="none" aria-hidden="true"><path d="M20 67c0-16 13-29 30-29 7-21 27-34 49-31 18 2 33 15 38 32 6-5 13-8 21-8 18 0 32 14 32 32h9c18 0 32 12 32 27H25C10 90 1 81 1 69c0-1 7-2 19-2Z" fill="currentColor"/></svg>
+				</div>
+				<div class="cloud cloud-right">
+					<svg viewBox="0 0 240 100" fill="none" aria-hidden="true"><path d="M20 67c0-16 13-29 30-29 7-21 27-34 49-31 18 2 33 15 38 32 6-5 13-8 21-8 18 0 32 14 32 32h9c18 0 32 12 32 27H25C10 90 1 81 1 69c0-1 7-2 19-2Z" fill="currentColor"/></svg>
+				</div>
 			</div>
-			<div class="cloud cloud-right" aria-hidden="true">
-				<svg viewBox="0 0 240 100" fill="none" aria-hidden="true"><path d="M20 67c0-16 13-29 30-29 7-21 27-34 49-31 18 2 33 15 38 32 6-5 13-8 21-8 18 0 32 14 32 32h9c18 0 32 12 32 27H25C10 90 1 81 1 69c0-1 7-2 19-2Z" fill="currentColor"/></svg>
-			</div>
-			<div class="birds" aria-hidden="true">
-				<svg viewBox="0 0 80 42" fill="none" aria-hidden="true"><path d="M4 14c5-8 12-8 19 0 6-6 12-6 18 0M39 31c5-7 11-7 17 0 5-5 10-5 15 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-			</div>
-			<div class="horizon" aria-hidden="true">
-				<svg viewBox="0 0 1440 140" preserveAspectRatio="none" fill="none" aria-hidden="true"><path d="M0 118 86 72l51 34 105-82 76 87 104-64 89 70 85-89 67 54 81-47 80 68 73-91 57 61 94-45 81 58 87-76 71 63 64-40 88 47v70H0v-32Z" fill="#c5e3c9" fill-opacity=".37"/><path d="m0 131 129-48 62 43 109-63 88 66 124-50 89 45 114-65 113 71 91-58 108 51 105-68 83 57 93-42 132 62v45H0v-46Z" fill="#daf0d9" fill-opacity=".48"/></svg>
-			</div>
-			<div class="wave" aria-hidden="true">
-				<svg viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 42c164 42 264 43 424 12s281-45 441-16 325 50 575-5v67H0V42Z" fill="#daf8df" fill-opacity=".82"/><path d="M0 61c171 25 289 25 429 2 182-29 284-24 454 5 178 31 345 18 557-15v47H0V61Z" fill="#56c9c5" fill-opacity=".75"/></svg>
+			<div class="backdrop-islands" aria-hidden="true">
+				<svg viewBox="0 0 1440 240" preserveAspectRatio="none" fill="none" aria-hidden="true">
+					<path d="M0 165c62-12 104-64 152-64s78 46 134 52c68 8 106-94 176-94s108 82 178 92c92 14 146-32 224-32s102 48 172 42c72-6 116-76 184-76s106 54 166 64c22 4 38 5 54 4v87H0v-75Z" fill="#122747" fill-opacity="0.72"/>
+					<path d="M0 194c145-18 244-16 376 0 132 16 254 14 386-4 134-18 258-12 384 6 112 16 208 14 294-2v46H0v-46Z" fill="#0F203B" fill-opacity="0.88"/>
+				</svg>
 			</div>
 
-			<div class="brand">
-				<div class="island-mark" aria-hidden="true">
-					<svg viewBox="0 0 64 46" fill="none" aria-hidden="true"><path d="M5 29c8 3 16 5 27 5s19-2 27-5L47 41H17L5 29Z" fill="#9a6540" stroke="#fff1c7" stroke-width="2" stroke-linejoin="round"/><path d="M7 28c9-6 17-9 25-9s16 3 25 9c-8 4-16 6-25 6S15 32 7 28Z" fill="#6eae45" stroke="#fff1c7" stroke-width="2"/><path d="M32 19V9m0 4-9-5m9 5 8-7m-8 7 10 1" stroke="#f8d96f" stroke-width="2.5" stroke-linecap="round"/><circle cx="32" cy="8" r="4" fill="#4e9f4c"/><path d="M20 26h.1m8-3h.1m8 3h.1m9 1h.1" stroke="#fff3c8" stroke-width="3" stroke-linecap="round"/></svg>
+			<main class="loader-shell">
+				<div class="brand-header">
+					<div class="island-badge" aria-hidden="true">
+						<img src="index.icon.png" alt="">
+					</div>
+					<div class="brand-titles">
+						<span class="brand-kicker">Cổng trò chơi dân gian</span>
+						<span class="brand-name">XÓM ĐẢO</span>
+					</div>
 				</div>
-				<div class="brand-copy">
-					<span class="brand-name">XÓM ĐẢO</span>
-					<span class="brand-note">MỘT XÓM · NHIỀU TRÒ VUI</span>
-				</div>
-			</div>
 
-			<div class="island-art" aria-hidden="true">
-				<img src="index.icon.png" alt="">
-			</div>
+				<div class="loader-card">
+					<div class="loading-caption">
+						<span class="loading-label">
+							<span id="status-spinner" class="spinner" aria-hidden="true">
+								<svg viewBox="0 0 36 36" fill="none" aria-hidden="true">
+									<circle cx="18" cy="18" r="13" stroke="rgba(255, 246, 227, 0.25)" stroke-width="5"/>
+									<path d="M18 5a13 13 0 0 1 12.4 9.1" stroke="#FFD54A" stroke-width="5" stroke-linecap="round"/>
+								</svg>
+							</span>
+							<span id="status-label">Đang tải trò chơi…</span>
+						</span>
+						<span id="status-percent">…</span>
+					</div>
 
-			<div class="loader-card">
-				<div class="loading-caption">
-					<span class="loading-label">
-						<span class="loading-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 15c2.2-1.2 4.4-1.2 6.6 0s4.4 1.2 6.6 0 2.2-1.2 3.8-.6M6 10.5c1.7-.9 3.4-.9 5.1 0s3.4.9 5.1 0 2.5-1 3.8-.4M8.5 6.5c1.2-.6 2.4-.6 3.6 0s2.4.6 3.6 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
-						<span id="status-label">Đang tải trò chơi…</span>
-					</span>
-					<span id="status-percent">…</span>
+					<div class="progress-track">
+						<div class="progress-inner">
+							<span class="progress-sheen" aria-hidden="true"></span>
+							<div id="status-fill" class="progress-fill" aria-hidden="true"></div>
+						</div>
+						<progress id="status-progress" aria-label="Tiến trình tải"></progress>
+					</div>
+
+					<div class="comfort-box">
+						<span class="comfort-icon" aria-hidden="true">
+							<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 14.5a1 1 0 0 1-2 0V11a1 1 0 0 1 2 0Zm-1-7.75A1.25 1.25 0 1 1 13.25 7.5 1.25 1.25 0 0 1 12 8.75Z"/></svg>
+						</span>
+						<div class="comfort-copy">
+							<p class="comfort-text">Xóm Đảo đang chạy trên hạ tầng miễn phí nên lần tải đầu hoặc lúc máy chủ khởi động lại (cold start) có thể rất chậm.</p>
+							<p id="status-hint" class="comfort-hint">Bạn kiên nhẫn chờ một chút nhé, tải xong là vào chơi mượt ngay!</p>
+						</div>
+					</div>
+
+					<div id="status-notice" role="alert"></div>
 				</div>
-				<div class="progress-track">
-					<span class="progress-sheen" aria-hidden="true"></span>
-					<progress id="status-progress" aria-label="Tiến trình tải"></progress>
-				</div>
-				<div id="status-notice" role="alert"></div>
-			</div>
+			</main>
 		</div>
 
 		<script src="$GODOT_URL"></script>
@@ -622,26 +726,52 @@
 			((() => {
 				const statusOverlay = document.getElementById('status');
 				const statusProgress = document.getElementById('status-progress');
+				const statusFill = document.getElementById('status-fill');
 				const statusLabel = document.getElementById('status-label');
 				const statusPercent = document.getElementById('status-percent');
+				const statusSpinner = document.getElementById('status-spinner');
+				const statusHint = document.getElementById('status-hint');
 				const progressTrack = document.querySelector('.progress-track');
 				const statusNotice = document.getElementById('status-notice');
 
 				let initializing = true;
 				let statusMode = '';
+				let downloaded = false;
+
+				const hintTimers = [
+					setTimeout(() => {
+						if (initializing && !downloaded) {
+							statusHint.textContent = 'Vẫn đang tải tài nguyên — cảm ơn bạn đã kiên nhẫn chờ thêm chút nữa nhé!';
+						}
+					}, 15_000),
+					setTimeout(() => {
+						if (initializing && !downloaded) {
+							statusHint.textContent = 'Mạng hoặc máy chủ miễn phí phản hồi hơi chậm lúc khởi động, quá trình tải vẫn đang chạy…';
+						}
+					}, 35_000),
+				];
+
+				function clearHintTimers() {
+					while (hintTimers.length) {
+						clearTimeout(hintTimers.pop());
+					}
+				}
 
 				function setStatusMode(mode) {
 					if (statusMode === mode || !initializing) {
 						return;
 					}
 					if (mode === 'hidden') {
+						clearHintTimers();
 						statusOverlay.remove();
 						initializing = false;
 						return;
 					}
 					statusOverlay.style.visibility = 'visible';
-					statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
-					progressTrack.style.display = mode === 'progress' ? 'block' : 'none';
+					const showProgress = mode === 'progress';
+					statusProgress.style.display = showProgress ? 'block' : 'none';
+					progressTrack.style.display = showProgress ? 'block' : 'none';
+					statusSpinner.style.display = showProgress ? 'block' : 'none';
 					statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
 					statusMode = mode;
 				}
@@ -659,6 +789,7 @@
 
 				function displayFailureNotice(err) {
 					console.error(err);
+					clearHintTimers();
 					if (err instanceof Error) {
 						setStatusNotice(err.message);
 					} else if (typeof err === 'string') {
@@ -704,15 +835,25 @@
 						'onProgress': (current, total) => {
 							if (Number.isFinite(current) && current >= 0 && Number.isFinite(total) && total > 0) {
 								const isDownloaded = current >= total;
-								const percent = Math.min(100, Math.floor((current / total) * 100));
+								const ratio = Math.min(1, current / total);
+								const percent = Math.min(100, Math.floor(ratio * 100));
 								statusProgress.value = Math.min(current, total);
 								statusProgress.max = total;
+								statusFill.style.width = `${(ratio * 100).toFixed(1)}%`;
+								statusFill.style.minWidth = current > 0 ? '20px' : '0px';
 								statusPercent.textContent = `${percent}%`;
 								statusLabel.textContent = isDownloaded ? 'Đang khởi động trò chơi…' : 'Đang tải trò chơi…';
+								if (isDownloaded && !downloaded) {
+									downloaded = true;
+									clearHintTimers();
+									statusHint.textContent = 'Đã tải xong dữ liệu, đang khởi động bộ máy và đánh thức máy chủ…';
+								}
 								progressTrack.classList.add('is-measured');
 							} else {
 								statusProgress.removeAttribute('value');
 								statusProgress.removeAttribute('max');
+								statusFill.style.width = '0%';
+								statusFill.style.minWidth = '0px';
 								statusPercent.textContent = '…';
 								progressTrack.classList.remove('is-measured');
 							}

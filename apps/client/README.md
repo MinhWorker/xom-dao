@@ -152,11 +152,12 @@ Link:
 và `/ws` tới server, nên sau `npm run godot:export -- --debug` chỉ cần mở trang đó. Xuất lại là
 thấy bản mới.
 
-Màn khởi động web được thiết kế trong `web-shell.html`: đảo nổi, nền biển và thanh tải đồng bộ với
-Xóm Đảo. Phần trăm là số byte Godot đã tải trên tổng số byte cần tải; khi máy chủ không cho biết
-tổng dung lượng, thanh chạy dạng chờ và hiện dấu ba chấm. Đạt 100% nghĩa là tải xong các tệp, còn
-Godot vẫn cần khởi động trò chơi; dòng trạng thái chuyển sang “Đang khởi động trò chơi…” trong lúc
-chờ. Màn này tự ẩn khi `startGame` hoàn tất.
+Màn khởi động web được thiết kế trong `web-shell.html` theo cùng phong cách xanh navy và vàng đồng
+của màn chờ Godot, đặt thanh tiến trình lớn làm tâm điểm kèm lời nhắn trấn an về việc tải chậm do
+hạ tầng miễn phí và cold start. Phần trăm là số byte Godot đã tải trên tổng số byte cần tải; khi
+máy chủ không cho biết tổng dung lượng, thanh chạy dạng chờ và hiện dấu ba chấm. Đạt 100% nghĩa
+là tải xong các tệp, còn Godot vẫn cần khởi động trò chơi; dòng trạng thái chuyển sang “Đang khởi
+động trò chơi…” trong lúc chờ. Màn này tự ẩn khi `startGame` hoàn tất.
 
 Khi mở bản PWA đã cài trên điện thoại, màn khởi chạy do hệ điều hành dựng từ tên, biểu tượng và
 màu nền trong export preset. Màn HTML tải ở trên xuất hiện sau đó và có thể tùy chỉnh riêng.
