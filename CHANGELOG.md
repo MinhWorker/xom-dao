@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.28.0](https://github.com/MinhWorker/xom-dao/compare/v0.27.0...v0.28.0) (2026-11-12)
+
+
+### Features
+
+* **client:** update web loading screen to match Godot style ([#198](https://github.com/MinhWorker/xom-dao/issues/198)) ([ca3a2c0](https://github.com/MinhWorker/xom-dao/commit/ca3a2c005cac086cbf7d5b26c152cb745d81f525))
+
+
+### Bug fixes
+
+* **client:** enable mobile virtual keyboard and stabilize mobile viewport ([#197](https://github.com/MinhWorker/xom-dao/issues/197)) ([1b867d5](https://github.com/MinhWorker/xom-dao/commit/1b867d59b06c0a13edf36dba0dda57dc0682b063))
+* **client:** show room options loading state and preload game setup ([#189](https://github.com/MinhWorker/xom-dao/issues/189)) ([0011b30](https://github.com/MinhWorker/xom-dao/commit/0011b30eb761fa45232642acf05a5407ba087b74))
+* **co-ty-phu-classic:** preserve extra roll after skipping unowned property on doubles ([#190](https://github.com/MinhWorker/xom-dao/issues/190)) ([1c79ae6](https://github.com/MinhWorker/xom-dao/commit/1c79ae67f89dbf77da3c3fd2700cf76d01e80a9a))
+* **hub:** cache player stats, maintain profile shape and animate level exp changes ([#193](https://github.com/MinhWorker/xom-dao/issues/193)) ([e02c63f](https://github.com/MinhWorker/xom-dao/commit/e02c63f9ec02e0a631284f66ab67f944f5fc1910))
+* **hub:** show rewards in their own section of the result panel ([#194](https://github.com/MinhWorker/xom-dao/issues/194)) ([b74a82f](https://github.com/MinhWorker/xom-dao/commit/b74a82fab7147e2561b0fb039e0ce69ca19270a3))
+
+
+### Performance
+
+* **ci:** parallelize checks and shard e2e scenarios across runners ([#192](https://github.com/MinhWorker/xom-dao/issues/192)) ([276c531](https://github.com/MinhWorker/xom-dao/commit/276c531fac33ad11e96d6e23c1444713782ef041))
+
 ## [0.27.0](https://github.com/MinhWorker/xom-dao/compare/v0.26.1...v0.27.0) (2026-10-23)
 
 
