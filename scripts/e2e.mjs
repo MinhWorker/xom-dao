@@ -166,8 +166,8 @@ async function attempt(scenario) {
     const run = scenario.run({
       url,
       /** A fresh browser context (a new "device") with one page, its errors watched. */
-      page: async (viewport) => {
-        const page = await (await browser.newContext({ viewport })).newPage();
+      page: async (viewport, options = {}) => {
+        const page = await (await browser.newContext({ viewport, ...options })).newPage();
         pages.push(page);
         page.on('pageerror', (e) =>
           errors.push(e.stack?.split('\n').slice(0, 4).join('\n') ?? e.message),
