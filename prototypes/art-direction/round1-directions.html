@@ -1,0 +1,501 @@
+<title>Xóm Đảo art direction</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&family=Noto+Serif+Display:wght@500;700&family=Lexend:wght@400;500;600;700&family=Mali:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* PROTOTYPE — throwaway. Four art directions for the new Hub + Games, switchable via #a..#d.
+   Each variant shows the same three things: the Hub lobby, a Game running inside the Hub, the shared kit.
+   Each direction is a deliberate single look, so the page chrome takes the variant's own colours. */
+:root {
+  --page: #0f1720; --ink: #eef2f6; --muted: #9fb0c0; --line: #2b3a48; --chip: #1b2733;
+  --f-head: "Be Vietnam Pro", system-ui, sans-serif; --f-body: "Be Vietnam Pro", system-ui, sans-serif;
+  color-scheme: dark;
+}
+body[data-v="a"] { --page:#123247; --ink:#FFF6E3; --muted:#bcd6df; --line:#2e5a6e; --chip:#1a4258; --f-head:"Baloo 2",system-ui,sans-serif; }
+body[data-v="b"] { --page:#140b09; --ink:#f3e6cc; --muted:#b89f7a; --line:#3d2a1e; --chip:#22140f; --f-head:"Noto Serif Display",Georgia,serif; }
+body[data-v="c"] { --page:#eef1f6; --ink:#151a2d; --muted:#5a6378; --line:#d3d9e4; --chip:#ffffff; --f-head:"Lexend",system-ui,sans-serif; --f-body:"Lexend",system-ui,sans-serif; color-scheme: light; }
+body[data-v="d"] { --page:#2a2320; --ink:#fbeee0; --muted:#c7b2a0; --line:#4a3d36; --chip:#362d29; --f-head:"Mali",system-ui,sans-serif; --f-body:"Nunito",system-ui,sans-serif; }
+
+html, body { min-height: 100%; }
+body { background: var(--page); color: var(--ink); font-family: var(--f-body); transition: background .3s; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 120px; display: grid; gap: 28px; }
+.proto-tag { font: 600 11px/1 "Be Vietnam Pro", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-head); font-size: clamp(28px, 4.4vw, 46px); line-height: 1.05; margin: 6px 0 8px; text-wrap: balance; }
+.pitch { max-width: 68ch; color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.fact { background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.fact b { display: block; font: 600 11px/1.2 "Be Vietnam Pro", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.fact span { font-size: 14px; line-height: 1.4; }
+.label { font: 600 12px/1 "Be Vietnam Pro", sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.screens { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 860px) { .screens { grid-template-columns: 1fr; } }
+.screen { position: relative; aspect-ratio: 19.5 / 9; max-width: 100%; border-radius: 14px; overflow: hidden; container-type: inline-size; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.screen * { box-sizing: border-box; }
+.v { display: none; } .v.on { display: grid; gap: 28px; }
+.kit { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; }
+@media (max-width: 860px) { .kit { grid-template-columns: 1fr; } }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw { width: 74px; display: grid; gap: 4px; font-size: 11px; color: var(--muted); }
+.sw i { display: block; height: 40px; border-radius: 8px; border: 1px solid rgba(0,0,0,.15); }
+.typo { display: grid; gap: 6px; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.free { background: var(--chip); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.55; }
+.free ul { margin: 6px 0 0; padding-left: 18px; }
+
+/* floating switcher (prototype chrome, not part of any design) */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 4px; background: #111; color: #fff; border-radius: 999px; padding: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.45); font: 600 13px/1 "Be Vietnam Pro", sans-serif; z-index: 50; border: 1px solid #444; max-width: calc(100% - 32px); }
+.switcher button { all: unset; cursor: pointer; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: #2a2a2a; font-size: 16px; }
+.switcher button:hover { background: #3a3a3a; } .switcher button:focus-visible { outline: 2px solid #ffd54a; }
+.switcher .cur { padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ============ A: Xóm chài đồ chơi (current direction, 2.5D) ============ */
+.a-sky { position:absolute; inset:0; background: linear-gradient(#8FD3F4 0%, #bfe6f7 46%, #3EC1C9 62%, #1E8FA6 100%); }
+.a-mtn { position:absolute; bottom:38%; width:30cqw; height:16cqw; background:#9cc7cf; clip-path: polygon(0 100%, 18% 30%, 30% 55%, 45% 5%, 62% 60%, 75% 35%, 100% 100%); opacity:.7; }
+.a-isl { position:absolute; transform: translate(-50%,-50%); }
+.a-isl .rock { width:100%; aspect-ratio: 1.6; border-radius: 50% 50% 46% 46% / 30% 30% 70% 70%; background: radial-gradient(circle at 35% 30%, #F3DDB0 0 34%, #D9B97E 35% 48%, #9c7a52 49%); box-shadow: 0 1.4cqw 0 #7a5a3a; }
+.a-isl .tree { position:absolute; width:28%; aspect-ratio:1; border-radius:50%; background: radial-gradient(circle at 35% 30%, #8fd06a, #6DB34A 55%, #3F7F33); top:-12%; left:14%; }
+.a-isl .roof { position:absolute; width:34%; aspect-ratio:1.3; left:48%; top:-16%; background:#D3603F; clip-path: polygon(50% 0, 100% 60%, 88% 60%, 88% 100%, 12% 100%, 12% 60%, 0 60%); }
+.a-isl.far { filter: saturate(.35) brightness(1.05); opacity:.85; }
+.a-bubble { position:absolute; left:50%; top:-48%; transform:translateX(-50%); background:#FBF1DC; border:.35cqw solid #4A2E1C; border-radius:1.6cqw; padding:.5cqw 2cqw; font:800 2.4cqw/1 "Baloo 2"; color:#4A2E1C; white-space:nowrap; }
+.a-bubble::after { content:""; position:absolute; left:50%; bottom:-1.3cqw; width:1.6cqw; height:1.6cqw; background:#FBF1DC; border-right:.35cqw solid #4A2E1C; border-bottom:.35cqw solid #4A2E1C; transform:translateX(-50%) rotate(45deg); }
+.a-tray { position:absolute; left:1.6cqw; top:50%; transform:translateY(-50%); background: rgba(22,35,63,.88); border:.25cqw solid #3B5683; border-radius:2.4cqw; padding:1cqw; display:grid; gap:1cqw; }
+.a-nav { width:6.4cqw; height:6.4cqw; border-radius:1.6cqw; display:grid; place-items:center; color:#FFF6E3; font:700 1.25cqw/1 "Be Vietnam Pro"; gap:.2cqw; align-content:center; }
+.a-nav svg { width:3cqw; height:3cqw; }
+.a-nav.on { background:#E7B53C; color:#4A2E1C; box-shadow: 0 0 1.4cqw rgba(231,181,60,.7); }
+.a-pills { position:absolute; right:1.6cqw; top:1.6cqw; display:flex; gap:1cqw; }
+.a-pill { background: rgba(58,36,22,.85); color:#FFF6E3; border-radius:99px; height:4.4cqw; padding:0 1.6cqw 0 4.6cqw; display:flex; align-items:center; font:800 2.2cqw/1 "Baloo 2"; position:relative; font-variant-numeric: tabular-nums; }
+.a-pill i { position:absolute; left:-.6cqw; width:4.8cqw; height:4.8cqw; border-radius:50%; }
+.coin { background: radial-gradient(circle, #8F6526 0 16%, transparent 17%), radial-gradient(circle at 35% 30%, #f0c878, #D4A24C 60%, #8F6526); }
+.gem { background: radial-gradient(circle at 35% 30%, #8ff0bd, #3FBF7F 55%, #23875A); transform: rotate(45deg) scale(.8); border-radius: 22% !important; }
+.a-avatar { position:absolute; left:1.6cqw; top:1.6cqw; display:flex; align-items:center; gap:1cqw; }
+.a-avatar .ring { width:5.6cqw; height:5.6cqw; border-radius:50%; background:#f6c9a0; border:.6cqw solid #c9a15a; box-shadow: inset 0 0 0 .25cqw #8a6a2c; }
+.a-avatar span { background: rgba(58,36,22,.85); color:#FFF6E3; font:700 1.7cqw/1 "Be Vietnam Pro"; padding:.8cqw 1.4cqw; border-radius:99px; }
+.a-card { position:absolute; right:1.6cqw; bottom:1.6cqw; width:25cqw; background:#3a2416; border:.3cqw solid #9C5F2A; border-radius:2cqw; padding:1.2cqw; display:grid; gap:.9cqw; color:#FFF6E3; }
+.a-card h4 { margin:0; font:800 2.6cqw/1 "Baloo 2"; }
+.a-chips { display:flex; gap:.6cqw; } .a-chips span { background:#22140c; border-radius:99px; padding:.5cqw 1cqw; font:600 1.3cqw/1 "Be Vietnam Pro"; }
+.a-play { background: linear-gradient(#d0383c, #B8262A 55%, #96191d); border:.45cqw solid #E7B53C; border-radius:1.6cqw; box-shadow: 0 .7cqw 0 #7A1418, 0 1.2cqw 1.2cqw rgba(42,24,12,.45); color:#FFF6E3; font:800 3.6cqw/1 "Baloo 2"; letter-spacing:.06em; text-align:center; padding:1cqw 0 .6cqw; }
+/* A in-game */
+.a-table { position:absolute; inset:0; background: repeating-linear-gradient(90deg, #c8342f 0 1.2cqw, #b52b27 1.2cqw 2.4cqw); }
+.a-table::after { content:""; position:absolute; inset:4cqw 10cqw; border:.4cqw dashed rgba(255,214,120,.55); border-radius:3cqw; }
+.a-seat { position:absolute; display:flex; flex-direction:column; align-items:center; gap:.5cqw; transform:translate(-50%,-50%); }
+.a-seat .ring { width:6cqw; height:6cqw; border-radius:50%; background:#f2d0a8; border:.6cqw solid #c9a15a; }
+.a-seat span { background:rgba(58,36,22,.88); color:#FFF6E3; font:700 1.4cqw/1 "Be Vietnam Pro"; padding:.5cqw 1cqw; border-radius:99px; }
+.card { position:absolute; width:6.2cqw; aspect-ratio:2/3; background:#fffaf0; border-radius:.7cqw; border:.2cqw solid #d9c9a8; box-shadow:0 .3cqw .6cqw rgba(0,0,0,.25); font:800 1.9cqw/1 "Baloo 2"; padding:.4cqw .6cqw; color:#222; }
+.card.red { color:#c0261f; }
+.a-hand { position:absolute; left:50%; bottom:-1cqw; width:46cqw; height:12cqw; transform:translateX(-50%); }
+.a-btns { position:absolute; right:2cqw; bottom:2cqw; display:flex; gap:1cqw; }
+.pbtn { border-radius:1.4cqw; color:#FFF6E3; font:800 2.2cqw/1 "Baloo 2"; padding:1.1cqw 2.4cqw .8cqw; box-shadow: 0 .6cqw 0 var(--edge), 0 1cqw 1cqw rgba(42,24,12,.4); border:.3cqw solid var(--rim); background: linear-gradient(color-mix(in srgb, var(--face) 80%, white), var(--face) 55%); }
+.hubdot { position:absolute; left:1.6cqw; top:1.6cqw; width:5.4cqw; height:5.4cqw; border-radius:50%; background:rgba(58,36,22,.85); box-shadow:0 .5cqw 0 #22140c; display:grid; place-items:center; }
+.hubdot svg { width:2.6cqw; height:2.6cqw; }
+.hubtag { position:absolute; font:700 1.2cqw/1 "Be Vietnam Pro"; padding:.5cqw .9cqw; border-radius:.6cqw; background:#ffd54a; color:#3a2416; letter-spacing:.04em; }
+/* kit buttons in page-space */
+.kbtn { font:800 15px/1 "Baloo 2"; color:#FFF6E3; padding:12px 20px 9px; border-radius:12px; border:3px solid var(--rim); box-shadow:0 5px 0 var(--edge), 0 8px 10px rgba(42,24,12,.35); background: linear-gradient(color-mix(in srgb, var(--face) 80%, white), var(--face) 55%); }
+
+/* ============ B: Sơn mài tối giản (Vietnamese, flat 2D, premium) ============ */
+.b-bg { position:absolute; inset:0; background: radial-gradient(ellipse at 70% 0%, #3a1712 0, #1a0c09 55%, #0d0605 100%); }
+.b-bg::before { content:""; position:absolute; inset:0; background-image: radial-gradient(circle, rgba(212,170,90,.5) 0 .12cqw, transparent .14cqw); background-size: 3.1cqw 2.7cqw; opacity:.25; }
+.b-top { position:absolute; left:0; right:0; top:0; height:6.4cqw; display:flex; align-items:center; justify-content:space-between; padding:0 3cqw; border-bottom:.15cqw solid rgba(212,170,90,.45); }
+.b-brand { font:700 2.6cqw/1 "Noto Serif Display"; color:#e4c27a; letter-spacing:.04em; }
+.b-meta { display:flex; gap:2.4cqw; font:500 1.5cqw/1 "Be Vietnam Pro"; color:#e9dcc2; letter-spacing:.08em; text-transform:uppercase; font-variant-numeric: tabular-nums; }
+.b-meta b { color:#e4c27a; font-weight:700; }
+.b-row { position:absolute; left:3cqw; right:3cqw; top:10cqw; bottom:4cqw; display:grid; grid-template-columns: repeat(5, 1fr); gap:1.6cqw; align-items:end; }
+.b-panel { position:relative; height:78%; border-radius:.4cqw; overflow:hidden; border:.15cqw solid rgba(212,170,90,.35); display:flex; flex-direction:column; justify-content:flex-end; }
+.b-panel.on { height:100%; border:.3cqw solid #e4c27a; box-shadow: 0 0 0 .5cqw #140b09, 0 0 0 .65cqw rgba(228,194,122,.5); }
+.b-art { position:absolute; inset:0; }
+.b-cap { position:relative; padding:1.2cqw; background: linear-gradient(transparent, rgba(13,6,5,.92) 45%); }
+.b-cap h4 { margin:0 0 .5cqw; font:700 2.2cqw/1.05 "Noto Serif Display"; color:#f3e6cc; }
+.b-cap p { margin:0; font:500 1.15cqw/1.2 "Be Vietnam Pro"; color:#c9ae84; letter-spacing:.08em; text-transform:uppercase; }
+.b-go { margin-top:1cqw; display:inline-block; border:.2cqw solid #e4c27a; color:#e4c27a; font:600 1.4cqw/1 "Be Vietnam Pro"; padding:.8cqw 1.6cqw; letter-spacing:.12em; text-transform:uppercase; }
+/* B in-game: xiangqi on lacquer */
+.b-board { position:absolute; left:50%; top:52%; width:44cqw; aspect-ratio: 9/10; transform:translate(-50%,-50%); background: linear-gradient(135deg, #3b1a12, #24100b); border:.3cqw solid #e4c27a; box-shadow: 0 0 0 .8cqw #140b09, 0 0 0 1cqw rgba(228,194,122,.4); }
+.b-grid { position:absolute; inset:4%; background-image: linear-gradient(rgba(228,194,122,.55) .12cqw, transparent .12cqw), linear-gradient(90deg, rgba(228,194,122,.55) .12cqw, transparent .12cqw); background-size: 12.5% 11.11%; border-right:.12cqw solid rgba(228,194,122,.55); border-bottom:.12cqw solid rgba(228,194,122,.55); }
+.b-river { position:absolute; left:4%; right:4%; top:47%; height:9%; background:#2a120c; display:flex; justify-content:space-around; align-items:center; font:500 1.8cqw/1 "Noto Serif Display"; color:#c9a35d; letter-spacing:.3em; }
+.b-pc { position:absolute; width:4.2cqw; height:4.2cqw; border-radius:50%; transform:translate(-50%,-50%); background: radial-gradient(circle at 40% 35%, #fff8e6, #e9dcc2 70%, #bfa983); border:.25cqw solid currentColor; display:grid; place-items:center; font:700 2.2cqw/1 "Noto Serif Display", serif; box-shadow: 0 .3cqw .5cqw rgba(0,0,0,.5); }
+.b-pc.r { color:#a3201a; } .b-pc.k { color:#1d1410; }
+.b-hubbar { position:absolute; left:0; right:0; top:0; height:4.6cqw; display:flex; align-items:center; justify-content:space-between; padding:0 2cqw; background:#0d0605; border-bottom:.15cqw solid #e4c27a; font:600 1.4cqw/1 "Be Vietnam Pro"; color:#e4c27a; letter-spacing:.1em; text-transform:uppercase; }
+.b-side { position:absolute; top:9cqw; display:grid; gap:.6cqw; font:500 1.4cqw/1.2 "Be Vietnam Pro"; color:#e9dcc2; }
+.b-side b { font:700 2.2cqw/1 "Noto Serif Display"; color:#f3e6cc; }
+.b-clock { font:700 3cqw/1 "Noto Serif Display"; color:#e4c27a; font-variant-numeric: tabular-nums; }
+.kb-b { font:600 13px/1 "Be Vietnam Pro"; letter-spacing:.12em; text-transform:uppercase; padding:12px 18px; border:2px solid var(--c); color:var(--c); background:transparent; }
+.kb-b.fill { background:#a3201a; border-color:#e4c27a; color:#f3e6cc; }
+
+/* ============ C: Nền tảng trung tính (no cultural theme, flat UI, Games fully free) ============ */
+.c-app { position:absolute; inset:0; background:#f4f6fa; display:grid; grid-template-columns: 22cqw 1fr; font-family:"Lexend", sans-serif; color:#151a2d; }
+.c-side { background:#ffffff; border-right:.15cqw solid #e1e6ef; padding:2cqw 1.6cqw; display:grid; align-content:start; gap:1.2cqw; }
+.c-logo { font:700 2.2cqw/1 "Lexend"; display:flex; align-items:center; gap:.8cqw; }
+.c-logo i { width:2.8cqw; height:2.8cqw; border-radius:.8cqw; background:#ff7a1a; display:block; }
+.c-h { font:600 1.1cqw/1 "Lexend"; letter-spacing:.1em; text-transform:uppercase; color:#8a93a6; margin-top:.8cqw; }
+.c-fr { display:flex; align-items:center; gap:.9cqw; font:500 1.45cqw/1.1 "Lexend"; }
+.c-fr i { width:3.2cqw; height:3.2cqw; border-radius:50%; position:relative; display:block; flex:none; }
+.c-fr i::after { content:""; position:absolute; right:-.1cqw; bottom:-.1cqw; width:1cqw; height:1cqw; border-radius:50%; background:#1fbf75; border:.25cqw solid #fff; }
+.c-fr small { display:block; color:#8a93a6; font-size:1.1cqw; }
+.c-main { padding:2cqw 2.4cqw; display:grid; grid-template-rows: auto 1fr; gap:1.6cqw; min-width:0; }
+.c-bar { display:flex; align-items:center; gap:1.2cqw; }
+.c-search { flex:1; height:4.2cqw; border-radius:1.2cqw; background:#fff; border:.15cqw solid #e1e6ef; display:flex; align-items:center; padding:0 1.4cqw; color:#8a93a6; font:400 1.4cqw/1 "Lexend"; }
+.c-btn { height:4.2cqw; border-radius:1.2cqw; padding:0 2cqw; display:flex; align-items:center; font:600 1.5cqw/1 "Lexend"; }
+.c-btn.pri { background:#ff7a1a; color:#fff; } .c-btn.sec { background:#e6ecf5; color:#151a2d; }
+.c-grid { display:grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: 1fr 1fr; gap:1.2cqw; min-height:0; }
+.c-tile { border-radius:1.6cqw; position:relative; overflow:hidden; padding:1.2cqw; display:flex; flex-direction:column; justify-content:flex-end; color:#fff; }
+.c-tile h4 { margin:0; font:700 1.9cqw/1 "Lexend"; position:relative; }
+.c-tile p { margin:.4cqw 0 0; font:500 1.15cqw/1 "Lexend"; opacity:.85; position:relative; }
+.c-tile.big { grid-column: span 2; grid-row: span 2; }
+.c-tile.big h4 { font-size:3cqw; }
+.c-live { position:absolute; top:1cqw; left:1cqw; background:rgba(255,255,255,.92); color:#151a2d; font:600 1.1cqw/1 "Lexend"; padding:.5cqw .8cqw; border-radius:99px; }
+/* C in-game: Hub rail + a neon pixel game the Hub does not style */
+.c-rail { position:absolute; left:0; top:0; bottom:0; width:7cqw; background:#ffffff; border-right:.15cqw solid #e1e6ef; display:grid; align-content:start; justify-items:center; gap:1.6cqw; padding-top:1.6cqw; }
+.c-rail i { width:4.4cqw; height:4.4cqw; border-radius:1.2cqw; background:#e6ecf5; display:grid; place-items:center; }
+.c-rail i svg { width:2.2cqw; height:2.2cqw; }
+.c-rail i.leave { background:#ffe3e0; }
+.c-frame { position:absolute; left:7cqw; right:0; top:0; bottom:0; background:#07071a; overflow:hidden; }
+.c-frame::before { content:""; position:absolute; inset:0; background-image: linear-gradient(rgba(0,255,214,.12) .15cqw, transparent .15cqw), linear-gradient(90deg, rgba(0,255,214,.12) .15cqw, transparent .15cqw); background-size: 4cqw 4cqw; transform: perspective(30cqw) rotateX(55deg) translateY(10cqw) scale(1.6); transform-origin: bottom; }
+.c-pix { position:absolute; image-rendering: pixelated; }
+.c-score { position:absolute; top:2cqw; left:50%; transform:translateX(-50%); font:700 2.6cqw/1 "Lexend"; color:#00ffd6; letter-spacing:.2em; text-shadow:0 0 1.2cqw #00ffd6; }
+.kb-c { font:600 14px/1 "Lexend"; padding:12px 18px; border-radius:10px; }
+
+/* ============ D: Quán vỉa hè đất sét 3D (Vietnamese street, 3D clay) ============ */
+.d-bg { position:absolute; inset:0; background: linear-gradient(#ffd9a8 0%, #ffc28a 38%, #e8a274 39%, #d98f62 100%); }
+.d-wall { position:absolute; left:0; right:0; top:0; height:39%; background: linear-gradient(#f5d36b, #e8bf4f); }
+.d-wall::after { content:""; position:absolute; left:6%; right:6%; bottom:0; height:62%; background: repeating-linear-gradient(90deg, #3e7a8c 0 9cqw, #356b7b 9cqw 9.4cqw); border-radius:1.4cqw 1.4cqw 0 0; opacity:.9; }
+.d-sign { position:absolute; left:50%; top:3cqw; transform:translateX(-50%); background:#d6402f; color:#fff2d6; font:700 2.6cqw/1 "Mali"; padding:1cqw 3cqw; border-radius:1.6cqw; box-shadow: inset 0 -.6cqw 0 #a82a1d, 0 .8cqw 1.4cqw rgba(80,30,10,.35); z-index:2; }
+.d-floor { position:absolute; left:-10%; right:-10%; bottom:0; height:61%; background-image: linear-gradient(rgba(150,80,40,.18) .2cqw, transparent .2cqw), linear-gradient(90deg, rgba(150,80,40,.18) .2cqw, transparent .2cqw); background-size: 7cqw 7cqw; transform: perspective(40cqw) rotateX(52deg); transform-origin: top; }
+.d-table { position:absolute; transform:translate(-50%,-50%); }
+.d-top { width:100%; aspect-ratio:2.1; border-radius:50%; background: radial-gradient(ellipse at 40% 30%, #fff 0, var(--t) 45%, color-mix(in srgb, var(--t) 70%, black) 100%); box-shadow: 0 1.2cqw 0 color-mix(in srgb, var(--t) 60%, black), 0 2.6cqw 2.4cqw rgba(90,40,10,.35); position:relative; }
+.d-stool { position:absolute; width:5.4cqw; height:5cqw; border-radius:1.4cqw 1.4cqw 1cqw 1cqw; background: radial-gradient(ellipse at 40% 25%, color-mix(in srgb, var(--s) 60%, white), var(--s) 50%, color-mix(in srgb, var(--s) 70%, black)); box-shadow: 0 1.4cqw 1.2cqw rgba(90,40,10,.3); }
+.d-name { position:absolute; left:50%; top:-4.6cqw; transform:translateX(-50%); background:#fff6e6; color:#5a2e1a; font:700 1.8cqw/1 "Mali"; padding:.7cqw 1.6cqw; border-radius:99px; white-space:nowrap; box-shadow: inset 0 -.35cqw 0 #e8cfb0, 0 .5cqw .8cqw rgba(90,40,10,.25); }
+.d-name.on { background:#d6402f; color:#fff2d6; box-shadow: inset 0 -.35cqw 0 #a82a1d, 0 .5cqw .8cqw rgba(90,40,10,.3); }
+.d-glass { position:absolute; width:2cqw; height:3cqw; border-radius:.3cqw .3cqw .7cqw .7cqw; background: linear-gradient(90deg, rgba(255,255,255,.7), rgba(200,140,60,.55)); }
+.d-hud { position:absolute; display:flex; align-items:center; gap:1cqw; }
+.d-pill { background:#fff6e6; color:#5a2e1a; font:800 2cqw/1 "Nunito"; padding:.9cqw 1.6cqw; border-radius:99px; box-shadow: inset 0 -.4cqw 0 #e8cfb0, 0 .6cqw 1cqw rgba(90,40,10,.25); font-variant-numeric: tabular-nums; }
+.d-ava { width:5.4cqw; height:5.4cqw; border-radius:50%; background: radial-gradient(circle at 40% 30%, #ffe0bf, #f0b98a); box-shadow: inset 0 -.5cqw 0 #d79a6a, 0 .6cqw 1cqw rgba(90,40,10,.3); border:.4cqw solid #fff6e6; }
+.d-play { background: radial-gradient(ellipse at 50% 20%, #ff7a5c, #d6402f 60%); color:#fff2d6; font:700 3.2cqw/1 "Mali"; padding:1.4cqw 4cqw; border-radius:3cqw; box-shadow: inset 0 -.8cqw 0 #a82a1d, 0 1cqw 1.6cqw rgba(90,40,10,.35); }
+/* D in-game: close-up of the table */
+.d-close { position:absolute; inset:0; background: radial-gradient(ellipse at 50% 30%, #f6c79a, #c9845a 80%); }
+.d-plane { position:absolute; left:50%; top:58%; width:62cqw; height:40cqw; transform: translate(-50%,-50%) perspective(50cqw) rotateX(42deg); border-radius:50%; background: radial-gradient(ellipse at 45% 35%, #8fd7e8, #3aa2bb 60%, #2a7d92); box-shadow: 0 2cqw 0 #23697b, 0 5cqw 4cqw rgba(60,20,5,.45); }
+.d-card3 { position:absolute; width:7cqw; aspect-ratio:2/3; border-radius:1cqw; background: linear-gradient(160deg, #fffdf7, #f1e4cc); box-shadow: inset 0 -.4cqw 0 #dcc8a6, 0 .8cqw 1.2cqw rgba(60,20,5,.35); font:700 2.4cqw/1 "Mali"; padding:.6cqw .8cqw; color:#3a2a20; }
+.d-card3.red { color:#d6402f; }
+.d-btn { position:absolute; font:700 2.2cqw/1 "Mali"; padding:1.2cqw 2.6cqw; border-radius:2.4cqw; color:#fff2d6; }
+.kb-d { font:700 15px/1 "Mali"; padding:12px 20px; border-radius:20px; color:#fff2d6; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="proto-tag">Prototype · hướng đồ hoạ mới · <span id="vk">A</span> trên 4</div>
+    <h1 id="vt">Xóm chài đồ chơi</h1>
+    <p class="pitch" id="vp"></p>
+  </header>
+
+  <!-- ===================== A ===================== -->
+  <section class="v" data-key="a" data-name="Xóm chài đồ chơi" data-pitch="Giữ hướng hiện tại: xóm chài Việt Nam kiểu đồ chơi, 2.5D, gỗ mật ong, sơn mài, giấy dó. Hub và mọi Game dùng chung một bộ UI kit nên nhìn liền một khối. Game ít tự do nhất.">
+    <div class="facts">
+      <div class="fact"><b>Văn hoá Việt</b><span>Giữ, đậm: tre, mái ngói, đèn lồng, sơn mài</span></div>
+      <div class="fact"><b>2D hay 3D</b><span>2.5D: tranh vẽ có khối, giao diện phẳng</span></div>
+      <div class="fact"><b>Cách làm art</b><span>AI gen theo prompt chung + Blender cho vật thể</span></div>
+      <div class="fact"><b>Game tự do</b><span>Ít: dùng chung nút, font, bảng; chỉ bàn chơi là riêng</span></div>
+    </div>
+    <div>
+      <p class="label">Sảnh của Hub</p>
+      <div class="screens">
+        <div class="screen">
+          <div class="a-sky"></div>
+          <div class="a-mtn" style="left:8cqw"></div><div class="a-mtn" style="left:58cqw;transform:scaleX(-1)"></div>
+          <div class="a-isl far" style="left:22cqw;top:56%;width:12cqw"><div class="rock"></div><div class="tree"></div></div>
+          <div class="a-isl far" style="left:72cqw;top:56%;width:12cqw"><div class="rock"></div><div class="roof"></div></div>
+          <div class="a-isl far" style="left:36cqw;top:40%;width:8cqw"><div class="rock"></div></div>
+          <div class="a-isl far" style="left:62cqw;top:40%;width:8cqw"><div class="rock"></div><div class="tree"></div></div>
+          <div class="a-isl" style="left:48cqw;top:62%;width:22cqw"><div class="a-bubble">Bài</div><div class="rock"></div><div class="tree"></div><div class="roof"></div></div>
+          <div class="a-avatar"><div class="ring"></div><span>Minh</span></div>
+          <div class="a-tray">
+            <div class="a-nav on"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg>Nhà</div>
+            <div class="a-nav"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9l2-5h12l2 5v2a3 3 0 01-4 2.8A3 3 0 0112 15a3 3 0 01-4-1.2A3 3 0 014 11zM5 15h14v6H5z"/></svg>Chợ</div>
+            <div class="a-nav"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 10l10-6 10 6-2 1v8H4v-8z"/></svg>Đình</div>
+          </div>
+          <div class="a-pills"><div class="a-pill"><i class="coin"></i>2.450</div><div class="a-pill"><i class="gem"></i>38</div></div>
+          <div class="a-card"><h4>Tiến Lên</h4><div class="a-chips"><span>4 người</span><span>10 phút</span></div><div class="a-play">CHƠI</div></div>
+        </div>
+        <div class="screen">
+          <div class="a-table"></div>
+          <div class="a-seat" style="left:50%;top:16%"><div class="ring"></div><span>Lan</span></div>
+          <div class="a-seat" style="left:16%;top:46%"><div class="ring"></div><span>Tú</span></div>
+          <div class="a-seat" style="left:84%;top:46%"><div class="ring"></div><span>Hải</span></div>
+          <div class="card" style="left:44cqw;top:20cqw;transform:rotate(-8deg)">7♠</div>
+          <div class="card red" style="left:49cqw;top:19.4cqw;transform:rotate(4deg)">7♥</div>
+          <div class="a-hand">
+            <div class="card" style="left:4cqw;top:2cqw;transform:rotate(-14deg)">3♠</div>
+            <div class="card red" style="left:9cqw;top:.8cqw;transform:rotate(-8deg)">5♦</div>
+            <div class="card" style="left:14cqw;top:.2cqw;transform:rotate(-3deg)">8♣</div>
+            <div class="card red" style="left:19cqw;top:0;transform:rotate(2deg)">9♥</div>
+            <div class="card" style="left:24cqw;top:.4cqw;transform:rotate(7deg)">J♠</div>
+            <div class="card red" style="left:29cqw;top:1.4cqw;transform:rotate(12deg)">2♥</div>
+          </div>
+          <div class="a-btns">
+            <div class="pbtn" style="--face:#4E5D6C;--edge:#36414C;--rim:#36414C">Bỏ lượt</div>
+            <div class="pbtn" style="--face:#B8262A;--edge:#7A1418;--rim:#E7B53C">Đánh</div>
+          </div>
+          <div class="hubdot"><svg viewBox="0 0 24 24" fill="#FFF6E3"><path d="M4 6h16v2.5H4zm0 4.75h16v2.5H4zM4 15.5h16V18H4z"/></svg></div>
+          <div class="hubtag" style="left:8cqw;top:2.6cqw">Hub vẽ</div>
+          <div class="hubtag" style="right:2cqw;top:2.6cqw;background:#fff;">Game vẽ, bằng UI kit chung</div>
+        </div>
+      </div>
+    </div>
+    <div class="kit">
+      <div>
+        <p class="label">Bảng màu</p>
+        <div class="swatches">
+          <div class="sw"><i style="background:#8FD3F4"></i>Trời</div><div class="sw"><i style="background:#3EC1C9"></i>Ngọc lam</div>
+          <div class="sw"><i style="background:#FBF1DC"></i>Giấy dó</div><div class="sw"><i style="background:#D9963F"></i>Mật ong</div>
+          <div class="sw"><i style="background:#6DB34A"></i>Xanh tre</div><div class="sw"><i style="background:#B8262A"></i>Sơn mài</div>
+          <div class="sw"><i style="background:#E7B53C"></i>Vàng đồng</div><div class="sw"><i style="background:#3A2416"></i>Nâu HUD</div>
+        </div>
+        <div class="btnrow">
+          <span class="kbtn" style="--face:#B8262A;--edge:#7A1418;--rim:#E7B53C">Chơi tiếp</span>
+          <span class="kbtn" style="--face:#1E8FA6;--edge:#14687A;--rim:#14687A">Tạo phòng</span>
+          <span class="kbtn" style="--face:#3F7F33;--edge:#2B5A23;--rim:#2B5A23">Nhận</span>
+          <span class="kbtn" style="--face:#4E5D6C;--edge:#36414C;--rim:#36414C">Để sau</span>
+        </div>
+      </div>
+      <div class="typo">
+        <p class="label">Chữ</p>
+        <div style="font:800 30px/1.1 'Baloo 2'">Tiến Lên Miền Nam</div>
+        <div style="font:500 15px/1.5 'Be Vietnam Pro'">Be Vietnam Pro cho chữ thường: dấu rõ ở cỡ nhỏ, đọc tốt trên điện thoại.</div>
+        <div class="free"><b>Game được tự do tới đâu</b><ul><li>Bắt buộc: font, bảng màu, nút, bảng, ô người chơi lấy từ UI kit chung.</li><li>Tự do: chất liệu bàn chơi, quân, bài, nhạc nền.</li><li>Cái giá: mỗi engine cần một bản UI kit riêng (Godot, web, Unity…).</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== B ===================== -->
+  <section class="v" data-key="b" data-name="Sơn mài tối giản" data-pitch="Vẫn Việt Nam nhưng sang hơn và phẳng: nền sơn mài đen, son đỏ, vàng thếp, vỏ trứng. Không đồ chơi, không khối. Hub là một phòng trưng bày tranh; mỗi Game là một bức. Game chỉ cần giữ bảng màu và viền vàng.">
+    <div class="facts">
+      <div class="fact"><b>Văn hoá Việt</b><span>Giữ, tinh: sơn mài, vàng thếp, khảm vỏ trứng</span></div>
+      <div class="fact"><b>2D hay 3D</b><span>2D phẳng, hoạ tiết vẽ vector</span></div>
+      <div class="fact"><b>Cách làm art</b><span>SVG vẽ tay/code + AI gen tranh bìa theo một prompt sơn mài</span></div>
+      <div class="fact"><b>Game tự do</b><span>Vừa: tự chọn bố cục và cách vẽ, giữ bảng màu và font tiêu đề</span></div>
+    </div>
+    <div>
+      <p class="label">Sảnh của Hub</p>
+      <div class="screens">
+        <div class="screen">
+          <div class="b-bg"></div>
+          <div class="b-top"><div class="b-brand">Xóm Đảo</div><div class="b-meta"><span>Minh</span><span>Xu <b>2.450</b></span><span>Ngọc <b>38</b></span></div></div>
+          <div class="b-row">
+            <div class="b-panel"><div class="b-art" style="background:radial-gradient(circle at 50% 40%,#e4c27a 0 14%,transparent 15%),linear-gradient(#5a1d15,#2b0f0b)"></div><div class="b-cap"><h4>Cờ Tướng</h4><p>2 người</p></div></div>
+            <div class="b-panel"><div class="b-art" style="background:repeating-linear-gradient(160deg,#a3201a 0 3cqw,#7d1712 3cqw 6cqw)"></div><div class="b-cap"><h4>Cá Ngựa</h4><p>4 người</p></div></div>
+            <div class="b-panel on"><div class="b-art" style="background:radial-gradient(ellipse at 50% 35%,#f3e6cc 0 9%,transparent 9.5%),radial-gradient(ellipse at 38% 38%,#e9dcc2 0 9%,transparent 9.5%),radial-gradient(ellipse at 62% 38%,#e9dcc2 0 9%,transparent 9.5%),linear-gradient(#3b1a12,#1a0c09)"></div><div class="b-cap"><h4>Tiến Lên</h4><p>4 người 10 phút</p><span class="b-go">Vào chơi</span></div></div>
+            <div class="b-panel"><div class="b-art" style="background:conic-gradient(from 45deg at 50% 45%,#2c3d2a,#1a2618,#2c3d2a,#1a2618,#2c3d2a)"></div><div class="b-cap"><h4>Ô Ăn Quan</h4><p>2 người</p></div></div>
+            <div class="b-panel"><div class="b-art" style="background:linear-gradient(#e4c27a 0 2%,transparent 2% 98%,#e4c27a 98%),linear-gradient(#1d2b3a,#0e1620)"></div><div class="b-cap"><h4>Bắn Tàu</h4><p>2 người</p></div></div>
+          </div>
+        </div>
+        <div class="screen">
+          <div class="b-bg"></div>
+          <div class="b-hubbar"><span>← Sảnh</span><span>Phòng 4821</span><span>☰</span></div>
+          <div class="b-board"><div class="b-grid"></div><div class="b-river"><span>Sở hà</span><span>Hán giới</span></div>
+            <div class="b-pc k" style="left:4%;top:4%">車</div><div class="b-pc k" style="left:16.5%;top:4%">馬</div><div class="b-pc k" style="left:50%;top:4%">將</div><div class="b-pc k" style="left:29%;top:26.2%">砲</div>
+            <div class="b-pc r" style="left:96%;top:96%">俥</div><div class="b-pc r" style="left:50%;top:96%">帥</div><div class="b-pc r" style="left:62.5%;top:62%">炮</div><div class="b-pc r" style="left:75%;top:73.8%">傌</div>
+          </div>
+          <div class="b-side" style="left:3cqw"><span>Đen</span><b>Lan</b><span class="b-clock">04:12</span></div>
+          <div class="b-side" style="right:3cqw;text-align:right"><span>Đỏ</span><b>Minh</b><span class="b-clock">05:40</span></div>
+          <div class="hubtag" style="left:50%;top:5.4cqw;transform:translateX(-50%)">Thanh trên do Hub vẽ, phần dưới là Game</div>
+        </div>
+      </div>
+    </div>
+    <div class="kit">
+      <div>
+        <p class="label">Bảng màu</p>
+        <div class="swatches">
+          <div class="sw"><i style="background:#140b09"></i>Sơn then</div><div class="sw"><i style="background:#3b1a12"></i>Nâu cánh gián</div>
+          <div class="sw"><i style="background:#a3201a"></i>Son</div><div class="sw"><i style="background:#e4c27a"></i>Vàng thếp</div>
+          <div class="sw"><i style="background:#f3e6cc"></i>Vỏ trứng</div><div class="sw"><i style="background:#2c3d2a"></i>Xanh rêu</div>
+          <div class="sw"><i style="background:#1d2b3a"></i>Chàm</div>
+        </div>
+        <div class="btnrow">
+          <span class="kb-b fill">Vào chơi</span><span class="kb-b" style="--c:#e4c27a">Tạo phòng</span><span class="kb-b" style="--c:#b89f7a">Để sau</span>
+        </div>
+      </div>
+      <div class="typo">
+        <p class="label">Chữ</p>
+        <div style="font:700 30px/1.1 'Noto Serif Display'">Tiến Lên Miền Nam</div>
+        <div style="font:500 15px/1.5 'Be Vietnam Pro'">Tiêu đề có chân, nét thanh nét đậm như chữ trên câu đối; chữ thường vẫn là Be Vietnam Pro.</div>
+        <div class="free"><b>Game được tự do tới đâu</b><ul><li>Bắt buộc: dùng bảng màu chung, font tiêu đề, khung viền vàng cho thứ quan trọng.</li><li>Tự do: bố cục, nút, cách vẽ bàn chơi trong engine của mình.</li><li>Dễ làm ở mọi engine vì chỉ cần mã màu và một font.</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== C ===================== -->
+  <section class="v" data-key="c" data-name="Nền tảng trung tính" data-pitch="Bỏ chủ đề văn hoá ở Hub. Hub là một app sạch và sáng để tìm trò, xem bạn bè, vào phòng. Màu và chất riêng nằm hết trong từng Game, như các trò trên một nền tảng. Game tự do hoàn toàn bên trong khung của mình.">
+    <div class="facts">
+      <div class="fact"><b>Văn hoá Việt</b><span>Bỏ ở Hub; từng Game tự chọn</span></div>
+      <div class="fact"><b>2D hay 3D</b><span>Hub 2D phẳng; Game tuỳ ý</span></div>
+      <div class="fact"><b>Cách làm art</b><span>Hub gần như không cần art: chỉ icon và ảnh bìa từng Game</span></div>
+      <div class="fact"><b>Game tự do</b><span>Hoàn toàn, chỉ phải nộp ảnh bìa đúng khổ</span></div>
+    </div>
+    <div>
+      <p class="label">Sảnh của Hub</p>
+      <div class="screens">
+        <div class="screen">
+          <div class="c-app">
+            <div class="c-side">
+              <div class="c-logo"><i></i>Xóm Đảo</div>
+              <div class="c-h">Bạn bè đang chơi</div>
+              <div class="c-fr"><i style="background:#ffb4a2"></i><div>Lan<small>Tiến Lên</small></div></div>
+              <div class="c-fr"><i style="background:#a2d2ff"></i><div>Tú<small>Bắn Tàu</small></div></div>
+              <div class="c-fr"><i style="background:#b9fbc0"></i><div>Hải<small>Trong sảnh</small></div></div>
+              <div class="c-h">Lời mời</div>
+              <div class="c-fr"><i style="background:#ffd6a5"></i><div>Phòng 4821<small>Cờ Tướng</small></div></div>
+            </div>
+            <div class="c-main">
+              <div class="c-bar"><div class="c-search">Tìm trò</div><div class="c-btn sec">Nhập mã</div><div class="c-btn pri">Tạo phòng</div></div>
+              <div class="c-grid">
+                <div class="c-tile big" style="background:linear-gradient(135deg,#07071a,#1b1650)"><span class="c-live">12 đang chơi</span><h4 style="color:#00ffd6">Bắn Tàu</h4><p>Realtime 2 người</p></div>
+                <div class="c-tile" style="background:#c8342f"><h4>Tiến Lên</h4><p>4 người</p></div>
+                <div class="c-tile" style="background:#3b1a12"><h4>Cờ Tướng</h4><p>2 người</p></div>
+                <div class="c-tile" style="background:#2f9e68"><h4>Cá Ngựa</h4><p>4 người</p></div>
+                <div class="c-tile" style="background:#f2b705;color:#151a2d"><h4>Caro</h4><p>2 người</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="screen">
+          <div class="c-rail">
+            <i><svg viewBox="0 0 24 24" fill="#151a2d"><path d="M4 4h16v12H8l-4 4z"/></svg></i>
+            <i><svg viewBox="0 0 24 24" fill="#151a2d"><path d="M12 3a3 3 0 013 3v5a3 3 0 01-6 0V6a3 3 0 013-3zm-7 8h2a5 5 0 0010 0h2a7 7 0 01-6 6.9V21h-2v-3.1A7 7 0 015 11z"/></svg></i>
+            <i class="leave"><svg viewBox="0 0 24 24" fill="#d6402f"><path d="M10 4h9v16h-9v-2h7V6h-7zM9 8l1.4 1.4L8.8 11H15v2H8.8l1.6 1.6L9 16l-4-4z"/></svg></i>
+          </div>
+          <div class="c-frame">
+            <div class="c-score">0420</div>
+            <svg class="c-pix" style="left:20cqw;bottom:6cqw;width:9cqw" viewBox="0 0 9 6"><path fill="#00ffd6" d="M4 0h1v1h1v2h3v3H0V3h3V1h1z"/></svg>
+            <svg class="c-pix" style="left:16cqw;top:10cqw;width:7cqw" viewBox="0 0 11 8"><path fill="#ff3cac" d="M2 0h1v1h1v1h3V1h1V0h1v2h1v2h1v3h-1V5H9v2H8V6H3v1H2V5H1v2H0V4h1V2h1z"/></svg>
+            <svg class="c-pix" style="left:40cqw;top:14cqw;width:7cqw" viewBox="0 0 11 8"><path fill="#ffe14d" d="M2 0h1v1h1v1h3V1h1V0h1v2h1v2h1v3h-1V5H9v2H8V6H3v1H2V5H1v2H0V4h1V2h1z"/></svg>
+            <svg class="c-pix" style="left:62cqw;top:8cqw;width:7cqw" viewBox="0 0 11 8"><path fill="#ff3cac" d="M2 0h1v1h1v1h3V1h1V0h1v2h1v2h1v3h-1V5H9v2H8V6H3v1H2V5H1v2H0V4h1V2h1z"/></svg>
+            <div style="position:absolute;left:24.2cqw;bottom:13cqw;width:.6cqw;height:8cqw;background:#00ffd6;box-shadow:0 0 1cqw #00ffd6"></div>
+          </div>
+          <div class="hubtag" style="left:8cqw;bottom:2cqw">Thanh trái do Hub vẽ; Game vẽ kiểu gì cũng được</div>
+        </div>
+      </div>
+    </div>
+    <div class="kit">
+      <div>
+        <p class="label">Bảng màu (chỉ cho Hub)</p>
+        <div class="swatches">
+          <div class="sw"><i style="background:#f4f6fa"></i>Nền</div><div class="sw"><i style="background:#ffffff"></i>Tấm</div>
+          <div class="sw"><i style="background:#151a2d"></i>Mực</div><div class="sw"><i style="background:#ff7a1a"></i>Cam</div>
+          <div class="sw"><i style="background:#1fbf75"></i>Online</div><div class="sw"><i style="background:#e6ecf5"></i>Nút phụ</div>
+        </div>
+        <div class="btnrow">
+          <span class="kb-c" style="background:#ff7a1a;color:#fff">Tạo phòng</span><span class="kb-c" style="background:#e6ecf5;color:#151a2d">Nhập mã</span><span class="kb-c" style="background:#ffe3e0;color:#b3261e">Rời phòng</span>
+        </div>
+      </div>
+      <div class="typo">
+        <p class="label">Chữ</p>
+        <div style="font:700 30px/1.1 'Lexend'">Tiến Lên Miền Nam</div>
+        <div style="font:400 15px/1.5 'Lexend'">Một font cho cả Hub, gọn và dễ đọc, không mang chất riêng nào.</div>
+        <div class="free"><b>Game được tự do tới đâu</b><ul><li>Bắt buộc: ảnh bìa đúng khổ, tên, số người; nút Rời và chat nằm ở thanh của Hub.</li><li>Tự do: mọi thứ trong khung, kể cả font và màu.</li><li>Cái giá: các Game không nhìn giống "một nhà"; cái chung chỉ là Hub.</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== D ===================== -->
+  <section class="v" data-key="d" data-name="Quán vỉa hè đất sét" data-pitch="Việt Nam đời thường thay cho xóm chài: một quán trà đá vỉa hè, ghế nhựa đỏ xanh, mỗi bàn là một trò. Nhìn 3D kiểu đất sét, mềm và tròn. Hub là một cảnh; vào trò là máy quay tiến sát vào bàn. Game dùng chung bộ đèn và vật liệu 3D.">
+    <div class="facts">
+      <div class="fact"><b>Văn hoá Việt</b><span>Giữ, đời thường: quán vỉa hè, ghế nhựa, cốc trà đá</span></div>
+      <div class="fact"><b>2D hay 3D</b><span>3D đất sét (render Blender ra sprite, hoặc 3D thật)</span></div>
+      <div class="fact"><b>Cách làm art</b><span>Blender: chung đèn, chung vật liệu đất sét, chung góc máy</span></div>
+      <div class="fact"><b>Game tự do</b><span>Vừa: luật vẽ 3D chung (đèn, chất liệu), bố cục bàn tự do</span></div>
+    </div>
+    <div>
+      <p class="label">Sảnh của Hub</p>
+      <div class="screens">
+        <div class="screen">
+          <div class="d-bg"></div><div class="d-wall"></div><div class="d-floor"></div>
+          <div class="d-sign">Trà đá Xóm Đảo</div>
+          <div class="d-table" style="left:24cqw;top:62%;width:18cqw;--t:#e9e2d4">
+            <div class="d-stool" style="--s:#2f6fd0;left:-3cqw;top:-1cqw"></div><div class="d-stool" style="--s:#d6402f;right:-3cqw;top:-1cqw"></div>
+            <div class="d-top"></div><div class="d-name">Cờ Tướng</div><div class="d-glass" style="left:7cqw;top:1.6cqw"></div>
+          </div>
+          <div class="d-table" style="left:52cqw;top:74%;width:22cqw;--t:#3aa2bb">
+            <div class="d-stool" style="--s:#d6402f;left:-3.6cqw;top:-.4cqw"></div><div class="d-stool" style="--s:#2f6fd0;right:-3.6cqw;top:-.4cqw"></div>
+            <div class="d-top"></div><div class="d-name on">Tiến Lên</div><div class="d-glass" style="left:6cqw;top:2cqw"></div><div class="d-glass" style="left:14cqw;top:2.4cqw"></div>
+          </div>
+          <div class="d-table" style="left:79cqw;top:60%;width:16cqw;--t:#7cc06a">
+            <div class="d-stool" style="--s:#2f6fd0;left:-3cqw;top:-1cqw"></div>
+            <div class="d-top"></div><div class="d-name">Cá Ngựa</div>
+          </div>
+          <div class="d-hud" style="left:1.8cqw;top:1.8cqw"><div class="d-ava"></div><div class="d-pill">Minh</div></div>
+          <div class="d-hud" style="right:1.8cqw;top:1.8cqw"><div class="d-pill">● 2.450</div><div class="d-pill">◆ 38</div></div>
+          <div class="d-hud" style="right:1.8cqw;bottom:1.8cqw"><div class="d-play">Ngồi vào</div></div>
+        </div>
+        <div class="screen">
+          <div class="d-close"></div>
+          <div class="d-plane"></div>
+          <div class="d-card3" style="left:40cqw;top:18cqw;transform:rotate(-10deg)">7♠</div>
+          <div class="d-card3 red" style="left:47cqw;top:17cqw;transform:rotate(6deg)">7♥</div>
+          <div class="d-card3" style="left:30cqw;bottom:-2cqw;transform:rotate(-12deg)">3♠</div>
+          <div class="d-card3 red" style="left:37cqw;bottom:-1cqw;transform:rotate(-5deg)">9♥</div>
+          <div class="d-card3" style="left:44cqw;bottom:-.6cqw;transform:rotate(2deg)">J♠</div>
+          <div class="d-card3 red" style="left:51cqw;bottom:-1.2cqw;transform:rotate(9deg)">2♥</div>
+          <div class="d-hud" style="left:4cqw;top:12cqw;flex-direction:column"><div class="d-ava"></div><div class="d-pill">Lan</div></div>
+          <div class="d-hud" style="right:4cqw;top:12cqw;flex-direction:column"><div class="d-ava"></div><div class="d-pill">Hải</div></div>
+          <div class="d-btn" style="right:2cqw;bottom:2cqw;background:#d6402f;box-shadow:inset 0 -.6cqw 0 #a82a1d,0 .8cqw 1.2cqw rgba(60,20,5,.35)">Đánh</div>
+          <div class="d-btn" style="right:15cqw;bottom:2cqw;background:#7d8b99;box-shadow:inset 0 -.6cqw 0 #5b6773,0 .8cqw 1.2cqw rgba(60,20,5,.35)">Bỏ lượt</div>
+          <div class="d-hud" style="left:1.8cqw;top:1.8cqw"><div class="d-pill">☰</div></div>
+          <div class="hubtag" style="left:9cqw;top:2.6cqw">Hub vẽ nút ☰; còn lại là Game, cùng đèn và chất đất sét</div>
+        </div>
+      </div>
+    </div>
+    <div class="kit">
+      <div>
+        <p class="label">Bảng màu</p>
+        <div class="swatches">
+          <div class="sw"><i style="background:#f5d36b"></i>Tường vàng</div><div class="sw"><i style="background:#3e7a8c"></i>Cửa sắt</div>
+          <div class="sw"><i style="background:#d98f62"></i>Gạch vỉa hè</div><div class="sw"><i style="background:#d6402f"></i>Ghế đỏ</div>
+          <div class="sw"><i style="background:#2f6fd0"></i>Ghế xanh</div><div class="sw"><i style="background:#fff6e6"></i>Kem</div>
+          <div class="sw"><i style="background:#5a2e1a"></i>Nâu chữ</div>
+        </div>
+        <div class="btnrow">
+          <span class="kb-d" style="background:#d6402f;box-shadow:inset 0 -4px 0 #a82a1d">Ngồi vào</span>
+          <span class="kb-d" style="background:#2f6fd0;box-shadow:inset 0 -4px 0 #1f4f9a">Mời bạn</span>
+          <span class="kb-d" style="background:#7d8b99;box-shadow:inset 0 -4px 0 #5b6773">Để sau</span>
+        </div>
+      </div>
+      <div class="typo">
+        <p class="label">Chữ</p>
+        <div style="font:700 30px/1.1 'Mali'">Tiến Lên Miền Nam</div>
+        <div style="font:700 15px/1.5 'Nunito'">Chữ tròn, hơi viết tay như bảng hiệu quán; chữ thường là Nunito.</div>
+        <div class="free"><b>Game được tự do tới đâu</b><ul><li>Bắt buộc: bộ đèn, vật liệu đất sét và góc máy chung (file Blender mẫu), font và màu nút.</li><li>Tự do: bố cục bàn, đồ vật riêng của trò.</li><li>Cái giá: làm art chậm nhất; Game 2D thuần khó hợp.</li></ul></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav class="switcher" aria-label="Đổi phương án">
+  <button id="prev" aria-label="Phương án trước">←</button>
+  <span class="cur" id="cur">A</span>
+  <button id="next" aria-label="Phương án sau">→</button>
+</nav>
+
+<script>
+const sections = [...document.querySelectorAll('.v')];
+const keys = sections.map(s => s.dataset.key);
+function show(k) {
+  if (!keys.includes(k)) k = keys[0];
+  sections.forEach(s => s.classList.toggle('on', s.dataset.key === k));
+  const s = sections.find(s => s.dataset.key === k);
+  document.body.dataset.v = k;
+  document.getElementById('vk').textContent = k.toUpperCase();
+  document.getElementById('vt').textContent = s.dataset.name;
+  document.getElementById('vp').textContent = s.dataset.pitch;
+  document.getElementById('cur').textContent = k.toUpperCase() + ' (' + s.dataset.name + ')';
+}
+function go(d) {
+  const i = keys.indexOf(document.body.dataset.v);
+  location.hash = keys[(i + d + keys.length) % keys.length];
+}
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+addEventListener('keydown', e => {
+  const t = e.target;
+  if (t.closest && t.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+addEventListener('hashchange', () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+</script>

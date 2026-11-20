@@ -1,0 +1,425 @@
+<title>Xóm Đảo Hub style</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700&family=Be+Vietnam+Pro:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap">
+<style>
+/* PROTOTYPE — throwaway. Round 2: Hub only, mobile landscape, tactical UI in the spirit of Arknights
+   (original design, no borrowed art). Games keep their own art. Three layouts, switch via #1..#3. */
+:root {
+  --page:#121417; --ink:#eceff2; --muted:#8d96a0; --line:#2a2f36; --chip:#1a1e23;
+  --amber:#ffc234; --cyan:#2ec8e6; --graphite:#23272d; --steel:#3a4048; --paper:#e9ebee; --red:#ff4d3d;
+  --f-cond:"Barlow Condensed", "Arial Narrow", sans-serif; --f-body:"Be Vietnam Pro", system-ui, sans-serif; --f-mono:"Roboto Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+html, body { min-height:100%; }
+body { background:var(--page); color:var(--ink); font-family:var(--f-body); }
+.wrap { max-width:1180px; margin:0 auto; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px)); padding-block:24px 120px; display:grid; gap:26px; }
+.tag { font:500 11px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+h1 { font:800 clamp(30px,4.6vw,50px)/1 var(--f-cond); text-transform:uppercase; letter-spacing:.02em; margin:8px 0 10px; }
+.pitch { max-width:70ch; color:var(--muted); font-size:15px; line-height:1.55; margin:0; }
+.label { font:500 11px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; }
+.screens { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+@media (max-width:860px){ .screens{ grid-template-columns:1fr; } }
+.screen { position:relative; aspect-ratio:19.5/9; max-width:100%; overflow:hidden; border-radius:14px; container-type:inline-size; box-shadow:0 10px 30px rgba(0,0,0,.5); background:#0b0d10; }
+.screen * { box-sizing:border-box; }
+.v { display:none; } .v.on { display:grid; gap:26px; }
+.notes { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+.note { background:var(--chip); border:1px solid var(--line); padding:12px 14px; font-size:14px; line-height:1.5; min-width:0; clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%); }
+.note b { display:block; font:500 11px/1 var(--f-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--amber); margin-bottom:6px; }
+
+/* ---------- shared kit (all three layouts use it; only layout differs) ---------- */
+.k-cond { font-family:var(--f-cond); text-transform:uppercase; }
+.k-mono { font-family:var(--f-mono); }
+.k-top { position:absolute; left:0; right:0; top:0; height:6.2cqw; display:flex; align-items:center; gap:1.6cqw; padding:0 2.2cqw; z-index:5; }
+.k-prof { display:flex; align-items:center; gap:1cqw; }
+.k-ava { width:4.4cqw; height:4.4cqw; background:linear-gradient(135deg,#6c7680,#3a4048); clip-path:polygon(0 0,100% 0,100% 75%,75% 100%,0 100%); position:relative; }
+.k-ava::after { content:""; position:absolute; inset:18% 22% 0; border-radius:50% 50% 0 0; background:#c9d0d6; clip-path:inherit; }
+.k-name { font:700 1.9cqw/1 var(--f-cond); letter-spacing:.04em; }
+.k-lv { font:500 1cqw/1 var(--f-mono); color:var(--muted); margin-top:.4cqw; display:flex; gap:.6cqw; align-items:center; }
+.k-lv i { width:6cqw; height:.35cqw; background:var(--steel); display:block; position:relative; }
+.k-lv i::after { content:""; position:absolute; inset:0 38% 0 0; background:var(--cyan); }
+.k-res { margin-left:auto; display:flex; gap:.8cqw; }
+.k-pill { height:3.4cqw; display:flex; align-items:center; gap:.8cqw; padding:0 1.4cqw 0 .9cqw; background:rgba(16,18,21,.82); border-left:.35cqw solid var(--c,var(--amber)); font:700 1.7cqw/1 var(--f-cond); letter-spacing:.04em; font-variant-numeric:tabular-nums; }
+.k-pill i { width:1.6cqw; height:1.6cqw; background:var(--c,var(--amber)); transform:rotate(45deg); display:block; }
+.k-pill i.round { border-radius:50%; transform:none; }
+.k-ico { width:3.4cqw; height:3.4cqw; display:grid; place-items:center; background:rgba(16,18,21,.82); }
+.k-ico svg { width:1.8cqw; height:1.8cqw; }
+.k-btn { position:relative; display:flex; align-items:center; justify-content:space-between; gap:1.4cqw; padding:0 1.8cqw; font:800 2.4cqw/1 var(--f-cond); text-transform:uppercase; letter-spacing:.04em; clip-path:polygon(1.4cqw 0,100% 0,100% calc(100% - 1.4cqw),calc(100% - 1.4cqw) 100%,0 100%,0 1.4cqw); }
+.k-btn small { font:500 .95cqw/1 var(--f-mono); letter-spacing:.14em; opacity:.75; }
+.k-btn.pri { background:var(--amber); color:#14161a; }
+.k-btn.sec { background:var(--paper); color:#14161a; }
+.k-btn.ghost { background:rgba(16,18,21,.7); color:var(--ink); box-shadow:inset 0 0 0 .15cqw rgba(236,239,242,.35); }
+.k-tick { position:absolute; width:1.2cqw; height:1.2cqw; border-color:var(--amber); border-style:solid; border-width:0; }
+.k-stripe { background:repeating-linear-gradient(-45deg,var(--amber) 0 .5cqw,#14161a .5cqw 1cqw); }
+.k-chip { font:600 1.1cqw/1 var(--f-mono); letter-spacing:.08em; text-transform:uppercase; padding:.5cqw .8cqw; background:rgba(236,239,242,.1); box-shadow:inset 0 0 0 .1cqw rgba(236,239,242,.3); white-space:nowrap; }
+
+/* Game key art: each game in its own world (Hub never restyles it) */
+.art { position:absolute; inset:0; overflow:hidden; }
+.art.tienlen { background:repeating-linear-gradient(90deg,#c8342f 0 1.4cqw,#b52b27 1.4cqw 2.8cqw); }
+.art.tienlen::before { content:"7♥"; position:absolute; right:12%; top:16%; width:14cqw; aspect-ratio:2/3; background:#fffaf0; border-radius:1cqw; color:#c0261f; font:800 4cqw/1 Georgia,serif; padding:1cqw; transform:rotate(12deg); box-shadow:0 1cqw 2cqw rgba(0,0,0,.4); }
+.art.tienlen::after { content:"J♠"; position:absolute; right:26%; top:22%; width:14cqw; aspect-ratio:2/3; background:#fffaf0; border-radius:1cqw; color:#222; font:800 4cqw/1 Georgia,serif; padding:1cqw; transform:rotate(-10deg); box-shadow:0 1cqw 2cqw rgba(0,0,0,.4); }
+.art.bantau { background:linear-gradient(#07071a,#1b1650); }
+.art.bantau::before { content:""; position:absolute; inset:40% -20% -20%; background-image:linear-gradient(rgba(0,255,214,.25) .15cqw,transparent .15cqw),linear-gradient(90deg,rgba(0,255,214,.25) .15cqw,transparent .15cqw); background-size:4cqw 4cqw; transform:perspective(30cqw) rotateX(55deg); }
+.art.bantau::after { content:""; position:absolute; left:58%; top:24%; width:12cqw; height:6cqw; background:#ff3cac; clip-path:polygon(20% 0,80% 0,80% 30%,100% 30%,100% 100%,0 100%,0 30%,20% 30%); box-shadow:0 0 3cqw #ff3cac; filter:drop-shadow(0 0 1cqw #ff3cac); }
+.art.cotuong { background:radial-gradient(ellipse at 65% 40%,#5a1d15,#1a0c09 70%); }
+.art.cotuong::before { content:"帥"; position:absolute; right:14%; top:18%; width:16cqw; height:16cqw; border-radius:50%; background:radial-gradient(circle at 40% 35%,#fff8e6,#e9dcc2 70%,#bfa983); border:.6cqw solid #a3201a; color:#a3201a; font:700 9cqw/16cqw serif; text-align:center; box-shadow:0 1.4cqw 2.4cqw rgba(0,0,0,.6); }
+.art.cangua { background:radial-gradient(circle at 70% 40%,#7cc06a,#2f7a3a 70%); }
+.art.cangua::before { content:""; position:absolute; right:16%; top:20%; width:14cqw; height:14cqw; background:conic-gradient(#d6402f 0 25%,#2f6fd0 0 50%,#f2b705 0 75%,#2f9e68 0); border-radius:1cqw; transform:rotate(45deg); box-shadow:0 1cqw 2cqw rgba(0,0,0,.35); }
+.art.caro { background:#f6f3ea; background-image:linear-gradient(#cfd8e6 .12cqw,transparent .12cqw),linear-gradient(90deg,#cfd8e6 .12cqw,transparent .12cqw); background-size:2.6cqw 2.6cqw; }
+.art.caro::before { content:"✕ ◯ ✕"; position:absolute; right:14%; top:30%; color:#2a4fbf; font:700 6cqw/1 "Comic Sans MS",cursive; transform:rotate(-6deg); }
+
+/* ================= 1: Bảng nghiêng ================= */
+.l1-art { position:absolute; inset:0; }
+.l1-art .art { clip-path:polygon(0 0,62% 0,46% 100%,0 100%); }
+.l1-bg { position:absolute; inset:0; background:#d9dde1; }
+.l1-bg::before { content:""; position:absolute; inset:0; background-image:linear-gradient(rgba(20,22,26,.07) .1cqw,transparent .1cqw),linear-gradient(90deg,rgba(20,22,26,.07) .1cqw,transparent .1cqw); background-size:3cqw 3cqw; }
+.l1-feat { position:absolute; left:2.4cqw; bottom:3cqw; color:#fff; text-shadow:0 .3cqw 1.2cqw rgba(0,0,0,.5); }
+.l1-feat .k-mono { font-size:1.1cqw; letter-spacing:.2em; opacity:.85; }
+.l1-feat h3 { margin:.4cqw 0 .8cqw; font:800 5.4cqw/.9 var(--f-cond); text-transform:uppercase; }
+.l1-feat .row { display:flex; gap:.6cqw; }
+.l1-menu { position:absolute; right:3cqw; top:9cqw; bottom:3cqw; width:46cqw; display:grid; grid-template-columns:1.25fr 1fr; grid-template-rows:1.3fr 1fr .8fr; gap:1cqw; transform:perspective(60cqw) rotateY(-14deg); transform-origin:right center; }
+.l1-tile { position:relative; background:#23272d; color:#eceff2; padding:1.4cqw; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; }
+.l1-tile h4 { margin:0; font:800 3cqw/.95 var(--f-cond); text-transform:uppercase; letter-spacing:.02em; }
+.l1-tile .k-mono { font-size:1cqw; letter-spacing:.16em; color:#8d96a0; }
+.l1-tile.play { grid-row:span 2; background:var(--amber); color:#14161a; }
+.l1-tile.play h4 { font-size:5cqw; }
+.l1-tile.play .k-mono { color:#14161a; opacity:.7; }
+.l1-tile.play::after { content:""; position:absolute; right:-2cqw; bottom:-2cqw; width:14cqw; height:14cqw; border:1.6cqw solid rgba(20,22,26,.12); transform:rotate(45deg); }
+.l1-tile.light { background:#f4f5f7; color:#14161a; }
+.l1-tile .num { position:absolute; right:1.2cqw; top:1.2cqw; font:700 1.1cqw/1 var(--f-mono); color:inherit; opacity:.5; }
+.l1-tile .badge { position:absolute; right:1.2cqw; bottom:1.2cqw; width:1.2cqw; height:1.2cqw; background:var(--red); }
+.l1-tile.wide { grid-column:span 2; flex-direction:row; align-items:center; }
+/* room for 1 */
+.r1-bg { position:absolute; inset:0; background:#d9dde1; }
+.r1-head { position:absolute; left:2.4cqw; top:8cqw; color:#14161a; }
+.r1-head h3 { margin:0; font:800 4.2cqw/.9 var(--f-cond); text-transform:uppercase; }
+.r1-head .k-mono { font-size:1.1cqw; letter-spacing:.16em; color:#5b636c; }
+.r1-slots { position:absolute; left:2.4cqw; right:24cqw; top:17cqw; bottom:3cqw; display:grid; grid-template-columns:repeat(4,1fr); gap:1cqw; }
+.slot { position:relative; background:#23272d; overflow:hidden; clip-path:polygon(0 0,100% 0,100% calc(100% - 2cqw),calc(100% - 2cqw) 100%,0 100%); }
+.slot .face { position:absolute; left:15%; right:15%; top:12%; height:52%; background:linear-gradient(#6c7680,#3a4048); border-radius:50% 50% 0 0; }
+.slot .nm { position:absolute; left:0; right:0; bottom:0; padding:1cqw; background:linear-gradient(transparent,rgba(0,0,0,.85)); color:#eceff2; font:700 2cqw/1 var(--f-cond); text-transform:uppercase; }
+.slot .nm small { display:block; font:500 .95cqw/1.4 var(--f-mono); color:#8d96a0; letter-spacing:.12em; }
+.slot .ok { position:absolute; left:0; top:0; right:0; height:.7cqw; background:var(--cyan); }
+.slot.empty { background:transparent; box-shadow:inset 0 0 0 .2cqw #8d96a0; display:grid; place-items:center; color:#5b636c; font:700 1.8cqw/1 var(--f-cond); text-transform:uppercase; }
+.r1-side { position:absolute; right:2.4cqw; top:8cqw; bottom:3cqw; width:20cqw; display:grid; grid-template-rows:auto 1fr auto auto; gap:1cqw; }
+.r1-game { position:relative; height:12cqw; overflow:hidden; }
+.r1-game span { position:absolute; left:1cqw; bottom:1cqw; color:#fff; font:800 2.6cqw/1 var(--f-cond); text-transform:uppercase; text-shadow:0 .2cqw .8cqw rgba(0,0,0,.6); }
+.r1-rules { background:#f4f5f7; color:#14161a; padding:1.2cqw; display:grid; gap:.7cqw; align-content:start; font:500 1.15cqw/1.3 var(--f-body); }
+.r1-rules .row { display:flex; justify-content:space-between; border-bottom:.1cqw solid #d0d4d9; padding-bottom:.5cqw; }
+.r1-rules b { font:700 1.15cqw/1 var(--f-mono); }
+
+/* ================= 2: Băng thẻ ================= */
+.l2-art .art { inset:0; }
+.l2-shade { position:absolute; inset:0; background:linear-gradient(90deg,rgba(11,13,16,.96) 0 30%,rgba(11,13,16,.4) 55%,rgba(11,13,16,0) 75%),linear-gradient(transparent 55%,rgba(11,13,16,.95)); }
+.l2-info { position:absolute; left:2.6cqw; top:9cqw; width:32cqw; }
+.l2-info .k-mono { font-size:1.1cqw; letter-spacing:.2em; color:var(--amber); }
+.l2-info h3 { margin:.6cqw 0 1cqw; font:800 7cqw/.85 var(--f-cond); text-transform:uppercase; }
+.l2-info p { margin:0 0 1.2cqw; font:500 1.4cqw/1.45 var(--f-body); color:#c4cad0; }
+.l2-info .row { display:flex; gap:.6cqw; flex-wrap:wrap; }
+.l2-strip { position:absolute; left:2.6cqw; right:24cqw; bottom:2.6cqw; height:10cqw; display:flex; gap:.8cqw; align-items:flex-end; }
+.l2-card { position:relative; flex:1; height:80%; overflow:hidden; clip-path:polygon(1.4cqw 0,100% 0,calc(100% - 1.4cqw) 100%,0 100%); filter:saturate(.35) brightness(.7); }
+.l2-card.on { height:100%; filter:none; }
+.l2-card.on::after { content:""; position:absolute; left:0; right:0; bottom:0; height:.6cqw; background:var(--amber); }
+.l2-card span { position:absolute; left:1.8cqw; bottom:1cqw; font:800 1.7cqw/1 var(--f-cond); text-transform:uppercase; color:#fff; text-shadow:0 .2cqw .6cqw rgba(0,0,0,.7); }
+.l2-acts { position:absolute; right:2.4cqw; bottom:2.6cqw; width:20cqw; display:grid; gap:.8cqw; }
+.l2-side { position:absolute; left:0; top:9cqw; display:grid; gap:.3cqw; }
+/* room for 2 */
+.r2-shade { position:absolute; inset:0; background:linear-gradient(rgba(11,13,16,.75),rgba(11,13,16,.92)); }
+.r2-head { position:absolute; left:2.6cqw; right:2.6cqw; top:7.6cqw; display:flex; align-items:flex-end; gap:2cqw; }
+.r2-head h3 { margin:0; font:800 4.6cqw/.85 var(--f-cond); text-transform:uppercase; }
+.r2-code { font:700 2.4cqw/1 var(--f-mono); color:var(--amber); letter-spacing:.2em; }
+.r2-slots { position:absolute; left:2.6cqw; right:2.6cqw; top:15cqw; height:19cqw; display:grid; grid-template-columns:repeat(4,1fr); gap:1.2cqw; }
+.r2-slot { position:relative; background:rgba(35,39,45,.9); display:grid; grid-template-columns:7cqw 1fr; align-items:center; gap:1.2cqw; padding:1.2cqw; clip-path:polygon(0 0,100% 0,100% 100%,1.6cqw 100%,0 calc(100% - 1.6cqw)); border-top:.4cqw solid var(--cyan); }
+.r2-slot .face { width:7cqw; height:7cqw; background:linear-gradient(#6c7680,#3a4048); clip-path:polygon(0 0,100% 0,100% 75%,75% 100%,0 100%); }
+.r2-slot b { display:block; font:800 2.2cqw/1 var(--f-cond); text-transform:uppercase; }
+.r2-slot small { display:block; margin-top:.4cqw; font:500 1cqw/1.3 var(--f-mono); letter-spacing:.12em; color:#8d96a0; }
+.r2-slot .host { color:var(--amber); }
+.r2-slot.empty { border-top-color:#3a4048; background:transparent; box-shadow:inset 0 0 0 .15cqw #3a4048; grid-template-columns:1fr; text-align:center; color:#8d96a0; font:700 2cqw/1 var(--f-cond); text-transform:uppercase; }
+.r2-foot { position:absolute; left:2.6cqw; right:2.6cqw; bottom:2.6cqw; display:flex; gap:1cqw; align-items:stretch; height:5.6cqw; }
+
+/* ================= 3: Sơ đồ ================= */
+.l3-bg { position:absolute; inset:0; background:#0e1a24; }
+.l3-bg::before { content:""; position:absolute; inset:0; background-image:linear-gradient(rgba(46,200,230,.09) .1cqw,transparent .1cqw),linear-gradient(90deg,rgba(46,200,230,.09) .1cqw,transparent .1cqw); background-size:2.4cqw 2.4cqw; }
+.l3-map { position:absolute; left:0; top:6cqw; bottom:0; width:66cqw; }
+.l3-map svg.lines { position:absolute; inset:0; width:100%; height:100%; }
+.node { position:absolute; transform:translate(-50%,-50%); width:13cqw; }
+.node .thumb { position:relative; height:7cqw; overflow:hidden; box-shadow:0 0 0 .15cqw rgba(46,200,230,.6); clip-path:polygon(0 0,100% 0,100% calc(100% - 1.2cqw),calc(100% - 1.2cqw) 100%,0 100%); }
+.node .cap { display:flex; justify-content:space-between; align-items:baseline; margin-top:.5cqw; font:800 1.7cqw/1 var(--f-cond); text-transform:uppercase; }
+.node .cap small { font:500 .9cqw/1 var(--f-mono); color:#5fa9bb; letter-spacing:.1em; }
+.node.on .thumb { box-shadow:0 0 0 .3cqw var(--amber); }
+.node.on .cap { color:var(--amber); }
+.node.lock { opacity:.45; }
+.node.lock .thumb { background:repeating-linear-gradient(-45deg,#1a2a36 0 .6cqw,#0e1a24 .6cqw 1.2cqw); }
+.l3-zone { position:absolute; font:500 1cqw/1 var(--f-mono); color:#5fa9bb; letter-spacing:.2em; }
+.l3-sheet { position:absolute; right:0; top:0; bottom:0; width:34cqw; background:rgba(14,18,22,.96); border-left:.2cqw solid var(--amber); padding:8cqw 2.4cqw 2.4cqw; display:grid; grid-template-rows:auto auto 1fr auto; gap:1.2cqw; }
+.l3-sheet .hero { position:relative; height:12cqw; overflow:hidden; }
+.l3-sheet h3 { margin:0; font:800 4.4cqw/.9 var(--f-cond); text-transform:uppercase; }
+.l3-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:.6cqw; align-content:start; }
+.l3-stats div { background:#1a1e23; padding:.8cqw; font:500 .9cqw/1 var(--f-mono); color:#8d96a0; letter-spacing:.1em; text-transform:uppercase; }
+.l3-stats b { display:block; margin-top:.5cqw; font:800 2.2cqw/1 var(--f-cond); color:#eceff2; letter-spacing:0; }
+.l3-acts { display:grid; grid-template-columns:1fr 1.4fr; gap:.8cqw; height:5.4cqw; }
+/* room for 3 */
+.r3-ring { position:absolute; left:4cqw; top:9cqw; width:34cqw; height:34cqw; }
+.r3-ring::before { content:""; position:absolute; inset:0; border-radius:50%; border:.2cqw dashed rgba(46,200,230,.4); }
+.r3-ring::after { content:""; position:absolute; inset:9cqw; overflow:hidden; border-radius:50%; box-shadow:0 0 0 .3cqw var(--amber); background:radial-gradient(circle at 40% 35%,#fff8e6,#e9dcc2 70%,#bfa983); }
+.r3-seat { position:absolute; transform:translate(-50%,-50%); text-align:center; }
+.r3-seat .face { width:7cqw; height:7cqw; margin:0 auto .6cqw; background:linear-gradient(#6c7680,#3a4048); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); box-shadow:0 0 0 .3cqw var(--cyan); }
+.r3-seat b { font:800 1.8cqw/1 var(--f-cond); text-transform:uppercase; }
+.r3-seat small { display:block; font:500 .9cqw/1.4 var(--f-mono); color:#5fa9bb; letter-spacing:.12em; }
+.r3-seat.empty .face { background:transparent; box-shadow:inset 0 0 0 .2cqw #3a4048; }
+.r3-log { background:#1a1e23; padding:1cqw; font:500 1.05cqw/1.6 var(--f-mono); color:#8d96a0; overflow:hidden; }
+.r3-log em { color:var(--cyan); font-style:normal; }
+
+/* kit row */
+.kit { display:grid; grid-template-columns:1.1fr 1fr; gap:18px; }
+@media (max-width:860px){ .kit{ grid-template-columns:1fr; } }
+.swatches { display:flex; flex-wrap:wrap; gap:8px; }
+.sw { width:78px; display:grid; gap:4px; font:500 10px/1.3 var(--f-mono); color:var(--muted); letter-spacing:.06em; }
+.sw i { display:block; height:38px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.12); }
+.kb { display:inline-flex; align-items:center; gap:10px; height:44px; padding:0 18px; font:800 19px/1 var(--f-cond); text-transform:uppercase; letter-spacing:.04em; clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); }
+.kb small { font:500 9px/1 var(--f-mono); letter-spacing:.14em; opacity:.7; }
+.btnrow { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+
+.switcher { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom,0px)); display:flex; align-items:center; gap:4px; background:#000; color:#fff; border-radius:999px; padding:6px; border:1px solid #444; box-shadow:0 6px 24px rgba(0,0,0,.5); font:600 13px/1 "Be Vietnam Pro",sans-serif; z-index:50; max-width:calc(100% - 32px); }
+.switcher button { all:unset; cursor:pointer; width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:#2a2a2a; font-size:16px; }
+.switcher button:focus-visible { outline:2px solid var(--amber); }
+.switcher .cur { padding:0 12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="tag">Prototype vòng 2 · giao diện Hub · <span id="vk">1</span> trên 3</div>
+    <h1 id="vt">Bảng nghiêng</h1>
+    <p class="pitch" id="vp"></p>
+  </header>
+
+  <!-- ============ 1 ============ -->
+  <section class="v" data-key="1" data-name="Bảng nghiêng" data-pitch="Sảnh là một bảng điều khiển: art của trò nổi bật cắt chéo bên trái, khối nút nghiêng 3D bên phải với một ô CHƠI vàng thật to. Nền sáng xám thép. Mọi thao tác nằm trong tầm ngón cái phải.">
+    <div>
+      <p class="label">Sảnh / Phòng chờ</p>
+      <div class="screens">
+        <div class="screen">
+          <div class="l1-bg"></div>
+          <div class="l1-art"><div class="art tienlen"></div></div>
+          <div class="l1-feat"><div class="k-mono">TRÒ NỔI BẬT / BÀI</div><h3>Tiến Lên</h3><div class="row"><span class="k-chip">4 người</span><span class="k-chip">231 đang chơi</span></div></div>
+          <div class="k-top">
+            <div class="k-prof"><div class="k-ava"></div><div><div class="k-name">MINH</div><div class="k-lv">LV 24 <i></i></div></div></div>
+            <div class="k-res"><div class="k-pill"><i class="round"></i>2.450</div><div class="k-pill" style="--c:var(--cyan)"><i></i>38</div>
+              <div class="k-ico"><svg viewBox="0 0 24 24" fill="#eceff2"><path d="M4 6h16v2.5H4zm0 4.75h16v2.5H4zM4 15.5h16V18H4z"/></svg></div></div>
+          </div>
+          <div class="l1-menu">
+            <div class="l1-tile play"><span class="num">01</span><span class="k-mono">VÀO NGAY</span><h4>Chơi</h4></div>
+            <div class="l1-tile"><span class="num">02</span><span class="k-mono">PHÒNG</span><h4>Tạo phòng</h4></div>
+            <div class="l1-tile light"><span class="num">03</span><span class="k-mono">MÃ PHÒNG</span><h4>Vào phòng</h4></div>
+            <div class="l1-tile wide"><h4>Tất cả trò</h4><span class="k-mono" style="margin-left:auto">12 TRÒ</span></div>
+          </div>
+          <div style="position:absolute;left:2.4cqw;top:8cqw;display:grid;gap:.6cqw">
+            <div class="k-ico" style="position:relative"><svg viewBox="0 0 24 24" fill="#eceff2"><path d="M8 11a3 3 0 110-6 3 3 0 010 6zm8 0a3 3 0 110-6 3 3 0 010 6zM2 19c0-3 3-5 6-5s6 2 6 5zm12 0c0-2-1-3.4-2-4.2.9-.5 2.3-.8 4-.8 3 0 6 2 6 5z"/></svg><span style="position:absolute;right:.3cqw;top:.3cqw;width:.9cqw;height:.9cqw;background:var(--red)"></span></div>
+            <div class="k-ico"><svg viewBox="0 0 24 24" fill="#eceff2"><path d="M3 5h18v12H8l-5 4z"/></svg></div>
+          </div>
+        </div>
+        <div class="screen">
+          <div class="r1-bg"></div>
+          <div class="k-top" style="color:#14161a">
+            <div class="k-ico" style="background:#23272d"><svg viewBox="0 0 24 24" fill="#eceff2"><path d="M15 5l-7 7 7 7-1.6 1.6L4.8 12l8.6-8.6z"/></svg></div>
+            <div class="k-mono" style="font-size:1.1cqw;letter-spacing:.18em">PHÒNG / <b style="font-size:1.6cqw;letter-spacing:.24em">4821</b></div>
+            <div class="k-res"><div class="k-pill" style="color:#eceff2"><i class="round"></i>2.450</div></div>
+          </div>
+          <div class="r1-head"><div class="k-mono">ĐANG CHỜ 1 NGƯỜI</div><h3>Đội hình</h3></div>
+          <div class="r1-slots">
+            <div class="slot"><div class="ok"></div><div class="face"></div><div class="nm">Minh<small>CHỦ PHÒNG</small></div></div>
+            <div class="slot"><div class="ok"></div><div class="face"></div><div class="nm">Lan<small>SẴN SÀNG</small></div></div>
+            <div class="slot"><div class="face"></div><div class="nm">Tú<small>ĐANG CHỌN</small></div></div>
+            <div class="slot empty">+ Mời</div>
+          </div>
+          <div class="r1-side">
+            <div class="r1-game"><div class="art tienlen"></div><span>Tiến Lên</span></div>
+            <div class="r1-rules"><div class="row">Cược<b>100</b></div><div class="row">Thời gian lượt<b>20 GIÂY</b></div><div class="row">Chặt heo<b>CÓ</b></div></div>
+            <div class="k-btn ghost" style="height:4.4cqw;font-size:1.9cqw">Luật chơi</div>
+            <div class="k-btn pri" style="height:5.6cqw">Bắt đầu<small>3/4</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div class="note"><b>Bố cục</b>Art của trò chiếm nửa trái, cắt chéo. Khối nút nghiêng bên phải, ô CHƠI to nhất.</div>
+      <div class="note"><b>Nền</b>Sáng: xám thép với lưới mảnh. Art màu của trò nổi lên rõ trên nền xám.</div>
+      <div class="note"><b>Phòng chờ</b>Bốn ô người chơi dọc, cạnh cắt góc. Vạch xanh ở mép trên là đã sẵn sàng.</div>
+    </div>
+  </section>
+
+  <!-- ============ 2 ============ -->
+  <section class="v" data-key="2" data-name="Băng thẻ" data-pitch="Art của trò đang chọn phủ kín màn hình. Bên trái là tên trò thật to và thông tin. Dưới đáy là một băng thẻ xiên để vuốt chọn trò. Nền tối, Hub chỉ là lớp chữ và nút phủ lên art.">
+    <div>
+      <p class="label">Sảnh / Phòng chờ</p>
+      <div class="screens">
+        <div class="screen">
+          <div class="l2-art"><div class="art bantau"></div></div>
+          <div class="l2-shade"></div>
+          <div class="k-top">
+            <div class="k-prof"><div class="k-ava"></div><div><div class="k-name">MINH</div><div class="k-lv">LV 24 <i></i></div></div></div>
+            <div class="k-res"><div class="k-pill"><i class="round"></i>2.450</div><div class="k-pill" style="--c:var(--cyan)"><i></i>38</div>
+              <div class="k-ico"><svg viewBox="0 0 24 24" fill="#eceff2"><path d="M8 11a3 3 0 110-6 3 3 0 010 6zm8 0a3 3 0 110-6 3 3 0 010 6zM2 19c0-3 3-5 6-5s6 2 6 5zm12 0c0-2-1-3.4-2-4.2.9-.5 2.3-.8 4-.8 3 0 6 2 6 5z"/></svg></div>
+              <div class="k-ico"><svg viewBox="0 0 24 24" fill="#eceff2"><path d="M4 6h16v2.5H4zm0 4.75h16v2.5H4zM4 15.5h16V18H4z"/></svg></div></div>
+          </div>
+          <div class="l2-info">
+            <div class="k-mono">REALTIME / 02 / 05</div>
+            <h3>Bắn Tàu</h3>
+            <p>Lái tàu, né đạn, hạ đối thủ trước khi hết giờ.</p>
+            <div class="row"><span class="k-chip">2 người</span><span class="k-chip">3 phút</span><span class="k-chip" style="color:var(--cyan)">12 đang chơi</span></div>
+          </div>
+          <div class="l2-strip">
+            <div class="l2-card"><div class="art tienlen"></div><span>Tiến Lên</span></div>
+            <div class="l2-card on"><div class="art bantau"></div><span>Bắn Tàu</span></div>
+            <div class="l2-card"><div class="art cotuong"></div><span>Cờ Tướng</span></div>
+            <div class="l2-card"><div class="art cangua"></div><span>Cá Ngựa</span></div>
+            <div class="l2-card"><div class="art caro"></div><span style="color:#2a4fbf;text-shadow:none">Caro</span></div>
+          </div>
+          <div class="l2-acts">
+            <div class="k-btn ghost" style="height:4cqw;font-size:1.8cqw">Vào phòng</div>
+            <div class="k-btn sec" style="height:4cqw;font-size:1.8cqw">Tạo phòng</div>
+            <div class="k-btn pri" style="height:6cqw;font-size:3cqw">Chơi<small>GHÉP NHANH</small></div>
+          </div>
+        </div>
+        <div class="screen">
+          <div class="l2-art"><div class="art bantau"></div></div>
+          <div class="r2-shade"></div>
+          <div class="k-top">
+            <div class="k-ico"><svg viewBox="0 0 24 24" fill="#eceff2"><path d="M15 5l-7 7 7 7-1.6 1.6L4.8 12l8.6-8.6z"/></svg></div>
+            <div class="k-mono" style="font-size:1.1cqw;letter-spacing:.18em;color:#8d96a0">BẮN TÀU / PHÒNG RIÊNG</div>
+          </div>
+          <div class="r2-head"><h3>Phòng chờ</h3><span class="r2-code">4821</span><span class="k-chip" style="margin-left:auto">Mời bằng link</span></div>
+          <div class="r2-slots">
+            <div class="r2-slot"><div class="face"></div><div><b>Minh</b><small class="host">CHỦ PHÒNG</small><small>LV 24</small></div></div>
+            <div class="r2-slot"><div class="face"></div><div><b>Tú</b><small style="color:var(--cyan)">SẴN SÀNG</small><small>LV 17</small></div></div>
+            <div class="r2-slot empty">+ Mời bạn</div>
+            <div class="r2-slot empty">+ Mời bạn</div>
+          </div>
+          <div class="r2-foot">
+            <div class="k-btn ghost" style="flex:1;font-size:1.8cqw">Luật chơi</div>
+            <div class="k-btn ghost" style="flex:1;font-size:1.8cqw">Cài đặt phòng</div>
+            <div class="k-stripe" style="width:4cqw;clip-path:polygon(1.4cqw 0,100% 0,calc(100% - 1.4cqw) 100%,0 100%)"></div>
+            <div class="k-btn pri" style="flex:1.6;font-size:3cqw">Bắt đầu<small>2/2</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div class="note"><b>Bố cục</b>Art của trò phủ toàn màn, Hub chỉ phủ chữ và nút lên trên. Vuốt băng thẻ ở đáy để đổi trò.</div>
+      <div class="note"><b>Nền</b>Tối, đổi theo trò đang chọn. Mỗi trò cần một ảnh ngang khổ rộng, chủ thể lệch sang phải.</div>
+      <div class="note"><b>Phòng chờ</b>Vẫn dùng art của trò làm nền, nhưng làm tối đi. Bốn ô ngang, nút Bắt đầu to ở góc dưới phải.</div>
+    </div>
+  </section>
+
+  <!-- ============ 3 ============ -->
+  <section class="v" data-key="3" data-name="Sơ đồ" data-pitch="Sảnh là một sơ đồ kỹ thuật: mỗi trò là một điểm trên lưới, nối với nhau theo nhóm. Chạm một điểm thì bảng chi tiết mở bên phải. Nền xanh đậm như bản vẽ kỹ thuật. Hợp khi số trò tăng và có trò bị khoá.">
+    <div>
+      <p class="label">Sảnh / Phòng chờ</p>
+      <div class="screens">
+        <div class="screen">
+          <div class="l3-bg"></div>
+          <div class="k-top">
+            <div class="k-prof"><div class="k-ava"></div><div><div class="k-name">MINH</div><div class="k-lv">LV 24 <i></i></div></div></div>
+            <div class="k-res" style="margin-right:34cqw"><div class="k-pill"><i class="round"></i>2.450</div><div class="k-pill" style="--c:var(--cyan)"><i></i>38</div></div>
+          </div>
+          <div class="l3-map">
+            <svg class="lines" viewBox="0 0 660 400" preserveAspectRatio="none" fill="none" stroke="rgba(46,200,230,.45)" stroke-width="1.5" stroke-dasharray="6 5">
+              <path d="M110 120 H250 V120"/><path d="M250 120 L390 230"/><path d="M110 120 V290 H250"/><path d="M390 230 L540 110"/><path d="M390 230 L540 310"/>
+            </svg>
+            <div class="l3-zone" style="left:3cqw;top:2cqw">KHU BÀI / A</div>
+            <div class="l3-zone" style="left:34cqw;top:2cqw">KHU CỜ / B</div>
+            <div class="l3-zone" style="left:44cqw;top:40cqw">REALTIME / C</div>
+            <div class="node" style="left:11cqw;top:14cqw"><div class="thumb"><div class="art tienlen"></div></div><div class="cap">Tiến Lên<small>A-01</small></div></div>
+            <div class="node" style="left:25cqw;top:14cqw"><div class="thumb"><div class="art caro"></div></div><div class="cap">Caro<small>A-02</small></div></div>
+            <div class="node" style="left:25cqw;top:30cqw"><div class="thumb"><div class="art cangua"></div></div><div class="cap">Cá Ngựa<small>A-03</small></div></div>
+            <div class="node on" style="left:39cqw;top:24cqw"><div class="thumb"><div class="art cotuong"></div></div><div class="cap">Cờ Tướng<small>B-01</small></div></div>
+            <div class="node" style="left:54cqw;top:13cqw"><div class="thumb"><div class="art bantau"></div></div><div class="cap">Bắn Tàu<small>C-01</small></div></div>
+            <div class="node lock" style="left:54cqw;top:33cqw"><div class="thumb"></div><div class="cap">Sắp có<small>C-02</small></div></div>
+          </div>
+          <div class="l3-sheet">
+            <div class="hero"><div class="art cotuong"></div></div>
+            <div><div class="k-mono" style="font-size:1cqw;letter-spacing:.2em;color:var(--amber)">B-01 / CỜ</div><h3>Cờ Tướng</h3></div>
+            <div class="l3-stats"><div>Người<b>2</b></div><div>Thời lượng<b>15'</b></div><div>Đang chơi<b>48</b></div></div>
+            <div class="l3-acts"><div class="k-btn sec" style="font-size:1.8cqw">Tạo phòng</div><div class="k-btn pri" style="font-size:2.6cqw">Chơi</div></div>
+          </div>
+        </div>
+        <div class="screen">
+          <div class="l3-bg"></div>
+          <div class="k-top">
+            <div class="k-ico"><svg viewBox="0 0 24 24" fill="#eceff2"><path d="M15 5l-7 7 7 7-1.6 1.6L4.8 12l8.6-8.6z"/></svg></div>
+            <div class="k-mono" style="font-size:1.1cqw;letter-spacing:.18em;color:#5fa9bb">B-01 CỜ TƯỚNG / PHÒNG <b style="color:var(--amber);font-size:1.6cqw">4821</b></div>
+          </div>
+          <div class="r3-ring">
+            <div class="r3-seat" style="left:50%;top:0"><div class="face"></div><b>Lan</b><small>QUÂN ĐEN / SẴN SÀNG</small></div>
+            <div class="r3-seat" style="left:50%;top:100%"><div class="face"></div><b>Minh</b><small>QUÂN ĐỎ / CHỦ PHÒNG</small></div>
+            <div class="r3-seat empty" style="left:100%;top:50%"><div class="face"></div><b style="color:#5fa9bb">Xem</b><small>+ MỜI</small></div>
+          </div>
+          <div style="position:absolute;right:2.4cqw;top:8cqw;bottom:2.4cqw;width:44cqw;display:grid;grid-template-rows:auto 1fr auto;gap:1cqw">
+            <div class="l3-stats"><div>Thời gian<b>10'</b></div><div>Cược<b>200</b></div><div>Xem<b>0/4</b></div></div>
+            <div class="r3-log">20:41 <em>Lan</em> vào phòng<br>20:41 <em>Lan</em> sẵn sàng<br>20:42 <em>Minh</em> đổi thời gian 10'</div>
+            <div class="l3-acts" style="grid-template-columns:1fr 1fr 1.6fr"><div class="k-btn ghost" style="font-size:1.7cqw">Luật</div><div class="k-btn ghost" style="font-size:1.7cqw">Đổi màu</div><div class="k-btn pri" style="font-size:2.6cqw">Bắt đầu</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div class="note"><b>Bố cục</b>Các trò là điểm trên một bản đồ lưới, chia theo khu. Chạm một điểm thì bảng chi tiết mở bên phải.</div>
+      <div class="note"><b>Nền</b>Xanh đậm như bản vẽ kỹ thuật. Chỉ ảnh nhỏ của trò mang màu riêng.</div>
+      <div class="note"><b>Phòng chờ</b>Ghế xếp quanh một vòng theo kiểu ngồi của trò (Cờ Tướng hai ghế đối nhau). Bên phải là nhật ký phòng.</div>
+    </div>
+  </section>
+
+  <div class="kit">
+    <div>
+      <p class="label">Bộ kit chung cho cả ba bố cục</p>
+      <div class="swatches">
+        <div class="sw"><i style="background:#0b0d10"></i>MỰC 0B0D10</div><div class="sw"><i style="background:#23272d"></i>THÉP 23272D</div>
+        <div class="sw"><i style="background:#d9dde1"></i>XÁM SÁNG D9DDE1</div><div class="sw"><i style="background:#ffc234"></i>VÀNG FFC234</div>
+        <div class="sw"><i style="background:#2ec8e6"></i>XANH 2EC8E6</div><div class="sw"><i style="background:#ff4d3d"></i>BÁO FF4D3D</div>
+      </div>
+      <div class="btnrow">
+        <span class="kb" style="background:#ffc234;color:#14161a">Chơi <small>GHÉP NHANH</small></span>
+        <span class="kb" style="background:#e9ebee;color:#14161a">Tạo phòng</span>
+        <span class="kb" style="background:#1a1e23;color:#eceff2;box-shadow:inset 0 0 0 1.5px rgba(236,239,242,.35)">Luật chơi</span>
+      </div>
+    </div>
+    <div style="display:grid;gap:8px;align-content:start">
+      <p class="label">Chữ</p>
+      <div style="font:800 34px/1 'Barlow Condensed';text-transform:uppercase">Tiến Lên Miền Nam</div>
+      <div style="font:500 15px/1.5 'Be Vietnam Pro'">Barlow Condensed cho tiêu đề và nút, chữ in hoa, hẹp. Be Vietnam Pro cho chữ thường.</div>
+      <div style="font:500 12px/1.4 'Roboto Mono';letter-spacing:.14em;color:var(--muted)">ROBOTO MONO CHO MÃ PHÒNG, NHÃN NHỎ: 4821 / B-01</div>
+    </div>
+  </div>
+</div>
+
+<nav class="switcher" aria-label="Đổi bố cục">
+  <button id="prev" aria-label="Bố cục trước">←</button>
+  <span class="cur" id="cur">1</span>
+  <button id="next" aria-label="Bố cục sau">→</button>
+</nav>
+
+<script>
+const sections = [...document.querySelectorAll('.v')];
+const keys = sections.map(s => s.dataset.key);
+let cur = keys[0];
+function show(k) {
+  if (!keys.includes(k)) k = keys[0];
+  cur = k;
+  const s = sections.find(x => x.dataset.key === k);
+  sections.forEach(x => x.classList.toggle('on', x === s));
+  document.getElementById('vk').textContent = k;
+  document.getElementById('vt').textContent = s.dataset.name;
+  document.getElementById('vp').textContent = s.dataset.pitch;
+  document.getElementById('cur').textContent = k + ' (' + s.dataset.name + ')';
+}
+function go(d) { location.hash = keys[(keys.indexOf(cur) + d + keys.length) % keys.length]; }
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input,textarea,[contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+addEventListener('hashchange', () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+</script>
