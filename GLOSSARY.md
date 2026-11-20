@@ -1,6 +1,6 @@
 # Xóm Đảo
 
-A web hub where friends play games built in any engine, each embedded as a sandboxed sub-project.
+A web hub where friends play games built in any engine, each embedded as an independent sub-project.
 
 ## Platform
 
@@ -9,7 +9,7 @@ The web app players open: sign-in, lobby, game list, rooms. It hosts games but h
 _Avoid_: Client, shell, launcher
 
 **Game**:
-An independently developed sub-project, built to a web bundle in any engine and embedded in the Hub in a sandbox.
+An independently developed sub-project, built to a web bundle in any engine, embedded in the Hub in an iframe and talking to it only through the Bridge.
 _Avoid_: Island, plugin, module, mini-game
 
 **Bridge**:
