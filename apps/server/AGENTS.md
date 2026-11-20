@@ -1,7 +1,7 @@
 # Server (@xomdao/server) and the socket protocol (@xomdao/shared)
 
 The server is only the API: rooms over the `/ws` WebSocket and `/api` over HTTP. It serves no web
-files; Vercel serves the Godot client (`docs/deploy.md`).
+files; Vercel serves the Godot client (see Deploy below).
 
 ```
 src/rooms/      rooms.service.ts = room logic (unit tested); rooms.gateway.ts = the `@On(event)`
@@ -189,7 +189,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 ## Changing things
 
 - New platform features (wallet, shop, inventory, achievements…) are separate Nest modules
-  (`docs/adr/0002-modules.md`). A module owns its tables and never reads another module's tables:
+  A module owns its tables and never reads another module's tables:
   it calls that module's service, or listens to events such as `RoomsService.onFinished`.
 
 - Nest DI needs the runtime value, so `import` classes that Nest injects as values.
@@ -200,8 +200,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   in `apps/client/addons/xomdao_sdk/generated/`; `npm run check` fails when you forget.
 - Client (Vercel) and server (Render) deploy separately and compare `PROTOCOL_VERSION` on
   login (`ws.gateway.ts` refuses another version with `protocol-mismatch`); the client then shows
-  "Đã có bản mới" with Tải lại. Bump it when old clients or servers would break. Details:
-  `docs/deploy.md`.
+  "Đã có bản mới" with Tải lại. Bump it when old clients or servers would break.
 - **DB**: edit `src/db/schema.ts`, then run `npm run db:generate -w @xomdao/server`. Migrations apply
   on server start.
 - A migration must work with the previous server build: add first, remove later.
@@ -244,3 +243,23 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - Use `npm run dev` with memory accounts (`DATABASE_URL=''`) for local e2e. Scenarios run a
   console line with `window.xomdao.request('dev:command', { line })` (a `cmd(page, line)` helper in
   the scenarios that need it).
+
+## Deploy
+
+Every merge to `main` deploys; a release is only a named point.
+
+- **Client → Vercel** project `minhnks-projects/xomdao` (https://xomdao.vercel.app), build in
+  `vercel.json` (`node tools/godot/vercel.mjs`: release export for production, debug for PR
+  previews, then the console into `dist/console`). `XOMDAO_SERVER_URL` is baked in at build time.
+- **Server → Render** `xomdao-server` (free, Singapore, `render.yaml`), URL
+  https://play-some-cards-server.onrender.com, service id `srv-daq1sc0473hc73e7bsl0` (`render logs
+  -r <id>`). Deploys when `apps/server/**`, `packages/shared/**` or `package-lock.json` change.
+  Sleeps after ~15 min; sleep or deploy drops every room. Keep exactly one instance: rooms live in
+  process memory, which is also why the server stays off Vercel Functions.
+- **DB → Neon Postgres** project `royal-block-89471600` (Singapore), database `psc`. Branch `main`
+  = production (Render's pooled `DATABASE_URL`), branch `dev` = local (`apps/server/.env`). Get a
+  URL with `neonctl connection-string <main|dev> --project-id royal-block-89471600 --database-name
+  psc --pooled`, then change `sslmode=require` to `verify-full`. Without `DATABASE_URL` the server
+  keeps accounts in memory (`/api/health` reports `db: "off"`).
+- Migrations run on server start while the previous server may still be up: keep them compatible
+  with it (add a column first, drop the old one in a later PR).

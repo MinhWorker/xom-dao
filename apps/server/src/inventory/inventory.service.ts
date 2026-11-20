@@ -9,7 +9,7 @@ export const INVENTORY_STORE = Symbol('INVENTORY_STORE');
 export class InventoryError extends Error {}
 
 /**
- * Túi đồ (docs/adr/0002-modules.md): which items each account owns (from `ItemsService`)
+ * Túi đồ: which items each account owns (from `ItemsService`)
  * and wearing them. It owns `inventory_items`; how a player shows (their avatar, frame and card back)
  * stays on the account, set through `AccountsService.setLooks`. Chợ adds what was paid for with
  * `grant`.

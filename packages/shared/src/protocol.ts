@@ -196,7 +196,7 @@ export type MatchRecord = z.infer<typeof MatchRecord>;
 
 /**
  * A genre island in the hub. The two `main` genres (Cờ, Bài) have fixed big islands beside
- * Xóm; the others fill the small island slots behind it in `order` (docs/experience.md).
+ * Xóm; the others fill the small island slots behind it in `order`.
  */
 export const Genre = z.object({
   /** Kebab-case; games name it in `meta.genre`. */

@@ -1,9 +1,7 @@
 # Godot client (apps/client)
 
-The Xóm Đảo client, the only one: one Godot 4 project in typed GDScript, exported to the web
-(`docs/adr/0001-godot-client.md`) and served as the site at `/`. Game rules stay in TypeScript on
-the server; this project only shows state and sends moves. Folder guide (Vietnamese):
-`apps/client/README.md`.
+The Xóm Đảo client, the only one: one Godot 4 project in typed GDScript, exported to the web and served as the site at `/`. Game rules stay in TypeScript on
+the server; this project only shows state and sends moves. Folder guide: `apps/client/README.md`.
 
 ## Toolchain
 
@@ -133,7 +131,7 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 - Protocol classes come from zod (`packages/shared/src/protocol.ts`): change the schema, then run
   `npm run gen:protocol`. JSON keys stay camelCase; fields are snake_case.
 - Screens and games build their UI from the kit in `addons/xomdao_sdk/ui/`
-  (docs/art-direction.md made into code), never their own buttons, fonts or HUD colours:
+  never their own buttons, fonts or HUD colours:
   - `XomDaoUi`: palette, fonts, icons (`XomDaoUi.icon("gear")`, Phosphor Fill), `theme()`,
     `money()` / `delta()`, `play()` for the shared sounds, `bounce()`;
   - widgets: `XomDaoButton` (colour by `XomDaoUi.Kind`), `XomDaoIconButton`, `XomDaoPuff` (the raised
@@ -179,7 +177,7 @@ export_presets.cfg  The Web preset: single-threaded, PWA
 | `npm run godot:export` | Web build into `dist/` (`-- --debug` for a debug build) plus `dist/content/<id>.<hash>.pck` and `manifest.json`. Full exports reuse unchanged packs from `.tools/export/packs`; `-- --debug --game <id>` refreshes one pack in a matching existing debug build. Runs on a copy in `.tools/export/` because Godot's export filters do not follow symlinks |
 | `npm run godot:net` | Builds and starts a dev server (no database) on a free port, then runs the GUT tests that need it (`test_net.gd`, skipped by `godot:check`) |
 | `npm run godot:smoke` | Serves `dist/`, opens it in headless Chromium at 800 × 360, waits for `xomdao:ready`, saves `.shots/godot-800x360.png` |
-| `npm run godot:measure` | Download size and time to playable, first and repeat visit, on a throttled phone profile (`-- --server <url>` of a running server; `--cpu`, `--net`). Release build for sizes, debug build for every timing. Numbers go in `docs/adr/0001-godot-client.md` |
+| `npm run godot:measure` | Download size and time to playable, first and repeat visit, on a throttled phone profile (`-- --server <url>` of a running server; `--cpu`, `--net`). Release build for sizes, debug build for every timing |
 | `npm run godot:preview -- open <index> <scene>` | Open an isolated desktop preview in a numbered slot; see `apps/client/README.md` for refresh, animation and capture commands |
 
 In the browser: `npm run dev` serves `dist/` at http://localhost:5033/ (`scripts/web.mjs`; export

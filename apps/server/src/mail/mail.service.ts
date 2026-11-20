@@ -52,7 +52,7 @@ export interface SentLetter {
 }
 
 /**
- * Hộp thư (docs/adr/0002-modules.md): letters from Xóm Đảo, written in the console to one account
+ * Hộp thư: letters from Xóm Đảo, written in the console to one account
  * or to everyone, sometimes with coins. It owns `letters` and `letter_receipts`; coins are paid
  * through the ledger keyed `mail:<letter>:<user>`, so a letter pays each reader once. The rooms
  * gateway listens (`onSent`) to push the fresh Hộp thư to whoever is online.

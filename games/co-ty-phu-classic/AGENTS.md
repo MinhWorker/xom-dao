@@ -1,6 +1,6 @@
 # Cờ tỷ phú Classic
 
-Read `../AGENTS.md` for the shared game/SDK rules. The Vietnamese component map is in `README.md`.
+Read `../AGENTS.md` for the shared game/SDK rules.
 
 - `src/game/`: authoritative pure rules, board/pricing data (`model.ts`), cards, bot and turn clock.
   Tests stay next to the implementation they exercise.

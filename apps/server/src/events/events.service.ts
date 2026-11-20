@@ -10,7 +10,7 @@ export const EVENTS_STORE = Symbol('EVENTS_STORE');
 export class EventError extends Error {}
 
 /**
- * Sự kiện (docs/adr/0002-modules.md): each player's points in each event (a game with
+ * Sự kiện: each player's points in each event (a game with
  * `kind: 'event'`) and the reward tiers they claimed. It owns `event_points` and
  * `event_claims`; tier rewards are paid through the ledger, keyed
  * `event:<event>:<user>:<tier>:<resource>` so each tier pays once.

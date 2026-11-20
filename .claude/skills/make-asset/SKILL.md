@@ -5,8 +5,8 @@ description: Make an image or sound for a Xóm Đảo game or the hub (Codex pro
 
 # Make an asset and bring it into Godot
 
-Read first: `assets/AGENTS.md` (how and where), `docs/art-direction.md` (the look: Vietnamese
-village by the sea, warm paper and lacquer, thick outlines).
+Read first: `assets/AGENTS.md` (how and where). The look: Vietnamese village by the sea, warm
+paper and lacquer, thick outlines.
 
 ## Pick the way
 
@@ -47,4 +47,4 @@ village by the sea, warm paper and lacquer, thick outlines).
 5. Check it in place: a headless screenshot (`phone-check` skill), and judge sharpness on the
    `-crop.png` files.
 
-Credit sources in the game README or `LICENSE-ASSETS.md`. Only free, clearly allowed assets.
+Only free, clearly allowed assets; keep a third-party license file beside assets that require one.

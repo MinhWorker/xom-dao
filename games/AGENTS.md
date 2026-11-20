@@ -1,8 +1,6 @@
 # Games and the SDK
 
 Where to look:
-- **How to build a game** (Vietnamese, for people): `docs/making-a-game.md`.
-- **Every hook**: `docs/making-a-game.md` ("Các hook").
 - **Examples**:
   - `scripts/templates/` holds the starters `new:game` / `new:event` fill in: `game/` (rules,
     bot), `event/` (over `game/`), `godot/<layout>/main.gd` (Bàn, Hành động, event),
@@ -21,7 +19,6 @@ Where to look:
 ```
 games/<id>/          src/index.ts is required; without godot/main.tscn the card shows "Sắp có"
   RULES.md             Current Vietnamese gameplay rules (non-starter games); the client's Luật board
-  README.md            Component map, development commands and asset credits
   src/index.ts         export default definePlugin({ meta, game: new MyGame(), room? }); server
   src/game/            Pure rules, no DOM: <Name>Game.ts (+ test), model.ts, options.ts, bot.ts
   godot/               The Godot table: main.tscn + main.gd, test/test_*.gd (GUT), art/, sounds/,
@@ -32,7 +29,7 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 
 | Command | What it does |
 | --- | --- |
-| `npm run new:game -- <id> "Tên" --genre <g> [--layout ban\|hanh-dong]` | A working game (status `wip`): rules + bot + tests, a Godot table in that layout + GUT test, RULES.md, README, stand-in card. Then `npm run godot:check` writes the `.uid` files to commit |
+| `npm run new:game -- <id> "Tên" --genre <g> [--layout ban\|hanh-dong]` | A working game (status `wip`): rules + bot + tests, a Godot table in that layout + GUT test, RULES.md, stand-in card. Then `npm run godot:check` writes the `.uid` files to commit |
 | `npm run new:event -- <id> "Tên" [--opens YYYY-MM-DD] [--closes YYYY-MM-DD]` | The same for an event (`su-kien`, Hành động layout, dates default to today + 4 weeks, reward tiers, browser scenario) |
 | `npm run new -- logic <id> [Name]` | Write a `Game` (+ test) from `scripts/templates/` (leave out `<id>` inside `games/<id>/`) |
 | `npm run new -- options <id>` | Write `src/game/options.ts` (the room's options); its rows in the room come from `room_setup()` in `godot/main.gd` |
@@ -76,7 +73,7 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
   game. Examples: a system event, a `ctx` property, a view helper, a test helper.
 - Changing an SDK API means, in the same change:
   - updating every game that uses it;
-  - documenting it in the engine.ts header and `docs/making-a-game.md`.
+  - documenting it in the engine.ts header.
 - `meta` is also the game's hub card: `genre` (an id from `genres` in
   `packages/shared/src/catalog.ts`; none = not in the hub yet), `tagline`, `duration` in minutes,
   optional `kind` (`table`/`event` + `event`), `card` art and `rewardCap`. The registry test
@@ -98,13 +95,11 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
   `result.rewards`.
 - **Events** (`kind: 'event'`, genre `su-kien`, `meta.event`): points go through
   `ctx.reward(player, EVENT_POINTS, n)` within `meta.rewardCap`; the server keeps them per event and
-  pays `meta.event.tiers` on claim. `games/trung-thu` is the sample; see "Sự kiện" in
-  `docs/making-a-game.md`.
+  pays `meta.event.tiers` on claim. `games/trung-thu` is the sample.
 - **Stats and achievements**: `ctx.stat(playerId, 'chop', n = 1)` counts something a player did
   (lowercase-dash names; `played` and `won` are counted by the server). `meta.achievements`
   (`{ id, name, stat, at, xp?, reward? }`) are data: the server unlocks and pays them. Never rename
-  or reuse a shipped achievement id. `testGame` shows counts in `result.stats`. See "Thống kê và
-  thành tích" in `docs/making-a-game.md`.
+  or reuse a shipped achievement id. `testGame` shows counts in `result.stats`.
 - **Timers**: `ctx.setTimer(ms, 'name')` calls `onName(ctx)`. There is one timer per game, and
   the gateway runs it. Use it for a turn clock or a pause between rounds. The table shows
   countdowns from the snapshot's `timer`.
@@ -132,8 +127,7 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
   (`XomDaoPlaces.by_points` builds them for a points game).
   Optional `table_skin() -> XomDaoTableSkin` dresses the hub's ☰ in the table's materials; give
   the same skin to the game's seats and buttons so no shared HUD piece breaks the table's look. See
-  `apps/client/AGENTS.md`. Follow `docs/experience.md` (layouts, HUD) and
-  `docs/ui-guide.md` (landscape frame, sizes), and build every button and panel from the UI kit in
+  `apps/client/AGENTS.md`. Build every button and panel from the UI kit in
   `apps/client/addons/xomdao_sdk/ui/` (`apps/client/AGENTS.md`).
 - **`testGame`** takes a plugin or a `Game`. It offers:
   - `send`, `error`, `view` and `assertHidden`;

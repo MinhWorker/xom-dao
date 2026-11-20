@@ -5,8 +5,7 @@ description: Make a new Xóm Đảo game or event from a brief (rules, Godot tab
 
 # New game or event from a brief
 
-Read first: `games/AGENTS.md`, `apps/client/AGENTS.md`, `docs/experience.md` ("HUD trong ván",
-"Sự kiện"), `docs/making-a-game.md`.
+Read first: `games/AGENTS.md`, `apps/client/AGENTS.md`.
 
 ## 1. Pin down the brief
 
@@ -29,7 +28,7 @@ npm run new:event -- <id> "Tên" [--opens YYYY-MM-DD] [--closes YYYY-MM-DD]
 ```
 
 This writes a small working game (race to 21, or "hái lộc" for an event) that already plays in
-the lobby: `games/<id>/` (rules + tests, `godot/` table + GUT test, RULES.md, README, stand-in
+the lobby: `games/<id>/` (rules + tests, `godot/` table + GUT test, RULES.md, stand-in
 card art) and `scripts/e2e/scenarios/godot-<id>.mjs`. Run `npm run godot:check` once so Godot
 writes the `.uid` files, and commit them.
 
@@ -54,8 +53,7 @@ writes the `.uid` files, and commit them.
 5. **E2E** (`scripts/e2e/scenarios/godot-<id>.mjs`): play the sandbox to the end through named
    nodes. CI runs every `godot-*` scenario.
 6. **Art and sound**: see the `make-asset` skill; the starter card art is a stand-in.
-7. **Docs**: RULES.md (current rules only, for players), the game README (layout of the folder,
-   credits).
+7. **Rules**: RULES.md (current rules only, for players).
 
 ## 4. Check
 

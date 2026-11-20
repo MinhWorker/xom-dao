@@ -19,7 +19,7 @@ export const QUESTS_STORE = Symbol('QUESTS_STORE');
 export class QuestsError extends Error {}
 
 /**
- * Nhiệm vụ hằng ngày (docs/adr/0002-modules.md). It owns `quest_progress`. Finished games
+ * Nhiệm vụ hằng ngày. It owns `quest_progress`. Finished games
  * (`RoomsService.onFinished`, wired by the rooms gateway) count towards the day's quests
  * (`questsOf`) for the people who played them; a finished quest's reward is paid through the
  * ledger, keyed `quest:<user>:<day>:<quest>` so it pays once. The day goes by `EventClock`, so
