@@ -3,7 +3,7 @@
 - Any way of making art or sound is fine: Codex, drawn by people, rendered in Blender, drawn or
   synthesized in code, or free resources from the web.
 - Pick what looks and sounds best for a card/board game in the app's style.
-- Credit a source when it's easy, in the game's README or in LICENSE-ASSETS.md.
+- Keep a third-party license file next to assets whose license requires one.
 - Use only free, clearly allowed assets, and never sell anything.
 
 ## Where files live
@@ -31,7 +31,7 @@
     generated art.
   - `node scripts/avatars.mjs frames` recolors `frame-gold` into the other frames;
     `node scripts/avatars.mjs emoji <dir>` makes the animal avatars from Microsoft's Fluent Emoji 3D
-    (MIT, credited in LICENSE-ASSETS.md). Add avatar ids to `AVATARS` and the generation script;
+    (MIT, notice in `assets/app/images/LICENSE-FluentEmoji.txt`). Add avatar ids to `AVATARS` and the generation script;
     add frame ids to `FRAMES` in `account.ts` and the script's `FRAMES` map.
 
 ## Codex images
@@ -112,6 +112,5 @@ Notes on the options and on Codex:
 - **Music**: a game's music is every track in its `godot/music/`; the hub's `HubMusic` plays a
   random one while its table shows. The app's own tracks (`music-hub-*`, `music-sky-*`) are in
   `assets/app/audio/`.
-- Asset provenance and license exceptions live in `LICENSE-ASSETS.md` and the game README.
-  Find playback triggers in the game's `godot/` scripts; avoid duplicating them in audio planning
+- Find playback triggers in the game's `godot/` scripts; avoid duplicating them in audio planning
   documents.

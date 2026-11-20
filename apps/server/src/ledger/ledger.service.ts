@@ -6,7 +6,7 @@ import type { LedgerEntry, LedgerStore } from './ledger.store.js';
 export const LEDGER_STORE = Symbol('LEDGER_STORE');
 
 /**
- * The ledger: the only module that changes balances (docs/adr/0002-modules.md). Every change is
+ * The ledger: the only module that changes balances. Every change is
  * a row with a key that makes it happen once. Other modules pay or charge through `apply`; game
  * rewards come from finished games (`RoomsService.onFinished`, wired by the rooms gateway).
  */

@@ -23,7 +23,7 @@ for real devices, pixel density and notches.
    - nothing under the ☰ square (top left, 88 × 88 design units) or the notch;
    - nothing overlaps or runs off screen (buttons over the board, long names, counters);
    - text is readable at phone size; tap targets are at least the kit's button size;
-   - the layout matches `docs/experience.md` (Bàn or Hành động);
+   - the layout is the game's Bàn or Hành động layout;
    - sharpness on the `-crop.png` files, not the scaled ones.
 4. **Fix** in `_layout()` (design units: fixed 1280, 1440, 1560 or 1600 × 720 frames), export
    again, shoot again. Check an 18:9 viewport (720 × 360) as well as the device profiles.

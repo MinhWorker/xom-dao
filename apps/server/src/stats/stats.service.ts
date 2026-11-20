@@ -28,7 +28,7 @@ const boardStat = (board: string) =>
   board === CORE_BOARD ? { gameId: CORE_BOARD, name: 'xp' } : { gameId: board, name: 'won' };
 
 /**
- * Thống kê, thành tích, xếp hạng (docs/adr/0002-modules.md). It owns `player_stats`,
+ * Thống kê, thành tích, xếp hạng. It owns `player_stats`,
  * `stat_matches` and `achievements`.
  *
  * Every finished game (`RoomsService.onFinished`, wired by the rooms gateway) counts, once per

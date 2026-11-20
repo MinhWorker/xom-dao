@@ -3,7 +3,7 @@
 // Rooms and games still live in memory (see rooms.service.ts); accounts, finished games
 // (match history), the ledger, Túi đồ, event progress, stats, achievements, Bạn bè (friends,
 // chat), Nhiệm vụ and Hộp thư are stored here. Each module owns its
-// own tables (docs/adr/0002-modules.md).
+// own tables.
 import {
   bigint,
   boolean,

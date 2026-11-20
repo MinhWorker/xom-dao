@@ -6,7 +6,7 @@
 //   npm run new -- options <game>                 src/game/options.ts: the room's options
 //
 // A game or event is a small working one: rules + tests (src/), its Godot table in a sample
-// layout (godot/: Bàn or Hành động, docs/experience.md) with GUT tests, RULES.md, a README and a
+// layout (godot/: Bàn or Hành động) with GUT tests, RULES.md and a
 // stand-in card picture. Events also get an E2E scenario for their clock and reward flow.
 //
 // For one file, run from inside games/<id>/ and <game> can be left out. Name defaults to the
@@ -69,7 +69,7 @@ function write(file, template, values) {
 
 // ── A whole game or event ────────────────────────────────────────────────────────────────────
 
-/** The sample layouts of a game's table (docs/experience.md, "Trong trận"). */
+/** The sample layouts of a game's table. */
 const LAYOUTS = { ban: 'Bàn', 'hanh-dong': 'Hành động' };
 const EVENT_GENRE = 'su-kien';
 

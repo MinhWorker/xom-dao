@@ -15,7 +15,7 @@ export const ITEMS_STORE = Symbol('ITEMS_STORE');
 export class ItemError extends Error {}
 
 /**
- * Vật phẩm (docs/adr/0002-modules.md): the list of things a player can own and buy at Chợ. It
+ * Vật phẩm: the list of things a player can own and buy at Chợ. It
  * owns the `items` table; Túi đồ and Chợ read it through this service, and the console edits it.
  * The list is small and only this server writes it, so it is kept in memory after the first read.
  */

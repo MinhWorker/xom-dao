@@ -1,5 +1,5 @@
 // node scripts/ui-sounds.mjs: synthesizes the shared UI sounds of the Godot client
-// (docs/art-direction.md, "Chuyển động và âm thanh") into apps/client/addons/xomdao_sdk/ui/sounds/:
+// into apps/client/addons/xomdao_sdk/ui/sounds/:
 // tap (a wooden knock), panel (a paper rustle) and coin (two bright pings). 16-bit mono WAV.
 // Seeded, so a rerun writes the same files.
 import { writeFileSync } from 'node:fs';

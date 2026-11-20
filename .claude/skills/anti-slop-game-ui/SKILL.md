@@ -7,7 +7,7 @@ description: Use when designing, implementing, or reviewing a game's board, HUD,
 
 For game UI work, make decisions as a senior game UI/UX designer. Shape the interface around the game's world and play, rather than importing a generic web or dashboard layout.
 
-For a Godot game in this repository, read `apps/client/AGENTS.md` and `docs/experience.md`. Use the shared UI kit and preserve the game's required controls and interaction states.
+For a Godot game in this repository, read `apps/client/AGENTS.md`. Use the shared UI kit and preserve the game's required controls and interaction states.
 
 ## Explore before designing
 

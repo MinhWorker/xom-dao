@@ -7,7 +7,7 @@ import { LedgerService } from '../ledger/ledger.service.js';
 export class ShopError extends Error {}
 
 /**
- * Chợ (docs/adr/0002-modules.md): sells the items of `ItemsService` for coins. It keeps no table of its
+ * Chợ: sells the items of `ItemsService` for coins. It keeps no table of its
  * own: it charges through the ledger and hands the item to Túi đồ. Each item is bought once per
  * account, so the charge is keyed `shop:<user>:<item>`: a second tap, a retry or two devices at
  * once pay once.
