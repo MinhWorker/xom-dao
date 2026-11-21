@@ -2,7 +2,7 @@ import { XP_PER_GAME } from '@xomdao/shared';
 import { describe, expect, it } from 'vitest';
 import { AccountsService } from '../accounts/accounts.service.js';
 import { MemoryAccountsStore } from '../accounts/accounts.store.js';
-import type { FinishedGame } from '../rooms/rooms.service.js';
+import type { FinishedGame } from '../matches/finished-game.js';
 import { StatsService } from './stats.service.js';
 import { MemoryStatsStore } from './stats.store.js';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FinishedGame } from '../rooms/rooms.service.js';
+import type { FinishedGame } from './finished-game.js';
 import { MatchesService } from './matches.service.js';
 import { MemoryMatchesStore } from './matches.store.js';
 

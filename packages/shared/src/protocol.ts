@@ -1,7 +1,4 @@
 import { z } from 'zod';
-
-export type { DevCommandInfo, DevConsoleSchema } from '@xomdao/sdk/legacy';
-
 import { avatarSchema, frameSchema, profileSchema } from './account.js';
 
 /**
@@ -19,7 +16,7 @@ import { avatarSchema, frameSchema, profileSchema } from './account.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 13;
+export const PROTOCOL_VERSION = 14;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
@@ -41,104 +38,43 @@ export const User = z.object({
 });
 export type User = z.infer<typeof User>;
 
-export const PlayerInfo = z.object({
+/** Someone in a Room's seat: a person, or the computer (`bot`). */
+export const RoomMember = z.object({
   id: z.string(),
   name: z.string(),
-  connected: z.boolean(),
-  /** A seat the computer plays (never a host, always connected). */
-  bot: z.boolean().optional(),
-  /** In `players`: said Sẵn sàng in the waiting room (`room:ready`). */
-  ready: z.boolean().optional(),
   /** The account's picture (`Avatar`) and the ring around it (`Frame`); bots have none. */
   avatar: z.string().optional(),
   frame: z.string().optional(),
-  /** In `players` and `spectators`: the back of their cards (`CardBack`). */
-  cardBack: z.string().optional(),
-  /** In `seats` only: left the room during this game. */
-  left: z.boolean().optional(),
+  /** A seat the computer plays: never host, always connected. */
+  bot: z.boolean().optional(),
+  /** Said Sẵn sàng before the Room's first Match (`room:ready`). */
+  ready: z.boolean().optional(),
+  connected: z.boolean(),
 });
-export type PlayerInfo = z.infer<typeof PlayerInfo>;
+export type RoomMember = z.infer<typeof RoomMember>;
 
-export const RoomStatus = z.enum(['lobby', 'playing', 'finished']);
+/** `waiting` between Matches, `playing` while one runs. */
+export const RoomStatus = z.enum(['waiting', 'playing']);
 export type RoomStatus = z.infer<typeof RoomStatus>;
 
-/** Players take a seat (limited to the game's maxPlayers); spectators only watch (no limit). */
-export const RoomRole = z.enum(['player', 'spectator']);
-export type RoomRole = z.infer<typeof RoomRole>;
+/** A Room's picks for the options its Game manifest declares (`choice` and `toggle`). */
+export const RoomOptions = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]));
+export type RoomOptions = z.infer<typeof RoomOptions>;
 
-/**
- * Wins per seat (seat = position in `players`, e.g. Caro seat 0 is red X, seat 1 blue O) and
- * draws, counted over every game played in the room. Only reset when the room is disbanded.
- */
-export const RoomScore = z.object({ wins: z.array(z.int()), draws: z.int() });
-export type RoomScore = z.infer<typeof RoomScore>;
-
-/** One `ctx.reward` of a game (`GameResult.rewards`). */
-export const Reward = z.object({ player: z.string(), resource: z.string(), amount: z.int() });
-
-/** How a game ended (`GameResult` in @xomdao/sdk). */
-export const GameResultSchema = z.object({
-  /** Empty means a draw. */
-  winners: z.array(z.string()),
-  rewards: z.array(Reward).optional(),
-  /** What the game counted with `ctx.stat`. */
-  stats: z.array(z.object({ player: z.string(), name: z.string(), amount: z.int() })).optional(),
-});
-
-export const LastMove = z.object({ seq: z.int(), player: z.string(), move: z.unknown() });
-export const RoomTimer = z.object({ event: z.string(), ms: z.number(), left: z.number() });
-export const Played = z.object({ ms: z.number(), running: z.boolean() });
-
-/** What one specific member sees of a room. `view` is already filtered by `getView`. */
-export const RoomSnapshot = z.object({
-  /** The room's short code: share it to let friends in (`room:join`). */
+/** What everyone in a Room sees of it (`room:state`). */
+export const RoomState = z.object({
+  /** The Room's short code: share it to let friends in (`room:join`). */
   code: z.string(),
   gameId: z.string(),
-  /** `null` when every seat is empty (only spectators left); the next to sit becomes host. */
-  hostId: z.string().nullable(),
-  players: z.array(PlayerInfo),
-  spectators: z.array(PlayerInfo),
-  /**
-   * Everyone seated when the current (or last) game began, in seat order, `left` marking who
-   * has gone since: what the board shows. `null` before the first game.
-   */
-  seats: z.array(PlayerInfo).nullable(),
+  hostId: z.string(),
+  /** One entry per seat of the Game (`maxPlayers`), in seat order; `null` is an empty seat. */
+  seats: z.array(RoomMember.nullable()),
+  options: RoomOptions,
   status: RoomStatus,
-  view: z.unknown(),
-  result: GameResultSchema.nullable(),
-  score: RoomScore,
-  /** Chosen on the game's setup screen when the room was created (see `RoomSetup`). */
-  options: z.unknown(),
-  /** Counts games started in this room: a new number means a new game began. */
-  round: z.int(),
-  /**
-   * The last move of this game, for boards to animate "who just did what" (`move` as the game's
-   * `moveView` lets this member see it). `null` before the first move. `seq` goes up by one each.
-   */
-  last: LastMove.nullable(),
-  /** The game's timer: which one, its full length and how much was left when this was sent. */
-  timer: RoomTimer.nullable(),
-  /**
-   * How long the current (or last) game has lasted when this was sent; `running` until it
-   * ends. `null` when no game is on the board.
-   */
-  played: Played.nullable(),
+  /** The running Match, `null` while waiting. */
+  matchId: z.string().nullable(),
 });
-export type RoomSnapshot = z.infer<typeof RoomSnapshot>;
-
-/** One row in a game's room list. */
-export const RoomSummary = z.object({
-  code: z.string(),
-  hostName: z.string(),
-  players: z.int(),
-  maxPlayers: z.int(),
-  /** Connected spectators. */
-  spectators: z.int(),
-  status: RoomStatus,
-  /** True when a new player can take a seat right now. */
-  canJoin: z.boolean(),
-});
-export type RoomSummary = z.infer<typeof RoomSummary>;
+export type RoomState = z.infer<typeof RoomState>;
 
 export const JoinedRoom = z.object({
   roomCode: z.string(),
@@ -324,11 +260,7 @@ export const SessionInfo = z.object({
   room: JoinedRoom.nullable(),
   balances: Balances,
 });
-/** A game's room list (`lobby:watch` reply). */
-export const RoomList = z.object({ rooms: z.array(RoomSummary) });
-/** A new room list for the game you watch. */
-export const LobbyRooms = z.object({ gameId: z.string(), rooms: z.array(RoomSummary) });
-/** The room was disbanded, or you left it from another device. */
+/** The Room was disbanded, or you left it from another device. */
 export const RoomClosed = z.object({ gameId: z.string(), reason: z.string() });
 
 /**
@@ -362,47 +294,34 @@ export const requests = {
   'ranking:get': { req: z.object({ board: z.string() }), res: Ranking },
   /** Your most recent finished games (`HISTORY_LIMIT`), newest first. */
   'history:recent': { req: Empty, res: z.object({ matches: z.array(MatchRecord) }) },
-  /** Subscribe to a game's room list; the server then pushes 'lobby:rooms' on every change. */
-  'lobby:watch': { req: z.object({ gameId: z.string() }), res: RoomList },
-  'lobby:unwatch': { req: Empty, res: Empty },
   /**
-   * Creating or joining a room first leaves the room you were in (if it is another one).
-   * `options` come from the game's own setup screen, if it has one (checked by `room.options`).
+   * Creating or joining a Room first leaves the Room you were in (if it is another one).
+   * `options` are picks for the Game manifest's options; missing ones take their default.
    */
   'room:create': {
-    req: z.object({ gameId: z.string(), options: z.unknown().optional() }),
+    req: z.object({ gameId: z.string(), options: RoomOptions.optional() }),
     res: JoinedRoom,
   },
+  /** Takes the first empty seat of the Room with this code (any case), between Matches. */
+  'room:join': { req: z.object({ roomCode: z.string() }), res: JoinedRoom },
   /**
-   * Quick match (CHƠI): a seat in a waiting quick-match room of this game, else a new one. It
-   * starts once full; if nobody else comes for a while, the computer takes the empty seats
-   * (games with `room.withBots`) and it starts.
-   */
-  'room:quick': { req: z.object({ gameId: z.string() }), res: JoinedRoom },
-  /** Joins by the room's short code (any case), as a player or to watch. */
-  'room:join': { req: z.object({ roomCode: z.string(), role: RoomRole }), res: JoinedRoom },
-  /**
-   * A player leaving mid-game cancels that game; during or after a game the room goes back
-   * to the lobby. When the host leaves, the next
-   * player becomes host; when no player is left, the room is disbanded ('room:closed').
+   * Frees your seat. The next person seated becomes host; with nobody left the Room is
+   * disbanded ('room:closed').
    */
   'room:leave': { req: Empty, res: Empty },
-  /** A spectator takes a free seat (only before the game starts or after it ends). */
-  'room:sit': { req: Empty, res: Empty },
+  /** Host only, between Matches: replace the Room's options (checked like `room:create`'s). */
+  'room:options': { req: z.object({ options: RoomOptions }), res: Empty },
   /**
-   * Host only, not during a game: replace the room's options. The
-   * next game starts with them. Can't change how many seats the computer has.
-   */
-  'room:options': { req: z.object({ options: z.unknown() }), res: Empty },
-  /**
-   * A seated player other than the host says they are ready (or takes it back), before a game.
-   * In a waiting room the host can only start once every other person seated is ready.
+   * Someone seated other than the host says they are ready (or takes it back). Before the
+   * Room's first Match the host can only start once every other person seated is ready.
    */
   'room:ready': { req: z.object({ ready: z.boolean() }), res: Empty },
-  'game:start': { req: Empty, res: Empty },
-  /** `move` is `{ event, payload }`: one of the game's events. */
-  'game:move': { req: z.object({ move: z.unknown() }), res: Empty },
-  'game:restart': { req: Empty, res: Empty },
+  /** Host only, between Matches, for a Game with bots: the computer takes the first empty seat. */
+  'room:add-bot': { req: Empty, res: Empty },
+  /** Host only, between Matches: the computer leaves seat `seat`. */
+  'room:remove-bot': { req: z.object({ seat: z.int() }), res: Empty },
+  /** Host only: starts a Match with everyone seated (at least the Game's `minPlayers`). */
+  'match:start': { req: Empty, res: z.object({ matchId: z.string() }) },
   /**
    * Bạn bè: your friends and requests, friends online first. `friends:add` asks someone by their
    * username (or accepts their request to you); `friends:answer` accepts or turns down a request
@@ -433,12 +352,10 @@ export const requests = {
 
 /** What the server pushes. */
 export const events = {
-  'room:state': RoomSnapshot,
-  'lobby:rooms': LobbyRooms,
-  /** The room was disbanded (no players left); everyone still inside is sent out. */
+  /** The Room you are in changed. */
+  'room:state': RoomState,
+  /** The Room was disbanded, or you left it from another device. */
   'room:closed': RoomClosed,
-  /** A game you played ended and paid you (once per game, within its `meta.rewardCap`). */
-  reward: RewardNotice,
   /** Your Bạn bè list changed: a request, an answer, a friend coming online or into a room. */
   'friends:changed': FriendList,
   /** A friend sent you a message (also sent to your own other tabs when you send one). */
@@ -452,23 +369,9 @@ export type Ack<T = object> = (res: ({ ok: true } & T) | { ok: false; error: str
 
 type Events = typeof events;
 
-/** Dev logs contain full game details and are only sent to opted-in members in dev mode. */
-export interface DevLogEntry {
-  id: number;
-  t: number;
-  level: 'info' | 'warn' | 'error';
-  kind: 'move' | 'reject' | 'timer' | 'bot' | 'command' | 'game' | 'room' | 'error';
-  seat?: number;
-  text: string;
-  data?: unknown;
-}
-
 /** The events the server pushes, from `events`. */
 export type ServerToClientEvents = {
   [E in keyof Events]: (payload: z.output<Events[E]>) => void;
-} & {
-  /** Dev only: the next room log entry, while following dev:logs. */
-  'dev:log': (entry: DevLogEntry) => void;
 };
 
 /**
