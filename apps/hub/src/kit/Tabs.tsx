@@ -1,4 +1,5 @@
 import { type ReactNode, useId, useState } from 'react';
+import { playSound } from '../sound/index.js';
 import { rovingKeyDown } from './roving.js';
 import styles from './Tabs.module.css';
 
@@ -22,6 +23,7 @@ export function Tabs({ label, tabs, value, onChange }: TabsProps) {
   const [own, setOwn] = useState(tabs[0]?.id);
   const selected = value ?? own;
   const select = (id: string) => {
+    playSound('click');
     setOwn(id);
     onChange?.(id);
   };

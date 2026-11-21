@@ -4,6 +4,7 @@ import { gameById } from '../../games.js';
 import { Button, Dialog, Menu, toast } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate, router } from '../../router.js';
+import { SoundToggle } from '../../sound/SoundToggle.js';
 import { focusPosition } from '../lobby/summary.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import screen from '../Screen.module.css';
@@ -156,6 +157,7 @@ export function Room({ code }: { code: string }) {
             Luật chơi
           </Button>
         )}
+        <SoundToggle />
       </header>
 
       <ol className={styles.slots} aria-label="Người chơi">
@@ -218,6 +220,7 @@ export function Room({ code }: { code: string }) {
         <div className={styles.play}>
           <GameFrame gameId={game.manifest.id} gameName={name} onDone={setDoneFor} />
           <div className={styles.corner}>
+            <SoundToggle />
             <Menu
               label="Menu ván"
               trigger={<IconMenu2 stroke={2} aria-hidden />}

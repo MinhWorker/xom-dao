@@ -16,6 +16,8 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.js
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Tabs, Choice, Toggle, Menu, Toast, Icon:
                    no server knowledge. `toast()` needs `<ToastRegion />` (mounted in main.tsx)
 src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), kit/
+src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
+                   `assets/app/audio/`), `SoundToggle` = the mute button
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
 ```
@@ -63,7 +65,20 @@ goes back to the waiting room, so playing again reuses it.
   waiting room's "Luật chơi" button and from the corner menu during a Match (the Match keeps
   running under it). It is a scroll-snap track, one slide per page of `HubGame.rules`; mount it to
   open it. It never opens by itself.
-- Not built yet: the settings menu (`settings` is fixed at full volume) and emotes in the corner.
+- `settings` follows the Hub's mute (`volume` is always 1) and is resent when it changes.
+- Not built yet: a volume control and emotes in the corner.
+
+## Sound
+
+- Nothing audible and no `AudioContext` exists until the player's first tap: `sounds.listen(document)`
+  (`main.tsx`) unlocks on `pointerup`/`touchend`/`click`/`keydown` (iOS ignores `pointerdown` and
+  `touchstart`), plays a silent buffer, and sets `navigator.audioSession.type = 'playback'` so the
+  iPhone silent switch does not mute it. A tap after the browser interrupts audio resumes it.
+- Play with `playSound(name)` (`hoverSound(event)` for a real mouse only). The kit's Button, Toggle,
+  Choice, Tabs and Menu already click; the lobby strip and Results add theirs. A sound still not
+  ready 300 ms after its tap is dropped.
+- Mute is `xomdao.muted` in localStorage, on one master gain, and goes to the Game as `settings`.
+  The Game unlocks its own audio on its first tap (issue #202); the Hub's unlock does not cover it.
 
 ## Deploy
 

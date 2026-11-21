@@ -5,6 +5,7 @@ import { GAMES, type HubGame } from '../../games.js';
 import { Button, Chip, Dialog, Icon, Menu, TextField } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
+import { SoundToggle } from '../../sound/SoundToggle.js';
 import { GameStrip } from './GameStrip.js';
 import styles from './Lobby.module.css';
 import { durationLabel, focusPosition, playersLabel } from './summary.js';
@@ -111,11 +112,14 @@ export function Lobby() {
           </span>
           {user?.name}
         </span>
-        <Menu
-          label="Menu"
-          trigger={<Icon icon={IconDots} />}
-          items={[{ label: 'Đăng xuất', danger: true, onSelect: () => hub.logout() }]}
-        />
+        <span className={styles.tools}>
+          <SoundToggle />
+          <Menu
+            label="Menu"
+            trigger={<Icon icon={IconDots} />}
+            items={[{ label: 'Đăng xuất', danger: true, onSelect: () => hub.logout() }]}
+          />
+        </span>
       </header>
 
       {game ? (

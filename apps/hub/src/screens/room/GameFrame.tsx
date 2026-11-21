@@ -9,15 +9,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { HubError } from '../../net/store.js';
+import { sounds, useMuted } from '../../sound/index.js';
 import styles from './Room.module.css';
 
-const SETTINGS = { volume: 1, muted: false };
+/** The Game follows the Hub's mute; there is no volume control yet. */
+const settings = () => ({ volume: 1, muted: sounds.getState().muted });
 
 /** What `init` tells the Game, from the store as it is now. */
 function currentInit(): BridgeInit | null {
   const { user, room, match } = hub.getState();
   if (!user || !room) return null;
-  return bridgeInit({ user, room, match, settings: SETTINGS });
+  return bridgeInit({ user, room, match, settings: settings() });
 }
 
 /** Forwards a Game's `send` as `match:move`; the server's refusal goes back to the Game. */
@@ -65,6 +67,7 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
   const [refused, setRefused] = useState(false);
   const match = useHub((s) => s.match);
   const connection = useHub((s) => s.connection);
+  const muted = useMuted();
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
@@ -115,6 +118,11 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
     sendInit(host.current);
     reportReady(reported);
   }, [ready, matchId, connection]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `muted` only says when to resend
+  useEffect(() => {
+    if (ready) host.current?.settings(settings());
+  }, [ready, muted]);
 
   useEffect(() => {
     if (ready && match) host.current?.message('match:state', match);

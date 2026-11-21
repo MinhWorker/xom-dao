@@ -1,5 +1,6 @@
 import type { HubGame } from '../../games.js';
 import { rovingKeyDown } from '../../kit/roving.js';
+import { hoverSound, playSound } from '../../sound/index.js';
 import styles from './GameStrip.module.css';
 import { focusPosition } from './summary.js';
 
@@ -45,7 +46,11 @@ export function GameStrip({ games, selectedId, closedIds, onSelect }: GameStripP
             aria-checked={on}
             tabIndex={on ? 0 : -1}
             className={styles.card}
-            onClick={() => onSelect(manifest.id)}
+            onPointerEnter={(e) => hoverSound(e, 'cardHover')}
+            onClick={() => {
+              playSound(closedIds.includes(manifest.id) ? 'locked' : 'pick');
+              onSelect(manifest.id);
+            }}
           >
             <img
               src={art.card}
