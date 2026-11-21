@@ -1,6 +1,6 @@
 import { and, count, desc, eq, gt, sql } from 'drizzle-orm';
 import type { Db } from '../db/db.module.js';
-import { achievements, playerStats, statMatches } from '../db/schema.js';
+import { playerStats, statMatches } from '../db/schema.js';
 
 /** An amount to add to one stat of one game (`core` `xp` is experience). */
 export interface StatCount {
@@ -21,10 +21,6 @@ export interface StatsStore {
   /** Adds one game's counts for an account; a game already counted changes nothing. */
   addMatch(userId: string, matchId: string, counts: StatCount[]): Promise<boolean>;
   counts(userId: string): Promise<StatRow[]>;
-  /** The achievement ids the account reached. */
-  unlocked(userId: string): Promise<string[]>;
-  /** Marks an achievement reached and adds its experience; returns whether it was new. */
-  unlock(userId: string, achievementId: string, xp: number): Promise<boolean>;
   /** The highest counts of a stat of a game, most first (ties by account id); above 0 only. */
   top(gameId: string, name: string, limit: number): Promise<{ userId: string; value: number }[]>;
   /** How many accounts have more of a stat of a game than `value`. */
@@ -62,35 +58,6 @@ export class PgStatsStore implements StatsStore {
       .where(eq(playerStats.userId, userId));
   }
 
-  async unlocked(userId: string) {
-    const rows = await this.db
-      .select({ id: achievements.achievementId })
-      .from(achievements)
-      .where(eq(achievements.userId, userId));
-    return rows.map((r) => r.id);
-  }
-
-  unlock(userId: string, achievementId: string, xp: number) {
-    return this.db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(achievements)
-        .values({ userId, achievementId })
-        .onConflictDoNothing()
-        .returning({ id: achievements.achievementId });
-      if (!row) return false;
-      if (xp > 0) {
-        await tx
-          .insert(playerStats)
-          .values({ userId, gameId: 'core', name: 'xp', value: xp })
-          .onConflictDoUpdate({
-            target: [playerStats.userId, playerStats.gameId, playerStats.name],
-            set: { value: sql`${playerStats.value} + ${xp}` },
-          });
-      }
-      return true;
-    });
-  }
-
   top(gameId: string, name: string, limit: number) {
     return this.db
       .select({ userId: playerStats.userId, value: playerStats.value })
@@ -122,7 +89,6 @@ export class MemoryStatsStore implements StatsStore {
   /** Values by `user game name`. */
   private readonly values = new Map<string, { userId: string } & StatRow>();
   private readonly matches = new Set<string>();
-  private readonly reached = new Set<string>();
 
   async addMatch(userId: string, matchId: string, counts: StatCount[]) {
     if (this.matches.has(`${userId} ${matchId}`)) return false;
@@ -135,19 +101,6 @@ export class MemoryStatsStore implements StatsStore {
     return [...this.values.values()]
       .filter((row) => row.userId === userId)
       .map(({ gameId, name, value }) => ({ gameId, name, value }));
-  }
-
-  async unlocked(userId: string) {
-    const prefix = `${userId} `;
-    return [...this.reached].filter((r) => r.startsWith(prefix)).map((r) => r.slice(prefix.length));
-  }
-
-  async unlock(userId: string, achievementId: string, xp: number) {
-    const key = `${userId} ${achievementId}`;
-    if (this.reached.has(key)) return false;
-    this.reached.add(key);
-    if (xp > 0) this.add(userId, { gameId: 'core', name: 'xp', amount: xp });
-    return true;
   }
 
   async top(gameId: string, name: string, limit: number) {

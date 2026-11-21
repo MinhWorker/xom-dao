@@ -23,7 +23,7 @@
  * meta.rewardCap; the server pays them once (see GameResult.rewards). An event's game gives its
  * points the same way: ctx.reward(player, EVENT_POINTS, amount) (see EventMeta).
  * ctx.stat(player, 'bomb') counts something a player did (see GameResult.stats); the server
- * keeps the counts per player and game, and meta.achievements turns them into achievements.
+ * keeps the counts per player and game.
  * Synchronous console.log/info/warn/error is available to pure game builds and captured per room
  * when the server starts with XOMDAO_DEV=1. All command hooks still return new state and use ctx.rng.
  */

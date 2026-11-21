@@ -3,7 +3,6 @@ import { z } from 'zod';
 export type { DevCommandInfo, DevConsoleSchema } from '@xomdao/sdk';
 
 import { avatarSchema, frameSchema, profileSchema } from './account.js';
-import { ITEM_SLOTS } from './items.js';
 
 /**
  * The contract between clients and the server, written once as zod schemas. The server
@@ -20,7 +19,7 @@ import { ITEM_SLOTS } from './items.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 12;
+export const PROTOCOL_VERSION = 13;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
@@ -87,8 +86,6 @@ export const GameResultSchema = z.object({
 });
 
 export const LastMove = z.object({ seq: z.int(), player: z.string(), move: z.unknown() });
-/** One player's room emote; the game client chooses how and where to draw it. */
-export const RoomEmote = z.object({ playerId: z.string(), emote: z.string() });
 export const RoomTimer = z.object({ event: z.string(), ms: z.number(), left: z.number() });
 export const Played = z.object({ ms: z.number(), running: z.boolean() });
 
@@ -193,136 +190,13 @@ export const MatchRecord = z.object({
 export type MatchRecord = z.infer<typeof MatchRecord>;
 
 /**
- * A genre island in the hub. The two `main` genres (Cờ, Bài) have fixed big islands beside
- * Xóm; the others fill the small island slots behind it in `order`.
- */
-export const Genre = z.object({
-  /** Kebab-case; games name it in `meta.genre`. */
-  id: z.string(),
-  /** Vietnamese name shown to players. */
-  name: z.string(),
-  /** Sort key: tabs and islands go in increasing `order`. */
-  order: z.int(),
-  /** Its island art in the client. */
-  island: z.string(),
-  main: z.boolean(),
-});
-export type Genre = z.infer<typeof Genre>;
-
-const Amounts = z.record(z.string(), z.int());
-
-/** A time-limited event (`EventMeta` in @xomdao/sdk). */
-export const EventInfo = z.object({
-  opensAt: z.string(),
-  closesAt: z.string(),
-  tiers: z.array(z.object({ points: z.int(), reward: Amounts })),
-  /** The detail board's colour (`#RRGGBB`). */
-  color: z.string().optional(),
-});
-
-/** One game card in the hub's catalog (`catalog:get`). */
-export const GameCard = z.object({
-  id: z.string(),
-  name: z.string(),
-  kind: z.enum(['table', 'event']),
-  genre: z.string(),
-  tagline: z.string(),
-  minPlayers: z.int(),
-  maxPlayers: z.int(),
-  /** Minutes one game takes. */
-  duration: z.object({ min: z.int(), max: z.int() }),
-  /** Card art: a file name in the game's assets (no extension). */
-  card: z.string(),
-  /** `wip` cards only reach servers that show works in progress (dev, previews). */
-  status: z.enum(['ready', 'wip']),
-  /** Most one player wins from one game, per resource (`core:coin`). */
-  rewardCap: Amounts,
-  event: EventInfo.optional(),
-  /** Events: milliseconds until it closes, by the server's event clock. */
-  closesIn: z.int().optional(),
-  /** People seated in its rooms right now. */
-  playing: z.int(),
-  /** Its rooms with a free seat. */
-  openRooms: z.int(),
-});
-export type GameCard = z.infer<typeof GameCard>;
-
-export const Catalog = z.object({
-  /** In `order`. */
-  genres: z.array(Genre),
-  /** Ready cards first, then by name. */
-  games: z.array(GameCard),
-});
-export type Catalog = z.infer<typeof Catalog>;
-
-/** An item at Chợ (the server's `items` table, see items.ts), with whether you have it. */
-export const ShopItem = z.object({
-  id: z.string(),
-  slot: z.enum(ITEM_SLOTS),
-  look: z.string(),
-  name: z.string(),
-  /** In `core:coin`; 0 = everyone has it. */
-  price: z.int(),
-  owned: z.boolean(),
-});
-export type ShopItem = z.infer<typeof ShopItem>;
-
-/** Reply of `shop:list`: every item, cheapest first in each slot. */
-export const ShopList = z.object({ items: z.array(ShopItem) });
-
-/** Reply of `shop:buy`: what you bought, and your balances after paying. */
-export const Purchase = z.object({ item: ShopItem, balances: Balances });
-
-/** A player's Nhà: who they are, what they wear and what they own (free items included). */
-export const Profile = z.object({
-  id: z.string(),
-  username: z.string().default(''),
-  name: z.string(),
-  avatar: z.string(),
-  frame: z.string(),
-  cardBack: z.string(),
-  /** Item ids, in the shop's order. */
-  owned: z.array(z.string()),
-});
-export type Profile = z.infer<typeof Profile>;
-
-/** Your progress in an event: its points so far and the tiers (indexes) already claimed. */
-export const EventProgress = z.object({
-  eventId: z.string(),
-  points: z.int(),
-  claimed: z.array(z.int()),
-});
-export type EventProgress = z.infer<typeof EventProgress>;
-
-/** Reply of `event:claim`: the progress with that tier claimed, and your new balances. */
-export const EventClaim = z.object({ progress: EventProgress, balances: Balances });
-
-/** One achievement (`ACHIEVEMENTS`) and how far a player is in it. */
-export const AchievementInfo = z.object({
-  /** `core:won-10`, `tien-len:chop`. */
-  id: z.string(),
-  name: z.string(),
-  /** The game it counts in; `""` for the hub's own, which count over every game. */
-  gameId: z.string(),
-  /** The stat it counts: `played`, `won` or a game's own. */
-  stat: z.string(),
-  at: z.int(),
-  /** The player's count so far (may pass `at`). */
-  progress: z.int(),
-  unlocked: z.boolean(),
-  reward: Amounts,
-  xp: z.int(),
-});
-export type AchievementInfo = z.infer<typeof AchievementInfo>;
-
-/**
  * Where a player stands on one board: `core` (everyone, by experience) or a game's id (by wins
  * in it). `rank` is 1 for the first; ties share a rank.
  */
 export const RankInfo = z.object({ board: z.string(), value: z.int(), rank: z.int() });
 export type RankInfo = z.infer<typeof RankInfo>;
 
-/** Someone's statistics (`stats:get`): level, totals, achievements and ranks. */
+/** Someone's statistics (`stats:get`): level, totals and ranks. */
 export const PlayerStats = z.object({
   userId: z.string(),
   level: z.int(),
@@ -333,8 +207,6 @@ export const PlayerStats = z.object({
   /** Games finished and won, over every game. */
   played: z.int(),
   won: z.int(),
-  /** Every achievement, the hub's own first. */
-  achievements: z.array(AchievementInfo),
   /** The boards they are on (`core` first, then games by wins); none before their first game. */
   ranks: z.array(RankInfo),
 });
@@ -359,13 +231,6 @@ export const Ranking = z.object({
   me: RankingEntry.nullable(),
 });
 export type Ranking = z.infer<typeof Ranking>;
-
-/** Achievements you just reached (`achievement`), paid through the ledger, and your balances. */
-export const AchievementNotice = z.object({
-  achievements: z.array(AchievementInfo),
-  balances: Balances,
-});
-export type AchievementNotice = z.infer<typeof AchievementNotice>;
 
 // ── Bạn bè (friends) ───────────────────────────────────────────────────────────────────────
 
@@ -446,53 +311,6 @@ export const RoomInvite = z.object({
 });
 export type RoomInvite = z.infer<typeof RoomInvite>;
 
-// ── Nhiệm vụ (daily quests) ─────────────────────────────────────────────────────────────────
-
-/** One of today's quests, with how far you are and whether you took its reward. */
-export const Quest = z.object({
-  id: z.string(),
-  title: z.string(),
-  goal: z.int(),
-  progress: z.int(),
-  /** Coins. */
-  reward: z.int(),
-  claimed: z.boolean(),
-});
-export type Quest = z.infer<typeof Quest>;
-
-/** Today's quests (`questsOf`), and how long until they change (ms). */
-export const QuestBoard = z.object({ day: z.string(), endsIn: z.number(), quests: z.array(Quest) });
-export type QuestBoard = z.infer<typeof QuestBoard>;
-
-export const QuestClaim = z.object({ board: QuestBoard, balances: Balances });
-
-// ── Hộp thư (mailbox) ───────────────────────────────────────────────────────────────────────
-
-/** How long a letter's title and body may be, and the most coins one may carry. */
-export const MAIL_TITLE_MAX = 60;
-export const MAIL_BODY_MAX = 1000;
-export const MAIL_COINS_MAX = 100_000;
-
-/** A letter from Xóm Đảo: to you or to everyone, maybe with coins to take (`mail:claim`). */
-export const Letter = z.object({
-  id: z.string(),
-  title: z.string(),
-  body: z.string(),
-  coins: z.number(),
-  /** When it was sent (ms since 1970). */
-  sentAt: z.number(),
-  read: z.boolean(),
-  claimed: z.boolean(),
-});
-export type Letter = z.infer<typeof Letter>;
-
-/** Your newest letters, newest first, and how many want you: unread or with coins to take. */
-export const Mailbox = z.object({ letters: z.array(Letter), waiting: z.number() });
-export type Mailbox = z.infer<typeof Mailbox>;
-
-export const MailClaim = z.object({ mailbox: Mailbox, balances: Balances });
-export type MailClaim = z.infer<typeof MailClaim>;
-
 // ── Requests and events ─────────────────────────────────────────────────────────────────────
 
 const Empty = z.object({});
@@ -538,34 +356,12 @@ export const requests = {
   'session:resume': { req: Empty, res: SessionInfo },
   /** Change display name, avatar and frame (also updates your name in your current room). */
   'profile:update': { req: profileSchema, res: z.object({ user: User }) },
-  /**
-   * Chợ: every item for sale, with whether you have it. `shop:buy` pays its price through the
-   * ledger (once per item and account, so a double tap never pays twice) and puts it in your
-   * Túi đồ; it fails with "Không đủ xu" when you can't pay.
-   */
-  'shop:list': { req: Empty, res: ShopList },
-  'shop:buy': { req: z.object({ itemId: z.string() }), res: Purchase },
-  /** Someone's Nhà (yours without `userId`); read-only for others. */
-  'inventory:get': { req: z.object({ userId: z.string().optional() }), res: Profile },
-  /** Wear an item you own (also shows on you in your current room). */
-  'inventory:equip': { req: z.object({ itemId: z.string() }), res: z.object({ user: User }) },
-  /**
-   * Your progress in an event (a game with `kind: 'event'`). `event:claim` pays a tier you have
-   * the points for through the ledger, once ("Chưa đủ điểm", "Bạn đã nhận mốc này").
-   */
-  'event:get': { req: z.object({ eventId: z.string() }), res: EventProgress },
-  'event:claim': { req: z.object({ eventId: z.string(), tier: z.int() }), res: EventClaim },
-  /** Someone's level, achievements and ranks (yours without `userId`). */
+  /** Someone's level and ranks (yours without `userId`). */
   'stats:get': { req: z.object({ userId: z.string().optional() }), res: PlayerStats },
   /** The top `RANKING_LIMIT` of a board: `core` (by experience) or a game's id (by wins). */
   'ranking:get': { req: z.object({ board: z.string() }), res: Ranking },
   /** Your most recent finished games (`HISTORY_LIMIT`), newest first. */
   'history:recent': { req: Empty, res: z.object({ matches: z.array(MatchRecord) }) },
-  /**
-   * The hub's catalog: genres and game cards with how many people play each and its open rooms.
-   * Works in progress are left out on servers that hide them (production).
-   */
-  'catalog:get': { req: Empty, res: Catalog },
   /** Subscribe to a game's room list; the server then pushes 'lobby:rooms' on every change. */
   'lobby:watch': { req: z.object({ gameId: z.string() }), res: RoomList },
   'lobby:unwatch': { req: Empty, res: Empty },
@@ -607,8 +403,6 @@ export const requests = {
   /** `move` is `{ event, payload }`: one of the game's events. */
   'game:move': { req: z.object({ move: z.unknown() }), res: Empty },
   'game:restart': { req: Empty, res: Empty },
-  /** Send an owned emote to everyone currently in your room. */
-  'emote:send': { req: z.object({ emote: z.string() }), res: Empty },
   /**
    * Bạn bè: your friends and requests, friends online first. `friends:add` asks someone by their
    * username (or accepts their request to you); `friends:answer` accepts or turns down a request
@@ -633,19 +427,6 @@ export const requests = {
     req: z.object({ userId: z.string(), text: z.string() }),
     res: z.object({ message: ChatMessage }),
   },
-  /**
-   * Nhiệm vụ hằng ngày: today's quests with your progress. `quests:claim` pays a finished
-   * quest's reward through the ledger, once a day ("Chưa xong nhiệm vụ", "Bạn đã nhận rồi").
-   */
-  'quests:get': { req: Empty, res: QuestBoard },
-  'quests:claim': { req: z.object({ id: z.string() }), res: QuestClaim },
-  /**
-   * Hộp thư: your newest letters. `mail:read` marks one read; `mail:claim` pays its coins
-   * through the ledger, once ("Thư này không có quà", "Bạn đã nhận rồi").
-   */
-  'mail:get': { req: Empty, res: Mailbox },
-  'mail:read': { req: z.object({ id: z.string() }), res: Mailbox },
-  'mail:claim': { req: z.object({ id: z.string() }), res: MailClaim },
   /** Asks a friend to the room you are in; they get `room:invite`. */
   'friends:invite': { req: z.object({ userId: z.string() }), res: Empty },
 };
@@ -656,20 +437,14 @@ export const events = {
   'lobby:rooms': LobbyRooms,
   /** The room was disbanded (no players left); everyone still inside is sent out. */
   'room:closed': RoomClosed,
-  /** A player sent an owned emote; the game's table draws it. */
-  'room:emote': RoomEmote,
   /** A game you played ended and paid you (once per game, within its `meta.rewardCap`). */
   reward: RewardNotice,
-  /** A game you played got you achievements; their rewards are paid. */
-  achievement: AchievementNotice,
   /** Your Bạn bè list changed: a request, an answer, a friend coming online or into a room. */
   'friends:changed': FriendList,
   /** A friend sent you a message (also sent to your own other tabs when you send one). */
   'chat:message': ChatMessage,
   /** A friend asks you to their room. */
   'room:invite': RoomInvite,
-  /** A letter came: your fresh Hộp thư. */
-  'mail:changed': Mailbox,
 };
 
 /**
@@ -684,7 +459,6 @@ export const types = {
   Reward,
   GameResult: GameResultSchema,
   LastMove,
-  RoomEmote,
   RoomTimer,
   Played,
   RoomSnapshot,
@@ -693,22 +467,10 @@ export const types = {
   RewardNotice,
   MatchPlayer,
   MatchRecord,
-  Genre,
-  EventInfo,
-  GameCard,
-  Catalog,
-  ShopItem,
-  ShopList,
-  Purchase,
-  Profile,
-  EventProgress,
-  EventClaim,
-  AchievementInfo,
   RankInfo,
   PlayerStats,
   RankingEntry,
   Ranking,
-  AchievementNotice,
   ProfileUpdate: profileSchema,
   AuthReply,
   SessionInfo,
@@ -723,12 +485,6 @@ export const types = {
   ChatMessage,
   ChatHistory,
   RoomInvite,
-  Quest,
-  QuestBoard,
-  QuestClaim,
-  Letter,
-  Mailbox,
-  MailClaim,
 };
 
 /** Every request gets either `{ ok: true, ...data }` or `{ ok: false, error }`. */

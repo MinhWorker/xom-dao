@@ -1,17 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AccountsModule } from './accounts/accounts.module.js';
 import { DbModule } from './db/db.module.js';
-import { EventsModule } from './events/events.module.js';
 import { FriendsModule } from './friends/friends.module.js';
 import { HealthController } from './health.controller.js';
-import { InventoryModule } from './inventory/inventory.module.js';
-import { ItemsModule } from './items/items.module.js';
 import { LedgerModule } from './ledger/ledger.module.js';
-import { MailModule } from './mail/mail.module.js';
 import { MatchesModule } from './matches/matches.module.js';
-import { QuestsModule } from './quests/quests.module.js';
 import { RoomsModule } from './rooms/rooms.module.js';
-import { ShopModule } from './shop/shop.module.js';
 import { StatsModule } from './stats/stats.module.js';
 
 // The server only answers /api and the /ws WebSocket.
@@ -21,14 +15,8 @@ import { StatsModule } from './stats/stats.module.js';
     AccountsModule,
     MatchesModule,
     LedgerModule,
-    ItemsModule,
-    InventoryModule,
-    ShopModule,
-    EventsModule,
     StatsModule,
     FriendsModule,
-    QuestsModule,
-    MailModule,
     RoomsModule,
   ],
   controllers: [HealthController],

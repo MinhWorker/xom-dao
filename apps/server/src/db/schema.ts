@@ -1,9 +1,9 @@
 // Database tables (Drizzle ORM). After changing this file run `npm run db:generate -w @xomdao/server`
 // to write a migration into `apps/server/drizzle/`; the server applies pending migrations on start.
 // Rooms and games still live in memory (see rooms.service.ts); accounts, finished games
-// (match history), the ledger, Túi đồ, event progress, stats, achievements, Bạn bè (friends,
-// chat), Nhiệm vụ and Hộp thư are stored here. Each module owns its
-// own tables.
+// (match history), the ledger, stats and Bạn bè (friends, chat) are stored here. Each module owns
+// its own tables. The tables marked "Unused" belong to dropped modules: they stay, with their
+// data, and no code reads or writes them.
 import {
   bigint,
   boolean,
@@ -28,7 +28,7 @@ export const users = pgTable('users', {
   avatar: text('avatar').notNull(),
   /** The ring drawn around the avatar (`Frame` in @xomdao/shared). */
   frame: text('frame').notNull().default('gold'),
-  /** The back of their cards (`CardBack` in @xomdao/shared), equipped from Túi đồ. */
+  /** The back of their cards (`CardBack` in @xomdao/shared). */
   cardBack: text('card_back').notNull().default('lattice'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -112,10 +112,7 @@ export const balances = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.resource] })],
 );
 
-/**
- * Vật phẩm (apps/server/src/items): every item that can be owned and is sold at Chợ, edited from
- * the console. Started as `SEED_ITEMS` (migration 0008). Only the Items module writes it.
- */
+/** Unused. Vật phẩm: every item that could be owned and was sold at Chợ (migration 0008). */
 export const items = pgTable(
   'items',
   {
@@ -134,10 +131,7 @@ export const items = pgTable(
   (t) => [uniqueIndex('items_slot_look').on(t.slot, t.look)],
 );
 
-/**
- * Túi đồ (apps/server/src/inventory): the items each account bought or won (`items`). Free items
- * are everyone's and never stored. Only the inventory writes it.
- */
+/** Unused. Túi đồ: the items each account bought or won (`items`). */
 export const inventoryItems = pgTable(
   'inventory_items',
   {
@@ -150,10 +144,7 @@ export const inventoryItems = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.itemId] })],
 );
 
-/**
- * Sự kiện (apps/server/src/events): the points each game of an event gave each account, once
- * per game. Progress is their sum. Only the Events module writes it.
- */
+/** Unused. Sự kiện: the points each game of an event gave each account, once per game. */
 export const eventPoints = pgTable(
   'event_points',
   {
@@ -168,7 +159,7 @@ export const eventPoints = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.eventId, t.matchId] })],
 );
 
-/** The event reward tiers (indexes into `meta.event.tiers`) each account claimed. */
+/** Unused. The event reward tiers (indexes into `meta.event.tiers`) each account claimed. */
 export const eventClaims = pgTable(
   'event_claims',
   {
@@ -216,7 +207,7 @@ export const statMatches = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.matchId] })],
 );
 
-/** The achievements (`ACHIEVEMENTS` ids) each account reached. */
+/** Unused. The achievement ids each account reached. */
 export const achievements = pgTable(
   'achievements',
   {
@@ -274,8 +265,8 @@ export const friendMessages = pgTable(
 );
 
 /**
- * Nhiệm vụ hằng ngày: how far each account is with each of a day's quests, and whether it took the
- * reward (see quests.service.ts). `day` is the date in Vietnam ("2026-10-23").
+ * Unused. Nhiệm vụ hằng ngày: how far each account was with each of a day's quests, and whether it
+ * took the reward. `day` is the date in Vietnam ("2026-10-23").
  */
 export const questProgress = pgTable(
   'quest_progress',
@@ -291,10 +282,7 @@ export const questProgress = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.day, t.questId] })],
 );
 
-/**
- * Hộp thư: letters from Xóm Đảo (sent from the console, see mail.service.ts). `userId` null is a
- * letter to everyone. Coins are paid through the ledger when taken (`mail:claim`).
- */
+/** Unused. Hộp thư: letters from Xóm Đảo; `userId` null is a letter to everyone. */
 export const letters = pgTable(
   'letters',
   {
@@ -308,7 +296,7 @@ export const letters = pgTable(
   (t) => [index('letters_user_idx').on(t.userId, t.sentAt)],
 );
 
-/** Who read or took the coins of which letter (a letter to everyone has one row per reader). */
+/** Unused. Who read or took the coins of which letter (one row per reader). */
 export const letterReceipts = pgTable(
   'letter_receipts',
   {

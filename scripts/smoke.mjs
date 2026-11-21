@@ -1,5 +1,4 @@
-// End-to-end check against a RUNNING server: three fake accounts register; Bob finds Caro in the
-// hub's catalog; two create/join a room from the room list and play tic-tac-toe to a win (the
+// End-to-end check against a RUNNING server: three fake accounts register; two create/join a room from the room list and play tic-tac-toe to a win (the
 // winner is paid coins) while the third one watches. Mid-game Bob closes his "browser" and logs
 // in on another "device": he must be put back in his seat.
 // It speaks the clients' transport: plain WebSocket + JSON on /ws (packages/shared/src/protocol.ts).
@@ -63,10 +62,6 @@ let bob = await client(await signUp('Bob'));
 const cam = await client(await signUp('Cam'));
 try {
   const room = await alice.send('room:create', { gameId: 'tic-tac-toe' });
-  const catalog = await bob.send('catalog:get', {});
-  const caro = catalog.games.find((g) => g.id === 'tic-tac-toe');
-  if (!catalog.genres.some((g) => g.id === caro?.genre) || !(caro.openRooms >= 1))
-    throw new Error(`Caro missing from the catalog: ${JSON.stringify(caro)}`);
   const { rooms } = await bob.send('lobby:watch', { gameId: 'tic-tac-toe' });
   if (!rooms.some((r) => r.code === room.roomCode && r.canJoin))
     throw new Error(`Room missing from list: ${JSON.stringify(rooms)}`);
@@ -115,8 +110,7 @@ try {
   if (!coins || bob.rewards.length)
     throw new Error(`Wrong rewards: ${JSON.stringify(alice.rewards)}`);
   const resumed2 = await alice.send('session:resume', {});
-  // Achievements (a first game, a first win) may have paid more on top.
-  if (!(resumed2.balances['core:coin'] >= coins))
+  if (resumed2.balances['core:coin'] !== coins)
     throw new Error('Alice has no coins after a resume');
   console.log(
     `OK: room ${room.roomCode}, Bob came back from another device, Alice won ${coins} coins, Cam watched`,

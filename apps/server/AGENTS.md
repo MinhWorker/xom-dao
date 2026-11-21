@@ -9,23 +9,15 @@ src/rooms/      rooms.service.ts = room logic (unit tested); rooms.gateway.ts = 
                 plain WebSocket + JSON on /ws, login + protocol check, then RoomsGateway's handlers
 src/dev/        gated dev commands, snapshots, undo/RNG frames and per-room logs
 src/accounts/   Username/password (scrypt) and login tokens
-src/catalog/    The hub's catalog (`catalog:get`): core genres + a card per game with a genre
 src/ledger/     Ledger: the only module that changes balances (`ledger_entries`, `balances`)
-src/inventory/  Túi đồ: what each account owns (`inventory_items`), equipping looks, profiles
-src/items/      Vật phẩm: the item list (`items` table), read by Túi đồ and Chợ
-src/shop/       Chợ: `shop:list` and `shop:buy`, paid through the Ledger
-src/events/     Sự kiện: event points (`event_points`), claimed tiers (`event_claims`), EventClock
-src/stats/      Stats, achievements, rankings (`player_stats`, `stat_matches`, `achievements`)
+src/stats/      Stats and rankings (`player_stats`, `stat_matches`)
 src/matches/    Match history: finished games (fed by RoomsService.onFinished), `history:recent`
 src/friends/    Bạn bè: requests, friendships and chat (`friendships`, `friend_messages`)
-src/quests/     Nhiệm vụ hằng ngày: progress on the day's quests (`quest_progress`)
-src/mail/       Hộp thư: letters, read and coin receipts (`letters`, `letter_receipts`)
 src/db/         Drizzle schema; migrations in drizzle/
 src/version.ts  For /api/health
 packages/shared/src/protocol.ts   The protocol as zod schemas (types, requests, events) + PROTOCOL_VERSION
-packages/shared/src/catalog.ts    Genre list (core data), GameCard, metaProblems (registry test)
-packages/shared/src/items.ts      ItemDef, SEED_ITEMS (the table's starting rows), ITEM_LOOKS, item schemas, card backs
-packages/shared/src/achievements.ts  ACHIEVEMENTS (the hub's own + each game's), levels, boards
+packages/shared/src/catalog.ts    Genre list (core data), metaProblems (registry test)
+packages/shared/src/stats.ts      XP_PER_GAME, levels, ranking boards
 packages/shared/src/registry.ts   games/getGame, from the generated (gitignored) src/generated/games.ts
 ```
 
@@ -61,13 +53,6 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - Accounts, tokens and match history live in Postgres (Neon, `DATABASE_URL`). Without it they
   live in memory, which is fine for local work.
 
-## Catalog
-
-- `catalog:get` returns the genres (`genres` in `packages/shared/src/catalog.ts`, in `order`)
-  and one card per game whose `meta.genre` is set, with `playing` (connected people seated in
-  its rooms) and `openRooms` (`RoomsService.activity`).
-- `wip` games are hidden where `RENDER` is set (production); `XOMDAO_SHOW_WIP=1|0` overrides it.
-
 ## Ledger
 
 - Tables `ledger_entries` (one row per change, unique `key`) and `balances` (per account and
@@ -81,57 +66,17 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   `match:<matchId>:<user>:<resource>`) and refuses totals above the game's `meta.rewardCap`.
   Each paid player's sockets get `reward` with the new balances; `session:resume` returns
   `balances`.
-
-## Inventory and Shop
-
-- Items live in the `items` table, owned by `ItemsService` (src/items). Migration `0008_items` seeded it with `SEED_ITEMS` (`core:avatar-<look>`,
-  `core:frame-<look>`, `core:card-back-<look>`, `core:emote-<look>`); without `DATABASE_URL` the
-  memory store starts from the same list. Never reuse or rename an id. An item's `look` must be in
-  `ITEM_LOOKS[slot]` (the art the client has), and a slot + look belongs to one item. Price 0 =
-  everyone has it, so free items are never stored. `ItemsService` caches the list in memory (one
-  server) and drops the cache on every write. A deleted item disappears from Chợ and Túi đồ; its
-  `inventory_items` rows stay.
-- `InventoryService` owns `inventory_items` (user, item). `inventory:get { userId? }` returns a
-  `Profile` (yours, or anyone's, read-only); `inventory:equip { itemId }` sets `users.avatar`,
-  `users.frame` or `users.card_back` through `AccountsService.setLooks`, then the gateway refreshes
-  the user's rooms so everyone sees the new look. `profile:update` also refuses an avatar or frame
-  you don't own. The avatar items that were selectable before the shop was added are granted to
-  existing accounts by migration `0007_avatar_items`; the equipped avatar is also preserved on first inventory read.
-- `ShopService.buy` charges through `LedgerService.apply` with key `shop:<user>:<item>`, so a
-  repeated buy is never charged twice; `insufficient` becomes "Không đủ xu", owned "Bạn đã có
-  món này".
-- `emote:send { emote }` accepts an owned emote look, enforces a short per-account cooldown, and
-  pushes `room:emote { playerId, emote }` to the room. Emotes are not equipped; each game's table
-  chooses their position, animation and lifetime.
 - `dev:coins { amount }` (dev mode only) adds coins, for tests and the sandbox.
-
-## Events
-
-- An event is a game with `meta.kind: 'event'` in the `su-kien` genre and `meta.event`
-  (`opensAt`, `closesAt`, `tiers`, `color`). `EventClock` is the time events go by: real time,
-  moved by `XOMDAO_NOW` at start or `dev:clock { at }` (dev mode; `null` = real time).
-- `CatalogService` lists an event only while it is open (`eventOpen`), with `closesIn` (ms). The
-  gateway refuses `room:create` / `room:quick` of a closed event ("Sự kiện chưa mở hoặc đã kết
-  thúc"); rooms already playing finish.
-- Points: an event's game gives `ctx.reward(player, EVENT_POINTS, n)`. `LedgerService.rewardMatch`
-  skips `event:point`; `EventsService.recordMatch` (on `RoomsService.onFinished`) adds it to
-  `event_points`, once per match, within `rewardCap`, only while the event is open.
-- `event:get { eventId }` returns `EventProgress` (points, claimed tier indexes);
-  `event:claim { eventId, tier }` pays the tier's `reward` through `LedgerService.apply` with key
-  `event:<event>:<user>:<tier>:<resource>` and records it in `event_claims`, so it pays once
-  ("Chưa đủ điểm", "Bạn đã nhận mốc này").
+- Event points (`EVENT_POINTS`) are skipped: no module keeps them for now.
 
 ## Stats
 
-- `StatsService.recordMatch` (on `RoomsService.onFinished`, after the ledger paid the game) counts
-  once per match and person (`stat_matches`): `played`, `won`, the game's `result.stats`
-  (`ctx.stat`) into `player_stats` by game, and `XP_PER_GAME` into game `core`, stat `xp`.
-- Then every `ACHIEVEMENTS` entry the counts reach (the hub's own sum over all games) is unlocked
-  (`achievements`), adds its `xp` and pays its `reward` through `LedgerService.apply` with key
-  `achievement:<user>:<id>:<resource>`. The gateway pushes `achievement { achievements, balances }`.
-- `stats:get { userId? }` returns `PlayerStats` (level from `levelOf(xp)`, totals, every
-  achievement with progress, ranks). `ranking:get { board }` returns the top `RANKING_LIMIT`:
-  `core` by `xp`, a game's id by `won`; ties share a rank; `me` is your row when you are on it.
+- `StatsService.recordMatch` (on `RoomsService.onFinished`) counts once per match and person
+  (`stat_matches`): `played`, `won`, the game's `result.stats` (`ctx.stat`) into `player_stats`
+  by game, and `XP_PER_GAME` into game `core`, stat `xp`.
+- `stats:get { userId? }` returns `PlayerStats` (level from `levelOf(xp)`, totals, ranks).
+  `ranking:get { board }` returns the top `RANKING_LIMIT`: `core` by `xp`, a game's id by `won`;
+  ties share a rank; `me` is your row when you are on it.
 
 ## Match history
 
@@ -160,33 +105,9 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   `CHAT_HISTORY` and marks theirs read (`unread` in the list counts the rest).
 - `friends:invite { userId }` pushes `room:invite` with your room's code to an online friend.
 
-## Nhiệm vụ
-
-- The day's quests are data in `packages/shared/src/quests.ts`: `CHECKIN` (Điểm danh, done by
-  coming) and `QUESTS_PER_DAY` drawn from `QUEST_POOL` by the Vietnam date (`questsOf`,
-  `dayOf`), one per kind of count. The day goes by `EventClock`, so `dev:clock` moves it.
-- `QuestsService.recordMatch` (on `RoomsService.onFinished`) adds one to each of today's quests a
-  finished game counts for (`played`, `won`, a `genre`, `people`: two or more accounts), for
-  people only, never past the goal. It owns `quest_progress` (user, day, quest, count, claimed).
-- `quests:get` returns `QuestBoard`; `quests:claim { id }` pays a done quest's coins through
-  `LedgerService.apply` with key `quest:<user>:<day>:<quest>` ("Chưa xong nhiệm vụ", "Bạn đã
-  nhận rồi").
-
-## Hộp thư
-
-- `MailService` owns `letters` (title, body, coins, `userId` null for everyone) and
-  `letter_receipts` (per reader: `readAt`, `claimed`). Letters are written by code
-  (`MailService.send`, `to` a username or empty); its `onSent` listener in the rooms gateway
-  pushes `mail:changed` (the fresh `Mailbox`) to the receiver's sockets, or to everyone online.
-- `mail:get` returns the newest `MAILBOX_SIZE` letters with `waiting` (unread, or coins not taken);
-  `mail:read { id }` marks one read; `mail:claim { id }` pays its coins through
-  `LedgerService.apply` with key `mail:<letter>:<user>` ("Thư này không có quà", "Bạn đã nhận
-  rồi").
-
 ## Changing things
 
-- New platform features (wallet, shop, inventory, achievements…) are separate Nest modules
-  A module owns its tables and never reads another module's tables:
+- New platform features are separate Nest modules. A module owns its tables and never reads another module's tables:
   it calls that module's service, or listens to events such as `RoomsService.onFinished`.
 
 - Nest DI needs the runtime value, so `import` classes that Nest injects as values.
@@ -236,3 +157,10 @@ Every merge to `main` deploys; a release is only a named point.
   keeps accounts in memory (`/api/health` reports `db: "off"`).
 - Migrations run on server start while the previous server may still be up: keep them compatible
   with it (add a column first, drop the old one in a later PR).
+
+## Dropped modules
+
+Shop, inventory, items, events, quests, mail, achievements, the console and the catalog were
+removed (#221). Their tables (`items`, `inventory_items`, `event_points`, `event_claims`,
+`achievements`, `quest_progress`, `letters`, `letter_receipts`) and migrations stay, with their
+data; no code reads or writes them. Never drop them in a migration without a decision to.

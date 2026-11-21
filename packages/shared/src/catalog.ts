@@ -1,9 +1,22 @@
-import type { EventMeta, GameMeta } from '@xomdao/sdk';
+import type { GameMeta } from '@xomdao/sdk';
 
 export { EVENT_POINTS } from '@xomdao/sdk';
 
-import { achievementProblems } from './achievements.js';
-import type { GameCard, Genre } from './protocol.js';
+/**
+ * A genre island in the hub. The two `main` genres (Cờ, Bài) have fixed big islands beside
+ * Xóm; the others fill the small island slots behind it in `order`.
+ */
+export interface Genre {
+  /** Kebab-case; games name it in `meta.genre`. */
+  id: string;
+  /** Vietnamese name shown to players. */
+  name: string;
+  /** Sort key: tabs and islands go in increasing `order`. */
+  order: number;
+  /** Its island art's id. */
+  island: string;
+  main: boolean;
+}
 
 /**
  * Every genre. Adding one is adding a row here and its island art; the hub puts it on the island
@@ -44,7 +57,7 @@ const isAmounts = (value: Record<string, number>) =>
 
 /**
  * Problems with a game's hub declaration (`meta.kind`, `genre`, `tagline`, `duration`,
- * `rewardCap`, `event`, `achievements`); empty when it is fine. The registry test runs it on every game.
+ * `rewardCap`, `event`); empty when it is fine. The registry test runs it on every game.
  */
 export function metaProblems(meta: GameMeta, list: Genre[] = genres): string[] {
   const problems: string[] = [];
@@ -87,33 +100,8 @@ export function metaProblems(meta: GameMeta, list: Genre[] = genres): string[] {
       });
     }
   } else if (meta.event) add('only kind "event" has meta.event');
-  for (const problem of achievementProblems(meta.achievements ?? [])) add(problem);
   return problems;
 }
 
 /** The genre every event belongs to (its island lights up while one is open). */
 export const EVENT_GENRE = 'su-kien';
-
-/** Whether an event is open at `now` (ms): from `opensAt` until just before `closesAt`. */
-export function eventOpen(event: Pick<EventMeta, 'opensAt' | 'closesAt'>, now: number): boolean {
-  return Date.parse(event.opensAt) <= now && now < Date.parse(event.closesAt);
-}
-
-/** A game's card without its live counts, or `null` when it has no genre (not in the hub). */
-export function gameCard(meta: GameMeta): Omit<GameCard, 'playing' | 'openRooms'> | null {
-  if (!meta.genre) return null;
-  return {
-    id: meta.id,
-    name: meta.name,
-    kind: meta.kind ?? 'table',
-    genre: meta.genre,
-    tagline: meta.tagline,
-    minPlayers: meta.minPlayers,
-    maxPlayers: meta.maxPlayers,
-    duration: meta.duration,
-    card: meta.card ?? meta.portal.image,
-    status: meta.status,
-    rewardCap: meta.rewardCap ?? {},
-    ...(meta.event ? { event: meta.event } : {}),
-  };
-}

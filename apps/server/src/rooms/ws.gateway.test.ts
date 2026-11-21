@@ -6,7 +6,6 @@ import { PROTOCOL_MISMATCH, PROTOCOL_VERSION, type RoomSnapshot } from '@xomdao/
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { AppModule } from '../app.module.js';
-import { MailService } from '../mail/mail.service.js';
 
 let app: INestApplication;
 let url: string;
@@ -60,7 +59,7 @@ describe('WebSocket transport', () => {
       error: PROTOCOL_MISMATCH,
       protocol: PROTOCOL_VERSION,
     });
-    expect(await request('catalog:get')).toEqual({ ok: false, error: 'unauthorized' });
+    expect(await request('history:recent')).toEqual({ ok: false, error: 'unauthorized' });
     expect(await request('auth:token', { protocol: PROTOCOL_VERSION, token: 'nope' })).toEqual({
       ok: false,
       error: 'unauthorized',
@@ -122,45 +121,11 @@ describe('WebSocket transport', () => {
     minh.ws.close();
   });
 
-  it('broadcasts owned emotes to the room and refuses unavailable or unknown ones', async () => {
-    const lan = await connect();
-    const minh = await connect();
-    const a = await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
-    await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
-    const playerId = (a.user as { id: string }).id;
-
-    const { roomCode } = await lan.request('room:create', { gameId: 'tic-tac-toe' });
-    await minh.request('room:join', { roomCode: roomCode as string, role: 'player' });
-    expect(await lan.request('emote:send', { emote: 'happy' })).toEqual({ ok: true });
-    await settle();
-    const expected = { playerId, emote: 'happy' };
-    expect(lan.pushed.filter((message) => message.event === 'room:emote').at(-1)?.data).toEqual(
-      expected,
-    );
-    expect(minh.pushed.filter((message) => message.event === 'room:emote').at(-1)?.data).toEqual(
-      expected,
-    );
-    expect(await lan.request('emote:send', { emote: 'happy' })).toEqual({
-      ok: false,
-      error: 'Chờ một chút rồi gửi lại biểu cảm',
-    });
-    expect(await minh.request('emote:send', { emote: 'love' })).toEqual({
-      ok: false,
-      error: 'Bạn chưa có biểu cảm này',
-    });
-    expect(await minh.request('emote:send', { emote: 'missing' })).toEqual({
-      ok: false,
-      error: 'Biểu cảm không hợp lệ',
-    });
-    lan.ws.close();
-    minh.ws.close();
-  });
-
   it('answers unknown events without closing', async () => {
     const { ws, request } = await connect();
     await request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Hoa' });
     expect(await request('room:fly')).toEqual({ ok: false, error: 'Không có lệnh room:fly' });
-    expect(await request('catalog:get')).toMatchObject({ ok: true, genres: expect.any(Array) });
+    expect(await request('history:recent')).toEqual({ ok: true, matches: [] });
     ws.close();
   });
 });
@@ -209,29 +174,5 @@ describe('Bạn bè over the socket', () => {
     });
     lan.ws.close();
     minh.ws.close();
-  });
-});
-
-describe('Hộp thư over the socket', () => {
-  it('pushes a letter to everyone online, reads it and pays its coins once', async () => {
-    const lan = await connect();
-    await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
-    await app.get(MailService).send({ title: 'Quà cả xóm', body: 'Chúc vui', coins: 30 });
-    await settle();
-    const pushed = lan.pushed.filter((m) => m.event === 'mail:changed').at(-1);
-    const box = pushed?.data as { letters: { id: string; title: string }[] } | undefined;
-    const letter = box?.letters[0];
-    expect(letter?.title).toBe('Quà cả xóm');
-    expect(await lan.request('mail:read', { id: letter?.id })).toMatchObject({
-      ok: true,
-      waiting: 1,
-    });
-    const paid = await lan.request('mail:claim', { id: letter?.id });
-    expect(paid).toMatchObject({ ok: true, mailbox: { waiting: 0 } });
-    expect(await lan.request('mail:claim', { id: letter?.id })).toEqual({
-      ok: false,
-      error: 'Bạn đã nhận rồi',
-    });
-    lan.ws.close();
   });
 });

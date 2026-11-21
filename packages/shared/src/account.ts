@@ -38,7 +38,7 @@ export const AVATARS = [
 ] as const;
 export type Avatar = (typeof AVATARS)[number];
 
-/** Avatar choices every new account starts with. Other pictures are sold in Chợ. */
+/** Avatar choices a new account picks from. */
 export const STARTER_AVATARS = ['boy', 'girl', 'cat'] as const satisfies readonly Avatar[];
 export const DEFAULT_AVATAR: Avatar = 'boy';
 const STARTER_AVATAR_SET: ReadonlySet<string> = new Set(STARTER_AVATARS);
@@ -61,6 +61,11 @@ export type Frame = (typeof FRAMES)[number];
 export const DEFAULT_FRAME: Frame = 'gold';
 export const STARTER_FRAMES = ['gold', 'silver', 'bronze'] as const satisfies readonly Frame[];
 const STARTER_FRAME_SET: ReadonlySet<string> = new Set(STARTER_FRAMES);
+
+/** Card backs (`card-back-<id>.webp` in the client's SDK). */
+export const CARD_BACKS = ['lattice', 'lotus'] as const;
+export type CardBack = (typeof CARD_BACKS)[number];
+export const DEFAULT_CARD_BACK: CardBack = 'lattice';
 
 /** Letters and digits only. Stored lowercase, so "Minh" and "minh" are the same account. */
 export const usernameSchema = z

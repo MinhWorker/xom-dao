@@ -9,18 +9,11 @@ import {
   type User,
 } from '@xomdao/shared';
 import { AccountError, AccountsService } from '../accounts/accounts.service.js';
-import { CatalogService } from '../catalog/catalog.service.js';
 import { DevConsoleService } from '../dev/dev-console.service.js';
 import { followRoomLog } from '../dev/room-log.js';
-import { EventError, EventsService } from '../events/events.service.js';
 import { FriendsError, FriendsService, type Presence } from '../friends/friends.service.js';
-import { InventoryError, InventoryService } from '../inventory/inventory.service.js';
-import { ItemsService } from '../items/items.service.js';
 import { LedgerService } from '../ledger/ledger.service.js';
-import { MailError, MailService } from '../mail/mail.service.js';
 import { MatchesService } from '../matches/matches.service.js';
-import { QuestsError, QuestsService } from '../quests/quests.service.js';
-import { ShopError, ShopService } from '../shop/shop.service.js';
 import { StatsError, StatsService } from '../stats/stats.service.js';
 import { type Room, RoomError, RoomsService } from './rooms.service.js';
 
@@ -72,7 +65,6 @@ const BOT_DELAY_MS = Number(process.env.BOT_DELAY_MS) || 700;
  * empty seats (QUICK_WAIT_MS overrides it).
  */
 const QUICK_WAIT_MS = Number(process.env.QUICK_WAIT_MS) || 6000;
-const EMOTE_COOLDOWN_MS = 700;
 const CHAT_COOLDOWN_MS = 400;
 /** Friends hear of an account coming online, going or changing rooms this long after. */
 const FRIEND_PUSH_MS = 300;
@@ -94,8 +86,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   private readonly gameTimers = new Map<string, NodeJS.Timeout>();
   /** Quick-match rooms waiting for people before the computer fills them, by room code. */
   private readonly quickTimers = new Map<string, NodeJS.Timeout>();
-  /** Per-account cooldowns for room emotes, stored as their expiry time. */
-  private readonly emoteCooldowns = new Map<string, number>();
   /** Per-account cooldowns for chat messages (their expiry time). */
   private readonly chatCooldowns = new Map<string, number>();
   /** Pending "tell my friends" pushes, by account. */
@@ -109,22 +99,15 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     private readonly accounts: AccountsService,
     private readonly devConsole: DevConsoleService,
     private readonly matches: MatchesService,
-    private readonly catalog: CatalogService,
     private readonly ledger: LedgerService,
-    private readonly inventory: InventoryService,
-    private readonly shop: ShopService,
-    private readonly items: ItemsService,
-    private readonly events: EventsService,
     private readonly stats: StatsService,
     private readonly friends: FriendsService,
-    private readonly quests: QuestsService,
-    private readonly mail: MailService,
   ) {
     rooms.onFinished((game) => {
       this.matches.record(game).catch((err) => console.error('Could not save a match', err));
     });
     rooms.onFinished((game) => {
-      const paid = this.ledger.rewardMatch(game).then(
+      this.ledger.rewardMatch(game).then(
         (notices) => {
           for (const notice of notices) {
             for (const s of this.socketsOf(notice.userId)) s.emit('reward', notice);
@@ -132,31 +115,9 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
         },
         (err) => console.error('Could not pay rewards', err),
       );
-      // After the game's own rewards, so an achievement's balances include them.
-      paid
-        .then(() => this.stats.recordMatch(game))
-        .then(
-          (notices) => {
-            for (const { userId, ...notice } of notices) {
-              for (const s of this.socketsOf(userId)) s.emit('achievement', notice);
-            }
-          },
-          (err) => console.error('Could not count stats', err),
-        );
     });
     rooms.onFinished((game) => {
-      this.events.recordMatch(game).catch((err) => console.error('Could not count points', err));
-    });
-    rooms.onFinished((game) => {
-      this.quests.recordMatch(game).catch((err) => console.error('Could not count quests', err));
-    });
-    mail.onSent((userId) => {
-      const ids = new Set(
-        (userId ? this.socketsOf(userId) : this.clients()).map((s) => s.data.user.id),
-      );
-      for (const id of ids) {
-        this.pushMail(id).catch((err) => console.error('Could not push mail', err));
-      }
+      this.stats.recordMatch(game).catch((err) => console.error('Could not count stats', err));
     });
   }
 
@@ -225,63 +186,8 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   updateProfile(socket: Client, req: unknown) {
     return this.handle(async () => {
       const me = socket.data.user;
-      // A frame is worn from Túi đồ: one you don't own can't be picked here either.
-      const frame = (req as { frame?: unknown } | null)?.frame;
-      if (
-        typeof frame === 'string' &&
-        frame !== me.frame &&
-        !(await this.inventory.ownsLook(me.id, 'frame', frame))
-      ) {
-        throw new InventoryError('Bạn chưa có khung này');
-      }
-      const avatar = (req as { avatar?: unknown } | null)?.avatar;
-      if (
-        typeof avatar === 'string' &&
-        avatar !== me.avatar &&
-        !(await this.inventory.ownsLook(me.id, 'avatar', avatar))
-      ) {
-        throw new InventoryError('Bạn chưa có ảnh đại diện này');
-      }
       return { user: this.changed(await this.accounts.updateProfile(me.id, req)) };
     });
-  }
-
-  @On('shop:list')
-  shopList(socket: Client) {
-    return this.handle(async () => ({ items: await this.shop.list(socket.data.user.id) }));
-  }
-
-  @On('shop:buy')
-  shopBuy(socket: Client, req: { itemId?: unknown }) {
-    return this.handle(() => this.shop.buy(socket.data.user.id, String(req?.itemId ?? '')));
-  }
-
-  @On('inventory:get')
-  inventoryGet(socket: Client, req: { userId?: unknown } | undefined) {
-    return this.handle(() => {
-      const userId = typeof req?.userId === 'string' ? req.userId : socket.data.user.id;
-      return this.inventory.profile(userId);
-    });
-  }
-
-  @On('inventory:equip')
-  equip(socket: Client, req: { itemId?: unknown }) {
-    return this.handle(async () => {
-      const user = await this.inventory.equip(socket.data.user.id, String(req?.itemId ?? ''));
-      return { user: this.changed(user) };
-    });
-  }
-
-  @On('event:get')
-  eventGet(socket: Client, req: { eventId?: unknown }) {
-    return this.handle(() => this.events.progress(socket.data.user.id, String(req?.eventId ?? '')));
-  }
-
-  @On('event:claim')
-  eventClaim(socket: Client, req: { eventId?: unknown; tier?: unknown }) {
-    return this.handle(() =>
-      this.events.claim(socket.data.user.id, String(req?.eventId ?? ''), Number(req?.tier)),
-    );
   }
 
   @On('stats:get')
@@ -300,31 +206,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   @On('history:recent')
   history(socket: Client) {
     return this.handle(async () => ({ matches: await this.matches.recent(socket.data.user.id) }));
-  }
-
-  @On('quests:get')
-  questsGet(socket: Client) {
-    return this.handle(() => this.quests.board(socket.data.user.id));
-  }
-
-  @On('quests:claim')
-  questsClaim(socket: Client, req: { id?: unknown }) {
-    return this.handle(() => this.quests.claim(socket.data.user.id, String(req?.id ?? '')));
-  }
-
-  @On('mail:get')
-  mailGet(socket: Client) {
-    return this.handle(() => this.mail.mailbox(socket.data.user.id));
-  }
-
-  @On('mail:read')
-  mailRead(socket: Client, req: { id?: unknown }) {
-    return this.handle(() => this.mail.read(socket.data.user.id, String(req?.id ?? '')));
-  }
-
-  @On('mail:claim')
-  mailClaim(socket: Client, req: { id?: unknown }) {
-    return this.handle(() => this.mail.claim(socket.data.user.id, String(req?.id ?? '')));
   }
 
   @On('friends:list')
@@ -429,11 +310,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  @On('catalog:get')
-  getCatalog() {
-    return this.handle(() => this.catalog.catalog());
-  }
-
   @On('lobby:watch')
   watch(socket: Client, req: { gameId: string }) {
     return this.handle(() => {
@@ -454,7 +330,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   @On('room:create')
   create(socket: Client, req: { gameId: string; options?: unknown }) {
     return this.handle(() => {
-      this.refuseClosedEvent(req?.gameId);
       this.leaveCurrentRoom(socket);
       const { room } = this.rooms.create(req.gameId, socket.data.user, req.options);
       return this.enter(socket, room);
@@ -464,7 +339,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   @On('room:quick')
   quick(socket: Client, req: { gameId: string }) {
     return this.handle(() => {
-      this.refuseClosedEvent(req?.gameId);
       this.leaveCurrentRoom(socket);
       const { room, created } = this.rooms.quickMatch(req?.gameId, socket.data.user);
       const joined = this.enter(socket, room);
@@ -549,36 +423,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  @On('emote:send')
-  sendEmote(socket: Client, req: { emote?: unknown }) {
-    return this.handle(async () => {
-      const { roomCode, playerId } = this.requireSeat(socket);
-      const room = this.rooms.roomOf(playerId);
-      if (!room || room.code !== roomCode) throw new RoomError('Bạn chưa ở trong phòng này');
-
-      const emote = typeof req?.emote === 'string' ? req.emote : '';
-      const item = await this.items.forLook('emote', emote);
-      if (!item) throw new InventoryError('Biểu cảm không hợp lệ');
-      if (!(await this.inventory.owns(playerId, item.id)))
-        throw new InventoryError('Bạn chưa có biểu cảm này');
-
-      const now = Date.now();
-      const expiresAt = this.emoteCooldowns.get(playerId) ?? 0;
-      if (expiresAt > now) throw new RoomError('Chờ một chút rồi gửi lại biểu cảm');
-      const nextExpiry = now + EMOTE_COOLDOWN_MS;
-      this.emoteCooldowns.set(playerId, nextExpiry);
-      const cleanup = setTimeout(() => {
-        if (this.emoteCooldowns.get(playerId) === nextExpiry) this.emoteCooldowns.delete(playerId);
-      }, EMOTE_COOLDOWN_MS);
-      cleanup.unref();
-
-      for (const client of this.clients()) {
-        if (client.data.roomCode === roomCode) client.emit('room:emote', { playerId, emote });
-      }
-      return {};
-    });
-  }
-
   @On('dev:logs')
   devLogs(socket: Client, req: { on: boolean }) {
     return this.handle(() => {
@@ -631,26 +475,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       });
       return { balances: await this.ledger.balances(userId) };
     });
-  }
-
-  @On('dev:clock')
-  devClock(_socket: Client, req: { at?: unknown }) {
-    return this.handle(() => {
-      this.requireDev();
-      try {
-        this.events.clock.set(typeof req?.at === 'string' ? req.at : null);
-      } catch {
-        throw new RoomError('Ngày không hợp lệ');
-      }
-      return { now: new Date(this.events.clock.now()).toISOString() };
-    });
-  }
-
-  /** An event's rooms open only while it is (rooms already playing finish their game). */
-  private refuseClosedEvent(gameId: unknown) {
-    if (typeof gameId === 'string' && this.events.closed(gameId)) {
-      throw new RoomError('Sự kiện chưa mở hoặc đã kết thúc');
-    }
   }
 
   private requireDev() {
@@ -726,12 +550,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     if (!sockets.length) return;
     const list = await this.friendList(userId);
     for (const s of sockets) s.emit('friends:changed', list);
-  }
-
-  /** Sends an account's sockets its fresh Hộp thư (a letter came). */
-  private async pushMail(userId: string) {
-    const box = await this.mail.mailbox(userId);
-    for (const s of this.socketsOf(userId)) s.emit('mail:changed', box);
   }
 
   /**
@@ -859,12 +677,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       if (
         err instanceof RoomError ||
         err instanceof AccountError ||
-        err instanceof InventoryError ||
-        err instanceof ShopError ||
-        err instanceof EventError ||
         err instanceof FriendsError ||
-        err instanceof QuestsError ||
-        err instanceof MailError ||
         err instanceof StatsError
       ) {
         return { ok: false, error: err.message };
