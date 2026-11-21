@@ -31,14 +31,16 @@ the wayfinder map, issue #200, and the decisions linked from it.
 - `npm run harness -- <command>`: the Harness, which runs one Game against a server without the Hub
   (`games/AGENTS.md`).
 - `npm run setup:godot`, `npm run godot:export`, `npm run godot:verify`: Godot Games' toolchain,
-  web export and the Bridge addon check (`games/AGENTS.md`, "Godot Games"). Not in CI.
+  web export and the Bridge addon check (`games/AGENTS.md`, "Godot Games"). CI runs
+  `setup:godot` for Tiến Lên's build, not `godot:verify`.
 - `npm run smoke`: bots log in, make a Room and start a Match against a running server.
 - `npm run smoke:web`: a headless browser plays Đặt Bom's client through the Harness
   (`games/AGENTS.md`). CI runs it.
 - `npm run smoke:hub`: two headless browsers become friends, invite each other into a Room and open
   a profile on the Hub (`apps/hub/AGENTS.md`). CI runs it.
-- `npm run e2e`: two headless browsers sign in, make a Caro Room and play a Match to its result
-  through the Hub; screenshots go to `e2e/`. Needs the server and Caro built. CI runs it.
+- `npm run e2e [caro|tien-len]`: two headless browsers sign in, make a Room and play a Match to its
+  result through the Hub (Caro, then Tiến Lên's Godot client); screenshots go to `e2e/`. Needs the
+  server and both Games built (Tiến Lên needs Godot: `npm run setup:godot`). CI runs it.
 
 ## Conventions
 

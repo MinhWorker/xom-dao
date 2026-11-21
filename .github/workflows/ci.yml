@@ -33,11 +33,17 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Tiến Lên's build exports its Godot client: install the pinned editor and web templates.
+      - uses: actions/cache@v4
+        with:
+          path: .tools/godot
+          key: godot-${{ hashFiles('tools/godot/version.json') }}
+      - run: npm run setup:godot
       - run: npm run lint
       - run: npx turbo run typecheck test build ${{ github.event_name == 'pull_request' && '--affected' || '' }}
-      # Browsers play Đặt Bom through the Harness, use the Hub's friends and play Caro through the Hub against the real server. Build what they run
-      # first: --affected may have skipped them.
-      - run: npx turbo run build --filter=@xomdao/game-dat-bom --filter=@xomdao/game-tic-tac-toe --filter=@xomdao/harness --filter=@xomdao/server
+      # Browsers play Đặt Bom through the Harness, use the Hub's friends and play Caro and Tiến Lên (Godot)
+      # through the Hub against the real server. Build what they run first: --affected may have skipped them.
+      - run: npx turbo run build --filter=@xomdao/game-dat-bom --filter=@xomdao/game-tic-tac-toe --filter=@xomdao/game-tien-len --filter=@xomdao/harness --filter=@xomdao/server
       - run: npx playwright-core install --with-deps chromium
       - run: npm run smoke:web
       - uses: actions/upload-artifact@v7
@@ -54,7 +60,7 @@ jobs:
           name: smoke-hub
           path: smoke-hub/
           if-no-files-found: ignore
-      # Two browsers finish a Caro match through the Hub, against the server and the dev Hub.
+      # Two browsers finish a Caro and a Tiến Lên match through the Hub, against the server and the dev Hub.
       - run: npm run e2e
       - uses: actions/upload-artifact@v7
         if: always()

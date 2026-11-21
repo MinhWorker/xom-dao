@@ -1,10 +1,12 @@
 // Exports a Godot Game to its web bundle: single-threaded ("nothreads") template, no COOP/COEP,
 // the Bridge addon's HTML shell, relative paths.
-//   node tools/godot/export.mjs <project> [--out dist] [--debug]
+//   node tools/godot/export.mjs <project> [--out dist] [--debug] [--optional]
 // From a Game's folder (its `scripts.build`): `node ../../tools/godot/export.mjs godot --out dist`.
 // Godot's export filters do not see through symlinks (a Game links the addon from tools/godot), so
 // the export runs on a copy of the project in .tools/export/ with symlinks followed; the copy keeps
 // Godot's .godot/ import cache between runs. The preset is written there, so a Game commits none.
+// `--optional` skips the export, with a warning, when Godot is not installed: a build that only
+// needs the Game server (Render) has no use for the client.
 import {
   cpSync,
   existsSync,
@@ -15,14 +17,15 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
-import { godot, root, templatesDir } from './lib.mjs';
+import { godot, godotBin, pin, root, templatesDir } from './lib.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const debug = args.includes('--debug');
+const optional = args.includes('--optional');
 const project = args.find((arg, i) => !arg.startsWith('--') && args[i - 1] !== '--out');
 if (!project) {
-  console.error('Usage: node tools/godot/export.mjs <project> [--out dist] [--debug]');
+  console.error('Usage: node tools/godot/export.mjs <project> [--out dist] [--debug] [--optional]');
   process.exit(1);
 }
 const source = resolve(project);
@@ -42,6 +45,11 @@ if (
     'project.godot needs, under [rendering]: textures/vram_compression/import_etc2_astc=true',
   );
   process.exit(1);
+}
+
+if (optional && (!godotBin() || !templatesDir())) {
+  console.warn(`Godot ${pin.version} is not installed: skipping the client export of ${source}`);
+  process.exit(0);
 }
 
 const templates = templatesDir();

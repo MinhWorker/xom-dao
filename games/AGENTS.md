@@ -12,7 +12,10 @@ Where to look:
   skips it.
   `games/tien-len` (Tiến Lên) is the Turn-based example with hidden hands: rounds, a turn clock,
   `bot` that also plays the seat of anyone who leaves (so it has no `onLeave`), and `finish`
-  with places and scores. It has no client yet (`assets/` and `sources/` are the legacy art).
+  with places and scores. Its client is a Godot project in `godot/` (the reference Godot Game): the
+  cards, plates and boards are drawn in code, `main.gd` presents each `match:state` push paced
+  one after another and sounds come from `assets/`. `assets/*.webp` and `sources/` are the legacy
+  AI-made art, which the client does not use.
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the
@@ -109,7 +112,12 @@ Make a Godot Game:
 2. `scripts.build` starts with `node ../../tools/godot/export.mjs godot --out dist` (before the
    server build and `hub-assets`; nothing there empties `dist/`). It exports to `dist/index.html`
    plus `godot.js`, `godot.wasm`, `godot.pck` and the audio worklets: the Godot files are named
-   `godot.*`, so they never overwrite a `dist/index.js` the Game's own build writes. The preset
+   `godot.*`, so they never overwrite a `dist/index.js` the Game's own build writes. Add
+   `--optional` when the Game server must still build where Godot is missing (Render builds every
+   Game server and has no Godot): the export is then skipped with a warning and `dist/` has no
+   client. Add `"@xomdao/godot": "*"` and a `turbo.json` whose `build` inputs list
+   `$TURBO_ROOT$/tools/godot/...` (`games/tien-len/turbo.json`), so a change to the addon
+   rebuilds the Game. The preset
    and the page shell (`web_shell.html`, which also reports loading `progress` to the Hub) come
    from `tools/godot`; the export runs on a copy under `.tools/export/` that follows symlinks.
    `--debug` makes a debug build.
@@ -120,7 +128,10 @@ Make a Godot Game:
    `var result: Dictionary = await XomdaoBridge.send("place", {...})` gives `{ok, error}`; call
    `XomdaoBridge.done()` after the end-of-match animation. JSON numbers are floats: `int()` them.
    Leave the top-right 48×48 px to the Hub. Volume and mute from `settings` are already applied
-   to the Master bus.
+   to the Master bus. A `match:state` push whose `status` is `over` carries the `result`
+   (`seats[].player`, `place`, `score`) and no `view`: the last move never arrives as a view, so
+   show the end from the result (Tiến Lên shows its standings from it). The server applies the
+   computer's moves with no pause: queue the pushes and pace them on screen (`main.gd`).
 4. Run it against a Game server: start the server and the Harness as above and `create` a Room
    first (the Harness refuses a Game client until a Room exists; the addon retries every second),
    then run the scene from the editor or `godot --path games/<id>/godot -- --harness=ws://127.0.0.1:8040/bridge?player=0`.
@@ -130,10 +141,15 @@ Make a Godot Game:
 `ready`, `init` (also replayed mid-Match), moves, `done`, `settings`, `visibility`.
 `npm run godot:verify -- --web` also exports the sample, loads it in headless Chromium with
 `?harness=` and taps the board (saves `smoke-godot/sample.png`). Needs Godot, a built server,
-Harness and `tic-tac-toe` (`npm run build`). Neither runs in CI (no Godot there); `npm run check`
-only tests that the addon's Bridge version and message types match `packages/bridge`.
-The `postMessage` path is checked by dropping the sample's export into a Game's `dist/` and playing
-it in the Hub (`npm run e2e` drives Caro's canvas; the click positions differ for Godot).
+Harness and `tic-tac-toe` (`npm run build`). Neither runs in CI; `npm run check` only tests that
+the addon's Bridge version and message types match `packages/bridge`. CI does install Godot
+(`npm run setup:godot`, cached) so that Tiến Lên's build exports its client, and `npm run e2e`
+plays it through the Hub: `npm run e2e -- tien-len` taps the Godot canvas (its layout is
+mirrored in `scripts/e2e.mjs`, so change `_hand_slot` and `_layout_buttons` in
+`games/tien-len/godot/main.gd` together with it).
+Tiến Lên also runs headless against the Harness: `create`, `bot`, then
+`godot --headless --path games/tien-len/godot -- --harness=ws://localhost:8040/bridge?player=0 --autoplay`
+and `start` (`--autoplay`, or `?autoplay` in the web page, leads the lowest card and passes).
 
 ## A game's folder
 
