@@ -1,0 +1,16 @@
+{
+  "name": "@xomdao/godot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Godot support for Games: the Bridge addon, a sample scene, the web export and its toolchain setup.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@xomdao/bridge": "*"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.5"
+  }
+}

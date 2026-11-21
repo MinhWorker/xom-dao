@@ -28,3 +28,7 @@ smoke-web/
 smoke-hub/
 # Screenshots from npm run e2e
 e2e/
+# Godot's import cache
+.godot/
+# Screenshots from npm run godot:verify -- --web
+smoke-godot/

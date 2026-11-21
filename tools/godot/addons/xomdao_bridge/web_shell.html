@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+		<title>$GODOT_PROJECT_NAME</title>
+		<style>
+			html, body, #canvas {
+				margin: 0;
+				padding: 0;
+				border: 0;
+			}
+
+			html, body {
+				position: fixed;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+				overscroll-behavior: none;
+				background: #0b0e14;
+				touch-action: none;
+			}
+
+			#canvas {
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+
+			#canvas:focus {
+				outline: none;
+			}
+
+			#failure {
+				display: none;
+				position: absolute;
+				inset: 0;
+				align-items: center;
+				justify-content: center;
+				padding: 16px;
+				color: #e8ecf4;
+				font: 16px/1.4 system-ui, sans-serif;
+				text-align: center;
+			}
+		</style>
+		$GODOT_HEAD_INCLUDE
+	</head>
+	<body>
+		<canvas id="canvas"></canvas>
+		<div id="failure"></div>
+
+		<script src="$GODOT_URL"></script>
+		<script>
+const GODOT_CONFIG = $GODOT_CONFIG;
+const engine = new Engine(GODOT_CONFIG);
+
+((() => {
+	// Loading progress goes to the Hub's loading screen; with `?harness=` there is no Hub.
+	const embedded = window.parent !== window && !new URLSearchParams(location.search).has('harness');
+	let lastSent = -1;
+	function reportProgress(current, total) {
+		if (!embedded || !(total > 0)) return;
+		const value = Math.min(1, current / total);
+		if (value - lastSent < 0.01 && value < 1) return;
+		lastSent = value;
+		window.parent.postMessage({ bridge: 'xomdao', type: 'progress', value }, location.origin);
+	}
+
+	function fail(error) {
+		console.error(error);
+		const failure = document.getElementById('failure');
+		failure.textContent = 'Không tải được Game.';
+		failure.style.display = 'flex';
+	}
+
+	const missing = Engine.getMissingFeatures({ threads: false });
+	if (missing.length !== 0) {
+		fail(new Error('Missing browser features: ' + missing.join(', ')));
+		return;
+	}
+	engine.startGame({ onProgress: reportProgress }).catch(fail);
+})());
+		</script>
+	</body>
+</html>
