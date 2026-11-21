@@ -16,6 +16,10 @@ _Avoid_: Island, plugin, module, mini-game
 The contract between the Hub and an embedded Game: what each side may tell or ask the other.
 _Avoid_: SDK (for the embedding side), API
 
+**Game server**:
+The part of a Game that runs on the shared server: a Turn-based game's rules or a Realtime game's tick. It decides how a match ends and its result, and never touches Player data.
+_Avoid_: Plugin, backend module
+
 ## State
 
 **Player data**:
