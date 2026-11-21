@@ -30,6 +30,10 @@ _Avoid_: Lobby state
 The state of one play-through (board, positions, turn). Owned by the Game.
 _Avoid_: Game state, room state
 
+**Match**:
+One play-through of a Game by a Room, run by the server from loading until it is over. It ends either settled, with a result, or aborted, with no result, reward or history.
+_Avoid_: Round, game (for one play-through)
+
 **Room**:
 A group of players about to play or playing one Game together.
 _Avoid_: Table, lobby
