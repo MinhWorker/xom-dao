@@ -4,9 +4,15 @@ import {
   type AnyGameServer,
   type Game,
   type GameEvent,
+  isRealtimeGame,
   type MatchResult,
+  REALTIME_INPUT_EVENT,
+  type RealtimeGame,
+  type RealtimeInput,
+  type RealtimeStored,
   type Rng,
   type RoomSeat,
+  realtimeRules,
   type Stored,
   seededRng,
   turnRules,
@@ -29,6 +35,11 @@ export const MATCH_LIMITS = {
   hookMs: 250,
   viewBytes: 64 * 1024,
   movesPerSecond: 10,
+  /** A seat's inputs per second in a Realtime Match, and the most JSON bytes of one. */
+  inputsPerSecond: 60,
+  inputBytes: 2 * 1024,
+  /** Ticks run at once to catch up after a delay; a longer delay is dropped, not replayed. */
+  catchUpTicks: 5,
   matchMs: 2 * 60 * 60 * 1000,
   idleMs: 5 * 60 * 1000,
   seatHoldMs: 60 * 1000,
@@ -51,6 +62,15 @@ interface ActiveMatch {
   botTurn?: NodeJS.Immediate;
   rules?: GameRuntime;
   stored?: Stored<unknown, unknown>;
+  /** A Realtime Match runs these instead of `rules` and `stored`. */
+  realtime?: RealtimeRuntime;
+  realtimeStored?: RealtimeStored<unknown, unknown>;
+  /** Inputs that arrived since the last tick, by seat. */
+  inputs: Map<string, RealtimeInput[]>;
+  tickTimer?: NodeJS.Timeout;
+  nextTickAt: number;
+  /** What the last snapshot was from: its tick and each seat's last applied `seq`. */
+  sync?: { tick: number; acks: Record<string, number> };
   rng?: Rng;
   views?: Map<string, unknown>;
   /** When each seat's moves of the last second arrived. */
@@ -81,6 +101,30 @@ interface GameRuntime {
   result(stored: Stored<unknown, unknown>): MatchResult | null;
 }
 
+interface RealtimeRuntime {
+  tickRate: number;
+  snapshotEvery: number;
+  parseInput(payload: unknown): RealtimeInput | null;
+  setup(
+    start: { players: RoomSeat[]; options: RoomOptions; lastResult: MatchResult | null },
+    rng: Rng,
+  ): RealtimeStored<unknown, unknown>;
+  applyInput(
+    stored: RealtimeStored<unknown, unknown>,
+    playerId: string,
+    input: RealtimeInput,
+    rng: Rng,
+  ): RealtimeStored<unknown, unknown>;
+  tick(stored: RealtimeStored<unknown, unknown>, rng: Rng): RealtimeStored<unknown, unknown>;
+  leave?(
+    stored: RealtimeStored<unknown, unknown>,
+    playerId: string,
+    rng: Rng,
+  ): RealtimeStored<unknown, unknown>;
+  view(stored: RealtimeStored<unknown, unknown>, playerId: string): unknown;
+  result(stored: RealtimeStored<unknown, unknown>): MatchResult | null;
+}
+
 type PendingGameTimer = Pick<NonNullable<Stored<unknown, unknown>['timer']>, 'id' | 'event' | 'ms'>;
 
 export class GameHostError extends Error {}
@@ -106,6 +150,9 @@ export class GameHostService implements OnModuleDestroy {
       const id = server.manifest.id;
       if (ids.has(id)) throw new Error(`Duplicate Game server: ${id}`);
       ids.add(id);
+      if (server.manifest.bots && isRealtimeGame(server.game)) {
+        throw new Error(`Game server ${id}: a Realtime game has no bot hook yet`);
+      }
     }
   }
 
@@ -149,6 +196,8 @@ export class GameHostService implements OnModuleDestroy {
       status: 'loading',
       readyPlayerIds: new Set(start.players.filter((player) => player.bot).map((p) => p.id)),
       disconnectedPlayerIds: [],
+      inputs: new Map(),
+      nextTickAt: 0,
       recentMoves: new Map(),
       holds: new Map(),
       forfeited: new Set(),
@@ -207,14 +256,26 @@ export class GameHostService implements OnModuleDestroy {
     return match.views?.get(playerId);
   }
 
-  /** Applies one validated Game move and settles or aborts the Match when its rules end. */
+  /** The `ack` of a Realtime Match's last snapshot: the last input `seq` applied for the seat. */
+  ack(matchId: string, playerId: string) {
+    const match = this.matches.get(matchId);
+    return match?.status === 'playing' ? match.sync?.acks[playerId] : undefined;
+  }
+
+  /**
+   * Applies one validated Game move and settles or aborts the Match when its rules end. In a
+   * Realtime Match the move is the `input` event: it is queued for the next tick.
+   */
   move(matchId: string, playerId: string, move: GameEvent) {
     const match = this.matches.get(matchId);
-    if (match?.status !== 'playing' || !match.rules || !match.stored || !match.rng) {
-      throw new GameHostError('Ván chưa bắt đầu');
-    }
+    if (match?.status !== 'playing') throw new GameHostError('Ván chưa bắt đầu');
     if (match.forfeited.has(playerId)) throw new GameHostError('Bạn đã rời ván này');
-    this.countMove(match, playerId);
+    if (match.realtime) {
+      this.queueInput(match, match.realtime, playerId, move);
+      return;
+    }
+    if (!match.rules || !match.stored || !match.rng) throw new GameHostError('Ván chưa bắt đầu');
+    this.countMove(match, playerId, MATCH_LIMITS.movesPerSecond);
     this.heard(match, playerId);
 
     try {
@@ -266,11 +327,31 @@ export class GameHostService implements OnModuleDestroy {
     if (match) this.end(match, 'aborted');
   }
 
-  /** Refuses a seat's move past `MATCH_LIMITS.movesPerSecond`. */
-  private countMove(match: ActiveMatch, playerId: string) {
+  /** Queues a seat's input for the next tick, within `MATCH_LIMITS`' input rate and size. */
+  private queueInput(
+    match: ActiveMatch,
+    realtime: RealtimeRuntime,
+    playerId: string,
+    move: GameEvent,
+  ) {
+    if (!match.start.players.some(({ id }) => id === playerId)) {
+      throw new GameHostError('Bạn không ngồi ở ván này');
+    }
+    if (move.event !== REALTIME_INPUT_EVENT) throw new GameHostError('Nước đi không hợp lệ');
+    const bytes = Buffer.byteLength(JSON.stringify(move.payload) ?? '');
+    if (bytes > MATCH_LIMITS.inputBytes) throw new GameHostError('Input quá lớn');
+    this.countMove(match, playerId, MATCH_LIMITS.inputsPerSecond);
+    this.heard(match, playerId);
+    const input = realtime.parseInput(move.payload);
+    if (!input) throw new GameHostError('Nước đi không hợp lệ');
+    match.inputs.set(playerId, [...(match.inputs.get(playerId) ?? []), input]);
+  }
+
+  /** Refuses a seat's move past `limit` within one second. */
+  private countMove(match: ActiveMatch, playerId: string, limit: number) {
     const now = Date.now();
     const recent = (match.recentMoves.get(playerId) ?? []).filter((at) => now - at < 1000);
-    if (recent.length >= MATCH_LIMITS.movesPerSecond) {
+    if (recent.length >= limit) {
       throw new GameHostError('Gửi nhanh quá, chậm lại một chút');
     }
     recent.push(now);
@@ -307,12 +388,17 @@ export class GameHostService implements OnModuleDestroy {
     if (match.status !== 'playing' || match.forfeited.has(playerId)) return;
     this.release(match, playerId);
     match.forfeited.add(playerId);
+    match.inputs.delete(playerId);
     const { rules, stored, rng } = match;
-    if (!rules || !stored || !rng) return;
     if (this.people(match).length === 0) {
       this.abort(match, 'no person is left playing');
       return;
     }
+    if (match.realtime && match.realtimeStored && rng) {
+      this.forfeitRealtime(match, match.realtime, match.realtimeStored, playerId, rng);
+      return;
+    }
+    if (!rules || !stored || !rng) return;
     if (rules.bot) {
       this.scheduleBotTurn(match);
       return;
@@ -324,6 +410,28 @@ export class GameHostService implements OnModuleDestroy {
     try {
       match.stored = rules.leave(stored, playerId, rng);
       this.updatePlaying(match);
+    } catch (error) {
+      this.abort(match, error);
+    }
+  }
+
+  /** A Realtime game has no computer yet: the Game's leave hook runs, else the Match is aborted. */
+  private forfeitRealtime(
+    match: ActiveMatch,
+    realtime: RealtimeRuntime,
+    stored: RealtimeStored<unknown, unknown>,
+    playerId: string,
+    rng: Rng,
+  ) {
+    if (!realtime.leave) {
+      this.abort(match, `${playerId} left a Game without a leave hook`);
+      return;
+    }
+    try {
+      match.realtimeStored = realtime.leave(stored, playerId, rng);
+      const result = realtime.result(match.realtimeStored);
+      if (result) this.end(match, 'settled', result);
+      else this.snapshotRealtime(match);
     } catch (error) {
       this.abort(match, error);
     }
@@ -345,23 +453,30 @@ export class GameHostService implements OnModuleDestroy {
   private startPlaying(match: ActiveMatch, server: AnyGameServer) {
     clearTimeout(match.timer);
     try {
-      const rules = createRuntime(server, match.start.gameId);
       const rng = seededRng(randomInt(0, 0x1_0000_0000));
-      const stored = rules.setup(
-        {
-          players: match.start.players,
-          options: match.start.options,
-          lastResult: match.start.lastResult,
-        },
-        rng,
-      );
-      const result = rules.result(stored);
+      const first = {
+        players: match.start.players,
+        options: match.start.options,
+        lastResult: match.start.lastResult,
+      };
+      let result: MatchResult | null;
+      if (isRealtimeGame(server.game)) {
+        const realtime = createRealtimeRuntime(server, match.start.gameId);
+        const stored = realtime.setup(first, rng);
+        result = realtime.result(stored);
+        match.realtime = realtime;
+        match.realtimeStored = stored;
+      } else {
+        const rules = createRuntime(server, match.start.gameId);
+        const stored = rules.setup(first, rng);
+        result = rules.result(stored);
+        match.rules = rules;
+        match.stored = stored;
+      }
       if (result) {
         this.end(match, 'settled', result);
         return;
       }
-      match.rules = rules;
-      match.stored = stored;
       match.rng = rng;
       match.status = 'playing';
       match.lifeTimer = setTimeout(
@@ -371,7 +486,10 @@ export class GameHostService implements OnModuleDestroy {
       match.lifeTimer.unref();
       for (const playerId of match.disconnectedPlayerIds) this.hold(match, playerId);
       this.restartIdle(match);
-      this.updatePlaying(match);
+      if (match.realtime) {
+        this.snapshotRealtime(match);
+        this.startTicking(match, match.realtime);
+      } else this.updatePlaying(match);
     } catch (error) {
       this.abort(match, error);
     }
@@ -447,6 +565,70 @@ export class GameHostService implements OnModuleDestroy {
     this.updatePlaying(match);
   }
 
+  /** Starts a Realtime Match's fixed tick, one every 1 / `tickRate` s from now. */
+  private startTicking(match: ActiveMatch, realtime: RealtimeRuntime) {
+    match.nextTickAt = Date.now() + 1000 / realtime.tickRate;
+    this.scheduleTick(match);
+  }
+
+  private scheduleTick(match: ActiveMatch) {
+    const delay = Math.max(0, Math.ceil(match.nextTickAt - Date.now()));
+    match.tickTimer = setTimeout(() => this.runDueTicks(match), delay);
+    match.tickTimer.unref();
+  }
+
+  /**
+   * Runs the ticks that are due, at most `MATCH_LIMITS.catchUpTicks` after a delay; a longer
+   * delay is dropped so a slow server does not spend its time replaying ticks.
+   */
+  private runDueTicks(match: ActiveMatch) {
+    match.tickTimer = undefined;
+    const { realtime } = match;
+    if (match.status !== 'playing' || !realtime) return;
+    const interval = 1000 / realtime.tickRate;
+    const now = Date.now();
+    for (let ran = 0; match.nextTickAt <= now && ran < MATCH_LIMITS.catchUpTicks; ran++) {
+      match.nextTickAt += interval;
+      if (!this.tickOnce(match, realtime)) return;
+    }
+    if (match.nextTickAt <= now) match.nextTickAt = now + interval;
+    this.scheduleTick(match);
+  }
+
+  /** One tick: the queued inputs, then the Game's `tick`. False once the Match is over. */
+  private tickOnce(match: ActiveMatch, realtime: RealtimeRuntime) {
+    const { realtimeStored, rng } = match;
+    if (!realtimeStored || !rng) return false;
+    try {
+      let stored = realtimeStored;
+      for (const [playerId, inputs] of match.inputs) {
+        for (const input of inputs) stored = realtime.applyInput(stored, playerId, input, rng);
+      }
+      match.inputs.clear();
+      stored = realtime.tick(stored, rng);
+      match.realtimeStored = stored;
+      const result = realtime.result(stored);
+      if (result) {
+        this.end(match, 'settled', result);
+        return false;
+      }
+      if (stored.tick % realtime.snapshotEvery === 0) this.snapshotRealtime(match);
+      return true;
+    } catch (error) {
+      this.abort(match, error);
+      return false;
+    }
+  }
+
+  /** Sends every member the Realtime Match's views as of now, with the tick and their `ack`. */
+  private snapshotRealtime(match: ActiveMatch) {
+    const stored = match.realtimeStored;
+    if (!stored) throw new Error('Match has no Game state');
+    this.refreshViews(match);
+    match.sync = { tick: stored.tick, acks: { ...stored.acks } };
+    this.publish(match);
+  }
+
   private scheduleGameTimer(match: ActiveMatch) {
     const { rules, stored, rng } = match;
     if (!rules || !stored || !rng) return;
@@ -514,6 +696,7 @@ export class GameHostService implements OnModuleDestroy {
     clearTimeout(match.lifeTimer);
     clearTimeout(match.idleTimer);
     clearTimeout(match.gameTimer);
+    clearTimeout(match.tickTimer);
     clearImmediate(match.botTurn);
     for (const hold of match.holds.values()) clearTimeout(hold);
     match.holds.clear();
@@ -523,15 +706,24 @@ export class GameHostService implements OnModuleDestroy {
     match.gameTimer = undefined;
     match.gameTimerId = undefined;
     match.gameTimerDeadline = undefined;
+    match.tickTimer = undefined;
     match.botTurn = undefined;
   }
 
   private refreshViews(match: ActiveMatch) {
-    const { rules, stored } = match;
-    if (!rules || !stored) throw new Error('Match has no Game state');
+    const { rules, stored, realtime, realtimeStored } = match;
+    const viewOf = (id: string) =>
+      realtime && realtimeStored
+        ? realtime.view(realtimeStored, id)
+        : rules && stored
+          ? rules.view(stored, id)
+          : undefined;
+    if (!(rules && stored) && !(realtime && realtimeStored)) {
+      throw new Error('Match has no Game state');
+    }
     match.views = new Map(
       match.start.players.map(({ id }) => {
-        const view = rules.view(stored, id);
+        const view = viewOf(id);
         const bytes = Buffer.byteLength(JSON.stringify(view) ?? '');
         if (bytes > MATCH_LIMITS.viewBytes) throw new LimitError(`view is ${bytes} bytes`);
         return [id, view];
@@ -551,6 +743,7 @@ export class GameHostService implements OnModuleDestroy {
       status: match.status,
       disconnectedPlayerIds: [...match.disconnectedPlayerIds],
       timer: this.timerSnapshot(match),
+      ...(match.sync && { tick: match.sync.tick }),
     };
   }
 
@@ -628,5 +821,26 @@ function createRuntime(server: AnyGameServer, gameId: string): GameRuntime {
     bot: bot && ((stored, playerId, rng) => timed(gameId, 'bot', () => bot(stored, playerId, rng))),
     view: (stored, playerId) => timed(gameId, 'view', () => rules.view(stored, playerId)),
     result: (stored) => timed(gameId, 'result', () => rules.result(stored)),
+  };
+}
+
+/** A Realtime Game server's rules with each hook timed against `MATCH_LIMITS`. */
+function createRealtimeRuntime(server: AnyGameServer, gameId: string): RealtimeRuntime {
+  const game = server.game as unknown as RealtimeGame<unknown, unknown, unknown, unknown>;
+  const rules = realtimeRules(game);
+  const { leave } = rules;
+  return {
+    tickRate: rules.tickRate,
+    snapshotEvery: rules.snapshotEvery,
+    parseInput: (payload) => timed(gameId, 'parseInput', () => rules.parseInput(payload)),
+    setup: (start, rng) => timed(gameId, 'init', () => rules.setup(start, rng)),
+    applyInput: (stored, playerId, input, rng) =>
+      timed(gameId, 'input', () => rules.applyInput(stored, playerId, input, rng)),
+    tick: (stored, rng) => timed(gameId, 'tick', () => rules.tick(stored, rng)),
+    leave:
+      leave &&
+      ((stored, playerId, rng) => timed(gameId, 'leave', () => leave(stored, playerId, rng))),
+    view: (stored, playerId) => timed(gameId, 'view', () => rules.view(stored, playerId)),
+    result: (stored) => rules.result(stored),
   };
 }

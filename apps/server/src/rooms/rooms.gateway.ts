@@ -6,6 +6,7 @@ import { DEV_MODE } from '../dev/dev-mode.js';
 import { FriendsError, FriendsService, type Presence } from '../friends/friends.service.js';
 import { DisabledGamesService } from '../game-host/disabled-games.service.js';
 import { GameHostError, GameHostService } from '../game-host/game-host.service.js';
+import type { MatchState } from '../game-host/game-host.types.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MatchesService } from '../matches/matches.service.js';
 import { StatsError, StatsService } from '../stats/stats.service.js';
@@ -91,11 +92,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     this.stopWatchingMatches = this.gameHost.onState((match) => {
       for (const socket of this.clients()) {
         if (socket.data.roomCode !== match.roomCode) continue;
-        const view =
-          match.status === 'playing'
-            ? this.gameHost.view(match.matchId, socket.data.user.id)
-            : undefined;
-        socket.emit('match:state', { ...match, ...(view !== undefined && { view }) });
+        socket.emit('match:state', this.matchPush(match, socket.data.user.id));
       }
       if (
         match.status === 'playing' &&
@@ -449,9 +446,15 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     if (!matchId) return;
     const match = this.gameHost.match(matchId);
     if (!match) return;
-    const view =
-      match.status === 'playing' ? this.gameHost.view(matchId, socket.data.user.id) : undefined;
-    socket.emit('match:state', { ...match, ...(view !== undefined && { view }) });
+    socket.emit('match:state', this.matchPush(match, socket.data.user.id));
+  }
+
+  /** A Match's state for one player: with their view while playing, and their `ack` if Realtime. */
+  private matchPush(match: MatchState, userId: string) {
+    if (match.status !== 'playing') return match;
+    const view = this.gameHost.view(match.matchId, userId);
+    const ack = this.gameHost.ack(match.matchId, userId);
+    return { ...match, ...(view !== undefined && { view }), ...(ack !== undefined && { ack }) };
   }
 
   /** Before entering a Room: quit the account's other Room, if any. */

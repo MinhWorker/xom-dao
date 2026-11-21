@@ -1,4 +1,5 @@
 import { type Game, type GameEvent, type MatchResult, type PlayerId, turnRules } from './game.js';
+import { type RealtimeGame, type RealtimeInput, realtimeRules } from './realtime.js';
 import { seededRng } from './rng.js';
 
 /**
@@ -92,6 +93,90 @@ export function testGame<State, Options, View>(
           throw new Error(`${viewer ?? 'A spectator'} can see ${JSON.stringify(secret)}`);
         }
       }
+      return session;
+    },
+  };
+  return session;
+}
+
+/**
+ * Plays a `RealtimeGame` the way the server does, a tick at a time, so a test reads like a script:
+ *
+ *   const game = testRealtimeGame(new DriftGame(), ['a', 'b']);
+ *   game.input('a', 0, { dir: 'right' });             // queued for the next tick
+ *   game.tick(20);                                    // one second of ticks; inputs run first
+ *   expect(game.ack('a')).toBe(0);
+ *   expect(game.error({ seq: 1, input: { dir: 'up' } })).toBe('Nước đi không hợp lệ');
+ *
+ * `bots` lists the players the computer plays (`ctx.players[i].bot`); `options` are passed as given.
+ */
+export function testRealtimeGame<State, Input, Options, View>(
+  game: RealtimeGame<State, Input, Options, View>,
+  players: PlayerId[],
+  { options, seed = 1, bots = [] }: { options?: Options; seed?: number; bots?: PlayerId[] } = {},
+) {
+  const rules = realtimeRules(game);
+  const rng = seededRng(seed);
+  const start = () => ({
+    players: players.map((id) => ({ id, name: id, bot: bots.includes(id) })),
+    options: options as Options,
+  });
+  let stored = rules.setup(start(), rng);
+  let queue: { player: PlayerId; input: RealtimeInput }[] = [];
+  const session = {
+    /** The Match state now. */
+    get state(): State {
+      return stored.state;
+    },
+    /** Ticks run so far. */
+    get ticks() {
+      return stored.tick;
+    },
+    /** `null` while playing, then the Match result. */
+    get result(): MatchResult | null {
+      return rules.result(stored);
+    },
+    /** What `player` sees (`null` = a spectator). */
+    view(player: PlayerId | null): View {
+      return rules.view(stored, player);
+    },
+    /** The last `seq` applied for `player`, or `undefined`. */
+    ack(player: PlayerId) {
+      return stored.acks[player];
+    },
+    /** Queues an input for the next tick; throws if its shape is refused. */
+    input(player: PlayerId, seq: number, input?: object) {
+      const parsed = rules.parseInput({ seq, input });
+      if (!parsed)
+        throw new Error(`${player} input was rejected: ${session.error({ seq, input })}`);
+      queue.push({ player, input: parsed });
+      return session;
+    },
+    /** The message the server would refuse this `{ seq, input }` payload with, or `null`. */
+    error(payload: unknown) {
+      return rules.parseInput(payload) ? null : 'Nước đi không hợp lệ';
+    },
+    /** Runs `count` ticks: the queued inputs first, then the game's `tick` (stops when it ends). */
+    tick(count = 1) {
+      for (let i = 0; i < count && !stored.result; i++) {
+        for (const { player, input } of queue) {
+          stored = rules.applyInput(stored, player, input, rng);
+        }
+        queue = [];
+        stored = rules.tick(stored, rng);
+      }
+      return session;
+    },
+    /** The Room plays again: a new Match whose `ctx.lastResult` is this one's result. */
+    newMatch() {
+      stored = rules.setup({ ...start(), lastResult: rules.result(stored) }, rng);
+      queue = [];
+      return session;
+    },
+    /** `player` leaves mid-Match (the game's `onLeave`; throws if it has none). */
+    leave(player: PlayerId) {
+      if (!rules.leave) throw new Error('This game has no onLeave hook');
+      stored = rules.leave(stored, player, rng);
       return session;
     },
   };
