@@ -88,6 +88,7 @@ games/<id>/          src/index.ts is required, unless server/index.ts exists (ne
   server/index.ts      New platform: default export { manifest, game } as a GameServer
   server/game/         New platform: pure server rules and model (+ tests)
   client/              New platform: the client bundle's source (Caro: Vite, index.html at its root)
+  hub/key-art.png      New platform: the Hub's art for the Game (below); optional hub/loop.mp4
   assets/              Full-size images/sounds, atlases and normals
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
 ```
@@ -101,6 +102,17 @@ config and ends with `node ../../scripts/game-version.mjs`, which writes `dist/v
 the hash of `manifest.ts`, `server/**` and the shared packages it imports. The Hub sends it with
 `room:create` and `match:start`. `scripts/libs.mjs` adds every `server/index.ts` to the generated registry in
 `@xomdao/shared`; `GameHostModule` loads that list.
+
+**Hub art.** `scripts.build` ends with `node ../../tools/hub-assets/dist/cli.js` (and the Game lists
+`@xomdao/hub-assets` in `devDependencies`; `scripts/libs.mjs` checks both). It reads
+`dist/manifest.js` and `hub/key-art.png` and writes `dist/hub/`: `lobby` (2560×1280), `card`
+(480×270) and `thumb` (256×256) WebPs, cropped around the manifest's `focus` and named by content
+hash, and `hub.json` with their `/games/<id>/hub/…` URLs for the Hub to import. The build fails,
+naming the Game, when the manifest breaks the schema or its `id` is not the folder name, when
+`RULES.md` or `hub/key-art.png` is missing, when the art is not a 20:9 PNG of at least
+2560×1152, or when the optional `hub/loop.mp4` (copied to `dist/hub/`) is over 2 MB or 8 s.
+The art is a render from the Game's scene (code or Blender, no AI-made images) with the subject
+in the right 60%: the Hub darkens the left for the Game's name. It checks nothing about looks.
 
 A Realtime client sends each input as `send('input', { seq, input })` (`seq` counts up per
 player, also across reconnects: continue from the snapshot's `ack`), reads `tick`, `view` and

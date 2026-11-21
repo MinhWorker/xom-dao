@@ -116,6 +116,14 @@ function findGameServers(ids) {
         `games/${id}/package.json: end "build" with node ../../scripts/game-version.mjs`,
       );
     }
+    if (!pkg.scripts?.build?.includes('tools/hub-assets/dist/cli.js')) {
+      problems.push(
+        `games/${id}/package.json: end "build" with node ../../tools/hub-assets/dist/cli.js, which fails without hub/key-art.png`,
+      );
+    }
+    if (!pkg.devDependencies?.['@xomdao/hub-assets']) {
+      problems.push(`games/${id}/package.json: add "@xomdao/hub-assets": "*" to devDependencies`);
+    }
     if (!existsSync(join(folder, 'tsconfig.server.build.json'))) {
       problems.push(
         `games/${id}/tsconfig.server.build.json: compile server/index.ts to dist/server/`,

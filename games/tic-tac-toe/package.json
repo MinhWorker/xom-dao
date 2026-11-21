@@ -16,7 +16,7 @@
     }
   },
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.build.json --incremental false && tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs",
+    "build": "vite build && tsc -p tsconfig.build.json --incremental false && tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs && node ../../tools/hub-assets/dist/cli.js",
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -27,6 +27,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@xomdao/hub-assets": "*",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }
