@@ -7,6 +7,7 @@
 import {
   bigint,
   boolean,
+  doublePrecision,
   index,
   integer,
   pgTable,
@@ -46,7 +47,10 @@ export const sessions = pgTable(
   (t) => [index('sessions_user_id_idx').on(t.userId)],
 );
 
-/** A finished game with at least one account at the table (see matches.service.ts). */
+/**
+ * A settled Match with at least one account at the table (see matches.service.ts). `id` is the
+ * Match's id, so a Match is recorded once.
+ */
 export const matches = pgTable('matches', {
   id: uuid('id').primaryKey().defaultRandom(),
   gameId: text('game_id').notNull(),
@@ -69,6 +73,9 @@ export const matchPlayers = pgTable(
     bot: boolean('bot').notNull().default(false),
     won: boolean('won').notNull().default(false),
     left: boolean('left').notNull().default(false),
+    /** 1 is best; `null` for games recorded before places. */
+    place: integer('place'),
+    score: doublePrecision('score'),
   },
   (t) => [
     primaryKey({ columns: [t.matchId, t.seat] }),

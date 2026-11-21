@@ -1,5 +1,5 @@
 import { desc, eq, inArray } from 'drizzle-orm';
-import type { Db } from '../db/db.module.js';
+import type { Db, DbTx } from '../db/db.module.js';
 import { matches, matchPlayers } from '../db/schema.js';
 
 export interface StoredPlayer {
@@ -11,6 +11,8 @@ export interface StoredPlayer {
   bot: boolean;
   won: boolean;
   left: boolean;
+  place?: number;
+  score?: number;
 }
 
 export interface StoredMatch {
@@ -22,9 +24,10 @@ export interface StoredMatch {
   players: StoredPlayer[];
 }
 
-/** Where finished games are kept: Postgres in real use, memory when there is no DATABASE_URL. */
+/** Where settled Matches are kept: Postgres in real use, memory when there is no DATABASE_URL. */
 export interface MatchesStore {
-  add(match: Omit<StoredMatch, 'id'>): Promise<void>;
+  /** Keeps the Match under its id; `false` when that id is already kept. */
+  add(match: StoredMatch, tx?: DbTx): Promise<boolean>;
   /** The account's `limit` most recent games, newest first. */
   recent(userId: string, limit: number): Promise<StoredMatch[]>;
 }
@@ -32,27 +35,33 @@ export interface MatchesStore {
 export class PgMatchesStore implements MatchesStore {
   constructor(private readonly db: Db) {}
 
-  async add({ gameId, startedAt, endedAt, players }: Omit<StoredMatch, 'id'>) {
-    await this.db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(matches)
-        .values({ gameId, startedAt: new Date(startedAt), endedAt: new Date(endedAt) })
-        .returning({ id: matches.id });
-      if (!row) return;
-      await tx.insert(matchPlayers).values(
-        players.map((p, seat) => ({
-          matchId: row.id,
-          seat,
-          userId: p.userId,
-          name: p.name,
-          avatar: p.avatar ?? null,
-          frame: p.frame ?? null,
-          bot: p.bot,
-          won: p.won,
-          left: p.left,
-        })),
-      );
-    });
+  add(match: StoredMatch, tx?: DbTx) {
+    return tx ? this.write(tx, match) : this.db.transaction((t) => this.write(t, match));
+  }
+
+  private async write(tx: DbTx, { id, gameId, startedAt, endedAt, players }: StoredMatch) {
+    const [row] = await tx
+      .insert(matches)
+      .values({ id, gameId, startedAt: new Date(startedAt), endedAt: new Date(endedAt) })
+      .onConflictDoNothing()
+      .returning({ id: matches.id });
+    if (!row) return false;
+    await tx.insert(matchPlayers).values(
+      players.map((p, seat) => ({
+        matchId: row.id,
+        seat,
+        userId: p.userId,
+        name: p.name,
+        avatar: p.avatar ?? null,
+        frame: p.frame ?? null,
+        bot: p.bot,
+        won: p.won,
+        left: p.left,
+        place: p.place ?? null,
+        score: p.score ?? null,
+      })),
+    );
+    return true;
   }
 
   async recent(userId: string, limit: number) {
@@ -89,6 +98,8 @@ export class PgMatchesStore implements MatchesStore {
           bot: s.bot,
           won: s.won,
           left: s.left,
+          ...(s.place !== null && { place: s.place }),
+          ...(s.score !== null && { score: s.score }),
         })),
     }));
   }
@@ -98,8 +109,10 @@ export class PgMatchesStore implements MatchesStore {
 export class MemoryMatchesStore implements MatchesStore {
   private readonly matches: StoredMatch[] = [];
 
-  async add(match: Omit<StoredMatch, 'id'>) {
-    this.matches.push({ id: crypto.randomUUID(), ...structuredClone(match) });
+  async add(match: StoredMatch) {
+    if (this.matches.some(({ id }) => id === match.id)) return false;
+    this.matches.push(structuredClone(match));
+    return true;
   }
 
   async recent(userId: string, limit: number) {

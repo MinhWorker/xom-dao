@@ -9,6 +9,9 @@ import * as schema from './schema.js';
 
 export type Db = NodePgDatabase<typeof schema> & { $client: Pool };
 
+/** A transaction one module opened and passes to others, so their writes commit together. */
+export type DbTx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
 /** Injection token. The value is `null` when DATABASE_URL is not set (the server still runs). */
 export const DB = Symbol('DB');
 
@@ -20,6 +23,11 @@ async function connect(): Promise<Db | null> {
     console.warn('DATABASE_URL is not set: running without a database');
     return null;
   }
+  return openDb(url);
+}
+
+/** Connects to `url` and applies the migrations. */
+export async function openDb(url: string): Promise<Db> {
   const db = drizzle({ client: new Pool({ connectionString: url }), schema });
   if (existsSync(resolve(migrationsFolder, 'meta/_journal.json'))) {
     await migrate(db, { migrationsFolder });

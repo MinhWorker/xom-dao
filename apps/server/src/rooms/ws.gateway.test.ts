@@ -201,6 +201,23 @@ describe('WebSocket transport', () => {
       { player: lanId, place: 1 },
       { player: me, place: 2 },
     ]);
+    expect(minh.pushed.filter((message) => message.event === 'match:result')).toEqual([
+      {
+        event: 'match:result',
+        data: {
+          roomCode: code,
+          matchId: started.matchId,
+          gameId: caro.id,
+          seats: [
+            { player: lanId, place: 1 },
+            { player: me, place: 2 },
+          ],
+        },
+      },
+    ]);
+    expect((await minh.request('history:recent')).matches).toMatchObject([
+      { id: started.matchId, outcome: 'loss' },
+    ]);
     expect(caroServer.previousResults).toHaveLength(1);
     expect(caroServer.previousResults[0]).toBeNull();
 

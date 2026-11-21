@@ -112,6 +112,9 @@ export const MatchPlayer = z.object({
   won: z.boolean(),
   /** Left during the game (games that go on without them). */
   left: z.boolean(),
+  /** 1 is best; missing on games recorded before places. */
+  place: z.int().optional(),
+  score: z.number().optional(),
   /** The player asking for their history. */
   me: z.boolean(),
 });
@@ -154,6 +157,15 @@ export const MatchResult = z.object({
     .optional(),
 });
 export type MatchResult = z.infer<typeof MatchResult>;
+
+/** A settled Match's result, sent to its Room once it is recorded (`match:result`). */
+export const MatchResultNotice = z.object({
+  roomCode: z.string(),
+  matchId: z.string(),
+  gameId: z.string(),
+  seats: MatchResult.shape.seats,
+});
+export type MatchResultNotice = z.infer<typeof MatchResultNotice>;
 
 /**
  * Where a player stands on one board: `core` (everyone, by experience) or a game's id (by wins
@@ -407,6 +419,8 @@ export const events = {
     result: MatchResult.optional(),
     view: z.unknown().optional(),
   }),
+  /** A settled Match's places and scores, once recorded; a failed settle sends none. */
+  'match:result': MatchResultNotice,
   /** The Room was disbanded, or you left it from another device. */
   'room:closed': RoomClosed,
   /** Your Bạn bè list changed: a request, an answer, a friend coming online or into a room. */

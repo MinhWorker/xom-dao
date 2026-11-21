@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { DB, type Db } from '../db/db.module.js';
+import { ResultsModule } from '../results/results.module.js';
 import { DISABLED_GAMES_STORE, DisabledGamesService } from './disabled-games.service.js';
 import { MemoryDisabledGamesStore, PgDisabledGamesStore } from './disabled-games.store.js';
 import { GameHostService } from './game-host.service.js';
 import { GAME_MANIFESTS, GAME_SERVERS, gameServersProvider, manifestsProvider } from './games.js';
 
 @Module({
+  imports: [ResultsModule],
   providers: [
     gameServersProvider,
     manifestsProvider,

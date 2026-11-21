@@ -30,7 +30,13 @@ const game = (
     ...players.map((id) => ({ id, name: id, bot: false, left: false })),
     { id: 'bot', name: 'Máy', bot: true, left: false },
   ],
-  result: { winners: winner ? [winner] : [], stats },
+  result: {
+    seats: [...players, 'bot'].map((player) => ({
+      player,
+      place: winner === null || player === winner ? 1 : 2,
+    })),
+    stats,
+  },
 });
 
 describe('Thống kê, xếp hạng', () => {

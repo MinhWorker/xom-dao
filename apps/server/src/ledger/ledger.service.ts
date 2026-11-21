@@ -5,6 +5,11 @@ import type { LedgerEntry, LedgerStore } from './ledger.store.js';
 
 export const LEDGER_STORE = Symbol('LEDGER_STORE');
 
+/** A finished game and what it gave out with `ctx.reward`. */
+export type RewardedGame = Omit<FinishedGame, 'result'> & {
+  result: { rewards?: { player: string; resource: string; amount: number }[] };
+};
+
 /**
  * The ledger: the only module that changes balances. Every change is
  * a row with a key that makes it happen once. Other modules pay or charge through `apply`; game
@@ -32,7 +37,7 @@ export class LedgerService {
    * by its match id), refusing whatever goes above the game's `meta.rewardCap`. Event points
    * (`EVENT_POINTS`) are not paid. Returns what each account received, with its new balances.
    */
-  async rewardMatch({ gameId, matchId, seats, result }: FinishedGame): Promise<RewardNotice[]> {
+  async rewardMatch({ gameId, matchId, seats, result }: RewardedGame): Promise<RewardNotice[]> {
     const cap = getGame(gameId)?.rewardCap ?? {};
     const people = new Set(seats.filter((s) => !s.bot).map((s) => s.id));
     const totals = new Map<string, Map<string, number>>();

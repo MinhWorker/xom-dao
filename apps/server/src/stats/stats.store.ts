@@ -1,5 +1,5 @@
 import { and, count, desc, eq, gt, sql } from 'drizzle-orm';
-import type { Db } from '../db/db.module.js';
+import type { Db, DbTx } from '../db/db.module.js';
 import { playerStats, statMatches } from '../db/schema.js';
 
 /** An amount to add to one stat of one game (`core` `xp` is experience). */
@@ -19,7 +19,7 @@ export interface StatRow {
 /** Where stats live: Postgres in real use, memory when there is no DATABASE_URL. */
 export interface StatsStore {
   /** Adds one game's counts for an account; a game already counted changes nothing. */
-  addMatch(userId: string, matchId: string, counts: StatCount[]): Promise<boolean>;
+  addMatch(userId: string, matchId: string, counts: StatCount[], tx?: DbTx): Promise<boolean>;
   counts(userId: string): Promise<StatRow[]>;
   /** The highest counts of a stat of a game, most first (ties by account id); above 0 only. */
   top(gameId: string, name: string, limit: number): Promise<{ userId: string; value: number }[]>;
@@ -30,25 +30,29 @@ export interface StatsStore {
 export class PgStatsStore implements StatsStore {
   constructor(private readonly db: Db) {}
 
-  addMatch(userId: string, matchId: string, counts: StatCount[]) {
-    return this.db.transaction(async (tx) => {
-      const [counted] = await tx
-        .insert(statMatches)
-        .values({ userId, matchId })
-        .onConflictDoNothing()
-        .returning({ matchId: statMatches.matchId });
-      if (!counted) return false;
-      for (const { gameId, name, amount } of counts) {
-        await tx
-          .insert(playerStats)
-          .values({ userId, gameId, name, value: amount })
-          .onConflictDoUpdate({
-            target: [playerStats.userId, playerStats.gameId, playerStats.name],
-            set: { value: sql`${playerStats.value} + ${amount}` },
-          });
-      }
-      return true;
-    });
+  addMatch(userId: string, matchId: string, counts: StatCount[], tx?: DbTx) {
+    return tx
+      ? this.writeMatch(tx, userId, matchId, counts)
+      : this.db.transaction((t) => this.writeMatch(t, userId, matchId, counts));
+  }
+
+  private async writeMatch(tx: DbTx, userId: string, matchId: string, counts: StatCount[]) {
+    const [counted] = await tx
+      .insert(statMatches)
+      .values({ userId, matchId })
+      .onConflictDoNothing()
+      .returning({ matchId: statMatches.matchId });
+    if (!counted) return false;
+    for (const { gameId, name, amount } of counts) {
+      await tx
+        .insert(playerStats)
+        .values({ userId, gameId, name, value: amount })
+        .onConflictDoUpdate({
+          target: [playerStats.userId, playerStats.gameId, playerStats.name],
+          set: { value: sql`${playerStats.value} + ${amount}` },
+        });
+    }
+    return true;
   }
 
   counts(userId: string) {
