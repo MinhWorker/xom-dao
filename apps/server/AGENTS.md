@@ -84,8 +84,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 
 ## Inventory and Shop
 
-- Items live in the `items` table, owned by `ItemsService` (src/items), and are not editable at the
-  moment (the console is removed). Migration `0008_items` seeded it with `SEED_ITEMS` (`core:avatar-<look>`,
+- Items live in the `items` table, owned by `ItemsService` (src/items). Migration `0008_items` seeded it with `SEED_ITEMS` (`core:avatar-<look>`,
   `core:frame-<look>`, `core:card-back-<look>`, `core:emote-<look>`); without `DATABASE_URL` the
   memory store starts from the same list. Never reuse or rename an id. An item's `look` must be in
   `ITEM_LOOKS[slot]` (the art the client has), and a slot + look belongs to one item. Price 0 =
@@ -195,7 +194,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   (= `scripts/libs.mjs`) first.
 - **New socket events** go in `protocol.ts` first, as zod schemas in `requests` / `events`
   (and `types` for a new named shape).
-- Client (Vercel) and server (Render) deploy separately and compare `PROTOCOL_VERSION` on
+- Client and server deploy separately and compare `PROTOCOL_VERSION` on
   login (`ws.gateway.ts` refuses another version with `protocol-mismatch`); the client then shows
   "Đã có bản mới" with Tải lại. Bump it when old clients or servers would break.
 - **DB**: edit `src/db/schema.ts`, then run `npm run db:generate -w @xomdao/server`. Migrations apply

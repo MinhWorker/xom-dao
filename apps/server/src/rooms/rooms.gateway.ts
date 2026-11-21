@@ -63,8 +63,8 @@ function On(event: string): MethodDecorator {
   };
 }
 /**
- * The computer "thinks" this long before its move, so players can follow the game. CI's e2e
- * sets BOT_DELAY_MS lower: a test doesn't need to follow along.
+ * The computer "thinks" this long before its move, so players can follow the game. tests
+ * set BOT_DELAY_MS lower: a test doesn't need to follow along.
  */
 const BOT_DELAY_MS = Number(process.env.BOT_DELAY_MS) || 700;
 /**

@@ -14,8 +14,7 @@ import { RoomsModule } from './rooms/rooms.module.js';
 import { ShopModule } from './shop/shop.module.js';
 import { StatsModule } from './stats/stats.module.js';
 
-// The server only answers /api and the /ws WebSocket: the Godot client is hosted on its own
-// (Vercel in production, scripts/web.mjs in dev).
+// The server only answers /api and the /ws WebSocket.
 @Module({
   imports: [
     DbModule,

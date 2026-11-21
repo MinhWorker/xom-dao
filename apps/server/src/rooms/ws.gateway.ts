@@ -18,7 +18,7 @@ import { type WebSocket, WebSocketServer } from 'ws';
 import { AccountError, AccountsService } from '../accounts/accounts.service.js';
 import { type Client, type Result, RoomsGateway, type SocketData } from './rooms.gateway.js';
 
-/** The path the Godot client connects to. */
+/** The path clients connect to. */
 export const WS_PATH = '/ws';
 /** Pings this often; a connection that missed the last one is dropped. */
 const PING_MS = 25_000;

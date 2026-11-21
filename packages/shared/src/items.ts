@@ -1,7 +1,6 @@
 /**
  * Things a player can own (Túi đồ) and buy at Chợ. The live list is the server's `items` table,
- * edited from the console (/console/items); `SEED_ITEMS` is what that table started with (and
- * what a server without a database uses). Ids are namespaced (`core:` for the platform's own; a
+ * `SEED_ITEMS` is what that table started with (and what a server without a database uses). Ids are namespaced (`core:` for the platform's own; a
  * game or event adds `<id>:…`). Avatar, frame and card-back items change a player's appearance;
  * emote items are sent in a room and drawn by the game's table.
  *

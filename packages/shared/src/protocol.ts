@@ -6,13 +6,11 @@ import { avatarSchema, frameSchema, profileSchema } from './account.js';
 import { ITEM_SLOTS } from './items.js';
 
 /**
- * The contract between the Godot client and the server, written once as zod schemas. The server
+ * The contract between clients and the server, written once as zod schemas. The server
  * speaks it over plain WebSocket + JSON on `/ws`, see `WsClientMessage`.
- * `npm run gen:protocol` turns `types`, `requests` and `events` into GDScript
- * (apps/client/addons/xomdao_sdk/generated/); CI fails when it is stale.
  *
- * To add or change a message: edit the schema here, then run `npm run gen:protocol`. TypeScript
- * then points at every place to update.
+ * To add or change a message: edit the schema here. TypeScript then points at every place to
+ * update.
  */
 
 /**
@@ -205,7 +203,7 @@ export const Genre = z.object({
   name: z.string(),
   /** Sort key: tabs and islands go in increasing `order`. */
   order: z.int(),
-  /** Its island art in the client: `apps/client/hub/genres/<island>.webp`. */
+  /** Its island art in the client. */
   island: z.string(),
   main: z.boolean(),
 });
@@ -675,8 +673,7 @@ export const events = {
 };
 
 /**
- * The named data shapes, for `npm run gen:protocol`: each becomes a GDScript class (an object
- * schema) or a constant list (an enum). Add a schema here when a request or event uses it.
+ * The named data shapes, for the named object schemas and enums. Add a schema here when a request or event uses it.
  */
 export const types = {
   User,
