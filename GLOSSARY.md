@@ -16,6 +16,10 @@ _Avoid_: Island, plugin, module, mini-game
 The contract between the Hub and an embedded Game: what each side may tell or ask the other.
 _Avoid_: SDK (for the embedding side), API
 
+**Game server**:
+The part of a Game that runs on the shared server: its rules or tick, deciding when a match ends and its Match result.
+_Avoid_: Backend, game module
+
 ## State
 
 **Player data**:
@@ -29,6 +33,10 @@ _Avoid_: Lobby state
 **Match state**:
 The state of one play-through (board, positions, turn). Owned by the Game.
 _Avoid_: Game state, room state
+
+**Match result**:
+The outcome of one finished match, handed by the Game server to the shared backend: each seat's place, optional score, rewards and stats. Settled once per match.
+_Avoid_: Score, outcome
 
 **Room**:
 A group of players about to play or playing one Game together.
