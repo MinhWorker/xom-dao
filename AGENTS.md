@@ -13,7 +13,7 @@ the wayfinder map, issue #200, and the decisions linked from it.
 
 | Working on | Read |
 | --- | --- |
-| A game or the SDK (`games/`, `packages/sdk/`) | `games/AGENTS.md` |
+| A game, the SDK or the Bridge (`games/`, `packages/sdk/`, `packages/bridge/`) | `games/AGENTS.md` |
 | The server, rooms, accounts, DB, protocol, deploy (`apps/server/`, `packages/shared/`) | `apps/server/AGENTS.md` |
 | Images or sounds | `assets/AGENTS.md` |
 
