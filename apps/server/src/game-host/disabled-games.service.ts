@@ -22,6 +22,11 @@ export class DisabledGamesService {
     return gameIds.filter((id) => !disabled.has(id));
   }
 
+  /** The switched-off Game ids, sorted. */
+  async list() {
+    return [...(await this.ids())].sort();
+  }
+
   async disable(gameId: string) {
     await this.store.disable(gameId);
     this.cached = undefined;

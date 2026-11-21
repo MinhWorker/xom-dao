@@ -9,7 +9,6 @@ import WebSocket from 'ws';
 const url = process.argv[2] ?? 'http://localhost:8033';
 const gameId = process.argv[3] ?? 'tic-tac-toe';
 
-// The Game bundle's version, as the Hub sends it (scripts/game-version.mjs).
 const versionFile = new URL(`../games/${gameId}/dist/version.json`, import.meta.url);
 const version = existsSync(versionFile)
   ? JSON.parse(readFileSync(versionFile, 'utf8')).version

@@ -9,6 +9,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from '../db/schema.js';
+import { DisabledGamesService } from '../game-host/disabled-games.service.js';
 import { PgDisabledGamesStore } from '../game-host/disabled-games.store.js';
 
 try {
@@ -27,11 +28,11 @@ if (!['list', 'disable', 'enable'].includes(command ?? '') || (command !== 'list
 }
 
 const pool = new Pool({ connectionString: url });
-const store = new PgDisabledGamesStore(drizzle({ client: pool, schema }));
+const games = new DisabledGamesService(new PgDisabledGamesStore(drizzle({ client: pool, schema })));
 try {
-  if (command === 'disable') await store.disable(gameId!);
-  if (command === 'enable') await store.enable(gameId!);
-  const disabled = await store.list();
+  if (command === 'disable') await games.disable(gameId!);
+  if (command === 'enable') await games.enable(gameId!);
+  const disabled = await games.list();
   console.log(disabled.length ? `Disabled: ${disabled.join(', ')}` : 'No Game is disabled');
 } finally {
   await pool.end();

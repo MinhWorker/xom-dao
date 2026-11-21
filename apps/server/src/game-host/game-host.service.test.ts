@@ -504,6 +504,34 @@ describe('GameHostService', () => {
       });
     });
 
+    it('holds the seat of a player who dropped while the Match was loading', () => {
+      vi.useFakeTimers();
+      const host = new GameHostService([{ manifest, version: 'v1', game: new RaceGame() }]);
+      const updates: MatchState[] = [];
+      host.onState((match) => updates.push(match));
+      host.startMatch(matchStart);
+      host.ready('match-1', 'lan');
+      host.disconnect('match-1', 'lan');
+      host.ready('match-1', 'minh');
+      expect(host.match('match-1')).toMatchObject({
+        status: 'playing',
+        disconnectedPlayerIds: ['lan'],
+      });
+
+      vi.advanceTimersByTime(MATCH_LIMITS.seatHoldMs);
+      vi.runOnlyPendingTimers();
+
+      expect(updates.at(-1)).toMatchObject({
+        outcome: 'settled',
+        result: {
+          seats: [
+            { player: 'lan', place: 2 },
+            { player: 'minh', place: 1 },
+          ],
+        },
+      });
+    });
+
     it('aborts the Match once no person is left playing', () => {
       vi.useFakeTimers();
       const { host, updates } = playing(new RaceGame());

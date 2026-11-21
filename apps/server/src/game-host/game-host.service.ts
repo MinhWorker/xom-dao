@@ -22,7 +22,7 @@ export const MATCH_LIMITS = {
   hookWarnMs: 50,
   hookMs: 250,
   viewBytes: 64 * 1024,
-  movesPerSecond: { 'turn-based': 10, realtime: 30 },
+  movesPerSecond: 10,
   matchMs: 2 * 60 * 60 * 1000,
   idleMs: 5 * 60 * 1000,
   seatHoldMs: 60 * 1000,
@@ -136,19 +136,17 @@ export class GameHostService implements OnModuleDestroy {
       forfeited: new Set(),
     };
     this.matches.set(start.matchId, match);
-    match.lifeTimer = setTimeout(
-      () => this.abort(match, 'Match ran past its time limit'),
-      MATCH_LIMITS.matchMs,
-    );
-    match.lifeTimer.unref();
     this.publish(match);
 
     if (this.allReady(match)) this.startPlaying(match, server);
     else {
       match.timer = setTimeout(() => {
-        match.disconnectedPlayerIds = start.players
-          .filter((player) => !match.readyPlayerIds.has(player.id))
-          .map((player) => player.id);
+        const missed = start.players
+          .filter(
+            ({ id }) => !match.readyPlayerIds.has(id) && !match.disconnectedPlayerIds.includes(id),
+          )
+          .map(({ id }) => id);
+        match.disconnectedPlayerIds.push(...missed);
         this.startPlaying(match, server);
       }, LOADING_TIMEOUT_MS);
       match.timer.unref();
@@ -165,6 +163,7 @@ export class GameHostService implements OnModuleDestroy {
     }
     if (match.status !== 'loading') {
       this.reconnect(matchId, playerId);
+      this.heard(match, playerId);
       return this.snapshot(match);
     }
 
@@ -219,13 +218,16 @@ export class GameHostService implements OnModuleDestroy {
     else if (match.status === 'playing') this.forfeit(match, playerId);
   }
 
-  /** A player lost their connection: their seat is held for `MATCH_LIMITS.seatHoldMs`. */
+  /**
+   * A player lost their connection: their seat is held for `MATCH_LIMITS.seatHoldMs`, from when
+   * the Match starts playing if it is still loading.
+   */
   disconnect(matchId: string, playerId: string) {
     const match = this.matches.get(matchId);
-    if (match?.status !== 'playing' || match.disconnectedPlayerIds.includes(playerId)) return;
+    if (!match || match.status === 'over' || match.disconnectedPlayerIds.includes(playerId)) return;
     if (!match.start.players.some((player) => player.id === playerId && !player.bot)) return;
     match.disconnectedPlayerIds.push(playerId);
-    this.hold(match, playerId);
+    if (match.status === 'playing') this.hold(match, playerId);
     this.publish(match);
   }
 
@@ -233,10 +235,11 @@ export class GameHostService implements OnModuleDestroy {
   reconnect(matchId: string, playerId: string) {
     const match = this.matches.get(matchId);
     if (!match?.disconnectedPlayerIds.includes(playerId)) return;
-    clearTimeout(match.holds.get(playerId));
-    match.holds.delete(playerId);
+    this.release(match, playerId);
     match.disconnectedPlayerIds = match.disconnectedPlayerIds.filter((id) => id !== playerId);
-    if (match.status === 'playing') this.publish(match);
+    if (match.status !== 'playing') return;
+    this.heard(match, playerId);
+    this.publish(match);
   }
 
   /** Aborts a Match whose Room is gone, so its timers and bot turns stop. */
@@ -249,7 +252,7 @@ export class GameHostService implements OnModuleDestroy {
   private countMove(match: ActiveMatch, playerId: string) {
     const now = Date.now();
     const recent = (match.recentMoves.get(playerId) ?? []).filter((at) => now - at < 1000);
-    if (recent.length >= MATCH_LIMITS.movesPerSecond['turn-based']) {
+    if (recent.length >= MATCH_LIMITS.movesPerSecond) {
       throw new GameHostError('Gửi nhanh quá, chậm lại một chút');
     }
     recent.push(now);
@@ -273,14 +276,18 @@ export class GameHostService implements OnModuleDestroy {
     match.holds.set(playerId, timer);
   }
 
+  private release(match: ActiveMatch, playerId: string) {
+    clearTimeout(match.holds.get(playerId));
+    match.holds.delete(playerId);
+  }
+
   /**
    * The player is out of the Match. The computer plays their seat when the Game has one, else
    * the Game's leave hook runs; without either, or with no person left, the Match is aborted.
    */
   private forfeit(match: ActiveMatch, playerId: string) {
     if (match.status !== 'playing' || match.forfeited.has(playerId)) return;
-    clearTimeout(match.holds.get(playerId));
-    match.holds.delete(playerId);
+    this.release(match, playerId);
     match.forfeited.add(playerId);
     const { rules, stored, rng } = match;
     if (!rules || !stored || !rng) return;
@@ -339,6 +346,11 @@ export class GameHostService implements OnModuleDestroy {
       match.stored = stored;
       match.rng = rng;
       match.status = 'playing';
+      match.lifeTimer = setTimeout(
+        () => this.abort(match, 'Match ran past its time limit'),
+        MATCH_LIMITS.matchMs,
+      );
+      match.lifeTimer.unref();
       for (const playerId of match.disconnectedPlayerIds) this.hold(match, playerId);
       this.restartIdle(match);
       this.updatePlaying(match);
@@ -553,15 +565,15 @@ function createRuntime(server: AnyGameServer, gameId: string): GameRuntime {
     applyMove: (stored, move, playerId, rng) =>
       timed(gameId, move.event, () => rules.applyMove(stored, move, playerId, rng)),
     timer: (stored) => {
-      const timer = rules.timer(stored);
+      const timer = timed(gameId, 'timer', () => rules.timer(stored));
       return timer && { id: timer.id, event: timer.event, ms: timer.ms };
     },
-    fireTimer: (stored, rng) => timed(gameId, 'timer', () => rules.fireTimer(stored, rng)),
+    fireTimer: (stored, rng) => timed(gameId, 'fireTimer', () => rules.fireTimer(stored, rng)),
     leave:
       leave &&
       ((stored, playerId, rng) => timed(gameId, 'leave', () => leave(stored, playerId, rng))),
     bot: bot && ((stored, playerId, rng) => timed(gameId, 'bot', () => bot(stored, playerId, rng))),
     view: (stored, playerId) => timed(gameId, 'view', () => rules.view(stored, playerId)),
-    result: (stored) => rules.result(stored),
+    result: (stored) => timed(gameId, 'result', () => rules.result(stored)),
   };
 }
