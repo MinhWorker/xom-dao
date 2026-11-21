@@ -7,7 +7,7 @@ services:
     region: singapore
     repo: https://github.com/MinhWorker/xom-dao
     branch: main
-    buildCommand: npm ci && npm run build -w @xomdao/shared && npm run build -w @xomdao/server
+    buildCommand: npm ci && npx turbo run build --filter=@xomdao/server...
     startCommand: npm start -w @xomdao/server
     healthCheckPath: /api/health
     buildFilter:
@@ -17,6 +17,7 @@ services:
         - packages/sdk/**
         - games/**
         - scripts/libs.mjs
+        - turbo.json
         - package-lock.json
         # The root package.json holds the app version (bumped by release PRs).
         - package.json

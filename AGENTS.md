@@ -22,6 +22,10 @@ the wayfinder map, issue #200, and the decisions linked from it.
 - `npm install` (npm only). Rerun it and restart dev after adding a game folder.
 - `npm run dev`: the server on :8033. The owner often runs it; start your own on another port
   (`PORT=8133`) and stop it when done.
+- `npm run build`, `npm run typecheck`, `npm run test`: Turborepo (`turbo.json`) runs the task in
+  every workspace that has it, in dependency order, and caches the result. CI runs only the
+  workspaces a PR affects (`turbo run ... --affected`) and shares the cache through the remote
+  cache (`TURBO_TOKEN` secret, `TURBO_TEAM` variable).
 - `npm run check`: lint, typecheck and unit tests. `npm run format` fixes formatting.
 - `npm run smoke`: bots play Caro against a running server.
 

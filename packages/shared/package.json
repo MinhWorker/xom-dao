@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "build": "node ../../scripts/libs.mjs",
+    "build": "node ../../scripts/libs.mjs --generate && tsc -p tsconfig.build.json --incremental false",
     "dev": "node ../../scripts/libs.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

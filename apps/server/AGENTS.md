@@ -111,8 +111,8 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   it calls that module's service, or listens to events such as `RoomsService.onFinished`.
 
 - Nest DI needs the runtime value, so `import` classes that Nest injects as values.
-- The server typechecks against built packages. Root scripts run `npm run build -w @xomdao/shared`
-  (= `scripts/libs.mjs`) first.
+- The server typechecks against built packages. `typecheck` and `test` run through Turborepo,
+  which builds the packages they import first (`turbo.json`).
 - **New socket events** go in `protocol.ts` first, as zod schemas in `requests` / `events`
   (and `types` for a new named shape).
 - Client and server deploy separately and compare `PROTOCOL_VERSION` on

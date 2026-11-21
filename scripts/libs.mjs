@@ -4,7 +4,9 @@
 //   node scripts/libs.mjs --watch     same, then rebuild on change (npm run dev)
 //   node scripts/libs.mjs --generate  only write the game list (npm install runs this)
 // The game list is packages/shared/src/generated/games.ts (gitignored): one static import per
-// game, so tsc, vitest and Nest all see it. Adding a game folder is enough; nothing to register.
+// game, so tsc, vitest and Nest all see it. Next to it, packages/shared/turbo.json (also
+// gitignored) makes shared's build wait for every game's build. Adding a game folder is enough;
+// nothing to register.
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
@@ -24,6 +26,7 @@ const args = process.argv.slice(2);
 
 const ids = findGames();
 writeGameList(ids);
+writeSharedTurbo(ids);
 if (args.includes('--generate')) process.exit(0);
 
 const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
@@ -74,6 +77,7 @@ function findGames() {
     for (const file of ['src/index.ts', 'tsconfig.build.json']) {
       if (!existsSync(join(folder, file))) problems.push(`games/${id}: missing ${file}`);
     }
+    if (!pkg.scripts?.build) problems.push(`games/${id}/package.json: missing a "build" script`);
     if (!existsSync(join(root, 'node_modules/@xomdao', `game-${id}`)))
       problems.push(`games/${id}: not installed yet, run npm install`);
     found.push(id);
@@ -98,5 +102,17 @@ function writeGameList(ids) {
   const file = join(root, 'packages/shared/src/generated/games.ts');
   if (existsSync(file) && readFileSync(file, 'utf8') === source) return;
   mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, source);
+}
+
+/** Turborepo can't see that shared imports the games, so it is told which builds to wait for. */
+function writeSharedTurbo(ids) {
+  const config = {
+    extends: ['//'],
+    tasks: { build: { dependsOn: ['^build', ...ids.map((id) => `@xomdao/game-${id}#build`)] } },
+  };
+  const file = join(root, 'packages/shared/turbo.json');
+  const source = `${JSON.stringify(config, null, 2)}\n`;
+  if (existsSync(file) && readFileSync(file, 'utf8') === source) return;
   writeFileSync(file, source);
 }

@@ -12,12 +12,20 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # Turborepo's remote cache. Without them it still works, only with a cold cache.
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # --affected diffs against the base branch.
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run check
-      - run: npm run build
+      - run: npm run lint
+      # A PR runs only the workspaces it touches (and what depends on them); main runs all.
+      - run: npx turbo run typecheck test build ${{ github.event_name == 'pull_request' && '--affected' || '' }}

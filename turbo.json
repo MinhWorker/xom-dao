@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "envMode": "loose",
+  "globalDependencies": [
+    "tsconfig.base.json",
+    "games/tsconfig.base.json",
+    "games/tsconfig.build.json",
+    "scripts/libs.mjs"
+  ],
+  "remoteCache": { "enabled": true },
+  "tasks": {
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "typecheck": { "dependsOn": ["^build"] },
+    "test": { "dependsOn": ["^build"] }
+  }
+}
