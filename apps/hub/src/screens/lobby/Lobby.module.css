@@ -1,59 +1,161 @@
-.games {
+.lobby {
+  position: relative;
+  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-2);
+  padding: var(--space-3) max(var(--space-4), 2vw);
+  isolation: isolate;
 }
 
-.card {
-  --cut: 18px;
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg);
+  view-transition-name: lobby-art;
+}
+
+.backdrop img,
+.backdrop video {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  min-height: 120px;
-  display: grid;
-  align-content: end;
-  gap: var(--space-1);
-  padding: var(--space-4);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
-  background: linear-gradient(160deg, var(--bg-raised), var(--bg-sunken));
-  text-align: left;
-  cursor: pointer;
+  height: 100%;
+  object-fit: cover;
 }
 
-.card:hover:not(:disabled) {
-  border-color: var(--line-strong);
-  border-left-color: var(--accent);
+.backdrop video {
+  opacity: 0;
+  transition: opacity 400ms;
 }
 
-.card:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.backdrop video.playing {
+  opacity: 1;
 }
 
-.name {
+/* Darkens the left for the title and the bottom for the strip; the art's subject sits right. */
+.backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(11 13 16 / 0.94) 0, rgb(11 13 16 / 0.72) 34%, transparent 64%),
+    linear-gradient(0deg, rgb(11 13 16 / 0.92) 0, rgb(11 13 16 / 0.4) 32%, transparent 55%),
+    linear-gradient(180deg, rgb(11 13 16 / 0.6) 0, transparent 22%);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.profile {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 700;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.meta {
+.initial {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  background: var(--bg-raised);
+  border-bottom: 3px solid var(--accent);
+  color: var(--accent);
+  font-size: var(--text-lg);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+
+.hero {
+  align-self: center;
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  max-width: min(46ch, 52%);
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.title {
+  font-size: var(--text-xl);
+  line-height: 0.95;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.7);
+}
+
+.tagline {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--text);
+  text-shadow: 0 1px 8px rgb(0 0 0 / 0.8);
+}
+
+.chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.join {
-  display: flex;
-  align-items: end;
-  gap: var(--space-2);
+.chips > * {
+  background: rgb(11 13 16 / 0.72);
 }
 
-.code input {
-  width: 8ch;
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.9);
+}
+
+.empty {
+  align-self: center;
+  justify-self: center;
+  color: var(--text-dim);
+}
+
+.dock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(150px, 24vw, 240px);
+  align-items: end;
+  gap: var(--space-4);
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-1);
+}
+
+.actions > button {
+  width: 100%;
+  padding-inline: var(--space-3);
+}
+
+.join {
+  margin-top: var(--space-3);
+}
+
+.codeField input {
+  width: 100%;
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.2em;
+}
+
+::view-transition-group(lobby-art) {
+  animation-duration: 280ms;
 }

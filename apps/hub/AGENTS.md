@@ -11,11 +11,11 @@ src/router.ts      History routing (`/`, `/room/<code>`, `/dev/kit` in dev), Vie
                    `block()` holds the screen while a Match runs
 src/net/store.ts   The one socket (`/ws`) and the Session state; every push and reply is parsed with
                    `@xomdao/shared/client` first. `net/hub.ts` makes the page's store + `useHub`
-src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `games/*/dist/version.json`,
-                   globbed at build time; `wip` ones are hidden on Vercel production
+src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.json` + the art in
+                   `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Tabs, Choice, Toggle, Menu, Toast, Icon:
                    no server knowledge. `toast()` needs `<ToastRegion />` (mounted in main.tsx)
-src/screens/       login/, lobby/, room/ (waiting room, GameFrame = iframe + Bridge, Results), kit/
+src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room, GameFrame = iframe + Bridge, Results), kit/
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
 ```
