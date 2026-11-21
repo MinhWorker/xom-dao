@@ -16,9 +16,11 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.js
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Menu, Toast, Icon:
                    no server knowledge. `toast()` needs `<ToastRegion />` (mounted in main.tsx)
 src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), kit/
+src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
+public/            `manifest.webmanifest` and `icons/` (PWA), copied to the build root
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
 ```
 
@@ -69,6 +71,18 @@ goes back to the waiting room, so playing again reuses it.
   open it. It never opens by itself.
 - `settings` follows the Hub's mute (`volume` is always 1) and is resent when it changes.
 - Not built yet: a volume control and emotes in the corner.
+
+## Phone screen
+
+- Landscape only. `RotateNotice` (`main.tsx`) covers everything in portrait on a coarse pointer up
+  to 600 px wide; iPhone has no fullscreen or lock, so this is its only help.
+- Android Chrome: `enterFullscreen()` (needs a tap) takes the screen and locks landscape. It runs
+  on the Room's "Bắt đầu" and "Sẵn sàng" taps; `FullscreenToggle` in the Match corner covers guests
+  and a swipe out. The Room leaves fullscreen when the Match view closes. Nothing is offered
+  once the app is installed, or where `document.fullscreenEnabled` is false.
+- PWA: `public/manifest.webmanifest` (`standalone`, landscape) plus the Apple meta tags in
+  `index.html` let a player add the Hub to the home screen, the only way to drop the browser bars on
+  iPhone. There is no service worker: the Hub needs the server to do anything.
 
 ## Sound
 

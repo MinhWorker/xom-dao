@@ -1,0 +1,44 @@
+.notice {
+  display: none;
+}
+
+@media (orientation: portrait) and (pointer: coarse) and (max-width: 600px) {
+  .notice {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--bg);
+    color: var(--accent);
+    text-align: center;
+  }
+
+  .notice p {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .notice svg {
+    animation: turn 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes turn {
+  0%,
+  20% {
+    rotate: 90deg;
+  }
+  60%,
+  100% {
+    rotate: 0deg;
+  }
+}
