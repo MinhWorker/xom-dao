@@ -2,11 +2,19 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { defineManifest, type GameManifest } from '@xomdao/sdk';
+import {
+  type AnyGameServer,
+  defineManifest,
+  type EventContext,
+  Game,
+  type GameManifest,
+} from '@xomdao/sdk';
 import { PROTOCOL_MISMATCH, PROTOCOL_VERSION, type RoomState } from '@xomdao/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
+import { z } from 'zod';
 import { AppModule } from '../app.module.js';
+import { GAME_SERVERS } from '../game-host/games.js';
 import { GAME_MANIFESTS } from './manifests.js';
 
 const caro = defineManifest({
@@ -21,16 +29,32 @@ const caro = defineManifest({
   focus: { x: 50, y: 50 },
 });
 
+class CaroServer extends Game<{ turn: number }> {
+  readonly events = { finish: z.object({}) };
+
+  onStart() {
+    return { turn: 0 };
+  }
+
+  onFinish(ctx: EventContext<{ turn: number }>) {
+    ctx.finish([1, 2]);
+    return ctx.state;
+  }
+}
+
 let app: INestApplication;
 let url: string;
+let httpUrl: string;
 
 beforeAll(async () => {
   delete process.env.DATABASE_URL;
   app = await NestFactory.create(AppModule, { logger: false });
-  // No Game is loaded yet: the server runs this one for the test.
+  // Load one fake Game server for the test.
   app.get<GameManifest[]>(GAME_MANIFESTS).push(caro);
+  app.get<AnyGameServer[]>(GAME_SERVERS).push({ manifest: caro, game: new CaroServer() });
   await app.listen(0, '127.0.0.1');
-  url = (await app.getUrl()).replace('http', 'ws');
+  httpUrl = await app.getUrl();
+  url = httpUrl.replace('http', 'ws');
 });
 
 afterAll(async () => {
@@ -68,6 +92,13 @@ async function connect() {
 const settle = () => new Promise((r) => setTimeout(r, 100));
 
 describe('WebSocket transport', () => {
+  it('reports the loaded Game server ids over HTTP', async () => {
+    const response = await fetch(`${httpUrl}/api/games`);
+
+    expect(response.ok).toBe(true);
+    expect(await response.json()).toEqual(['tic-tac-toe']);
+  });
+
   it('refuses another protocol and requests before logging in', async () => {
     const { ws, request } = await connect();
     expect(await request('auth:guest', { protocol: PROTOCOL_VERSION - 1, name: 'Lan' })).toEqual({
@@ -107,7 +138,10 @@ describe('WebSocket transport', () => {
     expect(await minh.request('room:ready', { ready: true })).toEqual({ ok: true });
     const started = await lan.request('match:start');
     expect(started).toEqual({ ok: true, matchId: expect.any(String) });
+    expect(await lan.request('match:ready', { matchId: started.matchId })).toEqual({ ok: true });
+    expect(await minh.request('match:ready', { matchId: started.matchId })).toEqual({ ok: true });
     await settle();
+    const lanId = (a.user as { id: string }).id;
     const me = (b.user as { id: string }).id;
     expect(minh.states().at(-1)).toMatchObject({
       code,
@@ -115,6 +149,44 @@ describe('WebSocket transport', () => {
       matchId: started.matchId,
       seats: [{ name: 'Lan' }, { id: me }],
     });
+    expect(
+      minh.pushed
+        .filter((message) => message.event === 'match:state')
+        .map((message) => (message.data as { status: string }).status),
+    ).toEqual(['loading', 'playing']);
+    expect(
+      (
+        minh.pushed.filter((message) => message.event === 'match:state').at(-1)?.data as {
+          view: unknown;
+        }
+      )?.view,
+    ).toEqual({ turn: 0 });
+    expect(await lan.request('match:move', { matchId: started.matchId, event: 'finish' })).toEqual({
+      ok: true,
+    });
+    await settle();
+    expect(
+      minh.pushed
+        .filter((message) => message.event === 'match:state')
+        .map((message) => (message.data as { status: string }).status),
+    ).toEqual(['loading', 'playing', 'over']);
+    expect(
+      (
+        minh.pushed.filter((message) => message.event === 'match:state').at(-1)?.data as {
+          outcome: string;
+        }
+      )?.outcome,
+    ).toBe('settled');
+    expect(
+      (
+        minh.pushed.filter((message) => message.event === 'match:state').at(-1)?.data as {
+          result: { seats: { player: string; place: number }[] };
+        }
+      )?.result.seats,
+    ).toEqual([
+      { player: lanId, place: 1 },
+      { player: me, place: 2 },
+    ]);
 
     // Logging in again with the token puts the guest back in the Room.
     lan.ws.close();

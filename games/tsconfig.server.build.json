@@ -1,0 +1,14 @@
+{
+  "$comment": "Compiles a new platform Game server entry to dist/server/.",
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "${configDir}/server",
+    "outDir": "${configDir}/dist/server",
+    "declaration": true,
+    "declarationMap": true,
+    "incremental": true
+  },
+  "files": ["${configDir}/server/index.ts"]
+}

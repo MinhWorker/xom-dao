@@ -16,6 +16,7 @@
  * its Match result; the shared backend settles it. `ctx.stat` counts things a player did.
  */
 import { z } from 'zod';
+import type { GameManifest } from './manifest.js';
 import { type Rng, seededRng } from './rng.js';
 
 /** A player's id in a Room (their account id; `bot:<n>` for a computer seat). */
@@ -135,6 +136,15 @@ export abstract class Game<State, Options = undefined, View = State> {
   /** A new Match begins: return its first state. */
   abstract onStart(ctx: StartContext<Options>): State;
 }
+
+/** A Game server pairs its static Hub manifest with the pure rules the host runs. */
+export interface GameServer<State, Options = undefined, View = State> {
+  manifest: GameManifest;
+  game: Game<State, Options, View>;
+}
+
+/** The heterogeneous server registry after each Game's type has been checked at its entry. */
+export type AnyGameServer = { manifest: GameManifest; game: object };
 
 /** The optional hooks, as the runner looks them up. */
 interface OptionalHooks<State, Options, View> {

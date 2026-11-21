@@ -199,6 +199,7 @@ describe('starting a Match', () => {
     const start = rooms.start(room.code, 'lan');
     expect(start).toEqual({
       matchId: expect.any(String),
+      roomCode: room.code,
       gameId: 'caro',
       players: [
         { id: 'lan', name: 'Lan', bot: false },

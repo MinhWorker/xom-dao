@@ -4,6 +4,7 @@ import { COIN, type JoinedRoom, type ServerToClientEvents, type User } from '@xo
 import { AccountError, AccountsService } from '../accounts/accounts.service.js';
 import { DEV_MODE } from '../dev/dev-mode.js';
 import { FriendsError, FriendsService, type Presence } from '../friends/friends.service.js';
+import { GameHostError, GameHostService } from '../game-host/game-host.service.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MatchesService } from '../matches/matches.service.js';
 import { StatsError, StatsService } from '../stats/stats.service.js';
@@ -62,9 +63,11 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   /** Logged-in clients (`WsGateway`). */
   private readonly connected = new Set<Client>();
   private pruner?: NodeJS.Timeout;
+  private stopWatchingMatches?: () => void;
 
   constructor(
     private readonly rooms: RoomsService,
+    private readonly gameHost: GameHostService,
     private readonly accounts: AccountsService,
     private readonly matches: MatchesService,
     private readonly ledger: LedgerService,
@@ -76,10 +79,31 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     this.pruner = setInterval(() => this.rooms.pruneEmptyRooms(), PRUNE_INTERVAL_MS);
     this.pruner.unref();
+    this.stopWatchingMatches = this.gameHost.onState((match) => {
+      for (const socket of this.clients()) {
+        if (socket.data.roomCode !== match.roomCode) continue;
+        const view =
+          match.status === 'playing'
+            ? this.gameHost.view(match.matchId, socket.data.user.id)
+            : undefined;
+        socket.emit('match:state', { ...match, ...(view !== undefined && { view }) });
+      }
+      if (match.status === 'playing' && match.disconnectedPlayerIds.length) {
+        for (const playerId of match.disconnectedPlayerIds) {
+          this.rooms.setConnected(match.roomCode, playerId, false);
+        }
+        this.broadcastCode(match.roomCode);
+      }
+      if (match.status === 'over') {
+        const room = this.rooms.endMatch(match.roomCode, match.matchId);
+        if (room) this.broadcast(room);
+      }
+    });
   }
 
   onModuleDestroy() {
     clearInterval(this.pruner);
+    this.stopWatchingMatches?.();
   }
 
   /** A WebSocket client that just logged in. */
@@ -326,9 +350,41 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   start(socket: Client) {
     return this.handle(() => {
       const code = this.requireRoom(socket);
-      const { matchId } = this.rooms.start(code, socket.data.user.id);
+      const start = this.rooms.start(code, socket.data.user.id);
+      this.gameHost.startMatch(start);
       this.broadcastCode(code);
-      return { matchId };
+      return { matchId: start.matchId };
+    });
+  }
+
+  @On('match:ready')
+  matchReady(socket: Client, req: { matchId?: unknown }) {
+    return this.handle(() => {
+      const roomCode = this.requireRoom(socket);
+      const room = this.rooms.roomOf(socket.data.user.id);
+      const matchId = String(req?.matchId ?? '');
+      if (!room || room.code !== roomCode || room.matchId !== matchId) {
+        throw new GameHostError('Ván không còn nữa');
+      }
+      this.gameHost.ready(matchId, socket.data.user.id);
+      return {};
+    });
+  }
+
+  @On('match:move')
+  matchMove(socket: Client, req: { matchId?: unknown; event?: unknown; payload?: unknown }) {
+    return this.handle(() => {
+      const roomCode = this.requireRoom(socket);
+      const room = this.rooms.roomOf(socket.data.user.id);
+      const matchId = String(req?.matchId ?? '');
+      if (!room || room.code !== roomCode || room.matchId !== matchId) {
+        throw new GameHostError('Ván không còn nữa');
+      }
+      this.gameHost.move(matchId, socket.data.user.id, {
+        event: String(req?.event ?? ''),
+        payload: req?.payload,
+      });
+      return {};
     });
   }
 
@@ -466,6 +522,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       return { ok: true, ...(await fn()) };
     } catch (err) {
       if (
+        err instanceof GameHostError ||
         err instanceof RoomError ||
         err instanceof AccountError ||
         err instanceof FriendsError ||

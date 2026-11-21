@@ -4,10 +4,11 @@ The server is only the API: rooms over the `/ws` WebSocket and `/api` over HTTP.
 files.
 
 ```
+src/game-host/  GameHostModule = generated Game servers, Match lifecycle and /api/games IDs
 src/rooms/      rooms.service.ts = Rooms, seats and options (unit tested); manifests.ts = the
-                GAME_MANIFESTS the server runs; rooms.gateway.ts = the `@On(event)` handlers and
-                broadcasts; ws.gateway.ts = the transport: plain WebSocket + JSON on /ws, login +
-                protocol check, then RoomsGateway's handlers
+                host's GAME_MANIFESTS; rooms.gateway.ts = the `@On(event)` handlers and broadcasts;
+                ws.gateway.ts = the transport: plain WebSocket + JSON on /ws, login + protocol
+                check, then RoomsGateway's handlers
 src/dev/        dev-mode.ts: DEV_MODE (XOMDAO_DEV=1)
 src/accounts/   Username/password (scrypt) and login tokens
 src/ledger/     Ledger: the only module that changes balances (`ledger_entries`, `balances`)
@@ -25,10 +26,10 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 ## Rooms
 
 - `RoomsService` holds Session state only: Rooms, seats, options and the running Match's id. It
-  runs no Game rules; GameHostModule (to come) runs the Match that `start` hands over
+  runs no Game rules; `GameHostService` runs the Match that `start` hands over
   (`MatchStart`) and calls `endMatch` when it is over.
-- Rooms open only for a Game in `GAME_MANIFESTS` (`rooms/manifests.ts`, empty until
-  GameHostModule loads the Games) and live in memory, so a restart wipes them.
+- Rooms open only for a Game in `GAME_MANIFESTS` (`rooms/manifests.ts`), which comes from the
+  generated server list. `/api/games` returns the IDs loaded by GameHostModule.
 - A Room has the Game's `maxPlayers` seats; `room:state` sends them in order, `null` for an empty
   one. `room:join` takes the first empty seat between Matches. There are no spectators.
 - Options are picks for the manifest's `options`, checked and filled with `optionsSchema`. The

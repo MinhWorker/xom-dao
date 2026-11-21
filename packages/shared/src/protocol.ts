@@ -16,7 +16,7 @@ import { avatarSchema, frameSchema, profileSchema } from './account.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 14;
+export const PROTOCOL_VERSION = 15;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
@@ -124,6 +124,21 @@ export const MatchRecord = z.object({
   players: z.array(MatchPlayer),
 });
 export type MatchRecord = z.infer<typeof MatchRecord>;
+
+/** The server-authoritative places and stats returned when a Game finishes a Match. */
+export const MatchResult = z.object({
+  seats: z.array(
+    z.object({
+      player: z.string(),
+      place: z.int(),
+      score: z.number().optional(),
+    }),
+  ),
+  stats: z
+    .array(z.object({ player: z.string(), name: z.string(), amount: z.int().positive() }))
+    .optional(),
+});
+export type MatchResult = z.infer<typeof MatchResult>;
 
 /**
  * Where a player stands on one board: `core` (everyone, by experience) or a game's id (by wins
@@ -322,6 +337,13 @@ export const requests = {
   'room:remove-bot': { req: z.object({ seat: z.int() }), res: Empty },
   /** Host only: starts a Match with everyone seated (at least the Game's `minPlayers`). */
   'match:start': { req: Empty, res: z.object({ matchId: z.string() }) },
+  /** A player tells the server that their Game iframe loaded this Match. */
+  'match:ready': { req: z.object({ matchId: z.string() }), res: Empty },
+  /** The Hub forwards one player's Game event to the server-authoritative rules. */
+  'match:move': {
+    req: z.object({ matchId: z.string(), event: z.string(), payload: z.unknown().optional() }),
+    res: Empty,
+  },
   /**
    * Bạn bè: your friends and requests, friends online first. `friends:add` asks someone by their
    * username (or accepts their request to you); `friends:answer` accepts or turns down a request
@@ -354,6 +376,17 @@ export const requests = {
 export const events = {
   /** The Room you are in changed. */
   'room:state': RoomState,
+  /** A Match moved through loading, playing and over. */
+  'match:state': z.object({
+    roomCode: z.string(),
+    matchId: z.string(),
+    gameId: z.string(),
+    status: z.enum(['loading', 'playing', 'over']),
+    outcome: z.enum(['settled', 'aborted']).optional(),
+    disconnectedPlayerIds: z.array(z.string()),
+    result: MatchResult.optional(),
+    view: z.unknown().optional(),
+  }),
   /** The Room was disbanded, or you left it from another device. */
   'room:closed': RoomClosed,
   /** Your Bạn bè list changed: a request, an answer, a friend coming online or into a room. */

@@ -1,8 +1,11 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { type GameManifest, optionsSchema, type PlayerId, type RoomSeat } from '@xomdao/sdk';
+import { type GameManifest, optionsSchema, type PlayerId } from '@xomdao/sdk';
 import type { RoomMember, RoomOptions, RoomState } from '@xomdao/shared';
+import type { MatchStart } from '../game-host/game-host.types.js';
 import { GAME_MANIFESTS } from './manifests.js';
+
+export type { MatchStart } from '../game-host/game-host.types.js';
 
 export class RoomError extends Error {}
 
@@ -25,15 +28,6 @@ export interface Room {
   matchId: string | null;
   /** A Match was started here before: playing again needs no Sẵn sàng. */
   played: boolean;
-}
-
-/** What GameHostModule needs to run a Match the host just started. */
-export interface MatchStart {
-  matchId: string;
-  gameId: string;
-  /** Everyone seated, in seat order, empty seats skipped. */
-  players: RoomSeat[];
-  options: RoomOptions;
 }
 
 /** Four characters with no 0/O/1/I, so a code is easy to read aloud and type. */
@@ -180,6 +174,7 @@ export class RoomsService {
     for (const seat of seated) seat.ready = undefined;
     return {
       matchId: room.matchId,
+      roomCode: room.code,
       gameId: room.manifest.id,
       players: seated.map(({ id, name, bot, avatar }) => ({
         id,
