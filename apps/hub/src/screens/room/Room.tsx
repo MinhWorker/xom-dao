@@ -140,7 +140,7 @@ export function Room({ code }: { code: string }) {
                   <span>{seat.name}</span>
                   {seat.id === here.hostId && <Chip tone="accent">Chủ phòng</Chip>}
                   {seat.bot && <Chip>Máy</Chip>}
-                  {seat.ready && <Chip tone="ok">Sẵn sàng</Chip>}
+                  {seat.ready && <Chip tone="ready">Sẵn sàng</Chip>}
                   {!seat.connected && <Chip tone="danger">Mất kết nối</Chip>}
                   {seat.bot && isHost && (
                     <Button

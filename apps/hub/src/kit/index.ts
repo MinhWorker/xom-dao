@@ -1,5 +1,12 @@
 export { Button } from './Button.js';
 export { Chip } from './Chip.js';
+export { Choice } from './Choice.js';
 export { CutPanel } from './CutPanel.js';
 export { Dialog } from './Dialog.js';
+export { CoinIcon, GemIcon, Icon } from './Icon.js';
+export { Menu } from './Menu.js';
+export { Tabs } from './Tabs.js';
 export { TextField } from './TextField.js';
+export { ToastRegion } from './Toast.js';
+export { Toggle } from './Toggle.js';
+export { toast } from './toasts.js';

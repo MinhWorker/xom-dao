@@ -17,9 +17,9 @@
   color: var(--accent);
 }
 
-.ok {
-  border-color: var(--ok);
-  color: var(--ok);
+.ready {
+  border-color: var(--info);
+  color: var(--info);
 }
 
 .danger {
