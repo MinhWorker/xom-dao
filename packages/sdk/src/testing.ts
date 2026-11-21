@@ -1,0 +1,99 @@
+import { type Game, type GameEvent, type MatchResult, type PlayerId, turnRules } from './game.js';
+import { seededRng } from './rng.js';
+
+/**
+ * Plays a `Game` the way the server does, one event at a time, so a test reads like a script:
+ *
+ *   const game = testGame(new CaroGame(), ['a', 'b'], { options: { swap: true } });
+ *   game.send('a', 'place', { x: 4, y: 4 });          // throws if the game refuses it
+ *   expect(game.error('b', 'place', { x: 4, y: 4 })).toBe('Ô này đã có quân');
+ *   game.fireTimer();                                  // a ctx.setTimer went off
+ *   game.leave('b');                                   // b left mid-Match (onLeave)
+ *   expect(game.result?.seats.map((s) => s.place)).toEqual([1, 2]);
+ *
+ * `bots` lists the players the computer plays (`ctx.players[i].bot`). `options` are passed as
+ * given: parse them with the manifest's `optionsSchema` to fill defaults.
+ */
+export function testGame<State, Options, View>(
+  game: Game<State, Options, View>,
+  players: PlayerId[],
+  { options, seed = 1, bots = [] }: { options?: Options; seed?: number; bots?: PlayerId[] } = {},
+) {
+  const rules = turnRules(game);
+  const rng = seededRng(seed);
+  const start = () => ({
+    players: players.map((id) => ({ id, name: id, bot: bots.includes(id) })),
+    options: options as Options,
+  });
+  let stored = rules.setup(start(), rng);
+  const move = (event: string, payload?: object): GameEvent => ({ event, payload });
+  const session = {
+    /** The Match state now. */
+    get state(): State {
+      return stored.state;
+    },
+    /** `null` while playing, then the Match result. */
+    get result(): MatchResult | null {
+      return rules.result(stored);
+    },
+    /** What `player` sees (`null` = a spectator). */
+    view(player: PlayerId | null): View {
+      return rules.view(stored, player);
+    },
+    /** Plays an event; throws with the game's message if it is refused. */
+    send(player: PlayerId, event: string, payload?: object) {
+      const error = rules.validateMove(stored, move(event, payload), player);
+      if (error) throw new Error(`${player} ${event} was rejected: ${error}`);
+      stored = rules.applyMove(stored, move(event, payload), player, rng);
+      return session;
+    },
+    /** The message the game would refuse this event with, or `null` if it is fine. */
+    error(player: PlayerId, event: string, payload?: object) {
+      return rules.validateMove(stored, move(event, payload), player);
+    },
+    /** The Room plays again: a new Match whose `ctx.lastResult` is this one's result. */
+    newMatch() {
+      stored = rules.setup({ ...start(), lastResult: rules.result(stored) }, rng);
+      return session;
+    },
+    /** The pending timer (`ctx.setTimer`): its event and length, or `null`. */
+    get timer() {
+      const t = rules.timer(stored);
+      return t && { event: t.event, ms: t.ms };
+    },
+    /** Lets the pending timer go off now (throws if there is none). */
+    fireTimer() {
+      if (!rules.timer(stored)) throw new Error('No timer is set');
+      stored = rules.fireTimer(stored, rng);
+      return session;
+    },
+    /** `player` leaves mid-Match (the game's `onLeave`; throws if it has none). */
+    leave(player: PlayerId) {
+      if (!rules.leave) throw new Error('This game has no onLeave hook');
+      stored = rules.leave(stored, player, rng);
+      return session;
+    },
+    /** What the computer would play for `player` now (`null` = nothing). */
+    bot(player: PlayerId) {
+      return rules.bot?.(stored, player, rng) ?? null;
+    },
+    /** What `viewer` sees of a move `player` sent (secret events lose their payload). */
+    moveView(player: PlayerId, viewer: PlayerId | null, event: string, payload?: object) {
+      return rules.moveView(move(event, payload), player, viewer);
+    },
+    /**
+     * Throws if any of `secrets` (a card, a hand, a deck order…) appears anywhere in what
+     * `viewer` sees. Check every player and `null` (spectators).
+     */
+    assertHidden(viewer: PlayerId | null, ...secrets: unknown[]) {
+      const view = JSON.stringify(rules.view(stored, viewer));
+      for (const secret of secrets) {
+        if (view.includes(JSON.stringify(secret))) {
+          throw new Error(`${viewer ?? 'A spectator'} can see ${JSON.stringify(secret)}`);
+        }
+      }
+      return session;
+    },
+  };
+  return session;
+}

@@ -28,6 +28,7 @@
  * when the server starts with XOMDAO_DEV=1. All command hooks still return new state and use ctx.rng.
  */
 import { z } from 'zod';
+import { type Rng, seededRng } from '../rng.js';
 import { commandHookName, validateConsoleDefinitions } from './console/definitions.js';
 import type { Catalogs } from './console/parser.js';
 import {
@@ -40,7 +41,6 @@ import {
   STAT_NAME,
   type Stat,
 } from './game.js';
-import { type Rng, seededRng } from '../rng.js';
 
 /** Someone at the table. `seat` is their place (0, 1, …) and never changes during a game. */
 export interface Seat {
