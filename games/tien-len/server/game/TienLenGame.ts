@@ -1,7 +1,9 @@
 /**
- * Tiến Lên (southern rules), on the server: a match of several rounds. Players send `play` (some
+ * Tiến Lên (southern rules), on the server: a Match of several rounds. Players send `play` (some
  * cards) or `pass`; each hook checks the move and returns the next state. A round goes on until
- * everyone is ranked, the match until its last round (or until fewer than two players are left).
+ * everyone is ranked, the Match until its last round.
+ *
+ * A seat whose person left is played by the computer (`bot`), so no seat ever drops out.
  *
  * Timers drive the pace: `begin` after the deal and the round's announcement, `turn-over` when
  * a player runs out of time (only with two or more people at the table), `next-round` after the
@@ -12,11 +14,10 @@ import {
   type EventContext,
   Game,
   type GameContext,
-  type LeaveContext,
   type Seat,
   type StartContext,
   shuffle,
-} from '@xomdao/sdk/legacy';
+} from '@xomdao/sdk';
 import { z } from 'zod';
 import { botPlay } from './bot.js';
 import { beats, type Card, cardName, comboOf, fullDeck, isChop } from './cards.js';
@@ -28,8 +29,8 @@ import {
   type Play,
   ROUND_OVER_MS,
   type State,
+  TURN_MS,
   type View,
-  WIN_COINS,
 } from './model.js';
 
 const play = z.object({ cards: z.array(z.number().int().min(0).max(51)).min(1).max(13) });
@@ -37,9 +38,9 @@ const play = z.object({ cards: z.array(z.number().int().min(0).max(51)).min(1).m
 type Ctx = GameContext<State, Options>;
 
 export class TienLenGame extends Game<State, Options, View> {
-  events = { play, pass: z.object({}) };
+  readonly events = { play, pass: z.object({}) };
 
-  /** The match begins: the first deal. */
+  /** The Match begins: the first deal. */
   onStart(ctx: StartContext<Options>): State {
     const n = ctx.players.length;
     const empty: State = {
@@ -47,7 +48,6 @@ export class TienLenGame extends Game<State, Options, View> {
       rounds: ctx.options.rounds,
       phase: 'deal',
       hands: [],
-      inRound: [],
       lead: 0,
       table: null,
       played: [],
@@ -56,19 +56,17 @@ export class TienLenGame extends Game<State, Options, View> {
       passed: [],
       mustPlay: null,
       out: [],
-      sunk: [],
-      gone: [],
       points: Array(n).fill(0),
       firsts: Array(n).fill(0),
       results: [],
     };
-    return deal({ ...ctx, state: empty } as Ctx, empty);
+    return deal({ ...ctx, state: empty }, empty);
   }
 
   /** The deal and the announcement are over: the lead may play. */
   onBegin(ctx: Ctx): State {
     const state: State = { ...ctx.state, phase: 'play', turn: ctx.state.lead };
-    startClock(ctx, state);
+    startClock(ctx);
     return state;
   }
 
@@ -91,7 +89,6 @@ export class TienLenGame extends Game<State, Options, View> {
     }
     const table = state.table && comboOf(state.table.cards);
     if (combo && !beats(combo, table)) reject('Bài này không chặn được');
-    // A bomb on a 2 or on another bomb: counted for the "Chặt heo" achievement.
     if (combo && table && isChop(combo, table)) ctx.stat(player.id, 'chop');
     return playCards(ctx, player.seat, payload.cards);
   }
@@ -114,44 +111,10 @@ export class TienLenGame extends Game<State, Options, View> {
     return lowest === undefined ? state : playCards(ctx, state.turn, [lowest]);
   }
 
-  /**
-   * Someone left: they lose. Still holding cards this round, they take the lowest free place;
-   * the others play on without them.
-   */
-  onLeave(ctx: LeaveContext<State, Options>): State {
-    const seat = ctx.player.seat;
-    let state: State = { ...ctx.state, gone: [...ctx.state.gone, seat] };
-    const holding = state.phase !== 'over' && isPlaying(state, seat);
-    if (holding) {
-      const hand = state.hands[seat] ?? [];
-      state = {
-        ...state,
-        sunk: [...state.sunk, seat],
-        hands: state.hands.map((h, s) => (s === seat ? [] : h)),
-        mustPlay: state.mustPlay !== null && hand.includes(state.mustPlay) ? null : state.mustPlay,
-      };
-      if (state.turn === seat && state.phase === 'play') {
-        state = state.table
-          ? advance({ ...state, passed: state.passed.map((p, s) => p || s === seat) })
-          : { ...state, turn: nextPlaying(state, seat) ?? seat };
-      }
-      if (state.lead === seat && state.phase === 'deal') {
-        state = { ...state, lead: nextPlaying(state, seat) ?? seat };
-      }
-    }
-    const ended = endRound(ctx, state);
-    if (ended) return ended;
-    if (state.phase === 'over' && stayed(ctx, state) < 2) return finishMatch(ctx, state);
-    // Their turn moved on: a fresh clock. The table has lost its second person: no clock.
-    if (state.phase === 'play' && state.turn !== ctx.state.turn) startClock(ctx, state);
-    else if (people(ctx, state) < 2) ctx.clearTimer();
-    return state;
-  }
-
   /** The computer's move for its seat (see bot.ts). */
-  bot({ state, player, rng, options }: BotContext<State, Options>) {
+  bot({ state, player }: BotContext<State, Options>) {
     if (state.phase !== 'play' || state.turn !== player.seat) return null;
-    const cards = botPlay(state, player.seat, options.level, rng);
+    const cards = botPlay(state, player.seat);
     return cards ? { event: 'play', payload: { cards } } : { event: 'pass' };
   }
 
@@ -167,13 +130,9 @@ export class TienLenGame extends Game<State, Options, View> {
 }
 
 /** Still in this round with cards in hand. */
-const isPlaying = (state: State, seat: number) =>
-  Boolean(state.inRound[seat]) && (state.hands[seat]?.length ?? 0) > 0;
+const isPlaying = (state: State, seat: number) => (state.hands[seat]?.length ?? 0) > 0;
 
-/** How many are still at the table. */
-const stayed = (ctx: Ctx, state: State) => ctx.players.length - state.gone.length;
-
-/** The first seat after `seat` still playing this round. */
+/** The first seat after `seat` still holding cards. */
 function nextPlaying(state: State, seat: number) {
   const n = state.hands.length;
   for (let k = 1; k <= n; k++) {
@@ -184,40 +143,37 @@ function nextPlaying(state: State, seat: number) {
 }
 
 /**
- * Deals the next round to everyone still at the table. The first round is led by the holder of
- * the lowest card (who must play it), unless the room's last match had a winner still here;
- * later rounds by the last round's winner (or the next player after them).
+ * Deals the next round to every seat. The first round is led by the holder of the lowest card
+ * (who must play it), unless the Room's last Match had a winner seated again; later rounds by
+ * the last round's winner.
  */
 function deal(ctx: Ctx, state: State): State {
   const n = ctx.players.length;
-  const inRound = ctx.players.map((p) => !p.left && !state.gone.includes(p.seat));
   const deck = shuffle(ctx.rng, fullDeck());
-  let next = 0;
-  const hands = inRound.map((dealt) =>
-    dealt ? deck.slice(13 * next, 13 * ++next).sort((a, b) => a - b) : [],
+  const hands = ctx.players.map((_, seat) =>
+    deck.slice(13 * seat, 13 * seat + 13).sort((a, b) => a - b),
   );
-  const round = state.round + 1;
-  const fresh = { ...state, hands, inRound } as State;
+  const lastWinner = state.results.at(-1)?.order[0];
+  const champion = ctx.players.findIndex(
+    (p) => p.id === ctx.lastResult?.seats.find((s) => s.place === 1)?.player,
+  );
   let lead: number;
   let mustPlay: Card | null = null;
-  const lastWinner = state.results.at(-1)?.order[0];
-  const champion = ctx.players.findIndex((p) => p.id === ctx.lastResult?.winners[0]);
   if (lastWinner !== undefined) {
-    lead = inRound[lastWinner] ? lastWinner : (nextPlaying(fresh, lastWinner) ?? 0);
-  } else if (champion >= 0 && inRound[champion]) {
+    lead = lastWinner;
+  } else if (champion >= 0) {
     lead = champion;
   } else {
     const lowest = Math.min(...hands.flat());
     lead = hands.findIndex((h) => h.includes(lowest));
     mustPlay = lowest;
   }
-  ctx.setTimer(dealMs(13 * next) + INTRO.roundMs + INTRO.leadMs, 'begin');
+  ctx.setTimer(dealMs(13 * n) + INTRO.roundMs + INTRO.leadMs, 'begin');
   return {
     ...state,
-    round,
+    round: state.round + 1,
     phase: 'deal',
     hands,
-    inRound,
     lead,
     turn: lead,
     table: null,
@@ -226,7 +182,6 @@ function deal(ctx: Ctx, state: State): State {
     passed: Array(n).fill(false),
     mustPlay,
     out: [],
-    sunk: [],
   };
 }
 
@@ -253,8 +208,10 @@ function playCards(ctx: Ctx, seat: number, cards: Card[]): State {
 }
 
 function pass(ctx: Ctx, seat: number): State {
-  const { state } = ctx;
-  const next = advance({ ...state, passed: state.passed.map((p, s) => p || s === seat) });
+  const next = advance({
+    ...ctx.state,
+    passed: ctx.state.passed.map((p, s) => p || s === seat),
+  });
   return withClock(ctx, next);
 }
 
@@ -287,57 +244,53 @@ const newTrick = (state: State, lead: number): State => ({
 
 /**
  * When one player (or none) still holds cards, the round is over: rank it, add the points, and
- * either end the match or deal again after a pause. `undefined` while the round goes on.
+ * either end the Match or deal again after a pause. `undefined` while the round goes on.
  */
 function endRound(ctx: Ctx, state: State): State | undefined {
-  if (state.phase === 'over') return undefined;
   const holding = state.hands.map((_, s) => s).filter((s) => isPlaying(state, s));
   if (holding.length > 1) return undefined;
   const last = holding[0];
   const out = last === undefined ? state.out : [...state.out, last];
-  const order = [...out, ...[...state.sunk].reverse()];
-  const points = roundPoints(order, state.hands.length, state.sunk);
-  const winner = order[0];
+  const points = roundPoints(out, state.hands.length);
+  const winner = out[0];
   const over: State = {
     ...state,
     phase: 'over',
     out,
     points: state.points.map((p, s) => p + (points[s] ?? 0)),
-    firsts: state.firsts.map((f, s) => f + (s === winner && !state.sunk.includes(s) ? 1 : 0)),
+    firsts: state.firsts.map((f, s) => f + (s === winner ? 1 : 0)),
     results: [
       ...state.results,
       {
-        order,
+        order: out,
         points,
         holder: last ?? null,
         leftover: last === undefined ? [] : (state.hands[last] ?? []),
       },
     ],
   };
-  if (over.round >= over.rounds || stayed(ctx, over) < 2) return finishMatch(ctx, over);
+  if (over.round >= over.rounds) return finishMatch(ctx, over);
   ctx.setTimer(ROUND_OVER_MS, 'next-round');
   return over;
 }
 
+/** The Match's places follow its standings; the scores are the points. */
 function finishMatch(ctx: Ctx, state: State): State {
-  const best = standings(state)[0];
-  const winner = best === undefined ? undefined : ctx.players[best]?.id;
-  ctx.finish(best === undefined ? [] : [winner ?? '']);
-  if (winner) ctx.reward(winner, 'core:coin', WIN_COINS);
-  return { ...state, phase: 'over' };
+  const places = Array<number>(state.points.length).fill(0);
+  standings(state).forEach((seat, place) => {
+    places[seat] = place + 1;
+  });
+  ctx.finish(places, { scores: state.points });
+  return state;
 }
 
-/** People (not the computer) still at the table. */
-const people = (ctx: Ctx, state: State) =>
-  ctx.players.filter((p) => !p.bot && !p.left && !state.gone.includes(p.seat)).length;
-
-/** Runs the turn clock when two or more people are still at the table. */
-function startClock(ctx: Ctx, state: State) {
-  if (people(ctx, state) >= 2) ctx.setTimer(ctx.options.turnSeconds * 1000, 'turn-over');
+/** Runs the turn clock when two or more people sit at the table. */
+function startClock(ctx: Ctx) {
+  if (ctx.players.filter((p) => !p.bot).length >= 2) ctx.setTimer(TURN_MS, 'turn-over');
   else ctx.clearTimer();
 }
 
 function withClock(ctx: Ctx, state: State) {
-  startClock(ctx, state);
+  startClock(ctx);
   return state;
 }

@@ -10,7 +10,9 @@ Where to look:
   `predict.ts` replays `walk` on the player's own character so keys answer at once). It has no
   `src/`: a Game made for the new platform needs only `server/index.ts`, and the legacy registry
   skips it.
-  `games/tien-len` is the fullest legacy game.
+  `games/tien-len` (Tiến Lên) is the Turn-based example with hidden hands: rounds, a turn clock,
+  `bot` that also plays the seat of anyone who leaves (so it has no `onLeave`), and `finish`
+  with places and scores. It has no client yet (`assets/` and `sources/` are the legacy art).
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the
