@@ -7,6 +7,7 @@
     "dev": "node ../../scripts/dev-server.mjs",
     "build": "nest build",
     "start": "node dist/main.js",
+    "games": "node dist/cli/games.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",

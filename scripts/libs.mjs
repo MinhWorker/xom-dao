@@ -20,6 +20,7 @@ import {
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gameVersion } from './game-version.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -104,6 +105,11 @@ function findGameServers(ids) {
     if (!pkg.exports?.['./server']) {
       problems.push(`games/${id}/package.json: export "./server" for GameHostModule`);
     }
+    if (!pkg.scripts?.build?.includes('game-version.mjs')) {
+      problems.push(
+        `games/${id}/package.json: end "build" with node ../../scripts/game-version.mjs`,
+      );
+    }
     if (!existsSync(join(folder, 'tsconfig.server.build.json'))) {
       problems.push(
         `games/${id}/tsconfig.server.build.json: compile server/index.ts to dist/server/`,
@@ -128,7 +134,9 @@ function writeGameList(ids, serverIds) {
     ...serverIds.map((id) => `import ${name(id)}Server from '@xomdao/game-${id}/server';`),
     '',
     `export const plugins: AnyGamePlugin[] = [${ids.map(name).join(', ')}];`,
-    `export const serverGames: AnyGameServer[] = [${serverIds.map((id) => `${name(id)}Server`).join(', ')}];`,
+    `export const serverGames: (AnyGameServer & { version: string })[] = [${serverIds
+      .map((id) => `{ ...${name(id)}Server, version: '${gameVersion(id)}' }`)
+      .join(', ')}];`,
     '',
   ].join('\n');
   const file = join(root, 'packages/shared/src/generated/games.ts');

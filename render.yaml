@@ -17,6 +17,7 @@ services:
         - packages/sdk/**
         - games/**
         - scripts/libs.mjs
+        - scripts/game-version.mjs
         - turbo.json
         - package-lock.json
         # The root package.json holds the app version (bumped by release PRs).

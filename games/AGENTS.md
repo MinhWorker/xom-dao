@@ -41,7 +41,9 @@ games/<id>/          src/index.ts is required
 
 Each new platform Game exports `./server` from its package, pointing to `dist/server/`. Its
 `tsconfig.server.build.json` extends `games/tsconfig.server.build.json`; `scripts.build` builds that
-config. `scripts/libs.mjs` adds every `server/index.ts` to the generated registry in
+config and ends with `node ../../scripts/game-version.mjs`, which writes `dist/version.json`:
+the hash of `server/**` and the shared packages it imports. The Hub sends it with
+`room:create` and `match:start`. `scripts/libs.mjs` adds every `server/index.ts` to the generated registry in
 `@xomdao/shared`; `GameHostModule` loads that list.
 
 ## The build contract

@@ -311,3 +311,9 @@ export const letterReceipts = pgTable(
   },
   (t) => [primaryKey({ columns: [t.letterId, t.userId] })],
 );
+
+/** Games switched off without a deploy (`npm run games`): gone from the lobby, no new Rooms. */
+export const disabledGames = pgTable('disabled_games', {
+  gameId: text('game_id').primaryKey(),
+  disabledAt: timestamp('disabled_at', { withTimezone: true }).notNull().defaultNow(),
+});

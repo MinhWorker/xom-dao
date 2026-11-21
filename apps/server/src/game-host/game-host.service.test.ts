@@ -7,9 +7,11 @@ import {
   type StartContext,
   type TimerContext,
 } from '@xomdao/sdk';
+import { GAME_UPDATING } from '@xomdao/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { GameHostService, LOADING_TIMEOUT_MS } from './game-host.service.js';
+import { GameHostService, LOADING_TIMEOUT_MS, MATCH_LIMITS } from './game-host.service.js';
+import type { MatchState } from './game-host.types.js';
 
 const manifest = defineManifest({
   id: 'fake-game',
@@ -87,6 +89,46 @@ class LeavingGame extends Game<{ started: boolean }> {
   }
 }
 
+/** A Game whose `slow` event takes `ms` of (fake) time to run. */
+class SlowGame extends Game<{ n: number }> {
+  readonly events = { slow: z.object({ ms: z.number() }), big: z.object({}) };
+
+  onStart() {
+    return { n: 0 };
+  }
+
+  onSlow(ctx: EventContext<{ n: number }, { ms: number }>) {
+    vi.advanceTimersByTime(ctx.payload.ms);
+    return { n: ctx.state.n + 1 };
+  }
+
+  onBig() {
+    return { n: -1, padding: 'x'.repeat(MATCH_LIMITS.viewBytes) } as { n: number };
+  }
+}
+
+/** Each seat plays in turn; the computer's move on its turn wins outright. */
+class RaceGame extends Game<{ turn: number }> {
+  readonly events = { pass: z.object({}), win: z.object({}) };
+
+  onStart() {
+    return { turn: 0 };
+  }
+
+  onPass(ctx: EventContext<{ turn: number }>) {
+    return { turn: (ctx.state.turn + 1) % ctx.players.length };
+  }
+
+  onWin(ctx: EventContext<{ turn: number }>) {
+    ctx.finish(ctx.players.map((seat) => (seat.id === ctx.player.id ? 1 : 2)));
+    return ctx.state;
+  }
+
+  bot({ state, player }: BotContext<{ turn: number }>) {
+    return state.turn === player.seat ? { event: 'win' } : null;
+  }
+}
+
 const matchStart = {
   matchId: 'match-1',
   roomCode: 'ABCD',
@@ -104,7 +146,7 @@ describe('GameHostService', () => {
 
   it('loads game ids and starts the Game only after every player is ready', () => {
     const start = vi.fn(() => ({ started: true }));
-    const host = new GameHostService([{ manifest, game: new FakeGame(start) }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame(start) }]);
     const updates: string[] = [];
     host.onState((match) => updates.push(match.status));
 
@@ -125,7 +167,7 @@ describe('GameHostService', () => {
 
   it('starts after 30 seconds and identifies players who did not load', () => {
     vi.useFakeTimers();
-    const host = new GameHostService([{ manifest, game: new FakeGame() }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame() }]);
     const updates: { status: string; disconnectedPlayerIds: string[] }[] = [];
     host.onState((match) => updates.push(match));
 
@@ -144,11 +186,20 @@ describe('GameHostService', () => {
     });
   });
 
+  it('refuses a Hub whose Game bundle was built from other Game server code', () => {
+    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame() }]);
+
+    expect(() => host.checkVersion('fake-game', 'v1')).not.toThrow();
+    expect(() => host.checkVersion('fake-game', 'v0')).toThrow(GAME_UPDATING);
+    expect(() => host.checkVersion('fake-game', undefined)).toThrow(GAME_UPDATING);
+  });
+
   it('marks a Match aborted when a Game fails during startup', () => {
     const updates: { status: string; outcome?: string }[] = [];
     const host = new GameHostService([
       {
         manifest,
+        version: 'v1',
         game: new FakeGame(() => {
           throw new Error('broken game');
         }),
@@ -170,7 +221,7 @@ describe('GameHostService', () => {
       ctx.finish([1, 2]);
       return { started: true };
     });
-    const host = new GameHostService([{ manifest, game }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game }]);
     host.onState((match) => updates.push(match));
 
     host.startMatch(matchStart);
@@ -191,7 +242,7 @@ describe('GameHostService', () => {
 
   it('settles a Match when a move finishes the Game', () => {
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, game: new FakeGame() }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame() }]);
     host.onState((match) => updates.push(match));
 
     host.startMatch(matchStart);
@@ -219,7 +270,7 @@ describe('GameHostService', () => {
       ],
     };
     const start = vi.fn(() => ({ started: true }));
-    const host = new GameHostService([{ manifest, game: new FakeGame(start) }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame(start) }]);
 
     host.startMatch({ ...matchStart, lastResult });
     host.ready('match-1', 'lan');
@@ -231,7 +282,7 @@ describe('GameHostService', () => {
   it('fires a Game timer and settles the Match', () => {
     vi.useFakeTimers();
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, game: new TimerGame() }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new TimerGame() }]);
     host.onState((match) => updates.push(match));
 
     host.startMatch(matchStart);
@@ -251,7 +302,7 @@ describe('GameHostService', () => {
   });
 
   it('runs a bot move when it is the bot seat’s turn', async () => {
-    const host = new GameHostService([{ manifest, game: new BotGame() }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new BotGame() }]);
     const start = {
       ...matchStart,
       players: matchStart.players.map((player) =>
@@ -268,7 +319,7 @@ describe('GameHostService', () => {
 
   it('aborts a Match when a player leaves and the Game has no leave hook', () => {
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, game: new FakeGame() }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame() }]);
     host.onState((match) => updates.push(match));
     host.startMatch(matchStart);
     host.ready('match-1', 'lan');
@@ -283,7 +334,7 @@ describe('GameHostService', () => {
   it('stops a Match once, ending its timers and bot turns', () => {
     vi.useFakeTimers();
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, game: new TimerGame() }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new TimerGame() }]);
     host.onState((match) => updates.push(match));
     host.startMatch(matchStart);
     host.ready('match-1', 'lan');
@@ -300,7 +351,7 @@ describe('GameHostService', () => {
 
   it('lets a Game handle a player leaving', () => {
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, game: new LeavingGame() }]);
+    const host = new GameHostService([{ manifest, version: 'v1', game: new LeavingGame() }]);
     host.onState((match) => updates.push(match));
     host.startMatch(matchStart);
     host.ready('match-1', 'lan');
@@ -309,5 +360,159 @@ describe('GameHostService', () => {
     host.leave('match-1', 'lan');
 
     expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled' });
+  });
+
+  describe('limits', () => {
+    function playing(game: Game<never> | Game<{ n: number }>, start = matchStart) {
+      const host = new GameHostService([{ manifest, version: 'v1', game }]);
+      const updates: { status: string; outcome?: string }[] = [];
+      host.onState((match) => updates.push(match));
+      host.startMatch(start);
+      for (const player of start.players) if (!player.bot) host.ready('match-1', player.id);
+      return { host, updates };
+    }
+
+    it('aborts a Match whose hook runs longer than 250 ms', () => {
+      vi.useFakeTimers();
+      const { host, updates } = playing(new SlowGame());
+
+      host.move('match-1', 'lan', { event: 'slow', payload: { ms: 200 } });
+      expect(host.match('match-1')).toMatchObject({ status: 'playing' });
+      host.move('match-1', 'lan', { event: 'slow', payload: { ms: 251 } });
+
+      expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    });
+
+    it('aborts a Match whose view is over 64 KB', () => {
+      const { host, updates } = playing(new SlowGame());
+
+      host.move('match-1', 'lan', { event: 'big' });
+
+      expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    });
+
+    it('refuses a seat’s 11th move within one second of a Turn-based Match', () => {
+      vi.useFakeTimers();
+      const { host } = playing(new SlowGame());
+      const slow = { event: 'slow', payload: { ms: 0 } };
+
+      for (let i = 0; i < 10; i++) host.move('match-1', 'lan', slow);
+      expect(() => host.move('match-1', 'lan', slow)).toThrow('Gửi nhanh quá');
+      host.move('match-1', 'minh', slow);
+      vi.advanceTimersByTime(1000);
+      host.move('match-1', 'lan', slow);
+
+      expect(host.view('match-1', 'lan')).toEqual({ n: 12 });
+    });
+
+    it('aborts a Match after 2 hours even while people play', () => {
+      vi.useFakeTimers();
+      const { host, updates } = playing(new SlowGame());
+
+      for (let minute = 4; minute < 120; minute += 4) {
+        vi.advanceTimersByTime(4 * 60 * 1000);
+        host.move('match-1', 'lan', { event: 'slow', payload: { ms: 0 } });
+      }
+      expect(host.match('match-1')).toMatchObject({ status: 'playing' });
+      vi.advanceTimersByTime(4 * 60 * 1000);
+
+      expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    });
+
+    it('aborts a Match when no person sends anything for 5 minutes', () => {
+      vi.useFakeTimers();
+      const { host, updates } = playing(new SlowGame());
+
+      vi.advanceTimersByTime(MATCH_LIMITS.idleMs - 1000);
+      host.move('match-1', 'minh', { event: 'slow', payload: { ms: 0 } });
+      vi.advanceTimersByTime(MATCH_LIMITS.idleMs - 1000);
+      expect(host.match('match-1')).toMatchObject({ status: 'playing' });
+      vi.advanceTimersByTime(1000);
+
+      expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    });
+  });
+
+  describe('seat hold', () => {
+    function playing(game: Game<{ turn: number }> | Game<{ started: boolean }>) {
+      const host = new GameHostService([{ manifest, version: 'v1', game }]);
+      const updates: MatchState[] = [];
+      host.onState((match) => updates.push(match));
+      host.startMatch(matchStart);
+      host.ready('match-1', 'lan');
+      host.ready('match-1', 'minh');
+      return { host, updates };
+    }
+
+    it('keeps the seat of a player who comes back within 60 seconds', () => {
+      vi.useFakeTimers();
+      const { host, updates } = playing(new RaceGame());
+
+      host.disconnect('match-1', 'lan');
+      expect(updates.at(-1)).toMatchObject({ disconnectedPlayerIds: ['lan'] });
+      vi.advanceTimersByTime(MATCH_LIMITS.seatHoldMs - 1);
+      host.reconnect('match-1', 'lan');
+      expect(updates.at(-1)).toMatchObject({ disconnectedPlayerIds: [] });
+      vi.advanceTimersByTime(MATCH_LIMITS.seatHoldMs);
+      host.move('match-1', 'lan', { event: 'win' });
+
+      expect(updates.at(-1)).toMatchObject({
+        outcome: 'settled',
+        result: {
+          seats: [
+            { player: 'lan', place: 1 },
+            { player: 'minh', place: 2 },
+          ],
+        },
+      });
+    });
+
+    it('lets the computer play a seat gone for 60 seconds and ranks that player last', () => {
+      vi.useFakeTimers();
+      const { host, updates } = playing(new RaceGame());
+
+      host.disconnect('match-1', 'lan');
+      vi.advanceTimersByTime(MATCH_LIMITS.seatHoldMs);
+      vi.runOnlyPendingTimers();
+
+      expect(updates.at(-1)).toMatchObject({
+        outcome: 'settled',
+        result: {
+          seats: [
+            { player: 'lan', place: 2 },
+            { player: 'minh', place: 1 },
+          ],
+        },
+      });
+    });
+
+    it('calls the Game’s leave hook for a seat gone 60 seconds when it has no computer', () => {
+      vi.useFakeTimers();
+      const { host, updates } = playing(new LeavingGame());
+
+      host.disconnect('match-1', 'minh');
+      vi.advanceTimersByTime(MATCH_LIMITS.seatHoldMs);
+
+      expect(updates.at(-1)).toMatchObject({
+        outcome: 'settled',
+        result: {
+          seats: [
+            { player: 'lan', place: 1 },
+            { player: 'minh', place: 2 },
+          ],
+        },
+      });
+    });
+
+    it('aborts the Match once no person is left playing', () => {
+      vi.useFakeTimers();
+      const { host, updates } = playing(new RaceGame());
+
+      host.disconnect('match-1', 'lan');
+      host.disconnect('match-1', 'minh');
+      vi.advanceTimersByTime(MATCH_LIMITS.seatHoldMs);
+
+      expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    });
   });
 });

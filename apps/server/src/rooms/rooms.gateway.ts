@@ -4,6 +4,7 @@ import { COIN, type JoinedRoom, type ServerToClientEvents, type User } from '@xo
 import { AccountError, AccountsService } from '../accounts/accounts.service.js';
 import { DEV_MODE } from '../dev/dev-mode.js';
 import { FriendsError, FriendsService, type Presence } from '../friends/friends.service.js';
+import { DisabledGamesService } from '../game-host/disabled-games.service.js';
 import { GameHostError, GameHostService } from '../game-host/game-host.service.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MatchesService } from '../matches/matches.service.js';
@@ -70,6 +71,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly rooms: RoomsService,
     private readonly gameHost: GameHostService,
+    private readonly disabledGames: DisabledGamesService,
     private readonly accounts: AccountsService,
     private readonly matches: MatchesService,
     private readonly ledger: LedgerService,
@@ -159,6 +161,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     if (stillHere) return;
     const room = this.rooms.setConnected(roomCode, user.id, false);
     if (room) this.broadcast(room);
+    if (room?.matchId) this.gameHost.disconnect(room.matchId, user.id);
   }
 
   @On('session:resume')
@@ -298,10 +301,13 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   }
 
   @On('room:create')
-  create(socket: Client, req: { gameId?: unknown; options?: unknown }) {
-    return this.handle(() => {
+  create(socket: Client, req: { gameId?: unknown; version?: unknown; options?: unknown }) {
+    return this.handle(async () => {
+      const gameId = String(req?.gameId ?? '');
+      if (await this.disabledGames.isDisabled(gameId)) throw new RoomError('Game đang tạm đóng');
+      this.gameHost.checkVersion(gameId, req?.version);
       this.leaveCurrentRoom(socket);
-      const room = this.rooms.create(String(req?.gameId ?? ''), socket.data.user, req?.options);
+      const room = this.rooms.create(gameId, socket.data.user, req?.options);
       return this.enter(socket, room);
     });
   }
@@ -360,9 +366,10 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   }
 
   @On('match:start')
-  start(socket: Client) {
+  start(socket: Client, req: { version?: unknown }) {
     return this.handle(() => {
       const code = this.requireRoom(socket);
+      this.gameHost.checkVersion(this.rooms.stateOf(code).gameId, req?.version);
       const start = this.rooms.start(code, socket.data.user.id);
       this.gameHost.startMatch(start);
       this.broadcastCode(code);
@@ -423,6 +430,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     const userId = socket.data.user.id;
     socket.data.roomCode = room.code;
     this.rooms.setConnected(room.code, userId, true);
+    if (room.matchId) this.gameHost.reconnect(room.matchId, userId);
     this.broadcast(room);
     this.replayMatchState(socket, room.matchId);
     this.friendsMoved(userId);
