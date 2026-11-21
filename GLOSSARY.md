@@ -16,6 +16,10 @@ _Avoid_: Island, plugin, module, mini-game
 The contract between the Hub and an embedded Game: what each side may tell or ask the other.
 _Avoid_: SDK (for the embedding side), API
 
+**Harness**:
+A local stand-in for the Hub that runs one Game against a real server, so the Game can be developed and tested without the Hub.
+_Avoid_: Sandbox, mock hub, simulator
+
 ## State
 
 **Player data**:
