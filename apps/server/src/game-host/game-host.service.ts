@@ -12,7 +12,14 @@ import {
   turnRules,
 } from '@xomdao/sdk';
 import { GAME_UPDATING, type MatchTimer, type RoomOptions } from '@xomdao/shared';
-import type { HostedGame, MatchStart, MatchState, MatchStatus } from './game-host.types.js';
+import { ResultsService } from '../results/results.service.js';
+import type {
+  HostedGame,
+  MatchResultNotice,
+  MatchStart,
+  MatchState,
+  MatchStatus,
+} from './game-host.types.js';
 import { GAME_SERVERS } from './games.js';
 
 export const LOADING_TIMEOUT_MS = 30_000;
@@ -30,6 +37,7 @@ export const MATCH_LIMITS = {
 
 interface ActiveMatch {
   start: MatchStart;
+  startedAt: number;
   status: MatchStatus;
   readyPlayerIds: Set<string>;
   disconnectedPlayerIds: string[];
@@ -87,8 +95,12 @@ export class GameHostService implements OnModuleDestroy {
   private readonly servers: readonly HostedGame[];
   private readonly matches = new Map<string, ActiveMatch>();
   private readonly listeners = new Set<(match: MatchState) => void>();
+  private readonly resultListeners = new Set<(notice: MatchResultNotice) => void>();
 
-  constructor(@Inject(GAME_SERVERS) gameServers: readonly HostedGame[]) {
+  constructor(
+    @Inject(GAME_SERVERS) gameServers: readonly HostedGame[],
+    private readonly results: ResultsService,
+  ) {
     this.servers = gameServers;
     const ids = new Set<string>();
     for (const server of gameServers) {
@@ -120,6 +132,12 @@ export class GameHostService implements OnModuleDestroy {
     return () => this.listeners.delete(listener);
   }
 
+  /** A listener receives each settled Match's result once `ResultsService` has recorded it. */
+  onResult(listener: (notice: MatchResultNotice) => void) {
+    this.resultListeners.add(listener);
+    return () => this.resultListeners.delete(listener);
+  }
+
   /** Starts a Match in `loading`; all human seats must be ready before the Game starts. */
   startMatch(start: MatchStart): MatchState {
     const server = this.server(start.gameId);
@@ -128,6 +146,7 @@ export class GameHostService implements OnModuleDestroy {
 
     const match: ActiveMatch = {
       start,
+      startedAt: Date.now(),
       status: 'loading',
       readyPlayerIds: new Set(start.players.filter((player) => player.bot).map((p) => p.id)),
       disconnectedPlayerIds: [],
@@ -366,6 +385,41 @@ export class GameHostService implements OnModuleDestroy {
     match.status = 'over';
     const ranked = result && rankForfeitsLast(result, match.forfeited);
     this.publish({ ...match, outcome, ...(ranked && { result: ranked }) });
+    if (ranked) this.settle(match, ranked);
+  }
+
+  /** Hands the result to `ResultsService`; the Room hears of it only once it is recorded. */
+  private settle(match: ActiveMatch, result: MatchResult) {
+    const { matchId, roomCode, gameId, players } = match.start;
+    this.results
+      .settle({
+        gameId,
+        matchId,
+        startedAt: match.startedAt,
+        endedAt: Date.now(),
+        seats: players.map(({ id, name, avatar, bot }) => ({
+          id,
+          name,
+          ...(avatar && { avatar }),
+          bot,
+          left: match.forfeited.has(id),
+        })),
+        result,
+      })
+      .then(
+        (recorded) => {
+          if (!recorded) return;
+          const notice = { roomCode, matchId, gameId, seats: result.seats };
+          for (const listener of this.resultListeners) {
+            try {
+              listener(notice);
+            } catch (error) {
+              console.error('GameHostModule result listener failed', error);
+            }
+          }
+        },
+        (error: unknown) => console.error(`Settling Match ${matchId} of ${gameId} failed:`, error),
+      );
   }
 
   private updatePlaying(match: ActiveMatch) {

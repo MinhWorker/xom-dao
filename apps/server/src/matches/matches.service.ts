@@ -1,34 +1,46 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { HISTORY_LIMIT, type MatchRecord } from '@xomdao/shared';
-import type { FinishedGame } from './finished-game.js';
+import type { DbTx } from '../db/db.module.js';
+import { type FinishedGame, placeOf, won } from './finished-game.js';
 import type { MatchesStore } from './matches.store.js';
 
 export const MATCHES_STORE = Symbol('MATCHES_STORE');
 
 /**
- * Match history: keeps every finished game that had an account at the table, and gives a
- * player their most recent ones. `record` has no caller until Match results are settled.
+ * Match history: keeps every settled Match that had an account at the table, and gives a
+ * player their most recent ones.
  */
 @Injectable()
 export class MatchesService {
   constructor(@Inject(MATCHES_STORE) private readonly store: MatchesStore) {}
 
-  async record({ gameId, startedAt, endedAt, seats, result }: FinishedGame) {
-    if (seats.every((s) => s.bot)) return;
-    await this.store.add({
-      gameId,
-      startedAt,
-      endedAt,
-      players: seats.map((s) => ({
-        userId: s.bot ? null : s.id,
-        name: s.name,
-        ...(s.avatar && { avatar: s.avatar }),
-        ...(s.frame && { frame: s.frame }),
-        bot: s.bot,
-        won: result.winners.includes(s.id),
-        left: s.left,
-      })),
-    });
+  /** Keeps the Match once; `false` when its id is already kept or no account sat at it. */
+  async record(game: FinishedGame, tx?: DbTx) {
+    const { matchId, gameId, startedAt, endedAt, seats } = game;
+    if (seats.every((s) => s.bot)) return false;
+    return this.store.add(
+      {
+        id: matchId,
+        gameId,
+        startedAt,
+        endedAt,
+        players: seats.map((s) => {
+          const seat = placeOf(game, s.id);
+          return {
+            userId: s.bot ? null : s.id,
+            name: s.name,
+            ...(s.avatar && { avatar: s.avatar }),
+            ...(s.frame && { frame: s.frame }),
+            bot: s.bot,
+            won: won(game, s.id),
+            left: s.left,
+            ...(seat && { place: seat.place }),
+            ...(seat?.score !== undefined && { score: seat.score }),
+          };
+        }),
+      },
+      tx,
+    );
   }
 
   /** The accounts the player sat with in their recent games, most recent first, once each. */

@@ -54,6 +54,11 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   gateway). After that, or on `room:leave`, they have left: placed last, the computer plays
   their seat if the Game has `bot`, otherwise the Game's leave hook runs, otherwise the Match is
   aborted. With no person left it is aborted.
+- A settled Match goes to `ResultsService.settle` (`GameHostService` is its only caller). It
+  writes `matches` and `stats` in one transaction that starts by inserting the `matches` row
+  keyed by `matchId`: a second settle of the same Match writes nothing. Once it is recorded the
+  Room gets `match:result` (places, scores); a failed settle is logged and sends none. The
+  ledger is not paid yet.
 - `disabled_games` (`DisabledGamesService`, cached `DISABLED_GAMES_CACHE_MS`) hides a Game from
   `/api/games` and refuses `room:create`; Matches already playing finish. Switch it with the
   CLI against the DB in `DATABASE_URL` (never with a Render env var: that restarts the server).
@@ -85,14 +90,14 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   (`insufficient`). No other module touches these tables.
 - `LedgerService.rewardMatch` pays accounts (never bots) once per game (key
   `match:<matchId>:<user>:<resource>`) within the game's `meta.rewardCap`. Nothing calls it
-  until Match results are settled. `session:resume` returns `balances`.
+  until `ResultsService.settle` pays rewards. `session:resume` returns `balances`.
 - `dev:coins { amount }` (dev mode only) adds coins, for tests and the sandbox.
 - Event points (`EVENT_POINTS`) are skipped: no module keeps them for now.
 
 ## Stats
 
-- `StatsService.recordMatch` (no caller until Match results are settled) counts once per match and person
-  (`stat_matches`): `played`, `won`, the game's `result.stats` (`ctx.stat`) into `player_stats`
+- `StatsService.recordMatch` (from `ResultsService.settle`) counts once per match and person
+  (`stat_matches`): `played`, `won` (first place, not a draw), the game's `result.stats` (`ctx.stat`) into `player_stats`
   by game, and `XP_PER_GAME` into game `core`, stat `xp`.
 - `stats:get { userId? }` returns `PlayerStats` (level from `levelOf(xp)`, totals, ranks).
   `ranking:get { board }` returns the top `RANKING_LIMIT`: `core` by `xp`, a game's id by `won`;
@@ -100,8 +105,8 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 
 ## Match history
 
-- `MatchesService.record` keeps a `FinishedGame`; nothing calls it until Match results are
-  settled.
+- `MatchesService.record` (from `ResultsService.settle`) keeps a `FinishedGame` under its
+  `matchId` (the `matches` id), with each seat's `place` and `score`.
 - A game is kept only when an account sat at it. Players are stored as they were when it began
   (name, avatar, frame); bots have no `user_id`.
 - `history:recent` returns the caller's last `HISTORY_LIMIT` (20) games, newest first, each with
@@ -138,6 +143,12 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - Client and server deploy separately and compare `PROTOCOL_VERSION` on
   login (`ws.gateway.ts` refuses another version with `protocol-mismatch`); the client then shows
   "Đã có bản mới" with Tải lại. Bump it when old clients or servers would break.
+- Stores take an optional `DbTx` so `ResultsService` can run several modules' writes in one
+  transaction.
+- Tests that need Postgres use `freshDb()` (`src/testing/pg.ts`) and skip without
+  `TEST_DATABASE_URL`, a server they may create databases on (CI runs one). Locally:
+  `podman run -d --rm -e POSTGRES_PASSWORD=test -p 55432:5432 postgres:17-alpine`, then
+  `TEST_DATABASE_URL=postgres://postgres:test@localhost:55432/postgres npm run test`.
 - **DB**: edit `src/db/schema.ts`, then run `npm run db:generate -w @xomdao/server`. Migrations apply
   on server start.
 - A migration must work with the previous server build: add first, remove later.

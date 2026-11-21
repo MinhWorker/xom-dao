@@ -11,7 +11,8 @@ import {
   XP_PER_GAME,
 } from '@xomdao/shared';
 import { AccountsService } from '../accounts/accounts.service.js';
-import type { FinishedGame } from '../matches/finished-game.js';
+import type { DbTx } from '../db/db.module.js';
+import { type FinishedGame, won } from '../matches/finished-game.js';
 import type { StatCount, StatRow, StatsStore } from './stats.store.js';
 
 export const STATS_STORE = Symbol('STATS_STORE');
@@ -25,9 +26,9 @@ const boardStat = (board: string) =>
 /**
  * Thống kê, xếp hạng. It owns `player_stats` and `stat_matches`.
  *
- * Every finished game (`recordMatch`; no caller until Match results are settled) counts, once per
- * game and for people only: `played`, `won` for its winners, the game's own `ctx.stat` counts,
- * and `XP_PER_GAME` experience.
+ * Every settled Match (`recordMatch`, from `ResultsService.settle`) counts, once per Match and for
+ * people only: `played`, `won` for first place (not a draw), the game's own `ctx.stat` counts, and
+ * `XP_PER_GAME` experience.
  *
  * Rankings read the counts: `core` by experience, a game's board by its wins.
  */
@@ -39,18 +40,19 @@ export class StatsService {
   ) {}
 
   /** Counts a finished game for the people at the table. */
-  async recordMatch({ gameId, matchId, seats, result }: FinishedGame): Promise<void> {
+  async recordMatch(game: FinishedGame, tx?: DbTx): Promise<void> {
+    const { gameId, matchId, seats, result } = game;
     for (const seat of seats) {
       if (seat.bot) continue;
       const counts: StatCount[] = [
         { gameId, name: 'played', amount: 1 },
         { gameId: CORE_BOARD, name: 'xp', amount: XP_PER_GAME },
       ];
-      if (result.winners.includes(seat.id)) counts.push({ gameId, name: 'won', amount: 1 });
+      if (won(game, seat.id)) counts.push({ gameId, name: 'won', amount: 1 });
       for (const stat of result.stats ?? []) {
         if (stat.player === seat.id) counts.push({ gameId, name: stat.name, amount: stat.amount });
       }
-      await this.store.addMatch(seat.id, matchId, counts);
+      await this.store.addMatch(seat.id, matchId, counts, tx);
     }
   }
 

@@ -1,6 +1,8 @@
 import type { AnyGameServer, MatchResult, RoomSeat } from '@xomdao/sdk';
 import type { MatchTimer, RoomOptions } from '@xomdao/shared';
 
+export type { MatchResultNotice } from '@xomdao/shared';
+
 export interface MatchStart {
   matchId: string;
   roomCode: string;

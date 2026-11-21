@@ -1,19 +1,18 @@
 import { Logger } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { FinishedGame } from '../matches/finished-game.js';
-import { LedgerService } from './ledger.service.js';
+import { LedgerService, type RewardedGame } from './ledger.service.js';
 import { MemoryLedgerStore } from './ledger.store.js';
 
 const seat = (id: string, bot = false) => ({ id, name: id, bot, left: false });
 
 /** A finished Caro game (rewardCap 20 coins) won by `lan`, paying `rewards`. */
-const caroGame = (matchId: string, rewards: FinishedGame['result']['rewards']): FinishedGame => ({
+const caroGame = (matchId: string, rewards: RewardedGame['result']['rewards']): RewardedGame => ({
   gameId: 'tic-tac-toe',
   matchId,
   startedAt: 0,
   endedAt: 1,
   seats: [seat('lan'), seat('minh')],
-  result: { winners: ['lan'], rewards },
+  result: { rewards },
 });
 
 const coins = (player: string, amount: number) => ({ player, resource: 'core:coin', amount });
@@ -62,7 +61,7 @@ describe('LedgerService', () => {
 
   it('leaves event points to the Events module', async () => {
     const { store, ledger } = setup();
-    const game: FinishedGame = {
+    const game: RewardedGame = {
       ...caroGame('m1', [{ player: 'lan', resource: 'event:point', amount: 7 }]),
       gameId: 'trung-thu',
       seats: [seat('lan')],

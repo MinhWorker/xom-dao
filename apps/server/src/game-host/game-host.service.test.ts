@@ -10,8 +10,28 @@ import {
 import { GAME_UPDATING } from '@xomdao/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { AccountsService } from '../accounts/accounts.service.js';
+import { MemoryAccountsStore } from '../accounts/accounts.store.js';
+import { MatchesService } from '../matches/matches.service.js';
+import { MemoryMatchesStore } from '../matches/matches.store.js';
+import { ResultsService } from '../results/results.service.js';
+import { StatsService } from '../stats/stats.service.js';
+import { MemoryStatsStore } from '../stats/stats.store.js';
 import { GameHostService, LOADING_TIMEOUT_MS, MATCH_LIMITS } from './game-host.service.js';
-import type { MatchState } from './game-host.types.js';
+import type { HostedGame, MatchResultNotice, MatchState } from './game-host.types.js';
+
+/** Results kept in memory, read back through `matches`. */
+function memoryResults() {
+  const matches = new MatchesService(new MemoryMatchesStore());
+  const stats = new StatsService(
+    new MemoryStatsStore(),
+    new AccountsService(new MemoryAccountsStore()),
+  );
+  return { matches, results: new ResultsService(null, matches, stats) };
+}
+
+const hostOf = (servers: HostedGame[], results = memoryResults().results) =>
+  new GameHostService(servers, results);
 
 const manifest = defineManifest({
   id: 'fake-game',
@@ -146,7 +166,7 @@ describe('GameHostService', () => {
 
   it('loads game ids and starts the Game only after every player is ready', () => {
     const start = vi.fn(() => ({ started: true }));
-    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame(start) }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new FakeGame(start) }]);
     const updates: string[] = [];
     host.onState((match) => updates.push(match.status));
 
@@ -167,7 +187,7 @@ describe('GameHostService', () => {
 
   it('starts after 30 seconds and identifies players who did not load', () => {
     vi.useFakeTimers();
-    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame() }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new FakeGame() }]);
     const updates: { status: string; disconnectedPlayerIds: string[] }[] = [];
     host.onState((match) => updates.push(match));
 
@@ -187,7 +207,7 @@ describe('GameHostService', () => {
   });
 
   it('refuses a Hub whose Game bundle was built from other Game server code', () => {
-    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame() }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new FakeGame() }]);
 
     expect(() => host.checkVersion('fake-game', 'v1')).not.toThrow();
     expect(() => host.checkVersion('fake-game', 'v0')).toThrow(GAME_UPDATING);
@@ -196,7 +216,7 @@ describe('GameHostService', () => {
 
   it('marks a Match aborted when a Game fails during startup', () => {
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([
+    const host = hostOf([
       {
         manifest,
         version: 'v1',
@@ -221,7 +241,7 @@ describe('GameHostService', () => {
       ctx.finish([1, 2]);
       return { started: true };
     });
-    const host = new GameHostService([{ manifest, version: 'v1', game }]);
+    const host = hostOf([{ manifest, version: 'v1', game }]);
     host.onState((match) => updates.push(match));
 
     host.startMatch(matchStart);
@@ -242,7 +262,7 @@ describe('GameHostService', () => {
 
   it('settles a Match when a move finishes the Game', () => {
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame() }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new FakeGame() }]);
     host.onState((match) => updates.push(match));
 
     host.startMatch(matchStart);
@@ -270,7 +290,7 @@ describe('GameHostService', () => {
       ],
     };
     const start = vi.fn(() => ({ started: true }));
-    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame(start) }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new FakeGame(start) }]);
 
     host.startMatch({ ...matchStart, lastResult });
     host.ready('match-1', 'lan');
@@ -282,7 +302,7 @@ describe('GameHostService', () => {
   it('fires a Game timer and settles the Match', () => {
     vi.useFakeTimers();
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, version: 'v1', game: new TimerGame() }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new TimerGame() }]);
     host.onState((match) => updates.push(match));
 
     host.startMatch(matchStart);
@@ -302,7 +322,7 @@ describe('GameHostService', () => {
   });
 
   it('runs a bot move when it is the bot seat’s turn', async () => {
-    const host = new GameHostService([{ manifest, version: 'v1', game: new BotGame() }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new BotGame() }]);
     const start = {
       ...matchStart,
       players: matchStart.players.map((player) =>
@@ -319,7 +339,7 @@ describe('GameHostService', () => {
 
   it('aborts a Match when a player leaves and the Game has no leave hook', () => {
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, version: 'v1', game: new FakeGame() }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new FakeGame() }]);
     host.onState((match) => updates.push(match));
     host.startMatch(matchStart);
     host.ready('match-1', 'lan');
@@ -334,7 +354,7 @@ describe('GameHostService', () => {
   it('stops a Match once, ending its timers and bot turns', () => {
     vi.useFakeTimers();
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, version: 'v1', game: new TimerGame() }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new TimerGame() }]);
     host.onState((match) => updates.push(match));
     host.startMatch(matchStart);
     host.ready('match-1', 'lan');
@@ -351,7 +371,7 @@ describe('GameHostService', () => {
 
   it('lets a Game handle a player leaving', () => {
     const updates: { status: string; outcome?: string }[] = [];
-    const host = new GameHostService([{ manifest, version: 'v1', game: new LeavingGame() }]);
+    const host = hostOf([{ manifest, version: 'v1', game: new LeavingGame() }]);
     host.onState((match) => updates.push(match));
     host.startMatch(matchStart);
     host.ready('match-1', 'lan');
@@ -364,7 +384,7 @@ describe('GameHostService', () => {
 
   describe('limits', () => {
     function playing(game: Game<never> | Game<{ n: number }>, start = matchStart) {
-      const host = new GameHostService([{ manifest, version: 'v1', game }]);
+      const host = hostOf([{ manifest, version: 'v1', game }]);
       const updates: { status: string; outcome?: string }[] = [];
       host.onState((match) => updates.push(match));
       host.startMatch(start);
@@ -435,7 +455,7 @@ describe('GameHostService', () => {
 
   describe('seat hold', () => {
     function playing(game: Game<{ turn: number }> | Game<{ started: boolean }>) {
-      const host = new GameHostService([{ manifest, version: 'v1', game }]);
+      const host = hostOf([{ manifest, version: 'v1', game }]);
       const updates: MatchState[] = [];
       host.onState((match) => updates.push(match));
       host.startMatch(matchStart);
@@ -506,7 +526,7 @@ describe('GameHostService', () => {
 
     it('holds the seat of a player who dropped while the Match was loading', () => {
       vi.useFakeTimers();
-      const host = new GameHostService([{ manifest, version: 'v1', game: new RaceGame() }]);
+      const host = hostOf([{ manifest, version: 'v1', game: new RaceGame() }]);
       const updates: MatchState[] = [];
       host.onState((match) => updates.push(match));
       host.startMatch(matchStart);
@@ -541,6 +561,61 @@ describe('GameHostService', () => {
       vi.advanceTimersByTime(MATCH_LIMITS.seatHoldMs);
 
       expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    });
+  });
+
+  describe('settling', () => {
+    it('settles the Match result with who left, then tells the Room', async () => {
+      vi.useFakeTimers();
+      const { matches, results } = memoryResults();
+      const host = hostOf([{ manifest, version: 'v1', game: new RaceGame() }], results);
+      const notices: MatchResultNotice[] = [];
+      host.onResult((notice) => notices.push(notice));
+      host.startMatch(matchStart);
+      host.ready('match-1', 'lan');
+      host.ready('match-1', 'minh');
+
+      host.leave('match-1', 'lan');
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(notices).toEqual([
+        {
+          roomCode: 'ABCD',
+          matchId: 'match-1',
+          gameId: manifest.id,
+          seats: [
+            { player: 'lan', place: 2 },
+            { player: 'minh', place: 1 },
+          ],
+        },
+      ]);
+      const [record] = await matches.recent('minh');
+      expect(record).toMatchObject({ id: 'match-1', gameId: manifest.id, outcome: 'win' });
+      expect(record?.players).toMatchObject([
+        { name: 'Lan', left: true, place: 2 },
+        { name: 'Minh', left: false, place: 1 },
+      ]);
+    });
+
+    it('tells the Room nothing when the settle fails', async () => {
+      const results = { settle: vi.fn(async () => Promise.reject(new Error('db down'))) };
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const host = hostOf(
+        [{ manifest, version: 'v1', game: new FakeGame() }],
+        results as unknown as ResultsService,
+      );
+      const notices: MatchResultNotice[] = [];
+      host.onResult((notice) => notices.push(notice));
+      host.startMatch(matchStart);
+      host.ready('match-1', 'lan');
+      host.ready('match-1', 'minh');
+
+      host.move('match-1', 'lan', { event: 'finish' });
+      await vi.waitFor(() => expect(error).toHaveBeenCalled());
+
+      expect(results.settle).toHaveBeenCalledOnce();
+      expect(notices).toEqual([]);
+      error.mockRestore();
     });
   });
 });

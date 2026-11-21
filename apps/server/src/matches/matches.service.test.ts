@@ -11,13 +11,19 @@ const seat = (id: string, extra: Partial<FinishedGame['seats'][number]> = {}) =>
   ...extra,
 });
 
+/** A Match won by `winners` (a draw when empty). */
 const game = (endedAt: number, winners: string[], seats = [seat('a'), seat('b')]) => ({
   gameId: 'tic-tac-toe',
   matchId: `match-${endedAt}`,
   startedAt: endedAt - 60_000,
   endedAt,
   seats,
-  result: { winners },
+  result: {
+    seats: seats.map(({ id }) => ({
+      player: id,
+      place: !winners.length || winners.includes(id) ? 1 : 2,
+    })),
+  },
 });
 
 describe('MatchesService', () => {
@@ -29,8 +35,8 @@ describe('MatchesService', () => {
     expect(forA.map((m) => m.outcome)).toEqual(['draw', 'win']);
     expect((await matches.recent('b')).map((m) => m.outcome)).toEqual(['draw', 'loss']);
     expect(forA[1]?.players).toEqual([
-      { name: 'A', bot: false, won: true, left: false, me: true },
-      { name: 'B', bot: false, won: false, left: false, me: false },
+      { name: 'A', bot: false, won: true, left: false, place: 1, me: true },
+      { name: 'B', bot: false, won: false, left: false, place: 2, me: false },
     ]);
   });
 

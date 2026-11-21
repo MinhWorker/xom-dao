@@ -65,6 +65,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   private readonly connected = new Set<Client>();
   private pruner?: NodeJS.Timeout;
   private stopWatchingMatches?: () => void;
+  private stopWatchingResults?: () => void;
   /** Matches whose players who missed the loading limit were already marked offline. */
   private readonly loadMissesMarked = new Set<string>();
 
@@ -114,11 +115,17 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
         if (room) this.broadcast(room);
       }
     });
+    this.stopWatchingResults = this.gameHost.onResult((notice) => {
+      for (const socket of this.clients()) {
+        if (socket.data.roomCode === notice.roomCode) socket.emit('match:result', notice);
+      }
+    });
   }
 
   onModuleDestroy() {
     clearInterval(this.pruner);
     this.stopWatchingMatches?.();
+    this.stopWatchingResults?.();
   }
 
   /** A WebSocket client that just logged in. */
