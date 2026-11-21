@@ -1,4 +1,4 @@
-import { testGame } from '@xomdao/sdk';
+import { testGame } from '@xomdao/sdk/legacy';
 import { describe, expect, it } from 'vitest';
 import plugin from '../index.js';
 import { combosOf } from './bot.js';

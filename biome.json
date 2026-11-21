@@ -43,6 +43,7 @@
                     "group": [
                       "**",
                       "!@xomdao/sdk",
+                      "!@xomdao/sdk/legacy",
                       "!zod",
                       "!vitest",
                       "!./**",

@@ -40,7 +40,7 @@ import {
   STAT_NAME,
   type Stat,
 } from './game.js';
-import { type Rng, seededRng } from './rng.js';
+import { type Rng, seededRng } from '../rng.js';
 
 /** Someone at the table. `seat` is their place (0, 1, …) and never changes during a game. */
 export interface Seat {

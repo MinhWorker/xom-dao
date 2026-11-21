@@ -3,7 +3,7 @@
  *
  * Server entry: the game's meta, its logic (a `Game`) and its room options (computer players).
  */
-import { definePlugin } from '@xomdao/sdk';
+import { definePlugin } from '@xomdao/sdk/legacy';
 import { optionsSchema, WIN_COINS } from './game/model.js';
 import { TienLenGame } from './game/TienLenGame.js';
 

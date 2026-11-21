@@ -1,7 +1,7 @@
 import { ConsoleError, consoleArgs, parseConsoleLine } from './console/parser.js';
 import { Game, type GameEvent, gameRules, type Stored } from './engine.js';
 import type { GamePlugin, GameResult, PlayerId, RoomContext } from './game.js';
-import { seededRng } from './rng.js';
+import { seededRng } from '../rng.js';
 
 /**
  * Plays a `Game` the way the server does, one event at a time, so a test reads like a script:

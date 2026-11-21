@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { Game, gameRules, validateConsoleDefinitions } from '@xomdao/sdk';
+import { Game, gameRules, validateConsoleDefinitions } from '@xomdao/sdk/legacy';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { EVENT_GENRE, type Genre, genreProblems, genres, metaProblems } from './catalog.js';

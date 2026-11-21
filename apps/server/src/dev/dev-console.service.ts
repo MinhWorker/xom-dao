@@ -13,7 +13,7 @@ import {
   resolveValue,
   type Stored,
   setStatePath,
-} from '@xomdao/sdk';
+} from '@xomdao/sdk/legacy';
 import { z } from 'zod';
 import { type Room, RoomError, RoomsService } from '../rooms/rooms.service.js';
 import { DevSnapshots } from './dev-snapshots.js';
