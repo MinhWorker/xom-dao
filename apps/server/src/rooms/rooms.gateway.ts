@@ -1,16 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { ConsoleError, type ConsoleIssue } from '@xomdao/sdk/legacy';
-import {
-  COIN,
-  type JoinedRoom,
-  type RoomRole,
-  type ServerToClientEvents,
-  type User,
-} from '@xomdao/shared';
+import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import { COIN, type JoinedRoom, type ServerToClientEvents, type User } from '@xomdao/shared';
 import { AccountError, AccountsService } from '../accounts/accounts.service.js';
-import { DevConsoleService } from '../dev/dev-console.service.js';
-import { followRoomLog } from '../dev/room-log.js';
+import { DEV_MODE } from '../dev/dev-mode.js';
 import { FriendsError, FriendsService, type Presence } from '../friends/friends.service.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MatchesService } from '../matches/matches.service.js';
@@ -20,12 +12,8 @@ import { type Room, RoomError, RoomsService } from './rooms.service.js';
 export interface SocketData {
   /** Set when the client logs in (`WsGateway`); handlers only see logged-in clients. */
   user: User;
-  /** The room this socket shows. Your member id in it is `user.id`. */
+  /** The Room this socket shows. Your id in it is `user.id`. */
   roomCode?: string;
-  /** Game whose room list this socket is watching. */
-  lobby?: string;
-  /** Removed whenever this socket disconnects or leaves its room. */
-  devLogOff?: () => void;
 }
 
 /**
@@ -40,9 +28,7 @@ export interface Client {
   ): boolean;
 }
 /** A handler's reply, sent back as the request's ack. */
-export type Result =
-  | { ok: true; [key: string]: unknown }
-  | { ok: false; error: string; issue?: ConsoleIssue };
+export type Result = { ok: true; [key: string]: unknown } | { ok: false; error: string };
 
 const PRUNE_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -55,37 +41,20 @@ function On(event: string): MethodDecorator {
     HANDLERS.set(event, String(name));
   };
 }
-/**
- * The computer "thinks" this long before its move, so players can follow the game. tests
- * set BOT_DELAY_MS lower: a test doesn't need to follow along.
- */
-const BOT_DELAY_MS = Number(process.env.BOT_DELAY_MS) || 700;
-/**
- * How long a new quick-match room (CHƠI) waits for other people before the computer takes the
- * empty seats (QUICK_WAIT_MS overrides it).
- */
-const QUICK_WAIT_MS = Number(process.env.QUICK_WAIT_MS) || 6000;
 const CHAT_COOLDOWN_MS = 400;
 /** Friends hear of an account coming online, going or changing rooms this long after. */
 const FRIEND_PUSH_MS = 300;
 
 /**
- * Translates client requests into RoomsService calls. Each handler's return value is sent back as
- * the request's ack. After every change we push a fresh `room:state` to each member (filtered per
- * member so hidden cards stay hidden) and a fresh room list to everyone browsing that game.
+ * Translates client requests into service calls. Each handler's return value is sent back as
+ * the request's ack. After every change to a Room, everyone in it gets a fresh `room:state`.
  *
  * Clients come from `WsGateway` (plain WebSocket + JSON): they join `clients()` through `attach`
- * once logged in and leave through `handleDisconnect` + `detach`. Being in a room belongs to the
+ * once logged in and leave through `handleDisconnect` + `detach`. Being in a Room belongs to the
  * account, so one account can have several clients (tabs, devices) showing the same seat.
  */
 @Injectable()
 export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
-  /** Pending computer moves, by room code. */
-  private readonly botTimers = new Map<string, NodeJS.Timeout>();
-  /** Pending game timers (`ctx.setTimer`), by room code. */
-  private readonly gameTimers = new Map<string, NodeJS.Timeout>();
-  /** Quick-match rooms waiting for people before the computer fills them, by room code. */
-  private readonly quickTimers = new Map<string, NodeJS.Timeout>();
   /** Per-account cooldowns for chat messages (their expiry time). */
   private readonly chatCooldowns = new Map<string, number>();
   /** Pending "tell my friends" pushes, by account. */
@@ -97,29 +66,12 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly rooms: RoomsService,
     private readonly accounts: AccountsService,
-    private readonly devConsole: DevConsoleService,
     private readonly matches: MatchesService,
     private readonly ledger: LedgerService,
     private readonly stats: StatsService,
     private readonly friends: FriendsService,
-  ) {
-    rooms.onFinished((game) => {
-      this.matches.record(game).catch((err) => console.error('Could not save a match', err));
-    });
-    rooms.onFinished((game) => {
-      this.ledger.rewardMatch(game).then(
-        (notices) => {
-          for (const notice of notices) {
-            for (const s of this.socketsOf(notice.userId)) s.emit('reward', notice);
-          }
-        },
-        (err) => console.error('Could not pay rewards', err),
-      );
-    });
-    rooms.onFinished((game) => {
-      this.stats.recordMatch(game).catch((err) => console.error('Could not count stats', err));
-    });
-  }
+    @Inject(DEV_MODE) private readonly devEnabled: boolean,
+  ) {}
 
   onModuleInit() {
     this.pruner = setInterval(() => this.rooms.pruneEmptyRooms(), PRUNE_INTERVAL_MS);
@@ -152,7 +104,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     return (client, req) => method.call(this, client, req) as Promise<Result>;
   }
 
-  /** The account changed how it shows: its sockets and its room (pushed to everyone) follow. */
+  /** The account changed how it shows: its sockets and its Room (pushed to everyone) follow. */
   private changed(user: User) {
     for (const s of this.socketsOf(user.id)) s.data.user = user;
     const room = this.rooms.rename(user.id, user);
@@ -160,9 +112,8 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     return user;
   }
 
-  /** Offline only when none of the account's sockets still shows the room. */
+  /** Offline only when none of the account's sockets still shows the Room. */
   handleDisconnect(socket: Client) {
-    this.stopDevLogs(socket);
     const { roomCode, user } = socket.data;
     if (!roomCode || !user) return;
     const stillHere = this.socketsOf(user.id).some(
@@ -279,7 +230,6 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       const to = String(req?.userId ?? '');
       const message = await this.friends.send(me, to, String(req?.text ?? ''));
       for (const s of this.socketsOf(to)) s.emit('chat:message', message);
-      // Your other tabs show it too.
       for (const s of this.socketsOf(me)) if (s !== socket) s.emit('chat:message', message);
       return { message };
     });
@@ -303,166 +253,89 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
           avatar: me.avatar,
           frame: me.frame,
           roomCode: room.code,
-          gameId: room.game.id,
+          gameId: room.manifest.id,
         });
       }
       return {};
     });
   }
 
-  @On('lobby:watch')
-  watch(socket: Client, req: { gameId: string }) {
-    return this.handle(() => {
-      this.unwatchLobby(socket);
-      socket.data.lobby = req.gameId;
-      return { rooms: this.rooms.list(req.gameId) };
-    });
-  }
-
-  @On('lobby:unwatch')
-  unwatch(socket: Client) {
-    return this.handle(() => {
-      this.unwatchLobby(socket);
-      return {};
-    });
-  }
-
   @On('room:create')
-  create(socket: Client, req: { gameId: string; options?: unknown }) {
+  create(socket: Client, req: { gameId?: unknown; options?: unknown }) {
     return this.handle(() => {
       this.leaveCurrentRoom(socket);
-      const { room } = this.rooms.create(req.gameId, socket.data.user, req.options);
+      const room = this.rooms.create(String(req?.gameId ?? ''), socket.data.user, req?.options);
       return this.enter(socket, room);
-    });
-  }
-
-  @On('room:quick')
-  quick(socket: Client, req: { gameId: string }) {
-    return this.handle(() => {
-      this.leaveCurrentRoom(socket);
-      const { room, created } = this.rooms.quickMatch(req?.gameId, socket.data.user);
-      const joined = this.enter(socket, room);
-      if (this.rooms.isFull(room)) this.fillQuick(room.code);
-      else if (created) {
-        const timer = setTimeout(() => this.fillQuick(room.code), QUICK_WAIT_MS);
-        this.quickTimers.set(room.code, timer);
-      }
-      return joined;
     });
   }
 
   @On('room:join')
-  join(socket: Client, req: { roomCode: string; role: RoomRole }) {
+  join(socket: Client, req: { roomCode?: unknown }) {
     return this.handle(() => {
-      const role = req.role === 'spectator' ? 'spectator' : 'player';
-      this.leaveCurrentRoom(socket, req.roomCode);
-      const { room } = this.rooms.join(req.roomCode, socket.data.user, role);
-      return this.enter(socket, room);
+      const code = String(req?.roomCode ?? '');
+      this.leaveCurrentRoom(socket, code);
+      return this.enter(socket, this.rooms.join(code, socket.data.user));
     });
   }
 
   @On('room:leave')
   leave(socket: Client) {
     return this.handle(() => {
-      const { roomCode } = this.requireSeat(socket);
-      this.leaveRoom(socket, roomCode);
-      return {};
-    });
-  }
-
-  @On('room:sit')
-  sit(socket: Client) {
-    return this.handle(() => {
-      const { roomCode, playerId } = this.requireSeat(socket);
-      this.broadcast(this.rooms.sit(roomCode, playerId));
+      this.leaveRoom(socket, this.requireRoom(socket));
       return {};
     });
   }
 
   @On('room:options')
-  setOptions(socket: Client, req: { options: unknown }) {
+  setOptions(socket: Client, req: { options?: unknown }) {
     return this.handle(() => {
-      const { roomCode, playerId } = this.requireSeat(socket);
-      this.broadcast(this.rooms.setOptions(roomCode, playerId, req?.options));
+      const code = this.requireRoom(socket);
+      this.broadcast(this.rooms.setOptions(code, socket.data.user.id, req?.options));
       return {};
     });
   }
 
   @On('room:ready')
-  ready(socket: Client, req: { ready: boolean }) {
+  ready(socket: Client, req: { ready?: unknown }) {
     return this.handle(() => {
-      const { roomCode, playerId } = this.requireSeat(socket);
-      this.broadcast(this.rooms.setReady(roomCode, playerId, Boolean(req?.ready)));
+      const code = this.requireRoom(socket);
+      this.broadcast(this.rooms.setReady(code, socket.data.user.id, req?.ready === true));
       return {};
     });
   }
 
-  @On('game:start')
+  @On('room:add-bot')
+  addBot(socket: Client) {
+    return this.handle(() => {
+      const code = this.requireRoom(socket);
+      this.broadcast(this.rooms.addBot(code, socket.data.user.id));
+      return {};
+    });
+  }
+
+  @On('room:remove-bot')
+  removeBot(socket: Client, req: { seat?: unknown }) {
+    return this.handle(() => {
+      const code = this.requireRoom(socket);
+      this.broadcast(this.rooms.removeBot(code, socket.data.user.id, Number(req?.seat)));
+      return {};
+    });
+  }
+
+  @On('match:start')
   start(socket: Client) {
     return this.handle(() => {
-      const { roomCode, playerId } = this.requireSeat(socket);
-      if (this.rooms.unready(roomCode).length > 0) {
-        throw new RoomError('Chờ mọi người sẵn sàng đã');
-      }
-      this.broadcast(this.rooms.start(roomCode, playerId));
-      return {};
-    });
-  }
-
-  @On('game:restart')
-  restart(socket: Client) {
-    return this.start(socket);
-  }
-
-  @On('game:move')
-  move(socket: Client, req: { move: unknown }) {
-    return this.handle(() => {
-      const { roomCode, playerId } = this.requireSeat(socket);
-      this.broadcast(this.rooms.move(roomCode, playerId, req?.move));
-      return {};
-    });
-  }
-
-  @On('dev:logs')
-  devLogs(socket: Client, req: { on: boolean }) {
-    return this.handle(() => {
-      this.requireDev();
-      const { roomCode, playerId } = this.requireSeat(socket);
-      const room = this.rooms.devRoom(roomCode, playerId);
-      this.stopDevLogs(socket);
-      if (req?.on === true)
-        socket.data.devLogOff = followRoomLog(room, (entry) => socket.emit('dev:log', entry));
-      return { entries: req?.on === true ? (room.dev?.log ?? []) : [] };
-    });
-  }
-
-  private stopDevLogs(socket: Client) {
-    socket.data.devLogOff?.();
-    socket.data.devLogOff = undefined;
-  }
-
-  @On('dev:command')
-  devCommand(socket: Client, req: { line: string }) {
-    return this.handle(() => {
-      this.requireDev();
-      const { roomCode, playerId } = this.requireSeat(socket);
-      return this.devConsole.execute(roomCode, playerId, req?.line, (room) => this.broadcast(room));
-    });
-  }
-
-  @On('dev:schema')
-  devSchema(socket: Client) {
-    return this.handle(() => {
-      this.requireDev();
-      const { roomCode, playerId } = this.requireSeat(socket);
-      return this.devConsole.schema(this.rooms.devRoom(roomCode, playerId));
+      const code = this.requireRoom(socket);
+      const { matchId } = this.rooms.start(code, socket.data.user.id);
+      this.broadcastCode(code);
+      return { matchId };
     });
   }
 
   @On('dev:coins')
   devCoins(socket: Client, req: { amount?: unknown }) {
     return this.handle(async () => {
-      this.requireDev();
+      if (!this.devEnabled) throw new RoomError('Server không bật chế độ dev');
       const amount = Number(req?.amount);
       if (!Number.isInteger(amount) || amount <= 0) throw new RoomError('Số xu không hợp lệ');
       const userId = socket.data.user.id;
@@ -477,14 +350,8 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private requireDev() {
-    if (!this.rooms.devEnabled) throw new RoomError('Server không bật chế độ dev');
-  }
-
   private enter(socket: Client, room: Room): JoinedRoom {
     const userId = socket.data.user.id;
-    this.unwatchLobby(socket);
-    this.stopDevLogs(socket);
     socket.data.roomCode = room.code;
     this.rooms.setConnected(room.code, userId, true);
     this.broadcast(room);
@@ -492,21 +359,17 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     return { roomCode: room.code, playerId: userId };
   }
 
-  /** Before entering a room: quit the account's other room, if any. */
+  /** Before entering a Room: quit the account's other Room, if any. */
   private leaveCurrentRoom(socket: Client, unlessCode?: string) {
     const current = this.rooms.roomOf(socket.data.user.id);
-    if (
-      current &&
-      current.code !==
-        String(unlessCode ?? '')
-          .replace(/\s/g, '')
-          .toUpperCase()
-    )
-      this.leaveRoom(socket, current.code);
+    const target = String(unlessCode ?? '')
+      .replace(/\s/g, '')
+      .toUpperCase();
+    if (current && current.code !== target) this.leaveRoom(socket, current.code);
   }
 
   /**
-   * The account quits the room. Its other sockets still showing the room are sent out
+   * The account quits the Room. Its other sockets still showing the Room are sent out
    * with `room:closed`; `socket` (the one asking) already knows.
    */
   private leaveRoom(socket: Client, roomCode: string) {
@@ -515,9 +378,8 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     for (const s of this.socketsOf(userId)) {
       if (s.data.roomCode !== roomCode) continue;
       if (s !== socket) {
-        s.emit('room:closed', { gameId: room.game.id, reason: 'Bạn đã rời phòng' });
+        s.emit('room:closed', { gameId: room.manifest.id, reason: 'Bạn đã rời phòng' });
       }
-      this.stopDevLogs(s);
       s.data.roomCode = undefined;
     }
     if (closed) this.disband(room);
@@ -525,18 +387,18 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     this.friendsMoved(userId);
   }
 
-  private requireSeat(socket: Client) {
-    const { roomCode, user } = socket.data;
+  private requireRoom(socket: Client) {
+    const { roomCode } = socket.data;
     if (!roomCode) throw new RoomError('Bạn chưa ở trong phòng nào');
-    return { roomCode, playerId: user.id };
+    return roomCode;
   }
 
-  /** Whether an account is connected, and the room it is in (for its friends' lists). */
+  /** Whether an account is connected, and the Room it is in (for its friends' lists). */
   private readonly presence: Presence = (userId) => {
     const room = this.rooms.roomOf(userId);
     return {
       online: this.socketsOf(userId).length > 0,
-      ...(room && { gameId: room.game.id, roomCode: room.code }),
+      ...(room && { gameId: room.manifest.id, roomCode: room.code }),
     };
   };
 
@@ -573,107 +435,36 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     return this.clients().filter((s) => s.data.user?.id === userId);
   }
 
-  /** Every logged-in client, on both transports. */
   private clients(): Client[] {
     return [...this.connected];
   }
 
-  /** Starts a quick-match room, with the computer in the seats nobody came for. */
-  private fillQuick(code: string) {
-    clearTimeout(this.quickTimers.get(code));
-    this.quickTimers.delete(code);
-    try {
-      const room = this.rooms.fillQuick(code);
-      if (room) this.broadcast(room);
-    } catch (err) {
-      console.error(`Quick match ${code} could not start:`, err);
-    }
-  }
-
-  /** Sends everyone still in a deleted room back out, then refreshes the room list. */
+  /** Sends everyone still showing a deleted Room back out. */
   private disband(room: Room) {
-    clearTimeout(this.quickTimers.get(room.code));
-    this.quickTimers.delete(room.code);
     for (const socket of this.clients()) {
       if (socket.data.roomCode !== room.code) continue;
-      socket.emit('room:closed', { gameId: room.game.id, reason: 'Phòng đã giải tán' });
-      this.stopDevLogs(socket);
+      socket.emit('room:closed', { gameId: room.manifest.id, reason: 'Phòng đã giải tán' });
       socket.data.roomCode = undefined;
       this.friendsMoved(socket.data.user.id);
     }
-    this.broadcastLobby(room.game.id);
   }
 
-  private broadcastLobby(gameId: string) {
-    const watchers = this.clients().filter((s) => s.data.lobby === gameId);
-    if (!watchers.length) return;
-    const rooms = this.rooms.list(gameId);
-    for (const socket of watchers) socket.emit('lobby:rooms', { gameId, rooms });
-  }
-
-  private unwatchLobby(socket: Client) {
-    socket.data.lobby = undefined;
-  }
-
-  /** Sends each member its own filtered snapshot, and the new room list to browsers. */
   private broadcast(room: Room) {
-    // A timer the game just set goes into the snapshots, so screens can show the countdown.
-    const timer = this.rooms.syncTimer(room);
+    this.broadcastCode(room.code);
+  }
+
+  /** Sends everyone showing the Room its new state. */
+  private broadcastCode(code: string) {
+    const state = this.rooms.stateOf(code);
     for (const socket of this.clients()) {
-      const { roomCode, user } = socket.data;
-      if (roomCode === room.code && user) {
-        socket.emit('room:state', this.rooms.snapshotFor(room, user.id));
-      }
+      if (socket.data.roomCode === code) socket.emit('room:state', state);
     }
-    this.broadcastLobby(room.game.id);
-    this.scheduleBot(room);
-    this.scheduleTimer(room, timer);
-  }
-
-  /** Waits for the game's new timer (if any), then runs its hook; drops a cancelled one. */
-  private scheduleTimer(room: Room, timer: { key: string; ms: number } | null) {
-    if (!room.timer || room.dev?.timerPaused) {
-      clearTimeout(this.gameTimers.get(room.code));
-      this.gameTimers.delete(room.code);
-    }
-    if (!timer || room.dev?.timerPaused) return;
-    clearTimeout(this.gameTimers.get(room.code));
-    const handle = setTimeout(() => {
-      this.gameTimers.delete(room.code);
-      try {
-        const changed = this.rooms.fireTimer(room.code, timer.key);
-        if (changed) this.broadcast(changed);
-      } catch (err) {
-        console.error(`Timer ${timer.key} failed in ${room.game.id}:`, err);
-      }
-    }, timer.ms);
-    this.gameTimers.set(room.code, handle);
-  }
-
-  /** After a change in a game with computer seats, let a bot move after a short pause. */
-  private scheduleBot(room: Room) {
-    clearTimeout(this.botTimers.get(room.code));
-    this.botTimers.delete(room.code);
-    if (room.status !== 'playing' || room.dev?.botsPaused || !room.players.some((p) => p.bot))
-      return;
-    clearTimeout(this.botTimers.get(room.code));
-    const timer = setTimeout(() => {
-      this.botTimers.delete(room.code);
-      try {
-        const moved = this.rooms.botMove(room.code);
-        if (moved) this.broadcast(moved);
-      } catch (err) {
-        console.error(`Bot move failed in ${room.game.id}:`, err);
-      }
-    }, BOT_DELAY_MS);
-    this.botTimers.set(room.code, timer);
   }
 
   private async handle(fn: () => object | Promise<object>): Promise<Result> {
     try {
       return { ok: true, ...(await fn()) };
     } catch (err) {
-      if (err instanceof ConsoleError) return { ok: false, error: err.message, issue: err.issue };
       if (
         err instanceof RoomError ||
         err instanceof AccountError ||

@@ -1,11 +1,13 @@
-// End-to-end check against a RUNNING server: three fake accounts register; two create/join a room from the room list and play tic-tac-toe to a win (the
-// winner is paid coins) while the third one watches. Mid-game Bob closes his "browser" and logs
-// in on another "device": he must be put back in his seat.
+// End-to-end check against a RUNNING server: two fake accounts register; Alice creates a Room,
+// Bob joins it by code, says Sẵn sàng and Alice starts a Match. Bob then closes his "browser" and
+// logs in on another "device": he must be put back in his seat. Matches themselves are not played
+// yet (GameHostModule); with no Game loaded, the server refuses the Room and only login is checked.
 // It speaks the clients' transport: plain WebSocket + JSON on /ws (packages/shared/src/protocol.ts).
-// Usage: node scripts/smoke.mjs [serverUrl]
+// Usage: node scripts/smoke.mjs [serverUrl] [gameId]
 import WebSocket from 'ws';
 
 const url = process.argv[2] ?? 'http://localhost:8033';
+const gameId = process.argv[3] ?? 'tic-tac-toe';
 
 const tag = Date.now().toString(36);
 // Bots speak whatever protocol the server speaks (see PROTOCOL_VERSION).
@@ -32,7 +34,6 @@ async function client(token) {
   const waiting = new Map();
   let next = 0;
   let last = null;
-  const rewards = [];
   socket.on('message', (raw) => {
     const message = JSON.parse(String(raw));
     if ('id' in message) {
@@ -41,7 +42,6 @@ async function client(token) {
       if (message.ack.ok) resolve(message.ack);
       else reject(new Error(message.ack.error));
     } else if (message.event === 'room:state') last = message.data;
-    else if (message.event === 'reward') rewards.push(message.data);
   });
   await new Promise((resolve, reject) => {
     socket.once('open', resolve);
@@ -54,72 +54,46 @@ async function client(token) {
       socket.send(JSON.stringify({ id: next, event, data }));
     });
   await send('auth:token', { token, protocol });
-  return { socket, send, state: () => last, rewards };
+  return { socket, send, state: () => last };
 }
 
 const alice = await client(await signUp('Alice'));
 let bob = await client(await signUp('Bob'));
-const cam = await client(await signUp('Cam'));
+const wait = () => new Promise((r) => setTimeout(r, 200));
 try {
-  const room = await alice.send('room:create', { gameId: 'tic-tac-toe' });
-  const { rooms } = await bob.send('lobby:watch', { gameId: 'tic-tac-toe' });
-  if (!rooms.some((r) => r.code === room.roomCode && r.canJoin))
-    throw new Error(`Room missing from list: ${JSON.stringify(rooms)}`);
-  await bob.send('room:join', { roomCode: room.roomCode, role: 'player' });
-  await cam.send('room:join', { roomCode: room.roomCode, role: 'spectator' });
-  await bob.send('room:ready', { ready: true });
-  await alice.send('game:start', {});
-  const refused = await cam
-    .send('game:move', { move: { event: 'place', payload: { x: 4, y: 4 } } })
-    .catch((e) => e.message);
-  if (refused !== 'Bạn đang xem, không đi được')
-    throw new Error(`Spectator move was not refused: ${refused}`);
-  // Alice plays row 4, Bob row 6 (five in a row wins).
-  const place = (x, y) => ({ move: { event: 'place', payload: { x, y } } });
-  await alice.send('game:move', place(2, 4));
-  await bob.send('game:move', place(2, 6));
+  const resumed = await alice.send('session:resume', {});
+  if (resumed.room !== null) throw new Error('A new account should not be in a Room');
+  const room = await alice.send('room:create', { gameId }).catch((e) => e);
+  if (room instanceof Error) {
+    if (!room.message.startsWith('Không có game')) throw room;
+    console.log(`OK: login and resume; the server runs no Game "${gameId}", Rooms skipped`);
+  } else {
+    await bob.send('room:join', { roomCode: room.roomCode.toLowerCase() });
+    await bob.send('room:ready', { ready: true });
+    const { matchId } = await alice.send('match:start', {});
+    await wait();
+    if (alice.state()?.status !== 'playing' || alice.state()?.matchId !== matchId)
+      throw new Error(`Match did not start: ${JSON.stringify(alice.state())}`);
 
-  // Bob closes the browser without leaving, then logs in elsewhere: same seat, same game.
-  bob.socket.close();
-  await new Promise((r) => setTimeout(r, 200));
-  if (alice.state()?.players[1]?.connected !== false) throw new Error('Bob should be offline');
-  bob = await client(await auth('login', { username: `BOB${tag}`, password: 'smoke123' }));
-  const resumed = await bob.send('session:resume', {});
-  if (resumed.room?.roomCode !== room.roomCode) throw new Error('Bob was not put back in his room');
-  await new Promise((r) => setTimeout(r, 200));
-  if (alice.state()?.players[1]?.connected !== true) throw new Error('Bob should be back online');
+    // Bob closes the browser without leaving, then logs in elsewhere: same seat.
+    bob.socket.close();
+    await wait();
+    if (alice.state()?.seats[1]?.connected !== false) throw new Error('Bob should be offline');
+    bob = await client(await auth('login', { username: `BOB${tag}`, password: 'smoke123' }));
+    const back = await bob.send('session:resume', {});
+    if (back.room?.roomCode !== room.roomCode) throw new Error('Bob was not put back in his Room');
+    await wait();
+    if (alice.state()?.seats[1]?.connected !== true) throw new Error('Bob should be back online');
 
-  for (const [who, x, y] of [
-    [alice, 3, 4],
-    [bob, 3, 6],
-    [alice, 4, 4],
-    [bob, 4, 6],
-    [alice, 5, 4],
-    [bob, 5, 6],
-    [alice, 6, 4],
-  ]) {
-    await who.send('game:move', place(x, y));
+    await bob.send('room:leave', {});
+    await wait();
+    if (alice.state()?.seats[1] !== null) throw new Error('Bob should have left his seat');
+    console.log(`OK: Room ${room.roomCode}, Match ${matchId}, Bob came back from another device`);
   }
-  await new Promise((r) => setTimeout(r, 200));
-  const result = cam.state()?.result;
-  if (result?.winners?.[0] !== room.playerId)
-    throw new Error(`Unexpected result: ${JSON.stringify(result)}`);
-  // The ledger pays after the game ends.
-  await new Promise((r) => setTimeout(r, 300));
-  const coins = alice.rewards[0]?.balances['core:coin'];
-  if (!coins || bob.rewards.length)
-    throw new Error(`Wrong rewards: ${JSON.stringify(alice.rewards)}`);
-  const resumed2 = await alice.send('session:resume', {});
-  if (resumed2.balances['core:coin'] !== coins)
-    throw new Error('Alice has no coins after a resume');
-  console.log(
-    `OK: room ${room.roomCode}, Bob came back from another device, Alice won ${coins} coins, Cam watched`,
-  );
 } catch (err) {
   console.error('SMOKE FAILED:', err.message);
   process.exitCode = 1;
 } finally {
   alice.socket.close();
   bob.socket.close();
-  cam.socket.close();
 }

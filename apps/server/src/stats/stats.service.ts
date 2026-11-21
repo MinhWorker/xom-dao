@@ -11,7 +11,7 @@ import {
   XP_PER_GAME,
 } from '@xomdao/shared';
 import { AccountsService } from '../accounts/accounts.service.js';
-import type { FinishedGame } from '../rooms/rooms.service.js';
+import type { FinishedGame } from '../matches/finished-game.js';
 import type { StatCount, StatRow, StatsStore } from './stats.store.js';
 
 export const STATS_STORE = Symbol('STATS_STORE');
@@ -25,7 +25,7 @@ const boardStat = (board: string) =>
 /**
  * Thống kê, xếp hạng. It owns `player_stats` and `stat_matches`.
  *
- * Every finished game (`RoomsService.onFinished`, wired by the rooms gateway) counts, once per
+ * Every finished game (`recordMatch`; no caller until Match results are settled) counts, once per
  * game and for people only: `played`, `won` for its winners, the game's own `ctx.stat` counts,
  * and `XP_PER_GAME` experience.
  *

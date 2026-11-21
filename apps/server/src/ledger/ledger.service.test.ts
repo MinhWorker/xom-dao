@@ -1,7 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { FinishedGame } from '../rooms/rooms.service.js';
-import { RoomsService } from '../rooms/rooms.service.js';
+import type { FinishedGame } from '../matches/finished-game.js';
 import { LedgerService } from './ledger.service.js';
 import { MemoryLedgerStore } from './ledger.store.js';
 
@@ -96,29 +95,5 @@ describe('LedgerService', () => {
       balance: 20,
     });
     expect(() => ledger.apply({ ...entry, key: 'k4', amount: 1.5 })).toThrow('whole numbers');
-  });
-
-  it('pays a Caro win played through the rooms', async () => {
-    const { ledger } = setup();
-    const rooms = new RoomsService();
-    const paid: Promise<unknown>[] = [];
-    rooms.onFinished((game) => paid.push(ledger.rewardMatch(game)));
-    const { room } = rooms.create('tic-tac-toe', { id: 'lan', name: 'Lan' });
-    rooms.join(room.code, { id: 'minh', name: 'Minh' }, 'player');
-    for (let game = 0; game < 2; game++) {
-      rooms.start(room.code, 'lan');
-      const view = rooms.snapshotFor(room, 'lan').view as { players: [string, string] };
-      const [first, second] = view.players;
-      for (let i = 0; i < 4; i++) {
-        rooms.move(room.code, first, { event: 'place', payload: { x: 2 + i, y: 4 } });
-        rooms.move(room.code, second, { event: 'place', payload: { x: 2 + i, y: 6 } });
-      }
-      rooms.move(room.code, first, { event: 'place', payload: { x: 6, y: 4 } });
-      expect(room.result?.winners).toEqual([first]);
-    }
-    await Promise.all(paid);
-    const total = (await ledger.balances('lan'))['core:coin'] ?? 0;
-    const other = (await ledger.balances('minh'))['core:coin'] ?? 0;
-    expect(total + other).toBe(40);
   });
 });

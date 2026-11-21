@@ -26,7 +26,7 @@ the wayfinder map, issue #200, and the decisions linked from it.
   every workspace that has it, in dependency order, and caches the result. CI adds `--affected`
   on PRs and uses the remote cache (`TURBO_TOKEN` secret, `TURBO_TEAM` variable).
 - `npm run check`: lint, typecheck and unit tests. `npm run format` fixes formatting.
-- `npm run smoke`: bots play Caro against a running server.
+- `npm run smoke`: bots log in, make a Room and start a Match against a running server.
 
 ## Conventions
 

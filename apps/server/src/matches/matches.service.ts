@@ -1,13 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { HISTORY_LIMIT, type MatchRecord } from '@xomdao/shared';
-import type { FinishedGame } from '../rooms/rooms.service.js';
+import type { FinishedGame } from './finished-game.js';
 import type { MatchesStore } from './matches.store.js';
 
 export const MATCHES_STORE = Symbol('MATCHES_STORE');
 
 /**
  * Match history: keeps every finished game that had an account at the table, and gives a
- * player their most recent ones. The rooms gateway feeds it from `RoomsService.onFinished`.
+ * player their most recent ones. `record` has no caller until Match results are settled.
  */
 @Injectable()
 export class MatchesService {

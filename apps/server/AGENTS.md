@@ -4,14 +4,15 @@ The server is only the API: rooms over the `/ws` WebSocket and `/api` over HTTP.
 files.
 
 ```
-src/rooms/      rooms.service.ts = room logic (unit tested); rooms.gateway.ts = the `@On(event)`
-                handlers, broadcasts, bot moves and game timers; ws.gateway.ts = the transport:
-                plain WebSocket + JSON on /ws, login + protocol check, then RoomsGateway's handlers
-src/dev/        gated dev commands, snapshots, undo/RNG frames and per-room logs
+src/rooms/      rooms.service.ts = Rooms, seats and options (unit tested); manifests.ts = the
+                GAME_MANIFESTS the server runs; rooms.gateway.ts = the `@On(event)` handlers and
+                broadcasts; ws.gateway.ts = the transport: plain WebSocket + JSON on /ws, login +
+                protocol check, then RoomsGateway's handlers
+src/dev/        dev-mode.ts: DEV_MODE (XOMDAO_DEV=1)
 src/accounts/   Username/password (scrypt) and login tokens
 src/ledger/     Ledger: the only module that changes balances (`ledger_entries`, `balances`)
 src/stats/      Stats and rankings (`player_stats`, `stat_matches`)
-src/matches/    Match history: finished games (fed by RoomsService.onFinished), `history:recent`
+src/matches/    Match history: finished games (`FinishedGame`), `history:recent`
 src/friends/    Bạn bè: requests, friendships and chat (`friendships`, `friend_messages`)
 src/db/         Drizzle schema; migrations in drizzle/
 src/version.ts  For /api/health
@@ -23,20 +24,21 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 
 ## Rooms
 
-- Rooms belong to one game and live in memory, so a restart wipes them.
-- From a game's room list you can:
-  - create a room;
-  - join as a player, when a seat is free and no game is running;
-  - watch.
-- Leaving means quitting. The next player becomes host, and an empty room is disbanded.
-- A player leaving mid-game stops it for everyone unless the game has `onLeave`. The client asks
-  first.
-- Rooms keep a score.
-- Room options are checked with the game's zod schema and kept for the room's life. The host may
-  replace them between games (`room:options`); bots then join or leave to match.
-- In a waiting room (`lobby`) the other seated people say `room:ready`; the gateway refuses
-  `game:start` until they all have. Quick match and Chơi tiếp need no ready.
-- Bots never host or keep a room alive.
+- `RoomsService` holds Session state only: Rooms, seats, options and the running Match's id. It
+  runs no Game rules; GameHostModule (to come) runs the Match that `start` hands over
+  (`MatchStart`) and calls `endMatch` when it is over.
+- Rooms open only for a Game in `GAME_MANIFESTS` (`rooms/manifests.ts`, empty until
+  GameHostModule loads the Games) and live in memory, so a restart wipes them.
+- A Room has the Game's `maxPlayers` seats; `room:state` sends them in order, `null` for an empty
+  one. `room:join` takes the first empty seat between Matches. There are no spectators.
+- Options are picks for the manifest's `options`, checked and filled with `optionsSchema`. The
+  host may replace them between Matches (`room:options`).
+- The host seats the computer (`room:add-bot`, Games with `bots`) and removes it
+  (`room:remove-bot`). Bots never host or keep a Room alive.
+- Before the Room's first Match the other people seated say `room:ready`; `match:start` waits for
+  them. Playing again needs no second yes.
+- Leaving frees the seat, also mid-Match. The next person seated becomes host; a Room with
+  nobody left is disbanded.
 
 ## Accounts and connection
 
@@ -60,18 +62,15 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - `LedgerService.apply({ userId, resource, amount, reason, key })` is how other modules pay or
   charge: a used key changes nothing (`duplicate`), a balance never goes below 0
   (`insufficient`). No other module touches these tables.
-- Game rewards: games call `ctx.reward(player, resource, amount)`; the totals land in
-  `result.rewards`. The gateway hands every `RoomsService.onFinished` game to
-  `LedgerService.rewardMatch`, which pays accounts (never bots) once per game (key
-  `match:<matchId>:<user>:<resource>`) and refuses totals above the game's `meta.rewardCap`.
-  Each paid player's sockets get `reward` with the new balances; `session:resume` returns
-  `balances`.
+- `LedgerService.rewardMatch` pays accounts (never bots) once per game (key
+  `match:<matchId>:<user>:<resource>`) within the game's `meta.rewardCap`. Nothing calls it
+  until Match results are settled. `session:resume` returns `balances`.
 - `dev:coins { amount }` (dev mode only) adds coins, for tests and the sandbox.
 - Event points (`EVENT_POINTS`) are skipped: no module keeps them for now.
 
 ## Stats
 
-- `StatsService.recordMatch` (on `RoomsService.onFinished`) counts once per match and person
+- `StatsService.recordMatch` (no caller until Match results are settled) counts once per match and person
   (`stat_matches`): `played`, `won`, the game's `result.stats` (`ctx.stat`) into `player_stats`
   by game, and `XP_PER_GAME` into game `core`, stat `xp`.
 - `stats:get { userId? }` returns `PlayerStats` (level from `levelOf(xp)`, totals, ranks).
@@ -80,8 +79,8 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 
 ## Match history
 
-- `RoomsService` knows nothing about storage: `onFinished(listener)` hears each game that ends
-  with a result (a stopped game is not one). The gateway hands it to `MatchesService.record`.
+- `MatchesService.record` keeps a `FinishedGame`; nothing calls it until Match results are
+  settled.
 - A game is kept only when an account sat at it. Players are stored as they were when it began
   (name, avatar, frame); bots have no `user_id`.
 - `history:recent` returns the caller's last `HISTORY_LIMIT` (20) games, newest first, each with
@@ -108,7 +107,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 ## Changing things
 
 - New platform features are separate Nest modules. A module owns its tables and never reads another module's tables:
-  it calls that module's service, or listens to events such as `RoomsService.onFinished`.
+  it calls that module's service.
 
 - Nest DI needs the runtime value, so `import` classes that Nest injects as values.
 - The server typechecks against built packages. `typecheck` and `test` run through Turborepo,
@@ -122,23 +121,10 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   on server start.
 - A migration must work with the previous server build: add first, remove later.
 
-## Dev Console
+## Dev mode
 
 - `DEV_MODE` reads `XOMDAO_DEV === '1'` once at startup. `scripts/dev-server.mjs` enables it for
-  `npm run dev`; never set it on Render. Disabled servers reject every `dev:*` request and
-  allocate no room dev state or log followers.
-- `dev:command`, `dev:schema`, `dev:logs` and server `dev:log` are additive protocol events.
-  Any room member, including spectators, may use them only when dev is enabled.
-- `src/dev/dev-console.service.ts` dispatches engine and optional game commands. `as` uses
-  the regular move validation and broadcast path. Other mutations leave `room.last` alone.
-- `room-dev.ts` owns room RNG, queued numbers, the 50-frame undo history and pause flags.
-  Frames include scores, RNG state and timer remaining time; restoring a timer replaces its
-  gateway handle. Remember bot RNG before its decision as well as before its move.
-- `dev-snapshots.ts` writes `.dev/snapshots/<gameId>/<name>.json` at the repo root. Loads require
-  the same game and seat count, remap player IDs by seat and validate the resulting view.
-- `room-log.ts` retains 500 entries per room, truncates details near 20 KB, and captures
-  synchronous game `console.log/info/warn/error` calls while still printing to the terminal.
-  Always restore console methods in `finally`. Socket followers stop on leave/disconnect.
+  `npm run dev`; never set it on Render. Only `dev:coins` needs it.
 - Use `npm run dev` with memory accounts (`DATABASE_URL=''`) for local runs.
 
 ## Deploy

@@ -1,739 +1,230 @@
 import { randomInt, randomUUID } from 'node:crypto';
-import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { hookName } from '@xomdao/sdk/legacy';
-import {
-  type AnyGameDefinition,
-  defaultOptions,
-  type GameResult,
-  getGame,
-  type PlayerId,
-  type RoomRole,
-  type RoomScore,
-  type RoomSnapshot,
-  type RoomStatus,
-  type RoomSummary,
-} from '@xomdao/shared';
-import { DEV_MODE } from '../dev/dev-mode.js';
-import { frameOf, newRoomDev, type RoomDev, remember, rngOf } from '../dev/room-dev.js';
-import { captureConsole, logRoom, runRoomHook } from '../dev/room-log.js';
+import { Inject, Injectable } from '@nestjs/common';
+import { type GameManifest, optionsSchema, type PlayerId, type RoomSeat } from '@xomdao/sdk';
+import type { RoomMember, RoomOptions, RoomState } from '@xomdao/shared';
+import { GAME_MANIFESTS } from './manifests.js';
 
 export class RoomError extends Error {}
 
-/** Someone in a room: a seated player or a spectator. `id` is their account's user id. */
-interface Member {
-  id: PlayerId;
-  name: string;
-  connected: boolean;
-  /** Played by the computer (`game.bot`). Bots don't keep a room alive and are never host. */
-  bot?: boolean;
-  /** Said Sẵn sàng in the waiting room (`room:ready`); cleared when a game starts. */
-  ready?: boolean;
-  avatar?: string;
-  frame?: string;
-  cardBack?: string;
-}
-
-/** The account entering a room (from the logged-in socket). */
+/** The account entering a Room (from the logged-in socket). */
 export interface Account {
   id: string;
   name: string;
   avatar?: string;
   frame?: string;
-  cardBack?: string;
 }
 
 export interface Room {
   code: string;
-  game: AnyGameDefinition;
-  /** Settings picked when the room was created (`game.room`), passed to `setup` and `bot`. */
-  options: unknown;
-  hostId: PlayerId | null;
-  players: Member[];
-  spectators: Member[];
-  status: RoomStatus;
-  state: unknown;
-  result: GameResult | null;
-  /** How the game before the current one ended (`ctx.lastResult`). */
-  lastResult: GameResult | null;
-  score: RoomScore;
-  /** Games started so far. */
-  round: number;
-  /** The last move of the current game. */
-  last: { seq: number; player: PlayerId; move: unknown } | null;
-  /** The game's pending timer (`ctx.setTimer`), once the gateway has started it. */
-  timer: { key: string; event: string; ms: number; endsAt: number } | null;
-  /** A new id for every game started: what keys its rewards (`null` before the first). */
+  manifest: GameManifest;
+  options: RoomOptions;
+  hostId: PlayerId;
+  /** `manifest.maxPlayers` seats in order; `null` is an empty one. */
+  seats: (RoomMember | null)[];
+  /** The running Match's id, `null` while waiting. */
   matchId: string | null;
-  /** When the current (or last) game began and ended (`null` while it runs). */
-  startedAt: number | null;
-  endedAt: number | null;
-  createdAt: number;
-  /**
-   * Made by quick match (CHƠI): others quick-matching into this game join it, and the computer
-   * fills its empty seats after a while (`fillQuick`). Off once its first game starts.
-   */
-  quick?: boolean;
-  /** Available only when the server starts with XOMDAO_DEV=1. */
-  dev?: RoomDev;
+  /** A Match was started here before: playing again needs no Sẵn sàng. */
+  played: boolean;
 }
 
-/** A game that just ended, for whoever keeps a record of it (see `onFinished`). */
-export interface FinishedGame {
-  gameId: string;
-  /** Unique to this game: the room's `matchId`. */
+/** What GameHostModule needs to run a Match the host just started. */
+export interface MatchStart {
   matchId: string;
-  startedAt: number;
-  endedAt: number;
-  /** Everyone seated when the game began, in seat order. */
-  seats: {
-    id: PlayerId;
-    name: string;
-    avatar?: string;
-    frame?: string;
-    bot: boolean;
-    left: boolean;
-  }[];
-  result: GameResult;
+  gameId: string;
+  /** Everyone seated, in seat order, empty seats skipped. */
+  players: RoomSeat[];
+  options: RoomOptions;
 }
 
-// Four characters with no 0/O/1/I, so a code is easy to read aloud and type: players share it
-// (or a link with it) and friends join by code (`room:join`, any case, spaces ignored).
+/** Four characters with no 0/O/1/I, so a code is easy to read aloud and type. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+/** A Room code as typed (any case, stray spaces) in the form Rooms are kept under. */
+export const normalizeCode = (code: unknown) =>
+  String(code ?? '')
+    .replace(/\s/g, '')
+    .toUpperCase();
+
 /**
- * All room and game state lives here, in memory. Restarting the server clears every room.
- * Each room belongs to one game; players browse a game's rooms with `list`.
- * This class knows nothing about sockets; the gateway translates events into these calls.
- * Members are accounts, and an account is in at most one room: the gateway makes a player
- * leave their old room before entering another one (see `roomOf`).
+ * Session state: which Rooms exist, who sits where and with which options. Rooms live in
+ * memory, so a restart wipes them. It knows nothing about sockets or a Game's rules: the gateway
+ * turns requests into these calls, and GameHostModule runs the Match `start` hands over.
+ * An account sits in at most one Room; the gateway makes it leave the old one first (`roomOf`).
  */
 @Injectable()
 export class RoomsService {
   private readonly rooms = new Map<string, Room>();
-  private readonly finishedListeners: ((game: FinishedGame) => void)[] = [];
 
-  constructor(@Optional() @Inject(DEV_MODE) readonly devEnabled = false) {
-    if (devEnabled) new Logger('DevConsole').warn('XOMDAO_DEV=1: Dev Console đang bật');
-  }
+  constructor(@Inject(GAME_MANIFESTS) private readonly manifests: readonly GameManifest[]) {}
 
-  /** Calls `listener` each time a game ends with a result (not when it is stopped). */
-  onFinished(listener: (game: FinishedGame) => void) {
-    this.finishedListeners.push(listener);
-  }
-
-  /** Dev requests require an actual member, including spectators. */
-  devRoom(code: string, memberId: string) {
-    if (!this.devEnabled) throw new RoomError('Server không bật chế độ dev');
-    const room = this.get(code);
-    if (!this.members(room).some((m) => m.id === memberId))
-      throw new RoomError('Bạn chưa ở trong phòng này');
-    return room;
-  }
-
-  /** `options` come from the game's setup screen, checked by `game.room.options`. */
+  /** A new Room of `gameId` with `account` as host in the first seat. */
   create(gameId: string, account: Account, rawOptions?: unknown) {
-    const game = getGame(gameId);
-    if (!game) throw new RoomError(`Không có game: ${gameId}`);
-    const options = this.roomOptions(game, rawOptions);
-    const player = this.newMember(account);
-    const bots = this.newBots(this.botCount(game, options));
+    const manifest = this.manifests.find((m) => m.id === gameId);
+    if (!manifest) throw new RoomError(`Không có game: ${gameId}`);
+    const seats: Room['seats'] = Array(manifest.maxPlayers).fill(null);
+    seats[0] = member(account);
     const room: Room = {
       code: this.newCode(),
-      game,
-      options,
-      hostId: player.id,
-      players: [player, ...bots],
-      spectators: [],
-      status: 'lobby',
-      state: null,
-      result: null,
-      lastResult: null,
-      score: { wins: Array(game.maxPlayers).fill(0), draws: 0 },
-      round: 0,
-      last: null,
-      timer: null,
+      manifest,
+      options: parseOptions(manifest, rawOptions),
+      hostId: account.id,
+      seats,
       matchId: null,
-      startedAt: null,
-      endedAt: null,
-      createdAt: Date.now(),
-      ...(this.devEnabled && { dev: newRoomDev() }),
+      played: false,
     };
     this.rooms.set(room.code, room);
-    logRoom(room, { kind: 'room', level: 'info', text: `${player.name} tạo phòng` });
-    return { room, player };
-  }
-
-  /**
-   * Quick match (CHƠI): a seat in a waiting quick-match room of this game, or a new one
-   * (`created`). The gateway starts it once full, or fills it with bots after a while.
-   */
-  quickMatch(gameId: string, account: Account) {
-    const open = [...this.rooms.values()].find(
-      (room) =>
-        room.quick &&
-        room.game.id === gameId &&
-        this.seatError(room) === null &&
-        room.players.some((p) => !p.bot && p.connected),
-    );
-    if (open) return { ...this.join(open.code, account, 'player'), created: false };
-    const made = this.create(gameId, account);
-    made.room.quick = true;
-    return { ...made, created: true };
-  }
-
-  /** A quick-match room has a player in every seat: time to start. */
-  isFull(room: Room) {
-    return room.players.length >= room.game.maxPlayers;
-  }
-
-  /**
-   * Nobody else came to a quick-match room: the computer takes the empty seats (when the game
-   * lets it, `room.withBots`) and the game starts. Returns the room when it changed.
-   */
-  fillQuick(code: string) {
-    const room = this.rooms.get(code);
-    if (!room?.quick || room.status !== 'lobby' || room.hostId === null) return undefined;
-    const humans = room.players.filter((p) => !p.bot);
-    const setup = room.game.room;
-    const wanted = room.game.maxPlayers - humans.length;
-    if (wanted > 0 && room.game.bot && setup?.withBots) {
-      const parsed = setup.options.safeParse(setup.withBots(room.options, wanted));
-      if (parsed.success) {
-        const bots = this.botCount(room.game, parsed.data);
-        room.options = parsed.data;
-        room.players = [...humans, ...this.newBots(bots)];
-      }
-    }
-    if (room.players.length < room.game.minPlayers) return undefined;
-    return this.start(code, room.hostId);
-  }
-
-  /** Rooms of one game that someone is still in: open seats first, then oldest first. */
-  list(gameId: string): RoomSummary[] {
-    return [...this.rooms.values()]
-      .filter((room) => room.game.id === gameId && this.humans(room).some((m) => m.connected))
-      .map((room) => this.summary(room))
-      .sort((a, b) => Number(b.canJoin) - Number(a.canJoin));
-  }
-
-  /** How busy a game is: people seated in its listed rooms, and those rooms with a free seat. */
-  activity(gameId: string): { playing: number; openRooms: number } {
-    let playing = 0;
-    let openRooms = 0;
-    for (const room of this.rooms.values()) {
-      if (room.game.id !== gameId || !this.humans(room).some((m) => m.connected)) continue;
-      playing += room.players.filter((p) => !p.bot && p.connected).length;
-      if (this.seatError(room) === null) openRooms++;
-    }
-    return { playing, openRooms };
-  }
-
-  /** Joining a room you are already in just puts you back in your place. */
-  join(code: string, account: Account, role: RoomRole) {
-    const room = this.get(code);
-    const existing = this.members(room).find((m) => m.id === account.id);
-    if (existing) {
-      existing.connected = true;
-      return { room, player: existing };
-    }
-    if (role === 'player') this.assertSeatFree(room);
-    const member = this.newMember(account);
-    if (role === 'player') {
-      room.players.push(member);
-      room.hostId ??= member.id;
-    } else {
-      room.spectators.push(member);
-    }
-    logRoom(room, {
-      kind: 'room',
-      level: 'info',
-      text: `${member.name} vào phòng (${role === 'player' ? 'người chơi' : 'khán giả'})`,
-    });
-    return { room, player: member };
-  }
-
-  /** A spectator moves to a free seat. */
-  sit(code: string, memberId: PlayerId) {
-    const room = this.get(code);
-    const member = room.spectators.find((m) => m.id === memberId);
-    if (!member) throw new RoomError('Bạn đã là người chơi rồi');
-    this.assertSeatFree(room);
-    room.spectators = room.spectators.filter((m) => m !== member);
-    room.players.push(member);
-    room.hostId ??= member.id;
     return room;
   }
 
-  /** The room this account is in, if any. */
+  /** Takes the first empty seat; joining a Room you sit in just reconnects you. */
+  join(code: string, account: Account) {
+    const room = this.get(code);
+    const mine = room.seats.find((s) => s?.id === account.id);
+    if (mine) {
+      mine.connected = true;
+      return room;
+    }
+    if (room.matchId) throw new RoomError('Ván đang chơi, chờ hết ván nhé');
+    const free = room.seats.indexOf(null);
+    if (free < 0) throw new RoomError('Phòng đã đủ người');
+    room.seats[free] = member(account);
+    return room;
+  }
+
+  /**
+   * Frees the account's seat, also mid-Match (GameHostModule decides what that means for the
+   * Match). The next person seated becomes host; with nobody left the Room is gone (`closed`).
+   */
+  leave(code: string, userId: PlayerId) {
+    const room = this.get(code);
+    const seat = room.seats.findIndex((s) => s?.id === userId);
+    if (seat < 0) throw new RoomError('Bạn chưa ở trong phòng này');
+    room.seats[seat] = null;
+    const people = room.seats.filter((s): s is RoomMember => s !== null && !s.bot);
+    const closed = people.length === 0;
+    if (closed) this.rooms.delete(room.code);
+    else if (room.hostId === userId) room.hostId = people[0]!.id;
+    return { room, closed };
+  }
+
+  /** The Room this account sits in, if any. */
   roomOf(userId: string) {
     for (const room of this.rooms.values()) {
-      if (this.members(room).some((m) => m.id === userId)) return room;
+      if (room.seats.some((s) => s?.id === userId)) return room;
     }
     return undefined;
   }
 
-  /** The account changed its name or picture: update it in its room (returned, if any). */
-  rename(userId: string, { name, avatar, frame, cardBack }: Omit<Account, 'id'>) {
+  /** The account changed its name or picture: its seat follows. Returns its Room, if any. */
+  rename(userId: string, { name, avatar, frame }: Omit<Account, 'id'>) {
     const room = this.roomOf(userId);
-    const member = room && this.members(room).find((m) => m.id === userId);
-    if (member) Object.assign(member, { name, avatar, frame, cardBack });
+    const seat = room?.seats.find((s) => s?.id === userId);
+    if (seat) Object.assign(seat, member({ id: userId, name, avatar, frame }));
     return room;
   }
 
-  setConnected(code: string, memberId: PlayerId, connected: boolean) {
+  /** A dropped connection keeps the seat; returns the Room when there is one. */
+  setConnected(code: string, userId: PlayerId, connected: boolean) {
     const room = this.rooms.get(code);
-    const member = room && this.members(room).find((m) => m.id === memberId);
-    if (member) member.connected = connected;
+    const seat = room?.seats.find((s) => s?.id === userId);
+    if (seat) seat.connected = connected;
+    return room;
+  }
+
+  setOptions(code: string, userId: PlayerId, rawOptions: unknown) {
+    const room = this.hostBetweenMatches(code, userId);
+    room.options = parseOptions(room.manifest, rawOptions);
+    return room;
+  }
+
+  setReady(code: string, userId: PlayerId, ready: boolean) {
+    const room = this.get(code);
+    const seat = room.seats.find((s) => s?.id === userId);
+    if (!seat) throw new RoomError('Bạn chưa ở trong phòng này');
+    if (room.matchId) throw new RoomError('Ván đã bắt đầu');
+    seat.ready = ready;
+    return room;
+  }
+
+  addBot(code: string, userId: PlayerId) {
+    const room = this.hostBetweenMatches(code, userId);
+    if (!room.manifest.bots) throw new RoomError('Game này không chơi với máy');
+    const free = room.seats.indexOf(null);
+    if (free < 0) throw new RoomError('Phòng đã đủ người');
+    room.seats[free] = { id: `bot:${free + 1}`, name: 'Máy', bot: true, connected: true };
+    return room;
+  }
+
+  removeBot(code: string, userId: PlayerId, seat: number) {
+    const room = this.hostBetweenMatches(code, userId);
+    if (!room.seats[seat]?.bot) throw new RoomError('Ghế này không có máy');
+    room.seats[seat] = null;
     return room;
   }
 
   /**
-   * A member leaves on purpose (a dropped connection only marks them offline, see
-   * setConnected, so they can rejoin). A player leaving mid-game loses it in a game with an
-   * `onLeave` hook (the others play on, and a finished board stays up); in any other game it
-   * cancels the game for everyone and the room waits for players again. The next player
-   * becomes host; with no players left the room is
-   * disbanded (`closed: true`) and the caller must send the spectators out.
+   * The host starts a Match with everyone seated. Before the Room's first Match, every other
+   * person seated must have said Sẵn sàng; after it, playing again needs no second yes.
    */
-  leave(code: string, memberId: PlayerId) {
-    const room = this.get(code);
-    logRoom(room, {
-      kind: 'room',
-      level: 'info',
-      text: `${this.members(room).find((p) => p.id === memberId)?.name ?? memberId} rời phòng`,
-    });
-    remember(room);
-    const seat = room.players.findIndex((p) => p.id === memberId);
-    room.players = room.players.filter((p) => p.id !== memberId);
-    room.spectators = room.spectators.filter((m) => m.id !== memberId);
-    if (seat >= 0 && room.status !== 'lobby') {
-      room.lastResult = null;
-      if (room.game.leave) {
-        // The others play on (a finished board stays up).
-        if (room.status === 'playing') {
-          room.state = runRoomHook(room, 'onLeave', () =>
-            room.game.leave!(room.state, memberId, rngOf(room), this.context(room)),
-          );
-          this.settle(room);
-        }
-      } else {
-        room.status = 'lobby';
-        room.state = null;
-        room.result = null;
-        room.last = null;
-        room.timer = null;
-      }
+  start(code: string, userId: PlayerId): MatchStart {
+    const room = this.hostBetweenMatches(code, userId);
+    const seated = room.seats.filter((s): s is RoomMember => s !== null);
+    if (seated.length < room.manifest.minPlayers) {
+      throw new RoomError(`Cần ít nhất ${room.manifest.minPlayers} người chơi`);
     }
-    if (room.hostId === memberId) room.hostId = room.players.find((p) => !p.bot)?.id ?? null;
-    // Bots don't play alone.
-    const closed = room.players.every((p) => p.bot);
-    if (closed) this.rooms.delete(code);
-    return { room, closed };
-  }
-
-  /**
-   * The host changes the room's options between games (see `room:options`). When they ask for
-   * a different number of computer seats, bots join or leave; with other opponents the score and
-   * the old board start over.
-   */
-  setOptions(code: string, playerId: PlayerId, rawOptions: unknown) {
-    const room = this.get(code);
-    if (room.hostId !== playerId) throw new RoomError('Chỉ chủ phòng mới đổi được');
-    if (room.status === 'playing') throw new RoomError('Đợi hết ván rồi đổi nhé');
-    if (!room.game.room) throw new RoomError('Game này không có tuỳ chọn');
-    const options = this.roomOptions(room.game, rawOptions ?? {});
-    const wanted = this.botCount(room.game, options);
-    if (wanted !== room.players.filter((p) => p.bot).length) {
-      const humans = room.players.filter((p) => !p.bot);
-      if (humans.length + wanted > room.game.maxPlayers) {
-        throw new RoomError('Phòng đủ người rồi, không thêm máy được');
-      }
-      room.players = [...humans, ...this.newBots(wanted)];
-      room.score = { wins: Array(room.game.maxPlayers).fill(0), draws: 0 };
-      room.status = 'lobby';
-      room.state = null;
-      room.result = null;
-      room.lastResult = null;
-      room.last = null;
-      room.timer = null;
+    if (!room.played && seated.some((s) => !s.bot && s.id !== room.hostId && !s.ready)) {
+      throw new RoomError('Chờ mọi người sẵn sàng đã');
     }
-    room.options = options;
-    return room;
-  }
-
-  /** A seated player says they are ready for the host to start, or takes it back. */
-  setReady(code: string, playerId: PlayerId, ready: boolean) {
-    const room = this.get(code);
-    const player = room.players.find((p) => p.id === playerId);
-    if (!player) throw new RoomError('Bạn đang xem, chưa có ghế');
-    if (room.status === 'playing') throw new RoomError('Ván đã bắt đầu');
-    player.ready = ready;
-    return room;
-  }
-
-  /**
-   * Who the host of a waiting room still waits for: the other people seated who have not said
-   * Sẵn sàng. Empty once a game was played here: Chơi tiếp needs no second yes.
-   */
-  unready(code: string) {
-    const room = this.get(code);
-    if (room.status !== 'lobby') return [];
-    return room.players.filter((p) => !p.bot && p.id !== room.hostId && !p.ready);
-  }
-
-  start(code: string, playerId: PlayerId) {
-    const room = this.get(code);
-    if (room.hostId !== playerId) throw new RoomError('Chỉ chủ phòng mới bắt đầu được');
-    if (room.status === 'playing') throw new RoomError('Ván đã bắt đầu');
-    const count = room.players.length;
-    if (count < room.game.minPlayers) {
-      throw new RoomError(`Cần ít nhất ${room.game.minPlayers} người chơi`);
-    }
-    remember(room);
-    room.lastResult = room.result;
-    room.state = runRoomHook(room, 'onStart', () =>
-      room.game.setup(
-        room.players.map((p) => p.id),
-        rngOf(room),
-        room.options,
-        this.context(room),
-      ),
-    );
-    room.status = 'playing';
-    room.quick = false;
-    for (const player of room.players) player.ready = false;
-    room.result = null;
-    room.startedAt = Date.now();
-    room.endedAt = null;
     room.matchId = randomUUID();
-    room.round++;
-    room.last = null;
-    room.timer = null;
-    this.settle(room);
-    logRoom(room, { kind: 'room', level: 'info', text: `Ván ${room.round} bắt đầu` });
-    return room;
-  }
-
-  move(code: string, playerId: PlayerId, rawMove: unknown) {
-    const room = this.get(code);
-    const began = Date.now();
-    const player = room.players.find((p) => p.id === playerId);
-    const seat = room.state
-      ? room.game.seats(room.state).findIndex((p) => p.id === playerId)
-      : room.players.indexOf(player!);
-    const event = String((rawMove as { event?: string } | null)?.event ?? '?');
-    try {
-      if (!room.players.some((p) => p.id === playerId)) {
-        throw new RoomError('Bạn đang xem, không đi được');
-      }
-      if (room.status !== 'playing') throw new RoomError('Ván chưa bắt đầu');
-      const parsed = room.game.moveSchema.safeParse(rawMove);
-      if (!parsed.success) throw new RoomError('Nước đi không hợp lệ');
-      const context = this.context(room);
-      const error = room.game.validateMove(room.state, parsed.data, playerId, context);
-      if (error) throw new RoomError(error);
-      remember(room);
-      room.state = captureConsole(room, () =>
-        room.game.applyMove(room.state, parsed.data, playerId, rngOf(room), context),
-      );
-      room.last = { seq: (room.last?.seq ?? 0) + 1, player: playerId, move: parsed.data };
-      this.settle(room);
-      logRoom(room, {
-        kind: 'move',
-        level: 'info',
-        seat,
-        text: `${player?.name ?? playerId} (ghế ${seat}) gửi ${event} · ${Date.now() - began} ms`,
-        data: parsed.data,
-      });
-      return room;
-    } catch (err) {
-      if (err instanceof RoomError)
-        logRoom(room, {
-          kind: 'reject',
-          level: 'warn',
-          seat,
-          text: `${player?.name ?? playerId} gửi ${event} → bị từ chối: ${err.message}`,
-          data: rawMove,
-        });
-      else
-        logRoom(room, {
-          kind: 'error',
-          level: 'error',
-          seat,
-          text: `Lỗi trong ${hookName(event)}: ${err instanceof Error ? err.message : String(err)}`,
-          data: err,
-        });
-      throw err;
-    }
-  }
-
-  /**
-   * The game's timer, if it set a new one since the last call: the gateway waits `ms`, then
-   * calls `fireTimer(code, key)`. Returns `null` when there is nothing new to wait for.
-   */
-  syncTimer(room: Room) {
-    const timer = room.status === 'playing' ? room.game.timer(room.state) : null;
-    if (!timer) {
-      room.timer = null;
-      if (room.dev) room.dev.remaining = null;
-      return null;
-    }
-    const key = `${room.round}:${timer.id}`;
-    if (room.timer?.key === key) return null;
-    const ms =
-      room.timer && !room.timer.key.startsWith('restore:')
-        ? timer.ms
-        : (room.dev?.remaining ?? timer.ms);
-    if (room.dev) room.dev.remaining = room.dev.timerPaused ? ms : null;
-    room.timer = { key, event: timer.event, ms: timer.ms, endsAt: Date.now() + ms };
-    logRoom(room, {
-      kind: 'timer',
-      level: 'info',
-      text: `Timer ${timer.event}: ${ms / 1000} giây`,
-    });
-    return room.dev?.timerPaused ? null : { key, ms };
-  }
-
-  /** The timer `key` went off: runs its hook. Returns the room, or `null` if it's outdated. */
-  fireTimer(code: string, key: string) {
-    const room = this.rooms.get(code);
-    if (!room || room.status !== 'playing' || room.timer?.key !== key) return null;
-    const event = room.timer.event;
-    logRoom(room, { kind: 'timer', level: 'info', text: `Timer ${event} đã chạy` });
-    remember(room);
-    room.timer = null;
-    if (room.dev) room.dev.remaining = null;
-    room.state = runRoomHook(room, hookName(event), () =>
-      room.game.fireTimer(room.state, rngOf(room), this.context(room)),
-    );
-    this.settle(room);
-    return room;
-  }
-
-  /** After the game's state changed: is it over? */
-  settle(room: Room) {
-    room.result = room.game.getResult(room.state, this.context(room));
-    if (room.result && room.status === 'playing') {
-      room.status = 'finished';
-      room.timer = null;
-      room.endedAt = Date.now();
-      this.addToScore(room, room.result);
-      this.announceFinished(room, room.result);
-      logRoom(room, {
-        kind: 'room',
-        level: 'info',
-        text: `Ván ${room.round} kết thúc`,
-        data: room.result,
-      });
-    }
-  }
-
-  /**
-   * The first computer seat with something to do makes its move. Returns the room when a move
-   * was made, `null` otherwise (no bot's turn, game over, room gone). The gateway calls it after
-   * a short pause following every change.
-   */
-  botMove(code: string, step = false) {
-    const room = this.rooms.get(code);
-    if (!room?.game.bot || room.status !== 'playing' || (room.dev?.botsPaused && !step))
-      return null;
-    const checkpoint = room.dev ? frameOf(room) : null;
-    for (const seat of room.players) {
-      if (!seat.bot) continue;
-      const move = runRoomHook(room, 'bot', () =>
-        room.game.bot!(room.state, seat.id, rngOf(room), room.options, this.context(room)),
-      );
-      if (move !== null) {
-        logRoom(room, {
-          kind: 'bot',
-          level: 'info',
-          seat: room.game.seats(room.state).findIndex((p) => p.id === seat.id),
-          text: `Máy chọn ${(move as { event?: string }).event ?? '?'}`,
-          data: move,
-        });
-        const changed = this.move(code, seat.id, move);
-        if (checkpoint && room.dev) room.dev.history[room.dev.history.length - 1] = checkpoint;
-        return changed;
-      }
-    }
-    return null;
-  }
-
-  /** What `memberId` is allowed to see. Never send `room.state` directly. */
-  snapshotFor(room: Room, memberId: PlayerId): RoomSnapshot {
-    const isPlayer = room.players.some((p) => p.id === memberId);
-    const info = ({ id, name, connected, bot, ready, avatar, frame, cardBack }: Member) => ({
-      id,
-      name,
-      connected,
-      ...(bot && { bot }),
-      ...(ready && { ready }),
-      ...(avatar && { avatar }),
-      ...(frame && { frame }),
-      ...(cardBack && { cardBack }),
-    });
+    room.played = true;
+    for (const seat of seated) seat.ready = undefined;
     return {
-      code: room.code,
-      gameId: room.game.id,
-      hostId: room.hostId,
-      players: room.players.map(info),
-      spectators: room.spectators.map(info),
-      seats:
-        room.state === null
-          ? null
-          : room.game.seats(room.state, this.context(room)).map((p) => ({
-              id: p.id,
-              name: p.name,
-              connected: p.bot || Boolean(room.players.find((m) => m.id === p.id)?.connected),
-              ...(p.bot && { bot: true }),
-              ...(p.avatar && { avatar: p.avatar }),
-              ...(p.frame && { frame: p.frame }),
-              ...(p.left && { left: true }),
-            })),
-      status: room.status,
-      view:
-        room.state === null
-          ? null
-          : room.game.getView(room.state, isPlayer ? memberId : null, this.context(room)),
-      result: room.result,
-      score: room.score,
+      matchId: room.matchId,
+      gameId: room.manifest.id,
+      players: seated.map(({ id, name, bot, avatar }) => ({
+        id,
+        name,
+        bot: Boolean(bot),
+        ...(avatar !== undefined && { avatar }),
+      })),
       options: room.options,
-      round: room.round,
-      last: room.last && {
-        ...room.last,
-        move: room.game.moveView
-          ? room.game.moveView(room.last.move, room.last.player, isPlayer ? memberId : null)
-          : room.last.move,
-      },
-      timer: room.timer && {
-        event: room.timer.event,
-        ms: room.timer.ms,
-        left: room.dev?.timerPaused
-          ? (room.dev.remaining ?? room.timer.ms)
-          : Math.max(0, room.timer.endsAt - Date.now()),
-      },
-      played:
-        room.status === 'lobby' || room.startedAt === null
-          ? null
-          : {
-              ms: (room.endedAt ?? Date.now()) - room.startedAt,
-              running: room.endedAt === null,
-            },
     };
   }
 
-  /** Deletes rooms where nobody is connected. Called periodically by the gateway. */
+  /** The Match is over (settled or aborted): the Room waits to play again. */
+  endMatch(code: string, matchId: string) {
+    const room = this.rooms.get(code);
+    if (!room || room.matchId !== matchId) return undefined;
+    room.matchId = null;
+    return room;
+  }
+
+  /** What everyone in the Room sees of it. */
+  stateOf(code: string): RoomState {
+    const room = this.get(code);
+    return {
+      code: room.code,
+      gameId: room.manifest.id,
+      hostId: room.hostId,
+      seats: room.seats.map((s) => s && { ...s }),
+      options: room.options,
+      status: room.matchId ? 'playing' : 'waiting',
+      matchId: room.matchId,
+    };
+  }
+
+  /** Deletes Rooms where nobody is connected. Called periodically by the gateway. */
   pruneEmptyRooms() {
     for (const [code, room] of this.rooms) {
-      if (this.humans(room).every((m) => !m.connected)) this.rooms.delete(code);
+      if (!room.seats.some((s) => s && !s.bot && s.connected)) this.rooms.delete(code);
     }
   }
 
-  private announceFinished(room: Room, result: GameResult) {
-    if (!this.finishedListeners.length || room.state === null) return;
-    const game: FinishedGame = {
-      gameId: room.game.id,
-      matchId: room.matchId ?? randomUUID(),
-      startedAt: room.startedAt ?? room.endedAt ?? Date.now(),
-      endedAt: room.endedAt ?? Date.now(),
-      seats: room.game.seats(room.state, this.context(room)).map((p) => ({
-        id: p.id,
-        name: p.name,
-        avatar: p.avatar,
-        frame: p.frame,
-        bot: p.bot,
-        left: p.left,
-      })),
-      result,
-    };
-    for (const listener of this.finishedListeners) {
-      try {
-        listener(game);
-      } catch (err) {
-        // Keeping a record must never break the room.
-        console.error(err);
-      }
-    }
-  }
-
-  /** Counts a finished game for the winners' seats (or as a draw). */
-  private addToScore(room: Room, result: GameResult) {
-    if (result.winners.length === 0) room.score.draws++;
-    for (const id of result.winners) {
-      const seat = room.players.findIndex((p) => p.id === id);
-      if (seat >= 0) room.score.wins[seat] = (room.score.wins[seat] ?? 0) + 1;
-    }
-  }
-
-  private summary(room: Room): RoomSummary {
-    const host = room.players.find((p) => p.id === room.hostId);
-    return {
-      code: room.code,
-      hostName: host?.name ?? '?',
-      players: room.players.length,
-      maxPlayers: room.game.maxPlayers,
-      spectators: room.spectators.filter((m) => m.connected).length,
-      status: room.status,
-      canJoin: this.seatError(room) === null,
-    };
-  }
-
-  private seatError(room: Room) {
-    if (room.status === 'playing') return 'Ván đang chơi, bạn có thể vào xem';
-    if (room.players.length >= room.game.maxPlayers) return 'Phòng đã đủ người, bạn có thể vào xem';
-    return null;
-  }
-
-  private assertSeatFree(room: Room) {
-    const error = this.seatError(room);
-    if (error) throw new RoomError(error);
-  }
-
-  private members(room: Room) {
-    return [...room.players, ...room.spectators];
-  }
-
-  private humans(room: Room) {
-    return this.members(room).filter((m) => !m.bot);
-  }
-
-  private newBots(count: number): Member[] {
-    return Array.from({ length: count }, (_, i) => ({
-      id: `bot:${i + 1}`,
-      name: count > 1 ? `Máy ${i + 1}` : 'Máy',
-      connected: true,
-      bot: true,
-    }));
-  }
-
-  /** What the rules get to know about the room around the game. */
-  context(room: Room) {
-    return {
-      players: room.players.map((p) => ({
-        id: p.id,
-        name: p.name,
-        bot: Boolean(p.bot),
-        avatar: p.avatar,
-        frame: p.frame,
-      })),
-      hostId: room.hostId,
-      score: room.score,
-      options: room.options,
-      lastResult: room.lastResult,
-    };
-  }
-
-  /** Seats the computer takes with these options. */
-  private botCount(game: AnyGameDefinition, options: unknown) {
-    return game.bot ? Math.min(game.room?.bots?.(options) ?? 0, game.maxPlayers - 1) : 0;
-  }
-
-  private roomOptions(game: AnyGameDefinition, raw: unknown) {
-    if (!game.room) return undefined;
-    if (raw === undefined) return defaultOptions(game);
-    const parsed = game.room.options.safeParse(raw);
-    if (!parsed.success) throw new RoomError('Tuỳ chọn phòng không hợp lệ');
-    return parsed.data;
+  private hostBetweenMatches(code: string, userId: PlayerId) {
+    const room = this.get(code);
+    if (room.hostId !== userId) throw new RoomError('Chỉ chủ phòng mới làm được');
+    if (room.matchId) throw new RoomError('Đợi hết ván đã');
+    return room;
   }
 
   private get(code: string) {
@@ -746,11 +237,6 @@ export class RoomsService {
     return room;
   }
 
-  private newMember(account: Account): Member {
-    const { id, name, avatar, frame, cardBack } = account;
-    return { id, name, avatar, frame, cardBack, connected: true };
-  }
-
   private newCode() {
     let code: string;
     do {
@@ -760,4 +246,20 @@ export class RoomsService {
     } while (this.rooms.has(code));
     return code;
   }
+}
+
+function member({ id, name, avatar, frame }: Account): RoomMember {
+  return {
+    id,
+    name,
+    ...(avatar !== undefined && { avatar }),
+    ...(frame !== undefined && { frame }),
+    connected: true,
+  };
+}
+
+function parseOptions(manifest: GameManifest, raw: unknown): RoomOptions {
+  const parsed = optionsSchema(manifest).safeParse(raw ?? {});
+  if (!parsed.success) throw new RoomError('Tuỳ chọn phòng không hợp lệ');
+  return parsed.data as RoomOptions;
 }

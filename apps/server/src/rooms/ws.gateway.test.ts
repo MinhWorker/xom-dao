@@ -2,10 +2,24 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { PROTOCOL_MISMATCH, PROTOCOL_VERSION, type RoomSnapshot } from '@xomdao/shared';
+import { defineManifest, type GameManifest } from '@xomdao/sdk';
+import { PROTOCOL_MISMATCH, PROTOCOL_VERSION, type RoomState } from '@xomdao/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { AppModule } from '../app.module.js';
+import { GAME_MANIFESTS } from './manifests.js';
+
+const caro = defineManifest({
+  id: 'tic-tac-toe',
+  name: 'Caro',
+  tagline: 'Năm quân liền hàng.',
+  minPlayers: 2,
+  maxPlayers: 2,
+  duration: { min: 5, max: 15 },
+  status: 'wip',
+  bots: true,
+  focus: { x: 50, y: 50 },
+});
 
 let app: INestApplication;
 let url: string;
@@ -13,6 +27,8 @@ let url: string;
 beforeAll(async () => {
   delete process.env.DATABASE_URL;
   app = await NestFactory.create(AppModule, { logger: false });
+  // No Game is loaded yet: the server runs this one for the test.
+  app.get<GameManifest[]>(GAME_MANIFESTS).push(caro);
   await app.listen(0, '127.0.0.1');
   url = (await app.getUrl()).replace('http', 'ws');
 });
@@ -45,7 +61,7 @@ async function connect() {
       ws.send(JSON.stringify({ id, event, data }));
     });
   const states = () =>
-    pushed.filter((m) => m.event === 'room:state').map((m) => m.data as RoomSnapshot);
+    pushed.filter((m) => m.event === 'room:state').map((m) => m.data as RoomState);
   return { ws, request, pushed, states };
 }
 
@@ -67,7 +83,7 @@ describe('WebSocket transport', () => {
     ws.close();
   });
 
-  it('lets two guests make a room, join it by code, play and see the state', async () => {
+  it('lets two guests make a Room, join it by code, start a Match and see the state', async () => {
     const lan = await connect();
     const minh = await connect();
     const a = await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
@@ -82,34 +98,28 @@ describe('WebSocket transport', () => {
     const created = await lan.request('room:create', { gameId: 'tic-tac-toe' });
     const code = created.roomCode as string;
     expect(code).toMatch(/^[A-HJ-NP-Z2-9]{4}$/);
-    const joined = await minh.request('room:join', {
-      roomCode: ` ${code.toLowerCase()}`,
-      role: 'player',
-    });
+    const joined = await minh.request('room:join', { roomCode: ` ${code.toLowerCase()}` });
     expect(joined).toMatchObject({ ok: true, roomCode: code });
-    expect(await lan.request('game:start')).toEqual({
+    expect(await lan.request('match:start')).toEqual({
       ok: false,
       error: 'Chờ mọi người sẵn sàng đã',
     });
     expect(await minh.request('room:ready', { ready: true })).toEqual({ ok: true });
-    expect(await lan.request('game:start')).toEqual({ ok: true });
-
-    const place = (x: number, y: number) => ({ move: { event: 'place', payload: { x, y } } });
-    const me = (b.user as { id: string }).id;
-    expect(await minh.request('game:move', place(4, 4))).toEqual({
-      ok: false,
-      error: 'Chưa tới lượt bạn',
-    });
-    expect(await lan.request('game:move', place(4, 4))).toEqual({ ok: true });
+    const started = await lan.request('match:start');
+    expect(started).toEqual({ ok: true, matchId: expect.any(String) });
     await settle();
-    const seen = minh.states().at(-1);
-    expect(seen).toMatchObject({ code, status: 'playing', players: [{ name: 'Lan' }, { id: me }] });
-    expect(seen?.view).toMatchObject({ turn: me });
-    expect(seen?.last).toMatchObject({ seq: 1, move: { event: 'place' } });
+    const me = (b.user as { id: string }).id;
+    expect(minh.states().at(-1)).toMatchObject({
+      code,
+      status: 'playing',
+      matchId: started.matchId,
+      seats: [{ name: 'Lan' }, { id: me }],
+    });
 
-    // Logging in again with the token puts the guest back in the room.
+    // Logging in again with the token puts the guest back in the Room.
     lan.ws.close();
     await settle();
+    expect(minh.states().at(-1)?.seats[0]).toMatchObject({ name: 'Lan', connected: false });
     const back = await connect();
     const token = a.token as string;
     expect(await back.request('auth:token', { protocol: PROTOCOL_VERSION, token })).toMatchObject({
@@ -117,6 +127,9 @@ describe('WebSocket transport', () => {
       user: { name: 'Lan' },
     });
     expect(await back.request('session:resume')).toMatchObject({ room: { roomCode: code } });
+    expect(await back.request('room:leave')).toEqual({ ok: true });
+    await settle();
+    expect(minh.states().at(-1)).toMatchObject({ hostId: me, seats: [null, { id: me }] });
     back.ws.close();
     minh.ws.close();
   });

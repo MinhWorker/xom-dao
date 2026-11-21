@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { EVENT_POINTS, getGame, type RewardNotice } from '@xomdao/shared';
-import type { FinishedGame } from '../rooms/rooms.service.js';
+import type { FinishedGame } from '../matches/finished-game.js';
 import type { LedgerEntry, LedgerStore } from './ledger.store.js';
 
 export const LEDGER_STORE = Symbol('LEDGER_STORE');
@@ -8,7 +8,7 @@ export const LEDGER_STORE = Symbol('LEDGER_STORE');
 /**
  * The ledger: the only module that changes balances. Every change is
  * a row with a key that makes it happen once. Other modules pay or charge through `apply`; game
- * rewards come from finished games (`RoomsService.onFinished`, wired by the rooms gateway).
+ * rewards come from finished games (`rewardMatch`; no caller until Match results are settled).
  */
 @Injectable()
 export class LedgerService {
