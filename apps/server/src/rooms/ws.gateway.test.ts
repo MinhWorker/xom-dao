@@ -8,6 +8,8 @@ import {
   type EventContext,
   Game,
   type GameManifest,
+  type MatchResult,
+  type StartContext,
 } from '@xomdao/sdk';
 import { PROTOCOL_MISMATCH, PROTOCOL_VERSION, type RoomState } from '@xomdao/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -31,8 +33,10 @@ const caro = defineManifest({
 
 class CaroServer extends Game<{ turn: number }> {
   readonly events = { finish: z.object({}) };
+  readonly previousResults: (MatchResult | null)[] = [];
 
-  onStart() {
+  onStart(ctx: StartContext) {
+    this.previousResults.push(ctx.lastResult);
     return { turn: 0 };
   }
 
@@ -45,13 +49,15 @@ class CaroServer extends Game<{ turn: number }> {
 let app: INestApplication;
 let url: string;
 let httpUrl: string;
+let caroServer: CaroServer;
 
 beforeAll(async () => {
   delete process.env.DATABASE_URL;
   app = await NestFactory.create(AppModule, { logger: false });
   // Load one fake Game server for the test.
   app.get<GameManifest[]>(GAME_MANIFESTS).push(caro);
-  app.get<AnyGameServer[]>(GAME_SERVERS).push({ manifest: caro, game: new CaroServer() });
+  caroServer = new CaroServer();
+  app.get<AnyGameServer[]>(GAME_SERVERS).push({ manifest: caro, game: caroServer });
   await app.listen(0, '127.0.0.1');
   httpUrl = await app.getUrl();
   url = httpUrl.replace('http', 'ws');
@@ -187,6 +193,22 @@ describe('WebSocket transport', () => {
       { player: lanId, place: 1 },
       { player: me, place: 2 },
     ]);
+    expect(caroServer.previousResults).toHaveLength(1);
+    expect(caroServer.previousResults[0]).toBeNull();
+
+    const rematch = await lan.request('match:start');
+    const rematchId = rematch.matchId as string;
+    await lan.request('match:ready', { matchId: rematchId });
+    await minh.request('match:ready', { matchId: rematchId });
+    await settle();
+    expect(caroServer.previousResults.at(-1)).toMatchObject({
+      seats: [
+        { player: lanId, place: 1 },
+        { player: me, place: 2 },
+      ],
+    });
+    await lan.request('match:move', { matchId: rematchId, event: 'finish' });
+    await settle();
 
     // Logging in again with the token puts the guest back in the Room.
     lan.ws.close();

@@ -125,6 +125,14 @@ export const MatchRecord = z.object({
 });
 export type MatchRecord = z.infer<typeof MatchRecord>;
 
+/** A pending Game timer that a client can use to draw its countdown. */
+export const MatchTimer = z.object({
+  id: z.int().min(1),
+  event: z.string().min(1),
+  ms: z.number(),
+});
+export type MatchTimer = z.infer<typeof MatchTimer>;
+
 /** The server-authoritative places and stats returned when a Game finishes a Match. */
 export const MatchResult = z.object({
   seats: z.array(
@@ -384,6 +392,7 @@ export const events = {
     status: z.enum(['loading', 'playing', 'over']),
     outcome: z.enum(['settled', 'aborted']).optional(),
     disconnectedPlayerIds: z.array(z.string()),
+    timer: MatchTimer.nullable(),
     result: MatchResult.optional(),
     view: z.unknown().optional(),
   }),

@@ -11,7 +11,7 @@ import {
   seededRng,
   turnRules,
 } from '@xomdao/sdk';
-import type { RoomOptions } from '@xomdao/shared';
+import type { MatchTimer, RoomOptions } from '@xomdao/shared';
 import type { MatchStart, MatchState, MatchStatus } from './game-host.types.js';
 import { GAME_SERVERS } from './games.js';
 
@@ -33,7 +33,10 @@ interface ActiveMatch {
 }
 
 interface GameRuntime {
-  setup(start: { players: RoomSeat[]; options: RoomOptions }, rng: Rng): Stored<unknown, unknown>;
+  setup(
+    start: { players: RoomSeat[]; options: RoomOptions; lastResult: MatchResult | null },
+    rng: Rng,
+  ): Stored<unknown, unknown>;
   validateMove(stored: Stored<unknown, unknown>, move: GameEvent, playerId: string): string | null;
   applyMove(
     stored: Stored<unknown, unknown>,
@@ -41,7 +44,7 @@ interface GameRuntime {
     playerId: string,
     rng: Rng,
   ): Stored<unknown, unknown>;
-  timer(stored: Stored<unknown, unknown>): { id: number; ms: number } | null;
+  timer(stored: Stored<unknown, unknown>): MatchTimer | null;
   fireTimer(stored: Stored<unknown, unknown>, rng: Rng): Stored<unknown, unknown>;
   leave?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): Stored<unknown, unknown>;
   bot?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): GameEvent | null;
@@ -196,6 +199,7 @@ export class GameHostService implements OnModuleDestroy {
         {
           players: match.start.players,
           options: match.start.options,
+          lastResult: match.start.lastResult,
         },
         rng,
       );
@@ -325,6 +329,10 @@ export class GameHostService implements OnModuleDestroy {
       gameId: match.start.gameId,
       status: match.status,
       disconnectedPlayerIds: [...match.disconnectedPlayerIds],
+      timer:
+        match.status === 'playing' && match.rules && match.stored
+          ? match.rules.timer(match.stored)
+          : null,
     };
   }
 
@@ -349,11 +357,14 @@ function createRuntime(server: AnyGameServer): GameRuntime {
   const rules = turnRules(game);
   return {
     setup(start, rng) {
-      return rules.setup({ ...start, lastResult: null }, rng);
+      return rules.setup(start, rng);
     },
     validateMove: (stored, move, playerId) => rules.validateMove(stored, move, playerId),
     applyMove: (stored, move, playerId, rng) => rules.applyMove(stored, move, playerId, rng),
-    timer: (stored) => rules.timer(stored),
+    timer: (stored) => {
+      const timer = rules.timer(stored);
+      return timer && { id: timer.id, event: timer.event, ms: timer.ms };
+    },
     fireTimer: (stored, rng) => rules.fireTimer(stored, rng),
     leave:
       rules.leave && ((stored, playerId, rng) => rules.leave?.(stored, playerId, rng) ?? stored),

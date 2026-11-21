@@ -201,6 +201,7 @@ describe('starting a Match', () => {
       matchId: expect.any(String),
       roomCode: room.code,
       gameId: 'caro',
+      lastResult: null,
       players: [
         { id: 'lan', name: 'Lan', bot: false },
         { id: 'minh', name: 'Minh', bot: false },
@@ -231,10 +232,21 @@ describe('starting a Match', () => {
     rooms.setReady(room.code, 'minh', true);
     const first = rooms.start(room.code, 'lan');
     expect(rooms.endMatch(room.code, 'another-match')).toBeUndefined();
-    expect(rooms.endMatch(room.code, first.matchId)).toBe(room);
+    const result = {
+      seats: [
+        { player: 'lan', place: 1 },
+        { player: 'minh', place: 2 },
+      ],
+    };
+    expect(rooms.endMatch(room.code, first.matchId, result)).toBe(room);
     expect(rooms.stateOf(room.code)).toMatchObject({ status: 'waiting', matchId: null });
     const second = rooms.start(room.code, 'lan');
     expect(second.matchId).not.toBe(first.matchId);
+    expect(second.lastResult).toEqual(result);
+    rooms.endMatch(room.code, second.matchId, result);
+    rooms.leave(room.code, 'minh');
+    rooms.join(room.code, acc('Hoa'));
+    expect(rooms.start(room.code, 'lan').lastResult).toBeNull();
   });
 });
 

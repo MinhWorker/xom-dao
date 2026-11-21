@@ -1,10 +1,11 @@
 import type { MatchResult, RoomSeat } from '@xomdao/sdk';
-import type { RoomOptions } from '@xomdao/shared';
+import type { MatchTimer, RoomOptions } from '@xomdao/shared';
 
 export interface MatchStart {
   matchId: string;
   roomCode: string;
   gameId: string;
+  lastResult: MatchResult | null;
   players: RoomSeat[];
   options: RoomOptions;
 }
@@ -19,5 +20,6 @@ export interface MatchState {
   status: MatchStatus;
   outcome?: MatchOutcome;
   disconnectedPlayerIds: string[];
+  timer: MatchTimer | null;
   result?: MatchResult;
 }

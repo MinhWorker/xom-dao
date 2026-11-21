@@ -91,6 +91,7 @@ const matchStart = {
   matchId: 'match-1',
   roomCode: 'ABCD',
   gameId: manifest.id,
+  lastResult: null,
   players: [
     { id: 'lan', name: 'Lan', bot: false },
     { id: 'minh', name: 'Minh', bot: false },
@@ -210,6 +211,23 @@ describe('GameHostService', () => {
     });
   });
 
+  it('passes the previous Match result into the next Game setup', () => {
+    const lastResult = {
+      seats: [
+        { player: 'lan', place: 2 },
+        { player: 'minh', place: 1 },
+      ],
+    };
+    const start = vi.fn(() => ({ started: true }));
+    const host = new GameHostService([{ manifest, game: new FakeGame(start) }]);
+
+    host.startMatch({ ...matchStart, lastResult });
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({ lastResult }));
+  });
+
   it('fires a Game timer and settles the Match', () => {
     vi.useFakeTimers();
     const updates: { status: string; outcome?: string }[] = [];
@@ -219,9 +237,13 @@ describe('GameHostService', () => {
     host.startMatch(matchStart);
     host.ready('match-1', 'lan');
     host.ready('match-1', 'minh');
+    expect(host.match('match-1')).toMatchObject({
+      status: 'playing',
+      timer: { id: 1, event: 'timeout', ms: 100 },
+    });
     vi.advanceTimersByTime(100);
 
-    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled' });
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled', timer: null });
   });
 
   it('runs a bot move when it is the bot seat’s turn', async () => {

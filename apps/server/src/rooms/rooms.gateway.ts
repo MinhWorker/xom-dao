@@ -95,7 +95,8 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
         this.broadcastCode(match.roomCode);
       }
       if (match.status === 'over') {
-        const room = this.rooms.endMatch(match.roomCode, match.matchId);
+        const result = match.outcome === 'settled' ? match.result : undefined;
+        const room = this.rooms.endMatch(match.roomCode, match.matchId, result);
         if (room) this.broadcast(room);
       }
     });
