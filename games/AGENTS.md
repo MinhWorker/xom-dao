@@ -17,6 +17,14 @@ Where to look:
   current server, `@xomdao/shared` and the two kept games still import it; the rest of this file
   describes it. Delete it once the rewritten rooms, GameHostModule and games no longer need it.
 
+## The Bridge
+
+A Game's client talks to the Hub only through `@xomdao/bridge` (`packages/bridge`): it calls
+`createGameBridge({ onInit, onMessage, ... })`, then `ready()`, sends moves with `send` and
+calls `done()` after its end-of-match animation. Every `init` (reconnect, replay) must redraw
+the whole screen from its `match` snapshot. The message list and `BRIDGE_VERSION` are in the
+header of `packages/bridge/src/protocol.ts`; the Hub's side is `createGameHost`.
+
 ## A game's folder
 
 ```
@@ -68,6 +76,7 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
   and still prints in the terminal. SDK declares these methods for pure game builds.
 - A game's TypeScript imports only these; Biome enforces it, and core never imports a game:
   - `@xomdao/sdk` and `zod` (and `vitest` in tests);
+  - `@xomdao/bridge`, from its client;
   - its own files.
 - Every `Game` has tests with `testGame` (`src/game/<Name>Game.test.ts`).
 - When a mechanic or piece of data would help other games too, add it to the SDK instead of the

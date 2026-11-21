@@ -44,13 +44,14 @@
                       "**",
                       "!@xomdao/sdk",
                       "!@xomdao/sdk/legacy",
+                      "!@xomdao/bridge",
                       "!zod",
                       "!vitest",
                       "!./**",
                       "!../*",
                       "!../*/**"
                     ],
-                    "message": "A game may import only @xomdao/sdk, zod, vitest (tests) and its own files (./..., ../game/...)."
+                    "message": "A game may import only @xomdao/sdk, @xomdao/bridge (client), zod, vitest (tests) and its own files (./..., ../game/...)."
                   },
                   {
                     "group": ["../../**"],
