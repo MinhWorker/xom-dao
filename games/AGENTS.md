@@ -1,45 +1,28 @@
 # Games and the SDK
 
 Where to look:
-- **Examples**:
-  - `scripts/templates/` holds the starters `new:game` / `new:event` fill in: `game/` (rules,
-    bot), `event/` (over `game/`), `godot/<layout>/main.gd` (Bàn, Hành động, event),
-    `godot/test/`, and `e2e/` for events.
-  - `games/tic-tac-toe` (Caro) adds room options (rows on the room's plate) and a computer player.
-  - `games/tien-len` is the fullest Godot table (cards, effects, sounds, art).
-- **Skills** in `.claude/skills/`: `new-content` (a game or event from a brief), `make-asset`,
-  `phone-check`, `anti-slop-game-ui` (when designing, implementing or reviewing a game's board,
-  HUD, menus or overlays).
-- **The source of truth for the API** is the header of `packages/sdk/src/engine.ts` (rules) and,
-  for a game's Godot table, `apps/client/AGENTS.md` and the header of
-  `apps/client/addons/xomdao_sdk/client.gd`.
+- **Examples**: `games/tic-tac-toe` (Caro) adds room options and a computer player;
+  `games/tien-len` is the fullest game.
+- **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
+  game's board, HUD, menus or overlays).
+- **The source of truth for the API** is the header of `packages/sdk/src/engine.ts`.
 
 ## A game's folder
 
 ```
-games/<id>/          src/index.ts is required; without godot/main.tscn the card shows "Sắp có"
+games/<id>/          src/index.ts is required
   RULES.md             Current Vietnamese gameplay rules (non-starter games); the client's Luật board
   src/index.ts         export default definePlugin({ meta, game: new MyGame(), room? }); server
   src/game/            Pure rules, no DOM: <Name>Game.ts (+ test), model.ts, options.ts, bot.ts
-  godot/               The Godot table: main.tscn + main.gd, test/test_*.gd (GUT), art/, sounds/,
-                       music/ (rules in apps/client/AGENTS.md)
-  assets/              Full-size images/sounds, atlases and normals; godot/ copies what it uses
+  godot/               Legacy Godot table (dead code until the legacy games are removed)
+  assets/              Full-size images/sounds, atlases and normals
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
 ```
 
-| Command | What it does |
-| --- | --- |
-| `npm run new:game -- <id> "Tên" --genre <g> [--layout ban\|hanh-dong]` | A working game (status `wip`): rules + bot + tests, a Godot table in that layout + GUT test, RULES.md, stand-in card. Then `npm run godot:check` writes the `.uid` files to commit |
-| `npm run new:event -- <id> "Tên" [--opens YYYY-MM-DD] [--closes YYYY-MM-DD]` | The same for an event (`su-kien`, Hành động layout, dates default to today + 4 weeks, reward tiers, browser scenario) |
-| `npm run new -- logic <id> [Name]` | Write a `Game` (+ test) from `scripts/templates/` (leave out `<id>` inside `games/<id>/`) |
-| `npm run new -- options <id>` | Write `src/game/options.ts` (the room's options); its rows in the room come from `room_setup()` in `godot/main.gd` |
-| `npm run godot:export -- --debug --game <id>` | Refresh one game's pack in a matching existing debug web build; use a full export after changing the shared client |
-| `/?play=<id>` | Sandbox (debug builds: dev and PR previews): a real room with the computer in the other seats (`sandbox_options()`) |
-| `npm run godot:preview -- open <index> res://content/<id>/preview.tscn` | Open a persistent, isolated visual preview; use `capture` or `capture-sequence` to review object and animation changes without starting a game room |
 
 ## Rules
 
-- **The server is authoritative.** A game's Godot table calls `client.send(event, payload)`,
+- **The server is authoritative.** A game's table calls `client.send(event, payload)`,
   which goes out as `game:move`. The server then:
   1. checks the payload against `events`;
   2. runs `on<Event>`;
@@ -61,14 +44,8 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 - A game's TypeScript imports only these; Biome enforces it, and core never imports a game:
   - `@xomdao/sdk` and `zod` (and `vitest` in tests);
   - its own files.
-- A game's Godot code reaches only its own folder and `res://addons/xomdao_sdk/`
-  (`godot:check` enforces it; see `apps/client/AGENTS.md`).
 - Every `Game` has tests with `testGame` (`src/game/<Name>Game.test.ts`).
-- The per-game browser scenario is reserved for `co-ty-phu-classic` (Monopoly), at
-  `scripts/e2e/scenarios/godot-co-ty-phu-classic.mjs`. New games use TypeScript tests and GUT;
-  the generator does not add per-game E2E scenarios. Shared client flows and event scenarios
-  remain in `scripts/e2e/scenarios/`, and CI runs the whole suite. A scenario that moves the event
-  clock (`dev:clock`) exports `lock = 'clock'` so such scenarios run one at a time.
+
 - When a mechanic or piece of data would help other games too, add it to the SDK instead of the
   game. Examples: a system event, a `ctx` property, a view helper, a test helper.
 - Changing an SDK API means, in the same change:
@@ -106,7 +83,6 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
 - **Room options and bots**:
   - `room.options` is a zod schema, and `optionsSchema.parse({})` must work.
   - The `Game` reads them as `ctx.options`; the table gets them in the snapshot's `options`.
-  - The option rows in the room come from `room_setup()` in the game's `godot/main.gd`.
   - `room.bots` seats computer players, whose moves come from `bot(ctx)`.
   - `room.withBots(options, count)` gives the options with the computer in `count` empty seats:
     quick match (CHƠI) fills a room with it when nobody else comes (`QUICK_WAIT_MS`).
@@ -114,21 +90,7 @@ games/<id>/          src/index.ts is required; without godot/main.tscn the card 
     yet).
 - **Snapshots** carry `round` and `last` (the last event). `ctx.lastResult` is how the room's
   previous game ended.
-- **Tables**: the hub draws the ☰ menu, the room, the result and Luật; the game's Godot table
-  draws only its board, from `client.snapshot`. Optional `result_area() -> Rect2` docks the shared
-  result HUD beside the board; `set_result_visible(shown: bool)` follows Xem bàn / Kết quả.
-  Optional `wait_for_result_panel()` (may await) is the game's own end beat: the hub awaits it on
-  every ending (win, loss, draw, resign, leave, timeout), capped at 8 s, so it must return
-  promptly when there is nothing to play; a game with it plays its own outcome sound. Without it
-  the hub plays a default beat (pause, outcome ribbon, the app's win/lose sound), so don't also
-  play a win/lose sound at the end. Optional `result_theme() -> Dictionary` skins the result
-  board: `paper`, `ink`, `accent`, `shade` (Colors), `title` (String), `emblem` (Texture2D).
-  `result_detail()` may add `ranks` and `scores` ({player id: …}) to place everyone on the board
-  (`XomDaoPlaces.by_points` builds them for a points game).
-  Optional `table_skin() -> XomDaoTableSkin` dresses the hub's ☰ in the table's materials; give
-  the same skin to the game's seats and buttons so no shared HUD piece breaks the table's look. See
-  `apps/client/AGENTS.md`. Build every button and panel from the UI kit in
-  `apps/client/addons/xomdao_sdk/ui/` (`apps/client/AGENTS.md`).
+- **Tables**: the game draws only its board, from the room snapshot; the Hub is not built yet.
 - **`testGame`** takes a plugin or a `Game`. It offers:
   - `send`, `error`, `view` and `assertHidden`;
   - `command(line)` for optional game dev commands, catalog references and semicolon chains;

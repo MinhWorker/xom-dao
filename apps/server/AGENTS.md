@@ -1,26 +1,25 @@
 # Server (@xomdao/server) and the socket protocol (@xomdao/shared)
 
 The server is only the API: rooms over the `/ws` WebSocket and `/api` over HTTP. It serves no web
-files; Vercel serves the Godot client (see Deploy below).
+files.
 
 ```
 src/rooms/      rooms.service.ts = room logic (unit tested); rooms.gateway.ts = the `@On(event)`
                 handlers, broadcasts, bot moves and game timers; ws.gateway.ts = the transport:
                 plain WebSocket + JSON on /ws, login + protocol check, then RoomsGateway's handlers
-src/dev/        gated console commands, snapshots, undo/RNG frames and per-room logs
+src/dev/        gated dev commands, snapshots, undo/RNG frames and per-room logs
 src/accounts/   Username/password (scrypt) and login tokens
 src/catalog/    The hub's catalog (`catalog:get`): core genres + a card per game with a genre
 src/ledger/     Ledger: the only module that changes balances (`ledger_entries`, `balances`)
 src/inventory/  Túi đồ: what each account owns (`inventory_items`), equipping looks, profiles
-src/items/      Vật phẩm: the item list (`items` table), read by Túi đồ and Chợ, edited from the console
+src/items/      Vật phẩm: the item list (`items` table), read by Túi đồ and Chợ
 src/shop/       Chợ: `shop:list` and `shop:buy`, paid through the Ledger
-src/console/    The console's HTTP API (/api/console/*): question gate, accounts, items and letters
 src/events/     Sự kiện: event points (`event_points`), claimed tiers (`event_claims`), EventClock
 src/stats/      Stats, achievements, rankings (`player_stats`, `stat_matches`, `achievements`)
 src/matches/    Match history: finished games (fed by RoomsService.onFinished), `history:recent`
 src/friends/    Bạn bè: requests, friendships and chat (`friendships`, `friend_messages`)
 src/quests/     Nhiệm vụ hằng ngày: progress on the day's quests (`quest_progress`)
-src/mail/       Hộp thư: letters from the console, read and coin receipts (`letters`, `letter_receipts`)
+src/mail/       Hộp thư: letters, read and coin receipts (`letters`, `letter_receipts`)
 src/db/         Drizzle schema; migrations in drizzle/
 src/version.ts  For /api/health
 packages/shared/src/protocol.ts   The protocol as zod schemas (types, requests, events) + PROTOCOL_VERSION
@@ -39,7 +38,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   - watch.
 - Leaving means quitting. The next player becomes host, and an empty room is disbanded.
 - A player leaving mid-game stops it for everyone unless the game has `onLeave`. The client asks
-  first (Rời ván? in `apps/client/hub/main.gd`).
+  first.
 - Rooms keep a score.
 - Room options are checked with the game's zod schema and kept for the room's life. The host may
   replace them between games (`room:options`); bots then join or leave to match.
@@ -53,8 +52,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - The client speaks plain WebSocket + JSON on `/ws` (same port as `/api`): `{ id, event, data }`
   requests, `{ id, ack }` replies, `{ event, data }` pushes. It logs in first with `auth:token`,
   `auth:login` or `auth:guest` (a new account with only a name), each carrying `protocol`.
-  The Godot hub no longer uses `auth:guest`: it asks everyone to log in or register first
-  (`HubAccount.gate`); only `npm run smoke`, tests and the client SDK's `login_guest` still do.
+  Only `npm run smoke` and tests still use `auth:guest`.
   `WsGateway` then runs the matching `RoomsGateway` handler (`handlerFor`);
   `RoomsGateway.clients()` lists every connected client for broadcasts.
 - Room codes are 4 characters without 0/O/1/I; `room:join` takes them in any case.
@@ -86,8 +84,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 
 ## Inventory and Shop
 
-- Items live in the `items` table, owned by `ItemsService` (src/items), and are edited from the
-  console. Migration `0008_items` seeded it with `SEED_ITEMS` (`core:avatar-<look>`,
+- Items live in the `items` table, owned by `ItemsService` (src/items). Migration `0008_items` seeded it with `SEED_ITEMS` (`core:avatar-<look>`,
   `core:frame-<look>`, `core:card-back-<look>`, `core:emote-<look>`); without `DATABASE_URL` the
   memory store starts from the same list. Never reuse or rename an id. An item's `look` must be in
   `ITEM_LOOKS[slot]` (the art the client has), and a slot + look belongs to one item. Price 0 =
@@ -104,8 +101,8 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   repeated buy is never charged twice; `insufficient` becomes "Không đủ xu", owned "Bạn đã có
   món này".
 - `emote:send { emote }` accepts an owned emote look, enforces a short per-account cooldown, and
-  pushes `room:emote { playerId, emote }` to the room. Emotes are not equipped; each game's Godot
-  table chooses their position, animation and lifetime.
+  pushes `room:emote { playerId, emote }` to the room. Emotes are not equipped; each game's table
+  chooses their position, animation and lifetime.
 - `dev:coins { amount }` (dev mode only) adds coins, for tests and the sandbox.
 
 ## Events
@@ -178,7 +175,7 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 ## Hộp thư
 
 - `MailService` owns `letters` (title, body, coins, `userId` null for everyone) and
-  `letter_receipts` (per reader: `readAt`, `claimed`). Letters are written in the console
+  `letter_receipts` (per reader: `readAt`, `claimed`). Letters are written by code
   (`MailService.send`, `to` a username or empty); its `onSent` listener in the rooms gateway
   pushes `mail:changed` (the fresh `Mailbox`) to the receiver's sockets, or to everyone online.
 - `mail:get` returns the newest `MAILBOX_SIZE` letters with `waiting` (unread, or coins not taken);
@@ -196,32 +193,13 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - The server typechecks against built packages. Root scripts run `npm run build -w @xomdao/shared`
   (= `scripts/libs.mjs`) first.
 - **New socket events** go in `protocol.ts` first, as zod schemas in `requests` / `events`
-  (and `types` for a new named shape). Then run `npm run gen:protocol` to regenerate the GDScript
-  in `apps/client/addons/xomdao_sdk/generated/`; `npm run check` fails when you forget.
-- Client (Vercel) and server (Render) deploy separately and compare `PROTOCOL_VERSION` on
+  (and `types` for a new named shape).
+- Client and server deploy separately and compare `PROTOCOL_VERSION` on
   login (`ws.gateway.ts` refuses another version with `protocol-mismatch`); the client then shows
   "Đã có bản mới" with Tải lại. Bump it when old clients or servers would break.
 - **DB**: edit `src/db/schema.ts`, then run `npm run db:generate -w @xomdao/server`. Migrations apply
   on server start.
 - A migration must work with the previous server build: add first, remove later.
-
-## Console (/console)
-
-- `apps/console` is a Vite + React page, built to `apps/console/dist`; `scripts/web.mjs` serves it
-  at `/console` in dev, `tools/godot/vercel.mjs` copies it to `apps/client/dist/console` on Vercel
-  (`vercel.json` rewrites `/console/*` to its index.html). It calls `XOMDAO_SERVER_URL` (baked in
-  at build) or its own origin.
-- `ConsoleModule` (src/console) owns no table. `GET /api/console/question` returns the question;
-  `POST /api/console/login { answer }` compares the answer (NFC, lowercase, spaces squeezed)
-  against a sha256 in `console-auth.service.ts` or `XOMDAO_CONSOLE_ANSWER`, allows 5 wrong answers
-  per address per 10 minutes, and returns a random token kept in memory for 12 hours.
-- Every other route needs `Authorization: Bearer <token>` (`ConsoleGuard`): `users` (list with
-  `q`/`page`, create, `PATCH` name/password, delete) through `AccountsService`, and `items`
-  (list with `slots`/`looks`, create, `PATCH`, delete) through `ItemsService`, and `mail` (the
-  newest sent letters, send, delete) through `MailService`. Refusals are 400
-  `{ message }` in Vietnamese. A new password logs the account out everywhere; deleting an
-  account cascades to its rows (match history keeps the name).
-- Sự kiện is an empty page for now.
 
 ## Dev Console
 
@@ -240,17 +218,12 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - `room-log.ts` retains 500 entries per room, truncates details near 20 KB, and captures
   synchronous game `console.log/info/warn/error` calls while still printing to the terminal.
   Always restore console methods in `finally`. Socket followers stop on leave/disconnect.
-- Use `npm run dev` with memory accounts (`DATABASE_URL=''`) for local e2e. Scenarios run a
-  console line with `window.xomdao.request('dev:command', { line })` (a `cmd(page, line)` helper in
-  the scenarios that need it).
+- Use `npm run dev` with memory accounts (`DATABASE_URL=''`) for local runs.
 
 ## Deploy
 
 Every merge to `main` deploys; a release is only a named point.
 
-- **Client → Vercel** project `minhnks-projects/xomdao` (https://xomdao.vercel.app), build in
-  `vercel.json` (`node tools/godot/vercel.mjs`: release export for production, debug for PR
-  previews, then the console into `dist/console`). `XOMDAO_SERVER_URL` is baked in at build time.
 - **Server → Render** `xomdao-server` (free, Singapore, `render.yaml`), URL
   https://play-some-cards-server.onrender.com, service id `srv-daq1sc0473hc73e7bsl0` (`render logs
   -r <id>`). Deploys when `apps/server/**`, `packages/shared/**` or `package-lock.json` change.

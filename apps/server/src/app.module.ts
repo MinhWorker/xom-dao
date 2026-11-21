@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { AccountsModule } from './accounts/accounts.module.js';
-import { ConsoleModule } from './console/console.module.js';
 import { DbModule } from './db/db.module.js';
 import { EventsModule } from './events/events.module.js';
 import { FriendsModule } from './friends/friends.module.js';
@@ -15,8 +14,7 @@ import { RoomsModule } from './rooms/rooms.module.js';
 import { ShopModule } from './shop/shop.module.js';
 import { StatsModule } from './stats/stats.module.js';
 
-// The server only answers /api and the /ws WebSocket: the Godot client is hosted on its own
-// (Vercel in production, scripts/web.mjs in dev).
+// The server only answers /api and the /ws WebSocket.
 @Module({
   imports: [
     DbModule,
@@ -32,7 +30,6 @@ import { StatsModule } from './stats/stats.module.js';
     QuestsModule,
     MailModule,
     RoomsModule,
-    ConsoleModule,
   ],
   controllers: [HealthController],
 })

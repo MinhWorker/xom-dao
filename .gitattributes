@@ -30,5 +30,5 @@ games/chess/sources/island.png -filter -diff -merge -text
 games/chess/sources/chess-room.png -filter -diff -merge -text
 games/chess/sources/chess-room-v2.png -filter -diff -merge -text
 # The app's ready-made images and sounds (assets/app/) stay in plain git: they are small, and the
-# Godot client copies what it uses from them.
+# game tables copy what they use from them.
 assets/app/** -filter -diff -merge -text

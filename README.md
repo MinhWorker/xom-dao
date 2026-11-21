@@ -4,6 +4,5 @@ Trò chơi trên trình duyệt để chơi cùng bạn bè: https://xomdao.verc
 
 ```sh
 npm install
-npm run godot:export -- --debug
-npm run dev   # http://localhost:5033
+npm run dev   # server on http://localhost:8033
 ```

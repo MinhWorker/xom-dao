@@ -27,7 +27,6 @@
         "strict_required_status_checks_policy": false,
         "required_status_checks": [
           { "context": "check", "integration_id": 15368 },
-          { "context": "e2e", "integration_id": 15368 },
           { "context": "title", "integration_id": 15368 },
           { "context": "protocol", "integration_id": 15368 }
         ]

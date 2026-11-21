@@ -7,7 +7,7 @@ description: Use when designing, implementing, or reviewing a game's board, HUD,
 
 For game UI work, make decisions as a senior game UI/UX designer. Shape the interface around the game's world and play, rather than importing a generic web or dashboard layout.
 
-For a Godot game in this repository, read `apps/client/AGENTS.md`. Use the shared UI kit and preserve the game's required controls and interaction states.
+Preserve the game's required controls and interaction states.
 
 ## Explore before designing
 
@@ -29,7 +29,7 @@ Before proposing or coding UI components, record a short design note that answer
 
 ## Review before finishing
 
-Check the rendered screen, preferably with a headless screenshot at supported sizes. For phone coverage in this repository, follow `.claude/skills/phone-check/SKILL.md`.
+Check the rendered screen, preferably with a headless screenshot at supported sizes.
 
 - Can a player tell within one second whose turn it is and what the most important number means?
 - Are any unrelated metrics joined into one string?
