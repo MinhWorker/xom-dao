@@ -67,8 +67,9 @@ export interface GameContext<State, Options = undefined> {
   /** Randomness: a float in [0, 1). Never use Math.random. */
   rng: Rng;
   /**
-   * Ends the Match: `places[i]` is seat i's place (1 is best, ties share a place).
-   * `scores`, also in seat order, are shown next to the places.
+   * Ends the Match: `places[i]` is seat i's place. 1 is best; tied seats share a place and
+   * the next one skips (`[1, 1, 3]`). `scores`, also in seat order, are shown next to the
+   * places. The backend puts players who left last, whatever the game gives them.
    */
   finish(places: readonly number[], extra?: { scores?: readonly number[] }): void;
   /**
@@ -191,15 +192,18 @@ export interface MatchStart<Options> {
 }
 
 /**
- * A `Game` as plain functions over its stored Match: what the server's GameHostModule runs.
- * Built with `turnRules(game)`; games don't write it.
+ * A `Game` as plain functions over its stored Match, for the server's GameHostModule (to
+ * come). Built with `turnRules(game)`; games don't write it.
  */
 export interface TurnRules<State, Options, View> {
   events: Record<string, z.ZodType>;
   /** The shape of an incoming move, checked before any game code runs. */
   moveSchema: z.ZodType<GameEvent>;
   setup(start: MatchStart<Options>, rng: Rng): Stored<State, Options>;
-  /** The message (Vietnamese) the move would be refused with, or `null`. */
+  /**
+   * The message (Vietnamese) the move would be refused with, or `null`. Runs the hook on the
+   * side, which hooks allow since they never change their input.
+   */
   validateMove(stored: Stored<State, Options>, move: GameEvent, player: PlayerId): string | null;
   /** The next stored Match. Call only after `validateMove` returned `null`. */
   applyMove(
@@ -240,7 +244,14 @@ function seatResults(
   if (places.some((p) => !Number.isInteger(p) || p < 1 || p > players.length)) {
     throw new Error(`ctx.finish: places must be whole numbers from 1 to ${players.length}`);
   }
-  if (!places.includes(1)) throw new Error('ctx.finish: some seat must place 1');
+  places.forEach((place, seat) => {
+    const ahead = places.filter((p) => p < place).length;
+    if (place !== ahead + 1) {
+      throw new Error(
+        `ctx.finish: ${ahead} seats are ahead, so seat ${seat} should place ${ahead + 1}`,
+      );
+    }
+  });
   if (scores && scores.length !== players.length) {
     throw new Error(`ctx.finish: ${scores.length} scores for ${players.length} seats`);
   }
@@ -309,6 +320,9 @@ export function turnRules<State, Options, View>(
         out.stats.push({ player, name, amount });
       },
       setTimer: (ms, event, payload) => {
+        if (event === 'start' || event in game.events) {
+          throw new Error(`Timer "${event}" can't share its name with the start or an event`);
+        }
         if (!hookOf(event)) {
           throw new Error(`Timer "${event}" needs a ${hookName(event)}(ctx) method`);
         }
@@ -384,7 +398,6 @@ export function turnRules<State, Options, View>(
       });
     },
 
-    // Runs the hook on the side (hooks never change their input) to find out if it rejects.
     validateMove(stored, move, player) {
       try {
         run(stored, move, player, seededRng(1));

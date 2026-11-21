@@ -84,8 +84,45 @@ describe('a Turn-based Game', () => {
       testGame(new (finishing(places))(), ['a', 'b', 'c']).send('a', 'end');
     expect(end([1, 2])).toThrow('2 places for 3 seats');
     expect(end([1, 2, 4])).toThrow('from 1 to 3');
-    expect(end([2, 2, 3])).toThrow('some seat must place 1');
+    expect(end([2, 2, 3])).toThrow('seat 0 should place 1');
     expect(end([1, 1, 1])).not.toThrow();
+  });
+
+  it('ranks ties the competition way: two firsts are followed by a third', () => {
+    const end = (places: number[]) => () =>
+      testGame(
+        new (class extends Game<number> {
+          readonly events = { end: z.object({}) };
+          onStart() {
+            return 0;
+          }
+          onEnd(ctx: GameContext<number>) {
+            ctx.finish(places);
+            return 1;
+          }
+        })(),
+        ['a', 'b', 'c'],
+      ).send('a', 'end');
+    expect(end([1, 1, 3])).not.toThrow();
+    expect(end([3, 1, 1])).not.toThrow();
+    expect(end([1, 1, 2])).toThrow('seat 2 should place 3');
+    expect(end([1, 3, 3])).toThrow('seat 1 should place 2');
+  });
+
+  it('refuses a timer named after a player event or the start', () => {
+    const timing = (name: string) =>
+      class extends Game<number> {
+        readonly events = { press: z.object({}) };
+        onStart(ctx: Omit<GameContext<number>, 'state'>) {
+          ctx.setTimer(1000, name);
+          return 0;
+        }
+        onPress() {
+          return 1;
+        }
+      };
+    expect(() => testGame(new (timing('press'))(), ['a'])).toThrow('Timer "press"');
+    expect(() => testGame(new (timing('start'))(), ['a'])).toThrow('Timer "start"');
   });
 });
 
