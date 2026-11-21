@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { AccountsModule } from './accounts/accounts.module.js';
-import { ConsoleModule } from './console/console.module.js';
 import { DbModule } from './db/db.module.js';
 import { EventsModule } from './events/events.module.js';
 import { FriendsModule } from './friends/friends.module.js';
@@ -32,7 +31,6 @@ import { StatsModule } from './stats/stats.module.js';
     QuestsModule,
     MailModule,
     RoomsModule,
-    ConsoleModule,
   ],
   controllers: [HealthController],
 })

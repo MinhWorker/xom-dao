@@ -8,19 +8,16 @@ coverage/
 .vercel
 .blender
 .claude/tmp/
+.claude/worktrees/
 .env*
 !.env.example
-.e2e/
-.shots/
 .playwright-mcp/
 __pycache__/
 # Written by scripts/libs.mjs
 packages/shared/src/generated/
 .dev/
-# Pinned toolchains (Godot, gdtoolkit, bpy), installed by npm run setup:godot / setup:blender
+# Local toolchains
 .tools/
 # Git worktrees created by `npm run wt`
 /wt/
 codex-session-*.md
-# xd CLI sessions, accounts and logs (tools/xd)
-.xd/
