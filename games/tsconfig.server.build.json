@@ -1,11 +1,11 @@
 {
-  "$comment": "Compiles a new platform Game server entry to dist/server/.",
+  "$comment": "Compiles a new platform Game server entry (server/index.ts, and manifest.ts it imports) to dist/server/ and dist/manifest.js.",
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": "${configDir}/server",
-    "outDir": "${configDir}/dist/server",
+    "rootDir": "${configDir}",
+    "outDir": "${configDir}/dist",
     "declaration": true,
     "declarationMap": true,
     "incremental": true

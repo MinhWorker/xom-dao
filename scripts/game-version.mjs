@@ -1,4 +1,4 @@
-// The version of a Game server: a hash of games/<id>/server/** and the source of every shared
+// The version of a Game server: a hash of games/<id>/manifest.ts, server/** and the source of every shared
 // package it imports (and of what those import), tests left out. The Game's bundle carries it in
 // dist/version.json and the server gets it through the generated game list (scripts/libs.mjs),
 // so a Hub built against other Game server code is refused mid-deploy (GAME_UPDATING).
@@ -17,8 +17,11 @@ export function gameVersion(id) {
   const packages = workspacePackages();
   const dirs = [join(root, 'games', id, 'server')];
   const hash = createHash('sha256');
+  const manifest = join(root, 'games', id, 'manifest.ts');
   for (let i = 0; i < dirs.length; i++) {
-    for (const file of sourceFiles(dirs[i])) {
+    const files = sourceFiles(dirs[i]);
+    if (i === 0 && existsSync(manifest)) files.unshift(manifest);
+    for (const file of files) {
       const text = readFileSync(file, 'utf8');
       hash.update(`${relative(root, file)}\0${text}\0`);
       for (const [, name] of text.matchAll(IMPORT)) {
