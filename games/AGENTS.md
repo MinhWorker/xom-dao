@@ -1,8 +1,10 @@
 # Games and the SDK
 
 Where to look:
-- **Examples**: `games/tic-tac-toe` (Caro) adds room options and a computer player;
-  `games/tien-len` is the fullest game.
+- **Examples**: `games/tic-tac-toe` (Caro) is the new platform's test Game: `manifest.ts`,
+  `server/` (rules with room options and a computer player) and `client/` (TypeScript + canvas,
+  no engine). Its `src/` is the legacy plugin, still loaded by the legacy registry.
+  `games/tien-len` is the fullest legacy game.
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the
@@ -34,19 +36,27 @@ games/<id>/          src/index.ts is required
   src/game/            Pure rules, no DOM: <Name>Game.ts (+ test), model.ts, options.ts, bot.ts
   manifest.ts          New platform: the Game's static Hub declaration
   server/index.ts      New platform: default export { manifest, game } as a GameServer
-  server/game/         New platform: pure server rules and model
+  server/game/         New platform: pure server rules and model (+ tests)
+  client/              New platform: the client bundle's source (Caro: Vite, index.html at its root)
   assets/              Full-size images/sounds, atlases and normals
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
 ```
 
-Each new platform Game exports `./server` from its package, pointing to `dist/server/`. Its
+Each new platform Game exports `./server` from its package, pointing to `dist/server/`
+(`tsconfig.server.build.json` also writes `dist/manifest.js`, which `server/` imports). Its
 client bundle is `dist/index.html` with relative paths: the Hub (`apps/hub`) ships every Game
 that has `manifest.ts` and that file, at `/games/<id>/`, and forwards each `match:state` push
 to it as a Bridge `message`. Its `tsconfig.server.build.json` extends `games/tsconfig.server.build.json`; `scripts.build` builds that
 config and ends with `node ../../scripts/game-version.mjs`, which writes `dist/version.json`:
-the hash of `server/**` and the shared packages it imports. The Hub sends it with
+the hash of `manifest.ts`, `server/**` and the shared packages it imports. The Hub sends it with
 `room:create` and `match:start`. `scripts/libs.mjs` adds every `server/index.ts` to the generated registry in
 `@xomdao/shared`; `GameHostModule` loads that list.
+
+A Vite client (Caro): `vite.config.ts` sets `root: 'client'`, `base: './'`, `outDir: '../dist'`
+and the `xomdao-source` condition; `vite build` runs first in `scripts.build` because it empties
+`dist/`. A `vitest.config.ts` keeps Vitest from inheriting `root: 'client'`. The client may import
+the pure rules in `server/game/` to draw the board. After rebuilding a Game, restart the Hub's
+dev server: it does not see a recreated `dist/version.json`.
 
 ## The build contract
 

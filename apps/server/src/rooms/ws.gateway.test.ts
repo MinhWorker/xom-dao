@@ -57,12 +57,12 @@ let caroServer: CaroServer;
 beforeAll(async () => {
   delete process.env.DATABASE_URL;
   app = await NestFactory.create(AppModule, { logger: false });
-  // Load one fake Game server for the test.
-  app.get<GameManifest[]>(GAME_MANIFESTS).push(caro);
+  // Run only one fake Game server for the test, in place of the real ones.
+  app.get<GameManifest[]>(GAME_MANIFESTS).splice(0, Infinity, caro);
   caroServer = new CaroServer();
   app
     .get<HostedGame[]>(GAME_SERVERS)
-    .push({ manifest: caro, game: caroServer, version: CARO_VERSION });
+    .splice(0, Infinity, { manifest: caro, game: caroServer, version: CARO_VERSION });
   await app.listen(0, '127.0.0.1');
   httpUrl = await app.getUrl();
   url = httpUrl.replace('http', 'ws');

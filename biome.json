@@ -54,8 +54,8 @@
                     "message": "A game may import only @xomdao/sdk, @xomdao/bridge (client), zod, vitest (tests) and its own files (./..., ../game/...)."
                   },
                   {
-                    "group": ["../../**"],
-                    "message": "Stay inside your game's src/ (folders one level deep, e.g. src/game/)."
+                    "group": ["../../**", "!../../manifest.js"],
+                    "message": "Stay inside your game's folder (folders one level deep, e.g. server/game/; ../../manifest.js is allowed)."
                   }
                 ]
               }
@@ -63,6 +63,10 @@
           }
         }
       }
+    },
+    {
+      "includes": ["games/*/vite.config.ts", "games/*/vitest.config.ts"],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
     },
     {
       "includes": ["apps/**", "packages/**"],

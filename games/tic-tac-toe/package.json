@@ -8,15 +8,26 @@
       "xomdao-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./server": {
+      "xomdao-source": "./server/index.ts",
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json --incremental false",
+    "build": "vite build && tsc -p tsconfig.build.json --incremental false && tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs",
+    "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "@xomdao/bridge": "*",
     "@xomdao/sdk": "*",
     "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   }
 }
