@@ -206,6 +206,36 @@ describe('WebSocket transport', () => {
     minh.ws.close();
   });
 
+  it('aborts a running Match when a player leaves a Game without a leave hook', async () => {
+    const lan = await connect();
+    const minh = await connect();
+    await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
+    await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
+
+    const created = await lan.request('room:create', { gameId: 'tic-tac-toe' });
+    const code = created.roomCode as string;
+    await minh.request('room:join', { roomCode: code });
+    await minh.request('room:ready', { ready: true });
+    const started = await lan.request('match:start');
+    const matchId = started.matchId as string;
+    await lan.request('match:ready', { matchId });
+    await minh.request('match:ready', { matchId });
+    await settle();
+
+    expect(await lan.request('room:leave')).toEqual({ ok: true });
+    await settle();
+
+    const states = minh.pushed
+      .filter((message) => message.event === 'match:state')
+      .map((message) => message.data as { status: string; outcome?: string });
+    expect(states.map(({ status }) => status)).toEqual(['loading', 'playing', 'over']);
+    expect(states.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    expect(minh.states().at(-1)).toMatchObject({ code, status: 'waiting', matchId: null });
+
+    lan.ws.close();
+    minh.ws.close();
+  });
+
   it('answers unknown events without closing', async () => {
     const { ws, request } = await connect();
     await request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Hoa' });

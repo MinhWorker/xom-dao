@@ -1,4 +1,12 @@
-import { defineManifest, type EventContext, Game, type StartContext } from '@xomdao/sdk';
+import {
+  type BotContext,
+  defineManifest,
+  type EventContext,
+  Game,
+  type LeaveContext,
+  type StartContext,
+  type TimerContext,
+} from '@xomdao/sdk';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { GameHostService, LOADING_TIMEOUT_MS } from './game-host.service.js';
@@ -31,6 +39,49 @@ class FakeGame extends Game<{ started: boolean }> {
   }
 
   onFinish(ctx: EventContext<{ started: boolean }>) {
+    ctx.finish([1, 2]);
+    return ctx.state;
+  }
+}
+
+class TimerGame extends Game<{ done: boolean }> {
+  readonly events = {};
+
+  onStart(ctx: StartContext) {
+    ctx.setTimer(100, 'timeout');
+    return { done: false };
+  }
+
+  onTimeout(ctx: TimerContext<{ done: boolean }>) {
+    ctx.finish([1, 2]);
+    return { done: true };
+  }
+}
+
+class BotGame extends Game<{ turn: number }> {
+  readonly events = { take: z.object({}) };
+
+  onStart() {
+    return { turn: 1 };
+  }
+
+  onTake(_ctx: EventContext<{ turn: number }>) {
+    return { turn: 0 };
+  }
+
+  bot({ state, player }: BotContext<{ turn: number }>) {
+    return state.turn === player.seat ? { event: 'take' } : null;
+  }
+}
+
+class LeavingGame extends Game<{ started: boolean }> {
+  readonly events = {};
+
+  onStart() {
+    return { started: true };
+  }
+
+  onLeave(ctx: LeaveContext<{ started: boolean }>) {
     ctx.finish([1, 2]);
     return ctx.state;
   }
@@ -157,5 +208,62 @@ describe('GameHostService', () => {
         ],
       },
     });
+  });
+
+  it('fires a Game timer and settles the Match', () => {
+    vi.useFakeTimers();
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new TimerGame() }]);
+    host.onState((match) => updates.push(match));
+
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+    vi.advanceTimersByTime(100);
+
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled' });
+  });
+
+  it('runs a bot move when it is the bot seat’s turn', async () => {
+    const host = new GameHostService([{ manifest, game: new BotGame() }]);
+    const start = {
+      ...matchStart,
+      players: matchStart.players.map((player) =>
+        player.id === 'minh' ? { id: 'bot:2', name: 'Máy', bot: true } : player,
+      ),
+    };
+
+    host.startMatch(start);
+    host.ready('match-1', 'lan');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(host.view('match-1', 'lan')).toEqual({ turn: 0 });
+  });
+
+  it('aborts a Match when a player leaves and the Game has no leave hook', () => {
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new FakeGame() }]);
+    host.onState((match) => updates.push(match));
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    host.leave('match-1', 'lan');
+
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    expect(host.match('match-1')).toBeUndefined();
+  });
+
+  it('lets a Game handle a player leaving', () => {
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new LeavingGame() }]);
+    host.onState((match) => updates.push(match));
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    host.leave('match-1', 'lan');
+
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled' });
   });
 });

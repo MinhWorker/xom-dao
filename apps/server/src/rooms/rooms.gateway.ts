@@ -431,6 +431,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   private leaveRoom(socket: Client, roomCode: string) {
     const userId = socket.data.user.id;
     const { room, closed } = this.rooms.leave(roomCode, userId);
+    const matchId = room.matchId;
     for (const s of this.socketsOf(userId)) {
       if (s.data.roomCode !== roomCode) continue;
       if (s !== socket) {
@@ -438,6 +439,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       }
       s.data.roomCode = undefined;
     }
+    if (matchId) this.gameHost.leave(matchId, userId);
     if (closed) this.disband(room);
     else this.broadcast(room);
     this.friendsMoved(userId);

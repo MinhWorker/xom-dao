@@ -202,8 +202,8 @@ export interface MatchStart<Options> {
 }
 
 /**
- * A `Game` as plain functions over its stored Match, for the server's GameHostModule (to
- * come). Built with `turnRules(game)`; games don't write it.
+ * A `Game` as plain functions over its stored Match, for the server's GameHostModule. Built with
+ * `turnRules(game)`; games don't write it.
  */
 export interface TurnRules<State, Options, View> {
   events: Record<string, z.ZodType>;
