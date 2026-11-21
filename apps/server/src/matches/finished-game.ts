@@ -20,12 +20,12 @@ export interface FinishedGame {
   result: MatchResult;
 }
 
-/** The seat's place and score in the result. */
-export function placeOf({ result }: FinishedGame, player: PlayerId) {
+/** The player's seat in the result: their place and score. */
+export function seatOf({ result }: FinishedGame, player: PlayerId) {
   return result.seats.find((seat) => seat.player === player);
 }
 
 /** First place won, unless every seat shares it (a draw). */
 export function won(game: FinishedGame, player: PlayerId) {
-  return placeOf(game, player)?.place === 1 && game.result.seats.some((seat) => seat.place > 1);
+  return seatOf(game, player)?.place === 1 && game.result.seats.some((seat) => seat.place > 1);
 }

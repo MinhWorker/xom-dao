@@ -7,7 +7,7 @@ import {
   type StartContext,
   type TimerContext,
 } from '@xomdao/sdk';
-import { GAME_UPDATING } from '@xomdao/shared';
+import { GAME_UPDATING, type MatchResultNotice } from '@xomdao/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { AccountsService } from '../accounts/accounts.service.js';
@@ -18,7 +18,7 @@ import { ResultsService } from '../results/results.service.js';
 import { StatsService } from '../stats/stats.service.js';
 import { MemoryStatsStore } from '../stats/stats.store.js';
 import { GameHostService, LOADING_TIMEOUT_MS, MATCH_LIMITS } from './game-host.service.js';
-import type { HostedGame, MatchResultNotice, MatchState } from './game-host.types.js';
+import type { HostedGame, MatchState } from './game-host.types.js';
 
 /** Results kept in memory, read back through `matches`. */
 function memoryResults() {

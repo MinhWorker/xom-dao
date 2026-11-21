@@ -24,7 +24,7 @@ export interface StoredMatch {
   players: StoredPlayer[];
 }
 
-/** Where finished games are kept: Postgres in real use, memory when there is no DATABASE_URL. */
+/** Where settled Matches are kept: Postgres in real use, memory when there is no DATABASE_URL. */
 export interface MatchesStore {
   /** Keeps the Match under its id; `false` when that id is already kept. */
   add(match: StoredMatch, tx?: DbTx): Promise<boolean>;

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { HISTORY_LIMIT, type MatchRecord } from '@xomdao/shared';
 import type { DbTx } from '../db/db.module.js';
-import { type FinishedGame, placeOf, won } from './finished-game.js';
+import { type FinishedGame, seatOf, won } from './finished-game.js';
 import type { MatchesStore } from './matches.store.js';
 
 export const MATCHES_STORE = Symbol('MATCHES_STORE');
@@ -25,7 +25,7 @@ export class MatchesService {
         startedAt,
         endedAt,
         players: seats.map((s) => {
-          const seat = placeOf(game, s.id);
+          const seat = seatOf(game, s.id);
           return {
             userId: s.bot ? null : s.id,
             name: s.name,

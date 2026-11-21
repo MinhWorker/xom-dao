@@ -16,7 +16,7 @@ export class ResultsService {
     private readonly stats: StatsService,
   ) {}
 
-  /** Records the Match; `false` when its `matchId` was already settled (nothing is written). */
+  /** Records the Match; `false` (nothing written) when it was already settled or had no account. */
   settle(game: FinishedGame): Promise<boolean> {
     const write = async (tx?: DbTx) => {
       if (!(await this.matches.record(game, tx))) return false;

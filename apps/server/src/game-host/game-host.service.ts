@@ -11,15 +11,14 @@ import {
   seededRng,
   turnRules,
 } from '@xomdao/sdk';
-import { GAME_UPDATING, type MatchTimer, type RoomOptions } from '@xomdao/shared';
+import {
+  GAME_UPDATING,
+  type MatchResultNotice,
+  type MatchTimer,
+  type RoomOptions,
+} from '@xomdao/shared';
 import { ResultsService } from '../results/results.service.js';
-import type {
-  HostedGame,
-  MatchResultNotice,
-  MatchStart,
-  MatchState,
-  MatchStatus,
-} from './game-host.types.js';
+import type { HostedGame, MatchStart, MatchState, MatchStatus } from './game-host.types.js';
 import { GAME_SERVERS } from './games.js';
 
 export const LOADING_TIMEOUT_MS = 30_000;

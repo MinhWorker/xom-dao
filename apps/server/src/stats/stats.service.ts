@@ -39,7 +39,7 @@ export class StatsService {
     private readonly accounts: AccountsService,
   ) {}
 
-  /** Counts a finished game for the people at the table. */
+  /** Counts a settled Match for the people at the table. */
   async recordMatch(game: FinishedGame, tx?: DbTx): Promise<void> {
     const { gameId, matchId, seats, result } = game;
     for (const seat of seats) {
