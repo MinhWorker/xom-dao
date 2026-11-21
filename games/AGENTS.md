@@ -12,10 +12,10 @@ Where to look:
 ## Two SDKs, for now
 
 - `@xomdao/sdk` is the SDK of the new platform: `Game`, `turnRules`, `testGame`,
-  `defineManifest`, `optionsSchema`. New Game servers use it.
+  `defineManifest`, `optionsSchema` and `GameServer`. New Game servers use it.
 - `@xomdao/sdk/legacy` is the old one (`definePlugin`, `meta`, `ctx.reward`, dev commands). The
-  current server, `@xomdao/shared` and the two kept games still import it; the rest of this file
-  describes it. Delete it once the rewritten rooms, GameHostModule and games no longer need it.
+  two kept games and the legacy registry in `@xomdao/shared` still import it; the rest of this file
+  describes it. Delete it once those games and the legacy registry are gone.
 
 ## The Bridge
 
@@ -32,9 +32,17 @@ games/<id>/          src/index.ts is required
   RULES.md             Current Vietnamese gameplay rules (non-starter games); the client's Luật board
   src/index.ts         export default definePlugin({ meta, game: new MyGame(), room? }); server
   src/game/            Pure rules, no DOM: <Name>Game.ts (+ test), model.ts, options.ts, bot.ts
+  manifest.ts          New platform: the Game's static Hub declaration
+  server/index.ts      New platform: default export { manifest, game } as a GameServer
+  server/game/         New platform: pure server rules and model
   assets/              Full-size images/sounds, atlases and normals
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
 ```
+
+Each new platform Game exports `./server` from its package, pointing to `dist/server/`. Its
+`tsconfig.server.build.json` extends `games/tsconfig.server.build.json`; `scripts.build` builds that
+config. `scripts/libs.mjs` adds every `server/index.ts` to the generated registry in
+`@xomdao/shared`; `GameHostModule` loads that list.
 
 ## The build contract
 

@@ -1,7 +1,6 @@
 // End-to-end check against a RUNNING server: two fake accounts register; Alice creates a Room,
-// Bob joins it by code, says Sẵn sàng and Alice starts a Match. Bob then closes his "browser" and
-// logs in on another "device": he must be put back in his seat. Matches themselves are not played
-// yet (GameHostModule); with no Game loaded, the server refuses the Room and only login is checked.
+// Bob joins it by code, says Sẵn sàng and Alice starts a Match. Both report the Game loaded. Bob
+// then reconnects on another device and must be put back in his seat. The smoke test sends no moves.
 // It speaks the clients' transport: plain WebSocket + JSON on /ws (packages/shared/src/protocol.ts).
 // Usage: node scripts/smoke.mjs [serverUrl] [gameId]
 import WebSocket from 'ws';
@@ -74,6 +73,8 @@ try {
     await wait();
     if (alice.state()?.status !== 'playing' || alice.state()?.matchId !== matchId)
       throw new Error(`Match did not start: ${JSON.stringify(alice.state())}`);
+    await alice.send('match:ready', { matchId });
+    await bob.send('match:ready', { matchId });
 
     // Bob closes the browser without leaving, then logs in elsewhere: same seat.
     bob.socket.close();

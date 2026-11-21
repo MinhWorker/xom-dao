@@ -199,7 +199,9 @@ describe('starting a Match', () => {
     const start = rooms.start(room.code, 'lan');
     expect(start).toEqual({
       matchId: expect.any(String),
+      roomCode: room.code,
       gameId: 'caro',
+      lastResult: null,
       players: [
         { id: 'lan', name: 'Lan', bot: false },
         { id: 'minh', name: 'Minh', bot: false },
@@ -230,10 +232,41 @@ describe('starting a Match', () => {
     rooms.setReady(room.code, 'minh', true);
     const first = rooms.start(room.code, 'lan');
     expect(rooms.endMatch(room.code, 'another-match')).toBeUndefined();
-    expect(rooms.endMatch(room.code, first.matchId)).toBe(room);
+    const result = {
+      seats: [
+        { player: 'lan', place: 1 },
+        { player: 'minh', place: 2 },
+      ],
+    };
+    expect(rooms.endMatch(room.code, first.matchId, result)).toBe(room);
     expect(rooms.stateOf(room.code)).toMatchObject({ status: 'waiting', matchId: null });
     const second = rooms.start(room.code, 'lan');
     expect(second.matchId).not.toBe(first.matchId);
+    expect(second.lastResult).toEqual(result);
+    rooms.endMatch(room.code, second.matchId, result);
+    rooms.leave(room.code, 'minh');
+    rooms.join(room.code, acc('Hoa'));
+    expect(rooms.start(room.code, 'lan').lastResult).toBeNull();
+  });
+
+  it('does not pass a result forward when the roster changed during that Match', () => {
+    const rooms = setup();
+    const room = rooms.create('caro', acc('Lan'));
+    rooms.join(room.code, acc('Minh'));
+    rooms.setReady(room.code, 'minh', true);
+    const first = rooms.start(room.code, 'lan');
+    const result = {
+      seats: [
+        { player: 'lan', place: 1 },
+        { player: 'minh', place: 2 },
+      ],
+    };
+
+    rooms.leave(room.code, 'minh');
+    rooms.endMatch(room.code, first.matchId, result);
+    rooms.join(room.code, acc('Hoa'));
+
+    expect(rooms.start(room.code, 'lan').lastResult).toBeNull();
   });
 });
 
@@ -255,7 +288,7 @@ describe('profiles and empty Rooms', () => {
     const kept = rooms.create('caro', acc('Lan'));
     const gone = rooms.create('party', acc('Minh'));
     rooms.setConnected(gone.code, 'minh', false);
-    rooms.pruneEmptyRooms();
+    expect(rooms.pruneEmptyRooms()).toEqual([gone]);
     expect(rooms.roomOf('lan')).toBe(kept);
     expect(rooms.roomOf('minh')).toBeUndefined();
   });

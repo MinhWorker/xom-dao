@@ -1,0 +1,313 @@
+import {
+  type BotContext,
+  defineManifest,
+  type EventContext,
+  Game,
+  type LeaveContext,
+  type StartContext,
+  type TimerContext,
+} from '@xomdao/sdk';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
+import { GameHostService, LOADING_TIMEOUT_MS } from './game-host.service.js';
+
+const manifest = defineManifest({
+  id: 'fake-game',
+  name: 'Game giả',
+  tagline: 'Game kiểm tra vòng đời.',
+  minPlayers: 2,
+  maxPlayers: 2,
+  duration: { min: 1, max: 1 },
+  status: 'wip',
+  bots: false,
+  focus: { x: 50, y: 50 },
+});
+
+class FakeGame extends Game<{ started: boolean }> {
+  readonly events = { finish: z.object({}) };
+
+  constructor(
+    private readonly start: (ctx: StartContext) => { started: boolean } = vi.fn(() => ({
+      started: true,
+    })),
+  ) {
+    super();
+  }
+
+  onStart(ctx: StartContext) {
+    return this.start(ctx);
+  }
+
+  onFinish(ctx: EventContext<{ started: boolean }>) {
+    ctx.finish([1, 2]);
+    return ctx.state;
+  }
+}
+
+class TimerGame extends Game<{ done: boolean }> {
+  readonly events = {};
+
+  onStart(ctx: StartContext) {
+    ctx.setTimer(100, 'timeout');
+    return { done: false };
+  }
+
+  onTimeout(ctx: TimerContext<{ done: boolean }>) {
+    ctx.finish([1, 2]);
+    return { done: true };
+  }
+}
+
+class BotGame extends Game<{ turn: number }> {
+  readonly events = { take: z.object({}) };
+
+  onStart() {
+    return { turn: 1 };
+  }
+
+  onTake(_ctx: EventContext<{ turn: number }>) {
+    return { turn: 0 };
+  }
+
+  bot({ state, player }: BotContext<{ turn: number }>) {
+    return state.turn === player.seat ? { event: 'take' } : null;
+  }
+}
+
+class LeavingGame extends Game<{ started: boolean }> {
+  readonly events = {};
+
+  onStart() {
+    return { started: true };
+  }
+
+  onLeave(ctx: LeaveContext<{ started: boolean }>) {
+    ctx.finish([1, 2]);
+    return ctx.state;
+  }
+}
+
+const matchStart = {
+  matchId: 'match-1',
+  roomCode: 'ABCD',
+  gameId: manifest.id,
+  lastResult: null,
+  players: [
+    { id: 'lan', name: 'Lan', bot: false },
+    { id: 'minh', name: 'Minh', bot: false },
+  ],
+  options: {},
+};
+
+describe('GameHostService', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('loads game ids and starts the Game only after every player is ready', () => {
+    const start = vi.fn(() => ({ started: true }));
+    const host = new GameHostService([{ manifest, game: new FakeGame(start) }]);
+    const updates: string[] = [];
+    host.onState((match) => updates.push(match.status));
+
+    expect(host.gameIds()).toEqual(['fake-game']);
+    expect(host.startMatch(matchStart)).toMatchObject({ status: 'loading', matchId: 'match-1' });
+    expect(start).not.toHaveBeenCalled();
+
+    host.ready('match-1', 'lan');
+    expect(host.match('match-1')).toMatchObject({ status: 'loading' });
+    expect(start).not.toHaveBeenCalled();
+
+    host.ready('match-1', 'minh');
+    expect(host.match('match-1')).toMatchObject({ status: 'playing' });
+    expect(host.view('match-1', 'lan')).toEqual({ started: true });
+    expect(start).toHaveBeenCalledOnce();
+    expect(updates).toEqual(['loading', 'playing']);
+  });
+
+  it('starts after 30 seconds and identifies players who did not load', () => {
+    vi.useFakeTimers();
+    const host = new GameHostService([{ manifest, game: new FakeGame() }]);
+    const updates: { status: string; disconnectedPlayerIds: string[] }[] = [];
+    host.onState((match) => updates.push(match));
+
+    host.startMatch(matchStart);
+    vi.advanceTimersByTime(LOADING_TIMEOUT_MS - 1);
+    expect(host.match('match-1')).toMatchObject({ status: 'loading' });
+    vi.advanceTimersByTime(1);
+
+    expect(host.match('match-1')).toMatchObject({
+      status: 'playing',
+      disconnectedPlayerIds: ['lan', 'minh'],
+    });
+    expect(updates.at(-1)).toMatchObject({
+      status: 'playing',
+      disconnectedPlayerIds: ['lan', 'minh'],
+    });
+  });
+
+  it('marks a Match aborted when a Game fails during startup', () => {
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([
+      {
+        manifest,
+        game: new FakeGame(() => {
+          throw new Error('broken game');
+        }),
+      },
+    ]);
+    host.onState((match) => updates.push(match));
+
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    expect(host.match('match-1')).toBeUndefined();
+  });
+
+  it('marks a Match settled when the Game ends during startup', () => {
+    const updates: { status: string; outcome?: string }[] = [];
+    const game = new FakeGame((ctx) => {
+      ctx.finish([1, 2]);
+      return { started: true };
+    });
+    const host = new GameHostService([{ manifest, game }]);
+    host.onState((match) => updates.push(match));
+
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    expect(updates.at(-1)).toMatchObject({
+      status: 'over',
+      outcome: 'settled',
+      result: {
+        seats: [
+          { player: 'lan', place: 1 },
+          { player: 'minh', place: 2 },
+        ],
+      },
+    });
+  });
+
+  it('settles a Match when a move finishes the Game', () => {
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new FakeGame() }]);
+    host.onState((match) => updates.push(match));
+
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+    host.move('match-1', 'lan', { event: 'finish' });
+
+    expect(updates.at(-1)).toMatchObject({
+      status: 'over',
+      outcome: 'settled',
+      result: {
+        seats: [
+          { player: 'lan', place: 1 },
+          { player: 'minh', place: 2 },
+        ],
+      },
+    });
+  });
+
+  it('passes the previous Match result into the next Game setup', () => {
+    const lastResult = {
+      seats: [
+        { player: 'lan', place: 2 },
+        { player: 'minh', place: 1 },
+      ],
+    };
+    const start = vi.fn(() => ({ started: true }));
+    const host = new GameHostService([{ manifest, game: new FakeGame(start) }]);
+
+    host.startMatch({ ...matchStart, lastResult });
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({ lastResult }));
+  });
+
+  it('fires a Game timer and settles the Match', () => {
+    vi.useFakeTimers();
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new TimerGame() }]);
+    host.onState((match) => updates.push(match));
+
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+    expect(host.match('match-1')).toMatchObject({
+      status: 'playing',
+      timer: { id: 1, event: 'timeout', ms: 100 },
+    });
+    const deadline = host.match('match-1')?.timer?.deadline;
+    expect(deadline).toBe(Date.now() + 100);
+    vi.advanceTimersByTime(40);
+    expect(host.match('match-1')?.timer?.deadline).toBe(deadline);
+    vi.advanceTimersByTime(60);
+
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled', timer: null });
+  });
+
+  it('runs a bot move when it is the bot seat’s turn', async () => {
+    const host = new GameHostService([{ manifest, game: new BotGame() }]);
+    const start = {
+      ...matchStart,
+      players: matchStart.players.map((player) =>
+        player.id === 'minh' ? { id: 'bot:2', name: 'Máy', bot: true } : player,
+      ),
+    };
+
+    host.startMatch(start);
+    host.ready('match-1', 'lan');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(host.view('match-1', 'lan')).toEqual({ turn: 0 });
+  });
+
+  it('aborts a Match when a player leaves and the Game has no leave hook', () => {
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new FakeGame() }]);
+    host.onState((match) => updates.push(match));
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    host.leave('match-1', 'lan');
+
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    expect(host.match('match-1')).toBeUndefined();
+  });
+
+  it('stops a Match once, ending its timers and bot turns', () => {
+    vi.useFakeTimers();
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new TimerGame() }]);
+    host.onState((match) => updates.push(match));
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    host.stop('match-1');
+    host.stop('match-1');
+    vi.advanceTimersByTime(100);
+
+    expect(updates.map(({ status }) => status)).toEqual(['loading', 'playing', 'over']);
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    expect(host.match('match-1')).toBeUndefined();
+  });
+
+  it('lets a Game handle a player leaving', () => {
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new LeavingGame() }]);
+    host.onState((match) => updates.push(match));
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    host.leave('match-1', 'lan');
+
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled' });
+  });
+});

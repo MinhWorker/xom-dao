@@ -1,8 +1,11 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { type GameManifest, optionsSchema, type PlayerId, type RoomSeat } from '@xomdao/sdk';
+import { type GameManifest, type MatchResult, optionsSchema, type PlayerId } from '@xomdao/sdk';
 import type { RoomMember, RoomOptions, RoomState } from '@xomdao/shared';
+import type { MatchStart } from '../game-host/game-host.types.js';
 import { GAME_MANIFESTS } from './manifests.js';
+
+export type { MatchStart } from '../game-host/game-host.types.js';
 
 export class RoomError extends Error {}
 
@@ -25,15 +28,10 @@ export interface Room {
   matchId: string | null;
   /** A Match was started here before: playing again needs no Sẵn sàng. */
   played: boolean;
-}
-
-/** What GameHostModule needs to run a Match the host just started. */
-export interface MatchStart {
-  matchId: string;
-  gameId: string;
-  /** Everyone seated, in seat order, empty seats skipped. */
-  players: RoomSeat[];
-  options: RoomOptions;
+  /** The last settled result, passed to a rematch while the seats stay the same. */
+  lastResult: MatchResult | null;
+  /** Seat order when the current Match started; guards results after a mid-Match leave. */
+  matchPlayers: string[] | null;
 }
 
 /** Four characters with no 0/O/1/I, so a code is easy to read aloud and type. */
@@ -71,6 +69,8 @@ export class RoomsService {
       seats,
       matchId: null,
       played: false,
+      lastResult: null,
+      matchPlayers: null,
     };
     this.rooms.set(room.code, room);
     return room;
@@ -88,6 +88,7 @@ export class RoomsService {
     const free = room.seats.indexOf(null);
     if (free < 0) throw new RoomError('Phòng đã đủ người');
     room.seats[free] = member(account);
+    room.lastResult = null;
     return room;
   }
 
@@ -100,6 +101,7 @@ export class RoomsService {
     const seat = room.seats.findIndex((s) => s?.id === userId);
     if (seat < 0) throw new RoomError('Bạn chưa ở trong phòng này');
     room.seats[seat] = null;
+    room.lastResult = null;
     const people = room.seats.filter((s): s is RoomMember => s !== null && !s.bot);
     const closed = people.length === 0;
     if (closed) this.rooms.delete(room.code);
@@ -152,6 +154,7 @@ export class RoomsService {
     const free = room.seats.indexOf(null);
     if (free < 0) throw new RoomError('Phòng đã đủ người');
     room.seats[free] = { id: `bot:${free + 1}`, name: 'Máy', bot: true, connected: true };
+    room.lastResult = null;
     return room;
   }
 
@@ -159,6 +162,7 @@ export class RoomsService {
     const room = this.hostBetweenMatches(code, userId);
     if (!room.seats[seat]?.bot) throw new RoomError('Ghế này không có máy');
     room.seats[seat] = null;
+    room.lastResult = null;
     return room;
   }
 
@@ -175,12 +179,15 @@ export class RoomsService {
     if (!room.played && seated.some((s) => !s.bot && s.id !== room.hostId && !s.ready)) {
       throw new RoomError('Chờ mọi người sẵn sàng đã');
     }
+    room.matchPlayers = seated.map(({ id }) => id);
     room.matchId = randomUUID();
     room.played = true;
     for (const seat of seated) seat.ready = undefined;
     return {
       matchId: room.matchId,
+      roomCode: room.code,
       gameId: room.manifest.id,
+      lastResult: room.lastResult,
       players: seated.map(({ id, name, bot, avatar }) => ({
         id,
         name,
@@ -192,10 +199,18 @@ export class RoomsService {
   }
 
   /** The Match is over (settled or aborted): the Room waits to play again. */
-  endMatch(code: string, matchId: string) {
+  endMatch(code: string, matchId: string, result?: MatchResult) {
     const room = this.rooms.get(code);
     if (!room || room.matchId !== matchId) return undefined;
+    const currentPlayers = room.seats.filter((seat) => seat !== null).map(({ id }) => id);
+    const matchPlayers = room.matchPlayers;
+    const samePlayers =
+      matchPlayers !== null &&
+      matchPlayers.length === currentPlayers.length &&
+      matchPlayers.every((id, seat) => currentPlayers[seat] === id);
     room.matchId = null;
+    room.lastResult = samePlayers ? (result ?? null) : null;
+    room.matchPlayers = null;
     return room;
   }
 
@@ -213,11 +228,15 @@ export class RoomsService {
     };
   }
 
-  /** Deletes Rooms where nobody is connected. Called periodically by the gateway. */
+  /** Deletes and returns Rooms where nobody is connected. Called periodically by the gateway. */
   pruneEmptyRooms() {
+    const pruned: Room[] = [];
     for (const [code, room] of this.rooms) {
-      if (!room.seats.some((s) => s && !s.bot && s.connected)) this.rooms.delete(code);
+      if (room.seats.some((s) => s && !s.bot && s.connected)) continue;
+      this.rooms.delete(code);
+      pruned.push(room);
     }
+    return pruned;
   }
 
   private hostBetweenMatches(code: string, userId: PlayerId) {

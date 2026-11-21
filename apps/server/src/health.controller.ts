@@ -1,14 +1,18 @@
 import { Controller, Get, Inject } from '@nestjs/common';
-import { gameList, PROTOCOL_VERSION } from '@xomdao/shared';
+import { PROTOCOL_VERSION } from '@xomdao/shared';
 import { sql } from 'drizzle-orm';
 import { DB, type Db } from './db/db.module.js';
+import { GameHostService } from './game-host/game-host.service.js';
 import { APP_COMMIT, APP_VERSION } from './version.js';
 
 const build = { version: APP_VERSION, commit: APP_COMMIT, protocol: PROTOCOL_VERSION };
 
 @Controller('api')
 export class HealthController {
-  constructor(@Inject(DB) private readonly db: Db | null) {}
+  constructor(
+    @Inject(DB) private readonly db: Db | null,
+    private readonly gameHost: GameHostService,
+  ) {}
 
   @Get('health')
   async health() {
@@ -23,6 +27,6 @@ export class HealthController {
 
   @Get('games')
   games() {
-    return gameList;
+    return this.gameHost.gameIds();
   }
 }

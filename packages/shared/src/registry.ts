@@ -1,5 +1,5 @@
 import type { AnyGameDefinition } from './game.js';
-import { plugins } from './generated/games.js';
+import { plugins, serverGames } from './generated/games.js';
 
 /**
  * Every game in games/*, found by scripts/gen-plugins.mjs (it writes generated/games.ts on
@@ -8,6 +8,8 @@ import { plugins } from './generated/games.js';
 export const games: Record<string, AnyGameDefinition> = Object.fromEntries(
   plugins.map(({ meta, rules, room }) => [meta.id, { ...rules, ...meta, room }]),
 );
+
+export { serverGames };
 
 export function getGame(id: string): AnyGameDefinition | undefined {
   return games[id];
