@@ -280,6 +280,24 @@ describe('GameHostService', () => {
     expect(host.match('match-1')).toBeUndefined();
   });
 
+  it('stops a Match once, ending its timers and bot turns', () => {
+    vi.useFakeTimers();
+    const updates: { status: string; outcome?: string }[] = [];
+    const host = new GameHostService([{ manifest, game: new TimerGame() }]);
+    host.onState((match) => updates.push(match));
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+
+    host.stop('match-1');
+    host.stop('match-1');
+    vi.advanceTimersByTime(100);
+
+    expect(updates.map(({ status }) => status)).toEqual(['loading', 'playing', 'over']);
+    expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
+    expect(host.match('match-1')).toBeUndefined();
+  });
+
   it('lets a Game handle a player leaving', () => {
     const updates: { status: string; outcome?: string }[] = [];
     const host = new GameHostService([{ manifest, game: new LeavingGame() }]);

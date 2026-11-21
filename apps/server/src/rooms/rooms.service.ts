@@ -228,11 +228,15 @@ export class RoomsService {
     };
   }
 
-  /** Deletes Rooms where nobody is connected. Called periodically by the gateway. */
+  /** Deletes and returns Rooms where nobody is connected. Called periodically by the gateway. */
   pruneEmptyRooms() {
+    const pruned: Room[] = [];
     for (const [code, room] of this.rooms) {
-      if (!room.seats.some((s) => s && !s.bot && s.connected)) this.rooms.delete(code);
+      if (room.seats.some((s) => s && !s.bot && s.connected)) continue;
+      this.rooms.delete(code);
+      pruned.push(room);
     }
+    return pruned;
   }
 
   private hostBetweenMatches(code: string, userId: PlayerId) {

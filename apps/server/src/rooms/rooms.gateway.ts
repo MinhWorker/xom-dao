@@ -64,6 +64,8 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   private readonly connected = new Set<Client>();
   private pruner?: NodeJS.Timeout;
   private stopWatchingMatches?: () => void;
+  /** Matches whose players who missed the loading limit were already marked offline. */
+  private readonly loadMissesMarked = new Set<string>();
 
   constructor(
     private readonly rooms: RoomsService,
@@ -77,7 +79,11 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.pruner = setInterval(() => this.rooms.pruneEmptyRooms(), PRUNE_INTERVAL_MS);
+    this.pruner = setInterval(() => {
+      for (const room of this.rooms.pruneEmptyRooms()) {
+        if (room.matchId) this.gameHost.stop(room.matchId);
+      }
+    }, PRUNE_INTERVAL_MS);
     this.pruner.unref();
     this.stopWatchingMatches = this.gameHost.onState((match) => {
       for (const socket of this.clients()) {
@@ -88,13 +94,19 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
             : undefined;
         socket.emit('match:state', { ...match, ...(view !== undefined && { view }) });
       }
-      if (match.status === 'playing' && match.disconnectedPlayerIds.length) {
+      if (
+        match.status === 'playing' &&
+        match.disconnectedPlayerIds.length &&
+        !this.loadMissesMarked.has(match.matchId)
+      ) {
+        this.loadMissesMarked.add(match.matchId);
         for (const playerId of match.disconnectedPlayerIds) {
           this.rooms.setConnected(match.roomCode, playerId, false);
         }
         this.broadcastCode(match.roomCode);
       }
       if (match.status === 'over') {
+        this.loadMissesMarked.delete(match.matchId);
         const result = match.outcome === 'settled' ? match.result : undefined;
         const room = this.rooms.endMatch(match.roomCode, match.matchId, result);
         if (room) this.broadcast(room);
@@ -451,7 +463,8 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       }
       s.data.roomCode = undefined;
     }
-    if (matchId) this.gameHost.leave(matchId, userId);
+    if (matchId && closed) this.gameHost.stop(matchId);
+    else if (matchId) this.gameHost.leave(matchId, userId);
     if (closed) this.disband(room);
     else this.broadcast(room);
     this.friendsMoved(userId);

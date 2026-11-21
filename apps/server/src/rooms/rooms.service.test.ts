@@ -288,7 +288,7 @@ describe('profiles and empty Rooms', () => {
     const kept = rooms.create('caro', acc('Lan'));
     const gone = rooms.create('party', acc('Minh'));
     rooms.setConnected(gone.code, 'minh', false);
-    rooms.pruneEmptyRooms();
+    expect(rooms.pruneEmptyRooms()).toEqual([gone]);
     expect(rooms.roomOf('lan')).toBe(kept);
     expect(rooms.roomOf('minh')).toBeUndefined();
   });

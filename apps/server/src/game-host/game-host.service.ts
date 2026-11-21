@@ -189,6 +189,12 @@ export class GameHostService implements OnModuleDestroy {
     }
   }
 
+  /** Aborts a Match whose Room is gone, so its timers and bot turns stop. */
+  stop(matchId: string) {
+    const match = this.matches.get(matchId);
+    if (match) this.end(match, 'aborted');
+  }
+
   private allReady(match: ActiveMatch) {
     return match.start.players.every((player) => match.readyPlayerIds.has(player.id));
   }
@@ -222,9 +228,11 @@ export class GameHostService implements OnModuleDestroy {
   }
 
   private end(match: ActiveMatch, outcome: 'settled' | 'aborted', result?: MatchResult) {
-    this.clearMatchTimers(match);
-    this.publish({ ...match, status: 'over', outcome, ...(result && { result }) });
+    if (this.matches.get(match.start.matchId) !== match) return;
     this.matches.delete(match.start.matchId);
+    this.clearMatchTimers(match);
+    match.status = 'over';
+    this.publish({ ...match, outcome, ...(result && { result }) });
   }
 
   private updatePlaying(match: ActiveMatch) {
