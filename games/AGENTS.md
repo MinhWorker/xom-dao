@@ -45,7 +45,8 @@ header of `packages/bridge/src/protocol.ts`; the Hub's side is `createGameHost`.
 is developed and tested without the Hub or a database. A Game client reaches it through the same
 Bridge messages, one JSON text frame each, over `ws://<harness>/bridge?player=<n>`.
 `createGameBridge` uses that WebSocket instead of `postMessage` when the page URL has
-`?harness=<that url>`; an engine outside the browser opens the WebSocket itself.
+`?harness=<that url>`; an engine outside the browser opens the WebSocket itself (Godot: the
+addon below).
 
 1. Build the Game: `npx turbo run build --filter=@xomdao/game-<id>`.
 2. Start a server with no DB, on its own port: `PORT=8133 DATABASE_URL= npm run dev -w @xomdao/server`.
@@ -79,6 +80,61 @@ that screenshot. Look at a client yourself the same way: `playwright-core` on th
 Caro without a client: `create --headless`, `join --headless`, `start`, then
 `move 0 place '{"x":4,"y":4}'` and `move 1 place '{"x":3,"y":4}'` in turn.
 
+## Godot Games
+
+`tools/godot` is the shared Godot 4 support (Godot 4.7, GDScript, Compatibility renderer):
+
+- **The addon** `tools/godot/addons/xomdao_bridge`: the autoload `XomdaoBridge` is the Game's side
+  of the Bridge (the API is documented in the header of `bridge.gd`). Inside the Hub's iframe it
+  uses `postMessage`; from the editor, headless or a browser tab with `?harness=<ws url>` it uses a
+  WebSocket to the Harness (`--harness=<url>` after `--`, or `XOMDAO_HARNESS`; default
+  `ws://127.0.0.1:8040/bridge?player=0`). The Game code is the same in both.
+- **A sample scene** `tools/godot/sample`: a Godot client of Caro (the `tic-tac-toe` server), the
+  reference for how a Godot Game uses the addon.
+- **The web export**: `export.mjs`, with the single-threaded ("nothreads") template and no
+  COOP/COEP, as the iframe research (#202) decided.
+- **The toolchain**: `npm run setup:godot` installs the pinned editor and templates into `.tools/`
+  (`version.json`); `$GODOT` or `godot` on the PATH also work, `$GODOT_TEMPLATES` points at the
+  templates folder.
+
+Make a Godot Game:
+
+1. `games/<id>/godot/` is the Godot project, beside the usual `manifest.ts`, `server/`, `RULES.md`
+   and `hub/key-art.png`. Link the addon, never copy it:
+   `ln -s ../../../../tools/godot/addons/xomdao_bridge games/<id>/godot/addons/xomdao_bridge`.
+   Copy `tools/godot/sample/project.godot` as a start: it has the `XomdaoBridge` autoload, the
+   plugin, the Compatibility renderer, `textures/vram_compression/import_etc2_astc=true` (the
+   export refuses without it) and `gdscript/warnings/untyped_declaration=2`. Commit the `.uid`
+   files Godot writes next to scripts; `.godot/` is ignored.
+2. `scripts.build` starts with `node ../../tools/godot/export.mjs godot --out dist` (before the
+   server build and `hub-assets`; nothing there empties `dist/`). It exports to `dist/index.html`
+   plus `godot.js`, `godot.wasm`, `godot.pck` and the audio worklets: the Godot files are named
+   `godot.*`, so they never overwrite a `dist/index.js` the Game's own build writes. The preset
+   and the page shell (`web_shell.html`, which also reports loading `progress` to the Hub) come
+   from `tools/godot`; the export runs on a copy under `.tools/export/` that follows symlinks.
+   `--debug` makes a debug build.
+3. In the main scene: connect `XomdaoBridge.inited` and `message_received`, then call
+   `XomdaoBridge.announce_ready()` (`ready` is a Node signal, so the method has another name).
+   Redraw everything from each `inited` (`init.match` is the Game's own `view`, or null); each
+   `match:state` push arrives as `message_received("match:state", {matchId, status, view})`.
+   `var result: Dictionary = await XomdaoBridge.send("place", {...})` gives `{ok, error}`; call
+   `XomdaoBridge.done()` after the end-of-match animation. JSON numbers are floats: `int()` them.
+   Leave the top-right 48×48 px to the Hub. Volume and mute from `settings` are already applied
+   to the Master bus.
+4. Run it against a Game server: start the server and the Harness as above and `create` a Room
+   first (the Harness refuses a Game client until a Room exists; the addon retries every second),
+   then run the scene from the editor or `godot --path games/<id>/godot -- --harness=ws://127.0.0.1:8040/bridge?player=0`.
+   `join --headless`, `bot` and `move` fill the other seats.
+
+`npm run godot:verify` plays the sample against a real server and the Harness in headless Godot:
+`ready`, `init` (also replayed mid-Match), moves, `done`, `settings`, `visibility`.
+`npm run godot:verify -- --web` also exports the sample, loads it in headless Chromium with
+`?harness=` and taps the board (saves `smoke-godot/sample.png`). Needs Godot, a built server,
+Harness and `tic-tac-toe` (`npm run build`). Neither runs in CI (no Godot there); `npm run check`
+only tests that the addon's Bridge version and message types match `packages/bridge`.
+The `postMessage` path is checked by dropping the sample's export into a Game's `dist/` and playing
+it in the Hub (`npm run e2e` drives Caro's canvas; the click positions differ for Godot).
+
 ## A game's folder
 
 ```
@@ -90,6 +146,7 @@ games/<id>/          src/index.ts is required, unless server/index.ts exists (ne
   server/index.ts      New platform: default export { manifest, game } as a GameServer
   server/game/         New platform: pure server rules and model (+ tests)
   client/              New platform: the client bundle's source (Caro: Vite, index.html at its root)
+  godot/               New platform, Godot client instead of client/: the Godot project (above)
   hub/key-art.png      New platform: the Hub's art for the Game (below); optional hub/loop.mp4
   hub/rules/<name>.webp  Optional illustration of one rules page (below)
   assets/              Full-size images/sounds, atlases and normals

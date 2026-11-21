@@ -30,6 +30,8 @@ the wayfinder map, issue #200, and the decisions linked from it.
 - `npm run check`: lint, typecheck and unit tests. `npm run format` fixes formatting.
 - `npm run harness -- <command>`: the Harness, which runs one Game against a server without the Hub
   (`games/AGENTS.md`).
+- `npm run setup:godot`, `npm run godot:export`, `npm run godot:verify`: Godot Games' toolchain,
+  web export and the Bridge addon check (`games/AGENTS.md`, "Godot Games"). Not in CI.
 - `npm run smoke`: bots log in, make a Room and start a Match against a running server.
 - `npm run smoke:web`: a headless browser plays Đặt Bom's client through the Harness
   (`games/AGENTS.md`). CI runs it.
