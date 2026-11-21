@@ -5,7 +5,7 @@ export function Chip({
   tone,
   children,
 }: {
-  tone?: 'accent' | 'ok' | 'danger';
+  tone?: 'accent' | 'ready' | 'danger';
   children: ReactNode;
 }) {
   return (

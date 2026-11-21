@@ -1,16 +1,17 @@
 :root {
   color-scheme: dark;
-  --bg: #0d1014;
-  --bg-raised: #161b22;
-  --bg-sunken: #090b0e;
-  --line: #2a323d;
-  --line-strong: #46515f;
+  --bg: #0b0d10;
+  --bg-raised: #23272d;
+  --bg-sunken: #07090b;
+  --line: #2f343b;
+  --line-strong: #3a4048;
   --text: #e8ecf1;
   --text-dim: #9aa5b2;
-  --accent: #f2c14e;
+  --accent: #ffc234;
+  --accent-hi: #ffd26b;
   --accent-ink: #1a1405;
-  --danger: #ff6b5e;
-  --ok: #6fd39a;
+  --info: #2ec8e6;
+  --danger: #ff4d3d;
 
   --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;

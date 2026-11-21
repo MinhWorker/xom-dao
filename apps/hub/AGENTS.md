@@ -13,7 +13,8 @@ src/net/store.ts   The one socket (`/ws`) and the Session state; every push and 
                    `@xomdao/shared/client` first. `net/hub.ts` makes the page's store + `useHub`
 src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `games/*/dist/version.json`,
                    globbed at build time; `wip` ones are hidden on Vercel production
-src/kit/           Button, CutPanel, Chip, TextField, Dialog: no server knowledge
+src/kit/           Button, CutPanel, Chip, TextField, Dialog, Tabs, Choice, Toggle, Menu, Toast, Icon:
+                   no server knowledge. `toast()` needs `<ToastRegion />` (mounted in main.tsx)
 src/screens/       login/, lobby/, room/ (waiting room, GameFrame = iframe + Bridge, Results), kit/
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build

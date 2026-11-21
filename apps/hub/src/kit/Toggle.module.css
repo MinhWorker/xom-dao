@@ -1,0 +1,48 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.track {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 24px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-sunken);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+  transition: background 120ms;
+}
+
+.track::after {
+  content: "";
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  width: 16px;
+  background: var(--text-dim);
+  transition:
+    translate 120ms,
+    background 120ms;
+}
+
+.toggle[aria-checked="true"] .track {
+  border-color: var(--accent);
+  background: var(--bg-raised);
+}
+
+.toggle[aria-checked="true"] .track::after {
+  translate: 20px 0;
+  background: var(--accent);
+}
