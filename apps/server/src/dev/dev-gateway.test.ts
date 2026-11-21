@@ -2,27 +2,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountsService } from '../accounts/accounts.service.js';
 import { MemoryAccountsStore } from '../accounts/accounts.store.js';
-import { CatalogService } from '../catalog/catalog.service.js';
-import { EventClock } from '../events/event-clock.js';
-import { EventsService } from '../events/events.service.js';
-import { MemoryEventsStore } from '../events/events.store.js';
 import { FriendsService } from '../friends/friends.service.js';
 import { MemoryFriendsStore } from '../friends/friends.store.js';
-import { InventoryService } from '../inventory/inventory.service.js';
-import { MemoryInventoryStore } from '../inventory/inventory.store.js';
-import { ItemsService } from '../items/items.service.js';
-import { MemoryItemsStore } from '../items/items.store.js';
 import { LedgerService } from '../ledger/ledger.service.js';
 import { MemoryLedgerStore } from '../ledger/ledger.store.js';
-import { MailService } from '../mail/mail.service.js';
-import { MemoryMailStore } from '../mail/mail.store.js';
 import { MatchesService } from '../matches/matches.service.js';
 import { MemoryMatchesStore } from '../matches/matches.store.js';
-import { QuestsService } from '../quests/quests.service.js';
-import { MemoryQuestsStore } from '../quests/quests.store.js';
 import { RoomsGateway } from '../rooms/rooms.gateway.js';
 import { RoomsService } from '../rooms/rooms.service.js';
-import { ShopService } from '../shop/shop.service.js';
 import { StatsService } from '../stats/stats.service.js';
 import { MemoryStatsStore } from '../stats/stats.store.js';
 import { DevConsoleService } from './dev-console.service.js';
@@ -34,24 +21,14 @@ function setup(dev: boolean) {
   const rooms = new RoomsService(dev);
   const { room } = rooms.create('tic-tac-toe', { id: 'a', name: 'A' }, { opponent: 'bot' });
   const accounts = new AccountsService(new MemoryAccountsStore());
-  const ledger = new LedgerService(new MemoryLedgerStore());
-  const items = new ItemsService(new MemoryItemsStore());
-  const inventory = new InventoryService(new MemoryInventoryStore(), accounts, items);
   const gateway = new RoomsGateway(
     rooms,
     accounts,
     new DevConsoleService(rooms, new DevSnapshots()),
     new MatchesService(new MemoryMatchesStore()),
-    new CatalogService(rooms),
-    ledger,
-    inventory,
-    new ShopService(ledger, inventory, items),
-    items,
-    new EventsService(new MemoryEventsStore(), ledger, new EventClock()),
-    new StatsService(new MemoryStatsStore(), ledger, accounts),
+    new LedgerService(new MemoryLedgerStore()),
+    new StatsService(new MemoryStatsStore(), accounts),
     new FriendsService(new MemoryFriendsStore(), accounts),
-    new QuestsService(new MemoryQuestsStore(), ledger, new EventClock()),
-    new MailService(new MemoryMailStore(), ledger, accounts),
   );
   const socket = {
     data: { user: { id: 'a', name: 'A' }, roomCode: room.code },

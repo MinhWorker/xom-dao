@@ -47,8 +47,4 @@
 - **Formats**:
   - Short effects are mono 16-bit WAV, because MP3 starts with about 25 ms of padding.
   - Music is 128 kbps MP3.
-- **Music**: a game's music is every track in its `godot/music/`; the hub's `HubMusic` plays a
-  random one while its table shows. The app's own tracks (`music-hub-*`, `music-sky-*`) are in
-  `assets/app/audio/`.
-- Find playback triggers in the game's `godot/` scripts; avoid duplicating them in audio planning
-  documents.
+- **Music**: the app's own tracks (`music-hub-*`, `music-sky-*`) are in `assets/app/audio/`.

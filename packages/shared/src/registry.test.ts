@@ -2,22 +2,9 @@ import { existsSync } from 'node:fs';
 import { Game, gameRules, validateConsoleDefinitions } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import {
-  ACHIEVEMENTS,
-  achievementProblems,
-  coreAchievementProblems,
-  levelOf,
-} from './achievements.js';
-import {
-  EVENT_GENRE,
-  eventOpen,
-  gameCard,
-  genreProblems,
-  genres,
-  metaProblems,
-} from './catalog.js';
-import type { Genre } from './protocol.js';
+import { EVENT_GENRE, type Genre, genreProblems, genres, metaProblems } from './catalog.js';
 import { games } from './registry.js';
+import { levelOf } from './stats.js';
 
 const gameDir = (id: string) => new URL(`../../../games/${id}/`, import.meta.url);
 
@@ -64,7 +51,7 @@ describe('game registry', () => {
   }
 });
 
-describe('genres and the hub catalog', () => {
+describe('genres', () => {
   it('has a valid genre list with Cờ and Bài as the main genres', () => {
     expect(genreProblems(genres)).toEqual([]);
     expect(genres.filter((g) => g.main).map((g) => g.id)).toEqual(['co', 'bai']);
@@ -73,7 +60,7 @@ describe('genres and the hub catalog', () => {
   it('puts every game in Cờ or Bài, every event in Sự kiện, and Bom Nguyên Tố in Hành động', () => {
     for (const game of Object.values(games)) {
       const genre = game.kind === 'event' ? EVENT_GENRE : expect.stringMatching(/^(co|bai)$/);
-      expect([game.id, gameCard(game)?.genre]).toEqual([
+      expect([game.id, game.genre]).toEqual([
         game.id,
         game.id === 'bom-nguyen-to' ? 'hanh-dong' : genre,
       ]);
@@ -116,14 +103,6 @@ describe('genres and the hub catalog', () => {
     expect(metaProblems({ ...party, event: { ...event, color: '#B3261E' } })).toEqual([]);
   });
 
-  it('knows when an event is open', () => {
-    const at = (iso: string) => Date.parse(iso);
-    expect(eventOpen(event, at('2026-09-19T23:59:59+07:00'))).toBe(false);
-    expect(eventOpen(event, at('2026-09-20T00:00:00+07:00'))).toBe(true);
-    expect(eventOpen(event, at('2026-10-04T23:59:59+07:00'))).toBe(true);
-    expect(eventOpen(event, at('2026-10-05T00:00:00+07:00'))).toBe(false);
-  });
-
   it('catches bad hub declarations', () => {
     expect(metaProblems({ ...meta, genre: 'dua-xe' })).toEqual([
       expect.stringContaining('unknown genre "dua-xe"'),
@@ -156,37 +135,9 @@ describe('genres and the hub catalog', () => {
       expect.stringContaining('go up in points'),
     ]);
   });
-
-  it('catches bad achievements', () => {
-    const good = { id: 'five-wins', name: 'Năm ván thắng', stat: 'won', at: 5 };
-    expect(metaProblems({ ...meta, achievements: [good] })).toEqual([]);
-    expect(
-      achievementProblems([
-        good,
-        { ...good, stat: 'Bomb', at: 0 },
-        { ...good, id: 'x', reward: { coin: 5 } },
-      ]),
-    ).toEqual([
-      expect.stringContaining('duplicate id'),
-      expect.stringContaining('not a stat name'),
-      expect.stringContaining('whole number ≥ 1'),
-      expect.stringContaining('reward keys'),
-    ]);
-  });
-
-  it('leaves games without a genre out of the catalog and defaults the card', () => {
-    expect(gameCard({ ...meta, genre: undefined })).toBeNull();
-    expect(gameCard(meta)).toMatchObject({ kind: 'table', card: 'island', rewardCap: {} });
-  });
 });
 
-describe('achievements and levels', () => {
-  it('declares the hub achievements well, with unique ids', () => {
-    expect(coreAchievementProblems()).toEqual([]);
-    const ids = ACHIEVEMENTS.map((a) => a.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
+describe('levels', () => {
   it('goes up a level every 100 more experience than the last', () => {
     expect(levelOf(0)).toEqual({ level: 1, levelXp: 0, nextXp: 100 });
     expect(levelOf(99).level).toBe(1);

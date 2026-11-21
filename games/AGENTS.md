@@ -45,7 +45,6 @@ games/<id>/          src/index.ts is required
   - `@xomdao/sdk` and `zod` (and `vitest` in tests);
   - its own files.
 - Every `Game` has tests with `testGame` (`src/game/<Name>Game.test.ts`).
-
 - When a mechanic or piece of data would help other games too, add it to the SDK instead of the
   game. Examples: a system event, a `ctx` property, a view helper, a test helper.
 - Changing an SDK API means, in the same change:
@@ -55,9 +54,7 @@ games/<id>/          src/index.ts is required
   `packages/shared/src/catalog.ts`; none = not in the hub yet), `tagline`, `duration` in minutes,
   optional `kind` (`table`/`event` + `event`), `card` art and `rewardCap`. The registry test
   checks it with `metaProblems`.
-- `meta.status: 'wip'` keeps a game out of the catalog on the production server (`RENDER`, which
-  PR previews use too; `XOMDAO_SHOW_WIP` overrides), so unfinished games can be merged. `'ready'`
-  releases the game.
+- `meta.status: 'wip'` marks an unfinished game; `'ready'` releases it.
 - The server runs the games' compiled `dist/`, while typechecks and tests use their TypeScript
   source (export condition `xomdao-source`). Root scripts build them first
   (`scripts/libs.mjs`).
@@ -71,12 +68,11 @@ games/<id>/          src/index.ts is required
   server refuses more, pays once per game and skips bots. `testGame` shows them in
   `result.rewards`.
 - **Events** (`kind: 'event'`, genre `su-kien`, `meta.event`): points go through
-  `ctx.reward(player, EVENT_POINTS, n)` within `meta.rewardCap`; the server keeps them per event and
-  pays `meta.event.tiers` on claim. `games/trung-thu` is the sample.
-- **Stats and achievements**: `ctx.stat(playerId, 'chop', n = 1)` counts something a player did
-  (lowercase-dash names; `played` and `won` are counted by the server). `meta.achievements`
-  (`{ id, name, stat, at, xp?, reward? }`) are data: the server unlocks and pays them. Never rename
-  or reuse a shipped achievement id. `testGame` shows counts in `result.stats`.
+  `ctx.reward(player, EVENT_POINTS, n)` within `meta.rewardCap`. The server neither keeps nor pays
+  them for now. `games/trung-thu` is the sample.
+- **Stats**: `ctx.stat(playerId, 'chop', n = 1)` counts something a player did (lowercase-dash
+  names; `played` and `won` are counted by the server). `testGame` shows counts in
+  `result.stats`. The server ignores `meta.achievements` for now.
 - **Timers**: `ctx.setTimer(ms, 'name')` calls `onName(ctx)`. There is one timer per game, and
   the gateway runs it. Use it for a turn clock or a pause between rounds. The table shows
   countdowns from the snapshot's `timer`.

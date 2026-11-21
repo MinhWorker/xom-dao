@@ -1,5 +1,5 @@
 {
-  "$comment": "Source prompts for every generated image. Regenerate with: npm run gen:asset -- <name>. Output: assets/app/images/<name>.webp; 'path' puts it elsewhere",
+  "$comment": "Source prompts for every generated image. Output: assets/app/images/<name>.webp; 'path' puts it elsewhere",
   "style": "Polished stylized 3D cartoon game art for a cheerful casual mobile board-game hub, in the spirit of popular 2015 Vietnamese mobile games. Saturated colors, soft warm lighting from the top-left, chunky rounded shapes, clean edges. Absolutely no text, letters, numbers or watermark.",
   "transparentSuffix": "Single isolated object on a fully transparent background, centered with generous margin, no ground shadow, no sky, no clouds.",
   "assets": {
@@ -285,7 +285,6 @@
       "prompt": "One centered square sticker of the shared small round ivory sea otter mascot, with rounded ears, warm brown eyes, a teal khăn-rằn neckerchief and caramel paws. Expression: joyfully squeezed crescent eyes, a broad open laughing smile, tiny tears of laughter at the outer eyes and both paws on its belly. Polished stylized 3D cartoon game art, chunky rounded shapes, clean edges, restrained cel shading, warm upper-left light, cheerful Vietnamese mobile board-game hub style. Head and upper body visible, clear at small UI sizes. Genuine transparent background; no frame, extra objects, text, letters, numbers or watermark."
     },
     "icon-round": {
-      "path": "apps/client/icon-round.webp",
       "transparent": false,
       "maxSize": 512,
       "prompt": "Square application icon for Xóm Đảo. A large circular badge showing a compact floating green island with a cozy terracotta-roof house, one broad leafy tree, a small turquoise waterfall and a few colored game tokens. Preserve a polished, cheerful 3D cartoon game illustration with rounded forms and crisp detail. The circular badge is centered and fills most of the square. The corners outside the circle are solid black (#000000), with no text, lettering, border, extra objects or watermark."

@@ -1,9 +1,5 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
-  ACHIEVEMENTS,
-  type AchievementDef,
-  type AchievementInfo,
-  type AchievementNotice,
   CORE_BOARD,
   getGame,
   levelOf,
@@ -15,7 +11,6 @@ import {
   XP_PER_GAME,
 } from '@xomdao/shared';
 import { AccountsService } from '../accounts/accounts.service.js';
-import { LedgerService } from '../ledger/ledger.service.js';
 import type { FinishedGame } from '../rooms/rooms.service.js';
 import type { StatCount, StatRow, StatsStore } from './stats.store.js';
 
@@ -28,38 +23,23 @@ const boardStat = (board: string) =>
   board === CORE_BOARD ? { gameId: CORE_BOARD, name: 'xp' } : { gameId: board, name: 'won' };
 
 /**
- * Thống kê, thành tích, xếp hạng. It owns `player_stats`,
- * `stat_matches` and `achievements`.
+ * Thống kê, xếp hạng. It owns `player_stats` and `stat_matches`.
  *
  * Every finished game (`RoomsService.onFinished`, wired by the rooms gateway) counts, once per
  * game and for people only: `played`, `won` for its winners, the game's own `ctx.stat` counts,
- * and `XP_PER_GAME` experience. Then each achievement (`ACHIEVEMENTS`, data in @xomdao/shared
- * and in each game's `meta.achievements`) the count reaches is unlocked, adds its experience and
- * pays its reward through the ledger, keyed `achievement:<user>:<id>:<resource>` so it pays once.
+ * and `XP_PER_GAME` experience.
  *
  * Rankings read the counts: `core` by experience, a game's board by its wins.
  */
 @Injectable()
 export class StatsService {
-  private readonly logger = new Logger('Stats');
-
   constructor(
     @Inject(STATS_STORE) private readonly store: StatsStore,
-    private readonly ledger: LedgerService,
     private readonly accounts: AccountsService,
   ) {}
 
-  /**
-   * Counts a finished game for the people at the table; returns what each of them reached
-   * (with their balances after its rewards).
-   */
-  async recordMatch({
-    gameId,
-    matchId,
-    seats,
-    result,
-  }: FinishedGame): Promise<(AchievementNotice & { userId: string })[]> {
-    const notices: (AchievementNotice & { userId: string })[] = [];
+  /** Counts a finished game for the people at the table. */
+  async recordMatch({ gameId, matchId, seats, result }: FinishedGame): Promise<void> {
     for (const seat of seats) {
       if (seat.bot) continue;
       const counts: StatCount[] = [
@@ -70,24 +50,14 @@ export class StatsService {
       for (const stat of result.stats ?? []) {
         if (stat.player === seat.id) counts.push({ gameId, name: stat.name, amount: stat.amount });
       }
-      if (!(await this.store.addMatch(seat.id, matchId, counts))) continue;
-      const reached = await this.unlockReached(seat.id);
-      if (reached.length) {
-        notices.push({
-          userId: seat.id,
-          achievements: reached,
-          balances: await this.ledger.balances(seat.id),
-        });
-      }
+      await this.store.addMatch(seat.id, matchId, counts);
     }
-    return notices;
   }
 
-  /** Someone's level, totals, achievements and ranks. */
+  /** Someone's level, totals and ranks. */
   async playerStats(userId: string): Promise<PlayerStats> {
     if (!(await this.accounts.userById(userId))) throw new StatsError('Không tìm thấy người chơi');
     const rows = await this.store.counts(userId);
-    const unlocked = new Set(await this.store.unlocked(userId));
     const xp = countOf(rows, CORE_BOARD, 'xp');
     const ranks: RankInfo[] = [];
     for (const board of [CORE_BOARD, ...boardsOf(rows)]) {
@@ -108,7 +78,6 @@ export class StatsService {
       ...levelOf(xp),
       played: total(rows, 'played'),
       won: total(rows, 'won'),
-      achievements: ACHIEVEMENTS.map((a) => info(a, rows, unlocked.has(a.id))),
       ranks,
     };
   }
@@ -135,30 +104,6 @@ export class StatsService {
     return { board, entries, me: mine };
   }
 
-  /** Unlocks every achievement the account's counts reach that it doesn't have yet. */
-  private async unlockReached(userId: string): Promise<AchievementInfo[]> {
-    const rows = await this.store.counts(userId);
-    const had = new Set(await this.store.unlocked(userId));
-    const reached: AchievementInfo[] = [];
-    for (const a of ACHIEVEMENTS) {
-      if (had.has(a.id) || progressOf(a, rows) < a.at) continue;
-      if (!(await this.store.unlock(userId, a.id, a.xp))) continue;
-      for (const [resource, amount] of Object.entries(a.reward)) {
-        if (amount <= 0) continue;
-        await this.ledger.apply({
-          userId,
-          resource,
-          amount,
-          reason: `achievement:${a.id}`,
-          key: `achievement:${userId}:${a.id}:${resource}`,
-        });
-      }
-      this.logger.log(`${userId} reached ${a.id}`);
-      reached.push(info(a, rows, true));
-    }
-    return reached;
-  }
-
   private async entry(userId: string, value: number, rank: number): Promise<RankingEntry> {
     const user = await this.accounts.userById(userId);
     return {
@@ -182,19 +127,3 @@ const total = (rows: StatRow[], name: string) =>
 /** The games the account has played. */
 const boardsOf = (rows: StatRow[]) =>
   rows.filter((r) => r.gameId !== CORE_BOARD && r.name === 'played').map((r) => r.gameId);
-
-/** An achievement's count: in its game, or over every game for the hub's own. */
-const progressOf = (a: AchievementDef, rows: StatRow[]) =>
-  a.gameId ? countOf(rows, a.gameId, a.stat) : total(rows, a.stat);
-
-const info = (a: AchievementDef, rows: StatRow[], unlocked: boolean): AchievementInfo => ({
-  id: a.id,
-  name: a.name,
-  gameId: a.gameId ?? '',
-  stat: a.stat,
-  at: a.at,
-  progress: progressOf(a, rows),
-  unlocked,
-  reward: a.reward,
-  xp: a.xp,
-});
