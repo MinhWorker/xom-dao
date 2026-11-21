@@ -22,3 +22,5 @@ packages/shared/src/generated/
 # Git worktrees created by `npm run wt`
 /wt/
 codex-session-*.md
+# Screenshots from npm run smoke:web
+smoke-web/

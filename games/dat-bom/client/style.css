@@ -1,0 +1,308 @@
+:root {
+  --ink: #12141c;
+  --steel: #232837;
+  --edge: #3a4258;
+  --paper: #ece6d8;
+  --ember: #ff9a3c;
+  --seat-0: #e0553d;
+  --seat-1: #4a8fe0;
+  --seat-2: #e8c04a;
+  --seat-3: #58b368;
+  --gutter-left: max(12px, env(safe-area-inset-left));
+  --gutter-right: max(12px, env(safe-area-inset-right));
+  --gutter-top: max(10px, env(safe-area-inset-top));
+  --gutter-bottom: max(12px, env(safe-area-inset-bottom));
+  --pad: clamp(120px, 34vmin, 176px);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+#view {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  display: block;
+}
+
+/* Darkens the rim of the screen so the eye stays on the arena. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(farthest-corner at 50% 50%, transparent 55%, rgb(5 6 10 / 0.55));
+}
+
+.hud {
+  position: fixed;
+  inset: var(--gutter-top) var(--gutter-right) auto var(--gutter-left);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.roster {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seat {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 124px;
+  max-width: 168px;
+  padding: 5px 10px 5px 0;
+  background: linear-gradient(rgb(40 46 62 / 0.86), rgb(22 25 36 / 0.86));
+  border-top: 1px solid rgb(255 255 255 / 0.14);
+  border-bottom: 1px solid rgb(0 0 0 / 0.5);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  transition: opacity 0.2s;
+}
+
+.seat::before {
+  content: "";
+  align-self: stretch;
+  background: var(--c);
+}
+
+.seat .name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.seat.me {
+  outline: 0;
+  background: linear-gradient(rgb(58 66 88 / 0.92), rgb(30 34 48 / 0.92));
+}
+
+.seat.out {
+  opacity: 0.45;
+}
+
+.seat.out .name {
+  text-decoration: line-through;
+}
+
+.hearts {
+  display: flex;
+  gap: 3px;
+}
+
+.hearts i {
+  width: 8px;
+  height: 8px;
+  background: var(--c);
+  transform: rotate(45deg) scale(0.9);
+}
+
+.hearts i.lost {
+  background: #2b2e3a;
+}
+
+.clock {
+  position: fixed;
+  top: var(--gutter-top);
+  left: 50%;
+  translate: -50% 0;
+  margin: 0;
+  padding: 3px 14px 4px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: linear-gradient(rgb(40 46 62 / 0.86), rgb(22 25 36 / 0.86));
+  border-top: 1px solid rgb(255 255 255 / 0.14);
+  border-bottom: 1px solid rgb(0 0 0 / 0.5);
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 100%, 0 100%);
+}
+
+.clock.low {
+  color: var(--ember);
+}
+
+.banner {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding-bottom: 6vh;
+  font-size: clamp(44px, 16vmin, 120px);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow:
+    0 3px 0 rgb(0 0 0 / 0.55),
+    0 0 28px rgb(255 154 60 / 0.4);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3;
+}
+
+.banner.shown {
+  opacity: 1;
+  animation: pop 0.38s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.banner.quiet {
+  font-size: clamp(22px, 6vmin, 36px);
+  font-style: normal;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.6);
+}
+
+@keyframes pop {
+  from {
+    scale: 1.5;
+    opacity: 0;
+  }
+}
+
+.pad,
+.bomb {
+  position: fixed;
+  bottom: var(--gutter-bottom);
+  display: none;
+  z-index: 2;
+  touch-action: none;
+}
+
+@media (pointer: coarse) {
+  .pad {
+    display: grid;
+  }
+
+  .bomb {
+    display: block;
+  }
+}
+
+.pad {
+  left: var(--gutter-left);
+  width: var(--pad);
+  height: var(--pad);
+  grid: repeat(3, 1fr) / repeat(3, 1fr);
+  gap: 3px;
+}
+
+.pad .key {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(rgb(52 60 80 / 0.78), rgb(26 30 42 / 0.78));
+  border-top: 1px solid rgb(255 255 255 / 0.16);
+  border-bottom: 2px solid rgb(0 0 0 / 0.55);
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+}
+
+.pad .key i {
+  width: 38%;
+  height: 38%;
+  background: var(--paper);
+  opacity: 0.8;
+}
+
+.pad .up {
+  grid-area: 1 / 2;
+}
+.pad .left {
+  grid-area: 2 / 1;
+}
+.pad .right {
+  grid-area: 2 / 3;
+}
+.pad .down {
+  grid-area: 3 / 2;
+}
+.pad .up i {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.pad .down i {
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.pad .left i {
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+}
+.pad .right i {
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.pad .key.held {
+  background: linear-gradient(rgb(255 170 80 / 0.9), rgb(214 110 30 / 0.9));
+}
+
+.pad .key.held i {
+  background: var(--ink);
+  opacity: 1;
+}
+
+.bomb {
+  right: var(--gutter-right);
+  width: clamp(76px, 22vmin, 116px);
+  aspect-ratio: 1;
+  padding: 0;
+  color: var(--paper);
+  background: radial-gradient(circle at 40% 30%, #3d4560, #1c2030 70%);
+  border: 0;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.16),
+    inset 0 -3px 0 rgb(0 0 0 / 0.5),
+    0 0 0 3px var(--ember),
+    0 6px 14px rgb(0 0 0 / 0.5);
+}
+
+.bomb svg {
+  width: 62%;
+  height: 62%;
+  fill: var(--paper);
+  stroke: var(--ember);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.bomb.held {
+  background: radial-gradient(circle at 40% 30%, #ffb15c, #d9701f 70%);
+  box-shadow:
+    inset 0 3px 0 rgb(0 0 0 / 0.3),
+    0 0 0 3px var(--ember);
+}
+
+.bomb.held svg {
+  fill: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner.shown {
+    animation: none;
+  }
+}

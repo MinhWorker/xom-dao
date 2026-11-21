@@ -5,8 +5,11 @@ Where to look:
   `server/` (rules with room options and a computer player) and `client/` (TypeScript + canvas,
   no engine). Its `src/` is the legacy plugin, still loaded by the legacy registry.
   `games/dat-bom` (Đặt Bom) is the Realtime example: a `RealtimeGame` with a `bot` hook, its
-  arena physics in `server/game/arena.ts`, no client yet. It has no `src/`: a Game made for the
-  new platform needs only `server/index.ts`, and the legacy registry skips it.
+  arena physics in `server/game/arena.ts`, and a Three.js client in `client/` (low-poly scene
+  built in code in `scene.ts`; `sync.ts` interpolates snapshots 150 ms behind the server and
+  `predict.ts` replays `walk` on the player's own character so keys answer at once). It has no
+  `src/`: a Game made for the new platform needs only `server/index.ts`, and the legacy registry
+  skips it.
   `games/tien-len` is the fullest legacy game.
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
@@ -65,6 +68,12 @@ a refusal exits with 1:
 - `init`, `reconnect`, `disconnect`, `leave`, `visibility <player> hidden|visible`, `settings`,
   `net --latency <ms> --drop <0-1>` replay what the Hub does around the Game.
 
+`npm run smoke:web` runs the web smoke test: a real server, the Harness and headless Chromium
+(`npx playwright-core install chromium` once), where Đặt Bom's client must draw the arena, walk
+and place a bomb on key presses. It saves `smoke-web/dat-bom.png`, and CI runs it and uploads
+that screenshot. Look at a client yourself the same way: `playwright-core` on the Harness'
+`/game/?harness=ws://<harness>/bridge?player=0`, with `--use-angle=swiftshader` for WebGL.
+
 Caro without a client: `create --headless`, `join --headless`, `start`, then
 `move 0 place '{"x":4,"y":4}'` and `move 1 place '{"x":3,"y":4}'` in turn.
 
@@ -93,7 +102,12 @@ the hash of `manifest.ts`, `server/**` and the shared packages it imports. The H
 `room:create` and `match:start`. `scripts/libs.mjs` adds every `server/index.ts` to the generated registry in
 `@xomdao/shared`; `GameHostModule` loads that list.
 
-A Vite client (Caro): `vite.config.ts` sets `root: 'client'`, `base: './'`, `outDir: '../dist'`
+A Realtime client sends each input as `send('input', { seq, input })` (`seq` counts up per
+player, also across reconnects: continue from the snapshot's `ack`), reads `tick`, `view` and
+`ack` from every `match:state` message and draws other players a snapshot behind. Keys held
+before the first tick are ignored by the server, so it sends the held direction again then.
+
+A Vite client (Caro, Đặt Bom): `vite.config.ts` sets `root: 'client'`, `base: './'`, `outDir: '../dist'`
 and the `xomdao-source` condition; `vite build` runs first in `scripts.build` because it empties
 `dist/`. A `vitest.config.ts` keeps Vitest from inheriting `root: 'client'`. The client may import
 the pure rules in `server/game/` to draw the board. After rebuilding a Game, restart the Hub's
@@ -140,6 +154,7 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
 - A game's TypeScript imports only these; Biome enforces it, and core never imports a game:
   - `@xomdao/sdk` and `zod` (and `vitest` in tests);
   - `@xomdao/bridge`, from its client only (Biome allows it anywhere in the game);
+  - `three`, for a client that draws in 3D;
   - its own files, one folder deep (`../game/x.js`), plus `../../manifest.js`.
 
   `vite.config.ts` and `vitest.config.ts` are build tooling and may import anything.
