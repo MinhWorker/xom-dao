@@ -16,7 +16,6 @@ coverage/
 __pycache__/
 # Written by scripts/libs.mjs
 packages/shared/src/generated/
-packages/shared/turbo.json
 .dev/
 # Local toolchains
 .tools/

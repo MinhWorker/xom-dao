@@ -30,8 +30,10 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
   `dependencies` (`^build`), so declare `@xomdao/sdk` and the like there.
 - Run one game: `npx turbo run build test --filter=@xomdao/game-<id>`. CI runs `--affected`, so
   a change to one game builds and tests only that game, what depends on it and `shared`.
-- `scripts/libs.mjs` checks the name and `build` script when you run `npm install`.
-  `packages/shared/turbo.json` (generated, gitignored) makes `shared` wait for every game.
+- Add `"@xomdao/game-<id>": "*"` to `devDependencies` in `packages/shared/package.json`: `shared`
+  imports every game, so this makes Turborepo build games first and re-test `shared` and the
+  server when a game changes.
+- `scripts/libs.mjs` checks the name, the `build` script and that dependency on `npm install`.
 
 
 ## Rules

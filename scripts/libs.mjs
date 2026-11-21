@@ -26,7 +26,6 @@ const args = process.argv.slice(2);
 
 const ids = findGames();
 writeGameList(ids);
-writeSharedTurbo(ids);
 if (args.includes('--generate')) process.exit(0);
 
 const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
@@ -66,6 +65,7 @@ function findGames() {
   const dir = join(root, 'games');
   const found = [];
   const problems = [];
+  const shared = JSON.parse(readFileSync(join(root, 'packages/shared/package.json'), 'utf8'));
   for (const id of readdirSync(dir).sort()) {
     const folder = join(dir, id);
     const pkgPath = join(folder, 'package.json');
@@ -77,6 +77,8 @@ function findGames() {
     for (const file of ['src/index.ts', 'tsconfig.build.json']) {
       if (!existsSync(join(folder, file))) problems.push(`games/${id}: missing ${file}`);
     }
+    if (!shared.devDependencies?.[pkg.name])
+      problems.push(`packages/shared/package.json: add "${pkg.name}": "*" to devDependencies`);
     if (!pkg.scripts?.build) problems.push(`games/${id}/package.json: missing a "build" script`);
     if (!existsSync(join(root, 'node_modules/@xomdao', `game-${id}`)))
       problems.push(`games/${id}: not installed yet, run npm install`);
@@ -102,17 +104,5 @@ function writeGameList(ids) {
   const file = join(root, 'packages/shared/src/generated/games.ts');
   if (existsSync(file) && readFileSync(file, 'utf8') === source) return;
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, source);
-}
-
-/** Turborepo can't see that shared imports the games, so it is told which builds to wait for. */
-function writeSharedTurbo(ids) {
-  const config = {
-    extends: ['//'],
-    tasks: { build: { dependsOn: ['^build', ...ids.map((id) => `@xomdao/game-${id}#build`)] } },
-  };
-  const file = join(root, 'packages/shared/turbo.json');
-  const source = `${JSON.stringify(config, null, 2)}\n`;
-  if (existsSync(file) && readFileSync(file, 'utf8') === source) return;
   writeFileSync(file, source);
 }

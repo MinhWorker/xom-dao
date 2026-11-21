@@ -20,6 +20,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@xomdao/game-tic-tac-toe": "*",
+    "@xomdao/game-tien-len": "*",
     "vitest": "^5.0.5",
     "@types/node": "^22.20.5"
   }
