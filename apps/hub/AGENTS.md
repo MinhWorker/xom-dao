@@ -15,7 +15,7 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.js
                    `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Tabs, Choice, Toggle, Menu, Toast, Icon:
                    no server knowledge. `toast()` needs `<ToastRegion />` (mounted in main.tsx)
-src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room, GameFrame = iframe + Bridge, Results), kit/
+src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), kit/
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
 ```
