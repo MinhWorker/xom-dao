@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.29.0](https://github.com/MinhWorker/xom-dao/compare/v0.28.0...v0.29.0) (2026-11-21)
+
+
+### Features
+
+* **bridge:** Bridge protocol with Hub and JS Game libraries ([#255](https://github.com/MinhWorker/xom-dao/issues/255)) ([d26cea7](https://github.com/MinhWorker/xom-dao/commit/d26cea7e8b3936001cdcf90db3283712045d9199))
+* **dat-bom:** Game server and bots ([#265](https://github.com/MinhWorker/xom-dao/issues/265)) ([99c0c39](https://github.com/MinhWorker/xom-dao/commit/99c0c3912a912a68d626b6fc4284cbe2033e18f4))
+* **dat-bom:** Three.js client with interpolation ([#266](https://github.com/MinhWorker/xom-dao/issues/266)) ([9532e2a](https://github.com/MinhWorker/xom-dao/commit/9532e2a620207e316f07afb3f28b2598bead6879))
+* **hub:** friends, invites and player profile ([#273](https://github.com/MinhWorker/xom-dao/issues/273)) ([386ddd5](https://github.com/MinhWorker/xom-dao/commit/386ddd51e1d001c736ced818cb9b9f5f81f595f7))
+* **hub:** Hub sounds ([#272](https://github.com/MinhWorker/xom-dao/issues/272)) ([e76ac94](https://github.com/MinhWorker/xom-dao/commit/e76ac947209995641094e800f8678a3515b9842c))
+* **hub:** lobby with Game art and slanted card strip ([#268](https://github.com/MinhWorker/xom-dao/issues/268)) ([7953db8](https://github.com/MinhWorker/xom-dao/commit/7953db83c9a820e1060b1938560c1b9dfb1e287d))
+* **hub:** minimal Hub web app ([#260](https://github.com/MinhWorker/xom-dao/issues/260)) ([93aee01](https://github.com/MinhWorker/xom-dao/commit/93aee016270db72def2dd87c72599d0c8c7cfa90))
+* **hub:** room screen with four vertical player slots and room options ([#269](https://github.com/MinhWorker/xom-dao/issues/269)) ([eb9ea7f](https://github.com/MinhWorker/xom-dao/commit/eb9ea7fb690e2295bc6ed7af53d88ded91f08ced))
+* **hub:** rules pager from RULES.md ([#270](https://github.com/MinhWorker/xom-dao/issues/270)) ([0c04e0d](https://github.com/MinhWorker/xom-dao/commit/0c04e0d735edde5aa621f3e01a59416f718b3410))
+* **hub:** UI kit following the graphics direction ([#262](https://github.com/MinhWorker/xom-dao/issues/262)) ([b1ed3da](https://github.com/MinhWorker/xom-dao/commit/b1ed3dad7177b58a5f87835d4fdfe70764593738))
+* **sdk:** Realtime Game declaration and server tick loop ([#264](https://github.com/MinhWorker/xom-dao/issues/264)) ([e63b001](https://github.com/MinhWorker/xom-dao/commit/e63b001545656b20a1e1e33d5bd2e70fe4b1fea4))
+* **sdk:** Turn-based Game class and Game manifest type ([#253](https://github.com/MinhWorker/xom-dao/issues/253)) ([f051848](https://github.com/MinhWorker/xom-dao/commit/f051848fda0e9106a926a86d4b7f407071342ad8))
+* **server:** add GameHostModule match lifecycle ([#257](https://github.com/MinhWorker/xom-dao/issues/257)) ([58306cd](https://github.com/MinhWorker/xom-dao/commit/58306cdd55e9c6f4d3362090dfc32563a4696d53))
+* **server:** match limits, seat hold, disabled games and version hash ([#258](https://github.com/MinhWorker/xom-dao/issues/258)) ([1aaca41](https://github.com/MinhWorker/xom-dao/commit/1aaca41c9447a8ad1667632e70ba477303c1412f))
+* **server:** ResultsService.settle and match:result ([#259](https://github.com/MinhWorker/xom-dao/issues/259)) ([07bf5b4](https://github.com/MinhWorker/xom-dao/commit/07bf5b4a03d01d9fbede0ad4d163142385ff3bfd))
+* **server:** rewrite rooms around the Game manifest ([#256](https://github.com/MinhWorker/xom-dao/issues/256)) ([c1d4ba1](https://github.com/MinhWorker/xom-dao/commit/c1d4ba1ebb4a1c60925aafd44cbb77bb0b5eef9f))
+* **tic-tac-toe:** Game rebuilt for the new platform ([#261](https://github.com/MinhWorker/xom-dao/issues/261)) ([b2c31b1](https://github.com/MinhWorker/xom-dao/commit/b2c31b133b2fd15bdd37e63b38b54183d96b9bc0))
+* **tools:** Harness for developing a Game without the Hub ([#263](https://github.com/MinhWorker/xom-dao/issues/263)) ([f5862fb](https://github.com/MinhWorker/xom-dao/commit/f5862fb58e06ba39f0980573b079f8dbf6f92f33))
+* **tools:** hub-assets generates and checks Game art ([#267](https://github.com/MinhWorker/xom-dao/issues/267)) ([09ff316](https://github.com/MinhWorker/xom-dao/commit/09ff316b71796a420980c72d5c52edd1104da10f))
+
 ## [0.28.0](https://github.com/MinhWorker/xom-dao/compare/v0.27.0...v0.28.0) (2026-11-12)
 
 
