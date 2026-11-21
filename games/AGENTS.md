@@ -18,6 +18,22 @@ games/<id>/          src/index.ts is required
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
 ```
 
+## The build contract
+
+Whatever engine a game uses, its folder is an npm workspace that Turborepo drives:
+
+- `package.json` is named `@xomdao/game-<id>`, `<id>` being the folder name (kebab-case).
+- `scripts.build` is required and writes everything the game ships to `dist/` (Turborepo
+  caches that folder). `scripts.test` and `scripts.typecheck` are optional; use them when the
+  game has tests or types.
+- Tasks run from the game's folder and depend on the builds of the workspaces it lists in
+  `dependencies` (`^build`), so declare `@xomdao/sdk` and the like there.
+- Run one game: `npx turbo run build test --filter=@xomdao/game-<id>`. CI runs `--affected`, so
+  a change to one game builds and tests only that game, what depends on it and `shared`.
+- Add `"@xomdao/game-<id>": "*"` to `devDependencies` in `packages/shared/package.json`: `shared`
+  imports every game, so this makes Turborepo build games first and re-test `shared` and the
+  server when a game changes.
+- `scripts/libs.mjs` checks the name, the `build` script and that dependency on `npm install`.
 
 ## Rules
 
@@ -55,8 +71,7 @@ games/<id>/          src/index.ts is required
   checks it with `metaProblems`.
 - `meta.status: 'wip'` marks an unfinished game; `'ready'` releases it.
 - The server runs the games' compiled `dist/`, while typechecks and tests use their TypeScript
-  source (export condition `xomdao-source`). Root scripts build them first
-  (`scripts/libs.mjs`).
+  source (export condition `xomdao-source`). `turbo run` builds them first.
 
 ## Mechanics worth knowing
 
