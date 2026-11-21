@@ -1,4 +1,4 @@
-import { type BridgePort, windowPort } from './port.js';
+import { type BridgePort, defaultGamePort } from './port.js';
 import {
   BRIDGE_RESET,
   BRIDGE_TAG,
@@ -41,10 +41,13 @@ export interface GameBridge {
   close(): void;
 }
 
-/** The Game's side of the Bridge. By default it talks to the Hub that embeds it. */
+/**
+ * The Game's side of the Bridge. By default it talks to the Hub that embeds it, or to the
+ * Harness when the page has a `harness` parameter (`defaultGamePort`).
+ */
 export function createGameBridge(
   handlers: GameBridgeHandlers,
-  port: BridgePort = windowPort(window.parent),
+  port: BridgePort = defaultGamePort(),
 ): GameBridge {
   const pending = new Map<number, { resolve(): void; reject(error: BridgeError): void }>();
   let nextId = 1;
@@ -93,6 +96,7 @@ export function createGameBridge(
     done: () => post({ type: 'done' }),
     close() {
       stop();
+      port.close?.();
       pending.clear();
     },
   };

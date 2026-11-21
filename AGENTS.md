@@ -1,8 +1,8 @@
 # AGENTS.md
 
 Games to play with friends in the browser; a solo project. npm-workspaces monorepo: a NestJS server
-(WebSocket + JSON), a React Hub (`apps/hub`), one folder per game. The Godot client, web shell
-and console are removed.
+(WebSocket + JSON), a React Hub (`apps/hub`), one folder per game, dev tools in `tools/`. The
+Godot client, web shell and console are removed.
 
 **Direction:** the project is moving to a web Hub that embeds each Game, built in any engine, in
 an iframe. The old Godot hub and its games are legacy (tag `legacy-godot`); only the rules and tests of
@@ -16,6 +16,7 @@ the wayfinder map, issue #200, and the decisions linked from it.
 | A game, the SDK or the Bridge (`games/`, `packages/sdk/`, `packages/bridge/`) | `games/AGENTS.md` |
 | The Hub web app (`apps/hub/`) | `apps/hub/AGENTS.md` |
 | The server, rooms, accounts, DB, protocol, deploy (`apps/server/`, `packages/shared/`) | `apps/server/AGENTS.md` |
+| Running a Game without the Hub (`tools/harness/`) | "The Harness" in `games/AGENTS.md` |
 | Images or sounds | `assets/AGENTS.md` |
 
 ## Commands (repo root)
@@ -27,6 +28,8 @@ the wayfinder map, issue #200, and the decisions linked from it.
   every workspace that has it, in dependency order, and caches the result. CI adds `--affected`
   on PRs and uses the remote cache (`TURBO_TOKEN` secret, `TURBO_TEAM` variable).
 - `npm run check`: lint, typecheck and unit tests. `npm run format` fixes formatting.
+- `npm run harness -- <command>`: the Harness, which runs one Game against a server without the Hub
+  (`games/AGENTS.md`).
 - `npm run smoke`: bots log in, make a Room and start a Match against a running server.
 
 ## Conventions

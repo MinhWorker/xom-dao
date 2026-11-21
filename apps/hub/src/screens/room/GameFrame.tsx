@@ -1,4 +1,10 @@
-import { type BridgeInit, createGameHost, type GameHost, windowPort } from '@xomdao/bridge';
+import {
+  type BridgeInit,
+  bridgeInit,
+  createGameHost,
+  type GameHost,
+  windowPort,
+} from '@xomdao/bridge';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
@@ -11,27 +17,7 @@ const SETTINGS = { volume: 1, muted: false };
 function currentInit(): BridgeInit | null {
   const { user, room, match } = hub.getState();
   if (!user || !room) return null;
-  return {
-    player: { id: user.id, name: user.name, avatar: user.avatar },
-    room: {
-      code: room.code,
-      seats: room.seats.flatMap((seat) =>
-        seat
-          ? [
-              {
-                id: seat.id,
-                name: seat.name,
-                bot: seat.bot ?? false,
-                ...(seat.avatar && { avatar: seat.avatar }),
-              },
-            ]
-          : [],
-      ),
-    },
-    locale: 'vi',
-    settings: SETTINGS,
-    match: match?.view ?? null,
-  };
+  return bridgeInit({ user, room, match, settings: SETTINGS });
 }
 
 /** Forwards a Game's `send` as `match:move`; the server's refusal goes back to the Game. */

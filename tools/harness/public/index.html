@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harness</title>
+  <style>
+    :root { color-scheme: dark; --bg: #11151b; --panel: #1a2029; --line: #2c3644; --text: #dfe6ee; --dim: #8a97a8; --accent: #5aa9ff; --bad: #ff7a7a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+    header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+    h1 { font-size: 16px; margin: 0; }
+    main { display: grid; gap: 12px; padding: 12px 16px; }
+    section { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 8px; }
+    button, input, select { font: inherit; color: inherit; background: #232c38; border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; }
+    button { cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+    input[type=number] { width: 80px; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .dim { color: var(--dim); }
+    .bad { color: var(--bad); }
+    .players { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+    .player { display: grid; gap: 6px; }
+    /* The phone in landscape: the Hub's 48x48 corner sits over the Game. */
+    .phone { position: relative; width: 844px; height: 390px; max-width: 100%; border: 1px solid var(--line); background: #000; }
+    .phone iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .corner { position: absolute; top: 0; right: 0; width: 48px; height: 48px; border: 1px dashed var(--accent); background: rgb(90 169 255 / .12); pointer-events: none; font-size: 10px; color: var(--accent); display: grid; place-items: center; }
+    .log { max-height: 320px; overflow: auto; font: 12px/1.5 ui-monospace, monospace; }
+    .log div { white-space: pre-wrap; word-break: break-all; border-bottom: 1px solid #202833; padding: 1px 0; }
+    .log .dropped { color: var(--bad); }
+    pre { margin: 0; max-height: 260px; overflow: auto; font: 12px/1.4 ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Harness <span id="game" class="dim"></span></h1>
+    <span id="room" class="dim"></span>
+    <span id="match" class="dim"></span>
+    <span id="error" class="bad"></span>
+  </header>
+  <main>
+    <section>
+      <h2>Room</h2>
+      <div class="row">
+        <button type="button" data-cmd="create">Create</button>
+        <button type="button" data-cmd="create" data-args='{"headless":true}'>Create (headless)</button>
+        <button type="button" data-cmd="join">Join</button>
+        <button type="button" data-cmd="join" data-args='{"headless":true}'>Join (headless)</button>
+        <button type="button" data-cmd="bot">Add bot</button>
+        <button type="button" data-cmd="start">Start / play again</button>
+        <button type="button" data-cmd="reset">Reset</button>
+      </div>
+    </section>
+    <section>
+      <h2>Slow network (between the Harness and the Game clients)</h2>
+      <form class="row" id="net">
+        <label>Latency <input type="number" name="latency" min="0" max="10000" step="50" value="0"> ms</label>
+        <label>Loss <input type="number" name="drop" min="0" max="1" step="0.05" value="0"></label>
+        <button type="submit">Apply</button>
+      </form>
+    </section>
+    <section>
+      <h2>Players</h2>
+      <div class="players" id="players"></div>
+    </section>
+    <section>
+      <h2>State</h2>
+      <pre id="state"></pre>
+    </section>
+    <section>
+      <h2>Log</h2>
+      <div class="row">
+        <select id="source"><option value="">all</option><option>bridge</option><option>server</option><option>harness</option></select>
+        <button type="button" id="clear">Clear</button>
+      </div>
+      <div class="log" id="log"></div>
+    </section>
+  </main>
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const frames = new Map();
+    let lastLog = 0;
+    let entries = [];
+
+    async function run(cmd, args = {}) {
+      $('error').textContent = '';
+      const res = await fetch(`/api/${cmd}`, { method: 'POST', body: JSON.stringify(args) });
+      const data = await res.json();
+      if (!res.ok) $('error').textContent = data.error;
+      await refresh();
+      return data;
+    }
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-cmd]');
+      if (button) run(button.dataset.cmd, JSON.parse(button.dataset.args ?? '{}'));
+    });
+    $('net').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const form = new FormData(event.target);
+      run('net', { latency: Number(form.get('latency')), drop: Number(form.get('drop')) });
+    });
+    $('source').addEventListener('change', drawLog);
+    $('clear').addEventListener('click', () => { entries = []; drawLog(); });
+
+    function playerBox(p, state) {
+      const box = document.createElement('div');
+      box.className = 'player';
+      box.innerHTML = '<div class="row"><strong></strong><span class="dim"></span></div><div class="row"></div>';
+      const actions = box.lastChild;
+      for (const [label, cmd, args] of [
+        ['Reconnect', 'reconnect', {}],
+        ['Drop connection', 'disconnect', {}],
+        ['Send init', 'init', {}],
+        ['Hide tab', 'visibility', { hidden: true }],
+        ['Show tab', 'visibility', { hidden: false }],
+        ['Leave', 'leave', {}],
+      ]) {
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.addEventListener('click', () => run(cmd, { player: p.player, ...args }));
+        actions.append(button);
+      }
+      if (!p.headless) {
+        const phone = document.createElement('div');
+        phone.className = 'phone';
+        const frame = document.createElement('iframe');
+        frame.allow = 'autoplay; fullscreen';
+        const bridge = `${state.bridge}?player=${p.player}`;
+        const client = new URL(state.client, location.href);
+        client.searchParams.set('harness', bridge);
+        frame.src = client.href;
+        phone.append(frame);
+        phone.insertAdjacentHTML('beforeend', '<div class="corner">Hub</div>');
+        box.append(phone);
+      }
+      return box;
+    }
+
+    function draw(state) {
+      $('game').textContent = state.game;
+      $('room').textContent = state.room ? `Room ${state.room.code} (${state.room.status})` : 'No Room';
+      $('match').textContent = state.match ? `Match ${state.match.status}${state.match.outcome ? ` / ${state.match.outcome}` : ''}` : '';
+      const view = { ...state, bridge: undefined, client: undefined };
+      $('state').textContent = JSON.stringify(view, null, 2);
+
+      const ids = new Set(state.players.map((p) => p.id));
+      for (const [id, box] of frames) {
+        if (!ids.has(id)) { box.remove(); frames.delete(id); }
+      }
+      for (const p of state.players) {
+        const label = `Player ${p.player}: ${p.name}`;
+        let box = frames.get(p.id);
+        if (!box) {
+          box = playerBox(p, state);
+          frames.set(p.id, box);
+          $('players').append(box);
+        }
+        box.querySelector('strong').textContent = label;
+        box.querySelector('.dim').textContent =
+          `${p.headless ? 'headless' : p.client ? (p.loaded ? 'client loaded' : 'client connected') : 'waiting for a client'}` +
+          `${p.online ? '' : ' / offline'}`;
+      }
+    }
+
+    function drawLog() {
+      const source = $('source').value;
+      const box = $('log');
+      const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 8;
+      box.textContent = '';
+      for (const e of entries) {
+        if (source && e.source !== source) continue;
+        const line = document.createElement('div');
+        if (e.dropped) line.className = 'dropped';
+        const time = new Date(e.at).toLocaleTimeString([], { hour12: false });
+        const who = e.player === null ? '-' : `p${e.player}`;
+        const data = e.data === undefined ? '' : ` ${JSON.stringify(e.data)}`;
+        line.textContent = `${e.n} ${time} ${who} ${e.source} ${e.dir ?? ''} ${e.type}${e.dropped ? ' (dropped)' : ''}${data.length > 400 ? `${data.slice(0, 400)}…` : data}`;
+        box.append(line);
+      }
+      if (atEnd) box.scrollTop = box.scrollHeight;
+    }
+
+    async function refresh() {
+      try {
+        const state = await (await fetch('/api/state')).json();
+        draw(state);
+        const fresh = await (await fetch(`/api/log?since=${lastLog}`)).json();
+        if (fresh.length) {
+          lastLog = fresh[fresh.length - 1].n;
+          entries = entries.concat(fresh).slice(-1000);
+          drawLog();
+        }
+      } catch {
+        $('error').textContent = 'The Harness is not answering';
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 700);
+  </script>
+</body>
+</html>

@@ -27,6 +27,40 @@ calls `done()` after its end-of-match animation. Every `init` (reconnect, replay
 the whole screen from its `match` snapshot. The message list and `BRIDGE_VERSION` are in the
 header of `packages/bridge/src/protocol.ts`; the Hub's side is `createGameHost`.
 
+## The Harness: running a Game without the Hub
+
+`tools/harness` (`@xomdao/harness`) plays the Hub for one Game against a real server, so a Game
+is developed and tested without the Hub or a database. A Game client reaches it through the same
+Bridge messages, one JSON text frame each, over `ws://<harness>/bridge?player=<n>`.
+`createGameBridge` uses that WebSocket instead of `postMessage` when the page URL has
+`?harness=<that url>`; an engine outside the browser opens the WebSocket itself.
+
+1. Build the Game: `npx turbo run build --filter=@xomdao/game-<id>`.
+2. Start a server with no DB, on its own port: `PORT=8133 DATABASE_URL= npm run dev -w @xomdao/server`.
+3. `npm run harness -- serve --game <id> --server http://localhost:8133` (Harness on :8040;
+   `--port`, `--host`). It serves the built client at `/game/`; `--client <url>` points the debug
+   page at a dev server instead (Caro: `npx vite --port 5173` in the Game's folder).
+
+The debug page at `http://localhost:8040/` has the Room buttons, one landscape phone frame
+(844×390, with the Hub's 48×48 corner marked) per player, the Bridge and server log, each
+player's `view`, and a slow-network setting (`latency`, `drop`: applied to both ways of every
+Game client).
+
+For agents, the same commands run from the CLI (`npm run harness -- help`); each prints JSON and
+a refusal exits with 1:
+
+- `create [--headless] [--options <json>]`, `join [--headless]`, `bot`, `options <json>`, `start`
+  (also plays again), `reset`. A headless player has no Game client; the others wait for one
+  (`?player=<n>`, or the first that connects).
+- `move <player> <event> [json]` sends a Game input as that player; `state` shows the Room, the
+  Match and each player's `view`; `wait --match playing|over`; `log [--since n --player n
+  --source bridge|server|harness]`.
+- `init`, `reconnect`, `disconnect`, `leave`, `visibility <player> hidden|visible`, `settings`,
+  `net --latency <ms> --drop <0-1>` replay what the Hub does around the Game.
+
+Caro without a client: `create --headless`, `join --headless`, `start`, then
+`move 0 place '{"x":4,"y":4}'` and `move 1 place '{"x":3,"y":4}'` in turn.
+
 ## A game's folder
 
 ```
