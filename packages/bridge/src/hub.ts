@@ -1,6 +1,7 @@
 import type { BridgePort } from './port.js';
 import {
   BRIDGE_TAG,
+  BRIDGE_UNAVAILABLE,
   BRIDGE_VERSION,
   type BridgeAck,
   type BridgeInit,
@@ -13,9 +14,15 @@ import {
 export interface GameHostOptions {
   /** Usually `windowPort(iframe.contentWindow)`. */
   port: BridgePort;
-  /** Forwards one of the Game's messages to the server over the Hub's socket. */
+  /**
+   * Forwards one of the Game's messages to the server over the Hub's socket. When it throws,
+   * the Game gets `BRIDGE_UNAVAILABLE` and the Hub shows the connection error.
+   */
   send(event: string, data: unknown): Promise<BridgeAck>;
-  /** The Game loaded: hide the loading screen and tell the server. */
+  /**
+   * The Game loaded: hide the loading screen and tell the server. Called again when its page
+   * reloads, which then needs a new `init`.
+   */
   onReady?(): void;
   onProgress?(value: number): void;
   /** The end-of-match animation is over: show the results. */
@@ -54,8 +61,8 @@ export function createGameHost(options: GameHostOptions): GameHost {
     let ack: BridgeAck;
     try {
       ack = await options.send(event, data);
-    } catch (error) {
-      ack = { ok: false, error: error instanceof Error ? error.message : String(error) };
+    } catch {
+      ack = { ok: false, error: BRIDGE_UNAVAILABLE };
     }
     if (!closed) post({ type: 'ack', id, ...ack });
   }
@@ -70,7 +77,6 @@ export function createGameHost(options: GameHostOptions): GameHost {
           options.onMismatch?.(message.version);
           return;
         }
-        if (ready) return;
         ready = true;
         for (const queued of queue.splice(0)) port.post(queued);
         options.onReady?.();

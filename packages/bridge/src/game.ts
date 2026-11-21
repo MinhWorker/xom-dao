@@ -1,5 +1,6 @@
 import { type BridgePort, windowPort } from './port.js';
 import {
+  BRIDGE_RESET,
   BRIDGE_TAG,
   BRIDGE_VERSION,
   type BridgeInit,
@@ -9,7 +10,7 @@ import {
   type Untagged,
 } from './protocol.js';
 
-/** A `send` the server refused (`code` is its error), or `reset` when a new `init` came first. */
+/** A `send` the server refused (`code` is its error), or `BRIDGE_RESET` / `BRIDGE_UNAVAILABLE`. */
 export class BridgeError extends Error {
   constructor(readonly code: string) {
     super(code);
@@ -55,7 +56,7 @@ export function createGameBridge(
     const message = parsed.data;
     switch (message.type) {
       case 'init':
-        for (const request of pending.values()) request.reject(new BridgeError('reset'));
+        for (const request of pending.values()) request.reject(new BridgeError(BRIDGE_RESET));
         pending.clear();
         handlers.onInit(message.init);
         break;

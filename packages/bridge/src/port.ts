@@ -19,8 +19,8 @@ export function windowPort(
   return {
     post: (message) => target.postMessage(message, origin),
     listen(handler) {
-      const onMessage = (e: MessageEvent) => {
-        if (e.source === target && e.origin === origin) handler(e.data);
+      const onMessage = (event: MessageEvent) => {
+        if (event.source === target && event.origin === origin) handler(event.data);
       };
       self.addEventListener('message', onMessage);
       return () => self.removeEventListener('message', onMessage);

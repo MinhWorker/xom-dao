@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BridgeError, createGameBridge, type GameBridgeHandlers } from './game.js';
 import { createGameHost, type GameHostOptions } from './hub.js';
 import { windowPort } from './port.js';
-import { BRIDGE_TAG, BRIDGE_VERSION, type BridgeInit } from './protocol.js';
+import {
+  BRIDGE_RESET,
+  BRIDGE_TAG,
+  BRIDGE_UNAVAILABLE,
+  BRIDGE_VERSION,
+  type BridgeInit,
+} from './protocol.js';
 
 const ORIGIN = 'http://localhost:3000';
 
@@ -126,17 +132,31 @@ describe('Bridge round-trip', () => {
     await expect(sent).rejects.toMatchObject({ code: 'not-your-turn' });
   });
 
-  it('turns a failed forward into an error ack', async () => {
+  it('answers a send the Hub could not forward with unavailable', async () => {
     const { host, bridge } = connect({
       send: async () => {
-        throw new Error('disconnected');
+        throw new Error('socket closed');
       },
     });
     host.init(makeInit(null));
     bridge.ready();
     await flush();
 
-    await expect(bridge.send('play', {})).rejects.toMatchObject({ code: 'disconnected' });
+    await expect(bridge.send('play', {})).rejects.toMatchObject({ code: BRIDGE_UNAVAILABLE });
+  });
+
+  it('hears ready again when the Game page reloads, and inits it again', async () => {
+    const { host, bridge, hubSide, gameSide } = connect();
+    host.init(makeInit(null));
+    bridge.ready();
+    await flush();
+    bridge.ready();
+    await flush();
+    expect(hubSide.onReady).toHaveBeenCalledTimes(2);
+
+    host.init(makeInit({ cells: [] }));
+    await flush();
+    expect(gameSide.onInit).toHaveBeenCalledTimes(2);
   });
 
   it('passes on what the server pushes, the settings and the visibility', async () => {
@@ -288,6 +308,6 @@ describe('Rebuilding from any snapshot', () => {
     const pending = bridge.send('play', { cell: 1 });
     await flush();
     host.init(makeInit({ cells: [] }));
-    await expect(pending).rejects.toMatchObject({ code: 'reset' });
+    await expect(pending).rejects.toMatchObject({ code: BRIDGE_RESET });
   });
 });

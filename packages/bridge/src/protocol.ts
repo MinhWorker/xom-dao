@@ -23,8 +23,15 @@ import { z } from 'zod';
 /** Bump when a change here breaks Games or Hubs built against the previous version. */
 export const BRIDGE_VERSION = 1;
 
-/** Marks a message as the Bridge's. */
 export const BRIDGE_TAG = 'xomdao';
+
+/** Rejects the `send`s still waiting when a new `init` arrives. */
+export const BRIDGE_RESET = 'reset';
+/**
+ * Answers a `send` the Hub could not pass on (no connection): the Hub shows that error itself,
+ * the Game only gives up the move.
+ */
+export const BRIDGE_UNAVAILABLE = 'unavailable';
 
 const tag = { bridge: z.literal(BRIDGE_TAG) };
 
@@ -36,12 +43,7 @@ export const BridgePlayer = z.object({
 export type BridgePlayer = z.infer<typeof BridgePlayer>;
 
 /** Who sits in one seat of the Room, in seat order. Bots have no avatar. */
-export const BridgeSeat = z.object({
-  id: z.string(),
-  name: z.string(),
-  avatar: z.string().optional(),
-  bot: z.boolean(),
-});
+export const BridgeSeat = BridgePlayer.extend({ avatar: z.string().optional(), bot: z.boolean() });
 export type BridgeSeat = z.infer<typeof BridgeSeat>;
 
 export const BridgeRoom = z.object({
@@ -51,7 +53,6 @@ export const BridgeRoom = z.object({
 export type BridgeRoom = z.infer<typeof BridgeRoom>;
 
 export const BridgeSettings = z.object({
-  /** 0–1. */
   volume: z.number().min(0).max(1),
   muted: z.boolean(),
 });
