@@ -1,6 +1,6 @@
 import { type BotContext, type EventContext, Game, type StartContext } from '@xomdao/sdk';
 import { z } from 'zod';
-import { at, grow, inside, isDraw, newBoard, place, winningLine, winsAt } from './board.js';
+import { at, grow, inside, isDraw, markOf, newBoard, place, winningLine, winsAt } from './board.js';
 import { botMove } from './bot.js';
 import { MAX_SIDE, type Mark, type Options, type Point, type State } from './model.js';
 
@@ -32,7 +32,7 @@ export class CaroGame extends Game<State, Options> {
     if (at(state.board, p) !== null) reject('Ô này đã có người đánh');
 
     const [x, o] = state.players;
-    const mark: Mark = player.id === x ? 'X' : 'O';
+    const mark = markOf(state, player.id) as Mark;
     let board = place(state.board, p, mark);
     let line: Point[] | null = null;
     if (winsAt(state.board, p, mark)) {

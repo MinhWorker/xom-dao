@@ -6,9 +6,14 @@ import {
   type BridgeSeat,
   createGameBridge,
 } from '@xomdao/bridge';
-import { at, keyOf, points } from '../server/game/board.js';
-import type { Mark, Point, State } from '../server/game/model.js';
+import { at, keyOf, markOf, points } from '../server/game/board.js';
+import type { Point, State } from '../server/game/model.js';
 import { BoardView, LINE_MS, type Scene } from './render.js';
+
+/** How long the finished board stays after the winning line is drawn. */
+const LINGER_MS = 900;
+/** How long a refusal stays on screen. */
+const TOAST_MS = 2200;
 
 /** The part of a `match:state` push the client reads. */
 interface MatchPush {
@@ -28,7 +33,8 @@ let me = '';
 let seats: BridgeSeat[] = [];
 let matchId: string | null = null;
 let status: MatchPush['status'] = 'loading';
-let doneFor: string | null = null;
+let doneSentFor: string | null = null;
+let donePendingFor: string | null = null;
 let doneTimer = 0;
 const scene: Scene = {
   state: null,
@@ -44,8 +50,9 @@ const bridge = createGameBridge({
     me = init.player.id;
     seats = init.room.seats;
     matchId = null;
-    status = 'playing';
+    status = 'loading';
     clearTimeout(doneTimer);
+    donePendingFor = null;
     scene.placedAt.clear();
     scene.overAt = null;
     show((init.match as State | null) ?? null, false);
@@ -79,7 +86,7 @@ function show(state: State | null, animate: boolean) {
   }
   scene.state = state;
   scene.pending = null;
-  scene.mine = mineOf(state);
+  scene.mine = state && markOf(state, me);
   if (state) view.track(state.board, now, animate);
   updateSeats();
   frame();
@@ -87,17 +94,14 @@ function show(state: State | null, animate: boolean) {
 
 /** Tells the Hub the end of the Match has played out, once per Match. */
 function finish(id: string) {
-  if (doneFor === id) return;
-  doneFor = id;
+  if (doneSentFor === id || donePendingFor === id) return;
+  donePendingFor = id;
   clearTimeout(doneTimer);
-  doneTimer = window.setTimeout(() => bridge.done(), LINE_MS + 900);
-}
-
-function mineOf(state: State | null): Mark | null {
-  if (!state) return null;
-  if (state.players[0] === me) return 'X';
-  if (state.players[1] === me) return 'O';
-  return null;
+  doneTimer = window.setTimeout(() => {
+    donePendingFor = null;
+    doneSentFor = id;
+    bridge.done();
+  }, LINE_MS + LINGER_MS);
 }
 
 const myTurn = () =>
@@ -163,17 +167,18 @@ canvas.addEventListener('pointerdown', (event) => {
   bridge.send('place', cell).catch((error: unknown) => {
     if (scene.pending?.x === cell.x && scene.pending?.y === cell.y) scene.pending = null;
     frame();
-    const code = error instanceof BridgeError ? error.code : '';
-    if (code && code !== BRIDGE_RESET && code !== BRIDGE_UNAVAILABLE) say(code);
+    const refusal = error instanceof BridgeError ? error.code : '';
+    if (refusal && refusal !== BRIDGE_RESET && refusal !== BRIDGE_UNAVAILABLE) say(refusal);
   });
 });
 
 let toastTimer = 0;
+/** Shows the server's refusal of a move. */
 function say(message: string) {
   toast.textContent = message;
   toast.classList.add('shown');
   clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => toast.classList.remove('shown'), 2200);
+  toastTimer = window.setTimeout(() => toast.classList.remove('shown'), TOAST_MS);
 }
 
 /** Gives the board the space the seat cards leave. */

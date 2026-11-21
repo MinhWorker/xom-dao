@@ -14,7 +14,7 @@ export default defineManifest({
     level: {
       type: 'choice',
       label: 'Mức máy',
-      default: 'normal',
+      default: 'easy',
       choices: [
         { value: 'easy', label: 'Dễ' },
         { value: 'normal', label: 'Vừa' },

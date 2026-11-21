@@ -1,4 +1,5 @@
 /** Helpers for the growing board, shared by CaroGame, the bot and the client. */
+import type { PlayerId } from '@xomdao/sdk';
 import {
   type Board,
   type Cell,
@@ -7,6 +8,7 @@ import {
   type Mark,
   type Point,
   START_SIDE,
+  type State,
   WIN,
 } from './model.js';
 
@@ -157,3 +159,9 @@ export function isOver(board: Board) {
 }
 
 export const otherMark = (mark: Mark): Mark => (mark === 'X' ? 'O' : 'X');
+
+/** The mark `player` plays, `null` if they are not seated. */
+export function markOf(state: State, player: PlayerId): Mark | null {
+  if (state.players[0] === player) return 'X';
+  return state.players[1] === player ? 'O' : null;
+}

@@ -99,8 +99,11 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
 - A game's TypeScript imports only these; Biome enforces it, and core never imports a game:
   - `@xomdao/sdk` and `zod` (and `vitest` in tests);
   - `@xomdao/bridge`, from its client only (Biome allows it anywhere in the game);
-  - its own files.
-- Every `Game` has tests with `testGame` (`src/game/<Name>Game.test.ts`).
+  - its own files, one folder deep (`../game/x.js`), plus `../../manifest.js`.
+
+  `vite.config.ts` and `vitest.config.ts` are build tooling and may import anything.
+- Every `Game` has tests with `testGame` (`server/game/<Name>Game.test.ts`; legacy:
+  `src/game/`).
 - When a mechanic or piece of data would help other games too, add it to the SDK instead of the
   game. Examples: a system event, a `ctx` property, a view helper, a test helper.
 - Changing an SDK API means, in the same change:

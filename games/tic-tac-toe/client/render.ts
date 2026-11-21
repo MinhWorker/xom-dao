@@ -110,7 +110,6 @@ export class BoardView {
     const w = board.cols * cell;
     const h = board.rows * cell;
 
-    // The sheet, its shadow on the desk and a little paper grain.
     ctx.save();
     ctx.shadowColor = 'rgb(0 0 0 / 0.45)';
     ctx.shadowBlur = 18;
@@ -170,10 +169,9 @@ export class BoardView {
       const last = centre(state.line[state.line.length - 1] as Point);
       const mark = at(board, state.line[0] as Point) as Mark;
       const t = ease((now - scene.overAt) / LINE_MS);
-      const dx =
-        (last.cx - first.cx) / Math.max(1, Math.hypot(last.cx - first.cx, last.cy - first.cy));
-      const dy =
-        (last.cy - first.cy) / Math.max(1, Math.hypot(last.cx - first.cx, last.cy - first.cy));
+      const length = Math.max(1, Math.hypot(last.cx - first.cx, last.cy - first.cy));
+      const dx = (last.cx - first.cx) / length;
+      const dy = (last.cy - first.cy) / length;
       const sx = first.cx - dx * cell * 0.45;
       const sy = first.cy - dy * cell * 0.45;
       const ex = last.cx + dx * cell * 0.45;

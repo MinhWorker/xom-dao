@@ -3,17 +3,28 @@
  * computer seat.
  */
 import { type PlayerId, pick, type Rng } from '@xomdao/sdk';
-import { at, DIRECTIONS, emptyCells, isOver, otherMark, points, runAt, winsAt } from './board.js';
+import {
+  at,
+  DIRECTIONS,
+  emptyCells,
+  isOver,
+  markOf,
+  otherMark,
+  points,
+  runAt,
+  winsAt,
+} from './board.js';
 import { type Board, type BotLevel, type Mark, type Point, type State, WIN } from './model.js';
 
 /**
  * `easy` plays near the pieces at random but never misses a win, `normal` also blocks your
- * winning move and builds its own lines, `hard` always takes the best-weighed cell.
+ * winning move and picks among the three best-weighed cells (its attack plus how much it spoils
+ * yours), `hard` always takes the best one.
  */
 export function botMove(state: State, player: PlayerId, rng: Rng, level: BotLevel): Point | null {
-  if (isOver(state.board) || state.turn !== player) return null;
+  const me = markOf(state, player);
+  if (!me || isOver(state.board) || state.turn !== player) return null;
   const { board } = state;
-  const me: Mark = player === state.players[0] ? 'X' : 'O';
 
   const winNow = finishingCell(board, me);
   if (winNow) return winNow;
@@ -22,13 +33,11 @@ export function botMove(state: State, player: PlayerId, rng: Rng, level: BotLeve
   const block = finishingCell(board, otherMark(me));
   if (block) return block;
 
-  // Score every candidate: my attack plus how much it spoils the opponent's lines.
   const scored = candidates(board, 2).map((cell) => ({
     cell,
     score: potential(board, cell, me) + potential(board, cell, otherMark(me)) * 0.9,
   }));
   scored.sort((a, b) => b.score - a.score);
-  // `normal` sometimes takes the second or third best move.
   const top =
     level === 'hard' ? scored.filter((s) => s.score === scored[0]?.score) : scored.slice(0, 3);
   return pick(rng, top).cell;

@@ -5,15 +5,21 @@ import { botMove } from './bot.js';
 import { CaroGame } from './CaroGame.js';
 import type { BotLevel, State } from './model.js';
 
-/** The state after a (X) and b take `moves` ([x, y]) in turn. */
 const options = optionsSchema(manifest).parse({});
 const caro = (seed = 1) => testGame(new CaroGame(), ['a', 'b'], { options, seed });
 
+/** The state after a (X) and b take `moves` ([x, y]) in turn. */
 const play = (moves: [number, number][]) => {
   const game = caro();
   for (const [x, y] of moves) game.send(game.state.turn, 'place', { x, y });
   return game.state;
 };
+
+/** a's four on row 4 (x 2–5) and b's on row 6, both ends of a's free: a to play. */
+const fours = [2, 3, 4, 5].flatMap((x) => [
+  [x, 4],
+  [x, 6],
+]) as [number, number][];
 
 const move = (state: State, player: string, level: BotLevel, seed = 1) =>
   botMove(state, player, seededRng(seed), level) ?? undefined;
@@ -34,14 +40,7 @@ function botGame(x: BotLevel, o: BotLevel, seed: number) {
 describe('caro bot', () => {
   it('waits for its turn and for a running game', () => {
     expect(move(play([]), 'b', 'hard')).toBeUndefined();
-    const four = [2, 3, 4, 5].flatMap(
-      (x) =>
-        [
-          [x, 4],
-          [x, 6],
-        ] as [number, number][],
-    );
-    expect(move(play([...four, [6, 4]]), 'b', 'hard')).toBeUndefined();
+    expect(move(play([...fours, [6, 4]]), 'b', 'hard')).toBeUndefined();
   });
 
   it('opens in the middle of the empty board', () => {
@@ -49,16 +48,7 @@ describe('caro bot', () => {
   });
 
   it('takes a win at every level', () => {
-    // a: 2..5 on row 4, b: 2..5 on row 6 (both ends of a's four are free), a to play.
-    const state = play(
-      [2, 3, 4, 5].flatMap(
-        (x) =>
-          [
-            [x, 4],
-            [x, 6],
-          ] as [number, number][],
-      ),
-    );
+    const state = play(fours);
     for (const level of ['easy', 'normal', 'hard'] as const) {
       expect([
         { x: 1, y: 4 },
@@ -67,8 +57,7 @@ describe('caro bot', () => {
     }
   });
 
-  it('blocks from normal up', () => {
-    // a: 2..5 on row 4 with 1 taken by b: b must take 6.
+  it('blocks a four with one open end from normal up', () => {
     const state = play([
       [2, 4],
       [1, 4],

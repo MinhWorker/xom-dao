@@ -56,8 +56,7 @@ describe('caro', () => {
     expect(game.error('b', 'place', { x: 7, y: 7 })).toBe('Ván đã kết thúc');
   });
 
-  it('wins on diagonals too', () => {
-    // a on 2,2 → 6,6; b along row 7.
+  it('wins on diagonals too: a from 2,2 to 6,6', () => {
     const moves: Move[] = [2, 3, 4, 5].flatMap((i) => [
       [i, i],
       [i, 7],
@@ -66,7 +65,7 @@ describe('caro', () => {
     expect(play([...moves, [6, 6]]).result?.seats.map((s) => s.place)).toEqual([1, 2]);
   });
 
-  it('grows three rows or columns on the side of an edge mark', () => {
+  it('grows three rows or columns on the side of an edge mark, up to 15', () => {
     expect(play([[4, 4]]).state.board).toMatchObject({ left: 0, top: 0, cols: 9, rows: 9 });
 
     const left = play([[0, 4]]).state.board;
@@ -76,7 +75,6 @@ describe('caro', () => {
 
     expect(play([[8, 8]]).state.board).toMatchObject({ left: 0, top: 0, cols: 12, rows: 12 });
 
-    // The old edge is inside now: the new one grows it again, then 15 is the limit.
     const game = play([
       [0, 4],
       [-3, 4],
@@ -89,7 +87,6 @@ describe('caro', () => {
   });
 
   it('does not grow on a winning move', () => {
-    // a: 1..5 on row 11 after the bottom edge grew once, at the first mark.
     const moves: Move[] = [0, 1, 2, 3].flatMap((x) => [
       [x + 1, 11],
       [x + 1, 5],
@@ -131,20 +128,19 @@ describe('caro', () => {
 /**
  * Plays a drawn Match: X and O follow a pattern with at most two in a row any way, on the
  * 15×15 square the board grows to (x and y from -3 to 11), until the game calls the draw.
+ * The first marks go one on each edge of the new board, so each side grows once.
  */
 function playToDraw(game: ReturnType<typeof play>) {
   const markOf = ({ x, y }: Point) => ((((x + 2 * y + 1) % 4) + 4) % 4 < 2 ? 'X' : 'O');
   const todo: Point[] = [];
   for (let y = -3; y <= 11; y++) for (let x = -3; x <= 11; x++) todo.push({ x, y });
-  // First one mark on each edge of the new board (left and top X, right and bottom O): each
-  // side grows once, and the board is 15×15 from then on.
-  const first = [
+  const firstOnEachEdge = [
     (p: Point) => p.x === 0 && p.y === 4,
     (p: Point) => p.x === 8 && p.y === 5,
     (p: Point) => p.y === 0 && p.x === 3,
     (p: Point) => p.y === 8 && p.x === 5,
   ].map((is) => todo.splice(todo.findIndex(is), 1)[0] as Point);
-  todo.unshift(...first);
+  todo.unshift(...firstOnEachEdge);
   while (!game.result) {
     const { board, players, turn } = game.state;
     const mark = turn === players[0] ? 'X' : 'O';
