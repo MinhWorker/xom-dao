@@ -242,8 +242,8 @@ export const STAT_NAME = /^[a-z][a-z0-9-]*$/;
 
 class Rejected extends Error {}
 
-/** Checks `ctx.finish`'s arguments and builds the seats of the Match result. */
-function seatResults(
+/** Checks `ctx.finish`'s arguments and builds the seats of the Match result. Used by the runners. */
+export function seatResults(
   players: RoomSeat[],
   places: readonly number[],
   scores: readonly number[] | undefined,

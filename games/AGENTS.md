@@ -8,13 +8,16 @@ Where to look:
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the
-  Turn-based `Game` class, `ctx.finish(places)`) and of `packages/sdk/src/manifest.ts` (the
-  Game manifest, `games/<id>/manifest.ts`).
+  Turn-based `Game` class, `ctx.finish(places)`), of `packages/sdk/src/manifest.ts` (the
+  Game manifest, `games/<id>/manifest.ts`) and of `packages/sdk/src/realtime.ts` (the Realtime
+  `RealtimeGame`: `init`/`input`/`tick`/`view`/`result`, a fixed tick and 10-20 Hz snapshots).
 
 ## Two SDKs, for now
 
 - `@xomdao/sdk` is the SDK of the new platform: `Game`, `turnRules`, `testGame`,
-  `defineManifest`, `optionsSchema` and `GameServer`. New Game servers use it.
+  `defineManifest`, `optionsSchema` and `GameServer` for Turn-based games; `RealtimeGame`,
+  `realtimeRules`, `testRealtimeGame` and `RealtimeGameServer` for Realtime ones. New Game servers
+  use it.
 - `@xomdao/sdk/legacy` is the old one (`definePlugin`, `meta`, `ctx.reward`, dev commands). The
   two kept games and the legacy registry in `@xomdao/shared` still import it; the rest of this file
   describes it. Delete it once those games and the legacy registry are gone.

@@ -21,6 +21,8 @@ export interface MatchState {
   outcome?: MatchOutcome;
   disconnectedPlayerIds: string[];
   timer: MatchTimer | null;
+  /** A Realtime Match's last snapshot: the tick it is from. */
+  tick?: number;
   result?: MatchResult;
 }
 

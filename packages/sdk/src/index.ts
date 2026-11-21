@@ -4,5 +4,6 @@
 
 export * from './game.js';
 export * from './manifest.js';
+export * from './realtime.js';
 export * from './rng.js';
 export * from './testing.js';

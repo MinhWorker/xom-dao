@@ -51,6 +51,15 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   250 ms (logged over 50 ms), a `view` over 64 KB, 2 hours of play or 5 minutes without a
   person's message abort the Match, logged with the reason and the Game's id. A seat's 11th
   move within a second is refused.
+- A Realtime Game (`RealtimeGame`) runs in the same `GameHostService`: once playing, a fixed
+  tick every 1 / `tickRate` s (drift-corrected; after a delay it runs at most `catchUpTicks`
+  ticks and drops the rest). A person's `match:move` with event `input` and data
+  `{ seq, input }` is checked, rate-limited (`inputsPerSecond`, `inputBytes`; the other limits
+  apply as above) and queued; the next tick applies the queue, then the Game's `tick`. Every
+  `tickRate / snapshotRate` ticks each member gets `match:state` with their `view`, its `tick`
+  and their `ack` (the last `seq` applied), and the Game's `result` settles the Match. A
+  reconnecting player gets the last snapshot. A Realtime Game has no bots yet: its manifest says
+  `bots: false` and the host refuses to load one that doesn't.
 - A player who drops mid-Match keeps the seat for 60 s (`disconnect` / `reconnect`, from the
   gateway). After that, or on `room:leave`, they have left: placed last, the computer plays
   their seat if the Game has `bot`, otherwise the Game's leave hook runs, otherwise the Match is

@@ -407,7 +407,10 @@ export const requests = {
 export const events = {
   /** The Room you are in changed. */
   'room:state': RoomState,
-  /** A Match moved through loading, playing and over. */
+  /**
+   * A Match moved through loading, playing and over. A Realtime Match sends it again for every
+   * snapshot (10–20 times a second), with `view`, `tick` and your `ack`.
+   */
   'match:state': z.object({
     roomCode: z.string(),
     matchId: z.string(),
@@ -418,6 +421,10 @@ export const events = {
     timer: MatchTimer.nullable(),
     result: MatchResult.optional(),
     view: z.unknown().optional(),
+    /** A Realtime Match's snapshot: the server tick `view` is from. */
+    tick: z.int().optional(),
+    /** A Realtime Match's snapshot: the last input `seq` the server applied for you. */
+    ack: z.int().optional(),
   }),
   /** A settled Match's places and scores, once recorded; a failed settle sends none. */
   'match:result': MatchResultNotice,
