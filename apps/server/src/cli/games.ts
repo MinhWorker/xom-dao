@@ -30,8 +30,8 @@ if (!['list', 'disable', 'enable'].includes(command ?? '') || (command !== 'list
 const pool = new Pool({ connectionString: url });
 const games = new DisabledGamesService(new PgDisabledGamesStore(drizzle({ client: pool, schema })));
 try {
-  if (command === 'disable') await games.disable(gameId!);
-  if (command === 'enable') await games.enable(gameId!);
+  if (command === 'disable') await games.disable(gameId ?? '');
+  if (command === 'enable') await games.enable(gameId ?? '');
   const disabled = await games.list();
   console.log(disabled.length ? `Disabled: ${disabled.join(', ')}` : 'No Game is disabled');
 } finally {
