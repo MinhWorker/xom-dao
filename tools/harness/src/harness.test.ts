@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BridgeError, type BridgeInit, createGameBridge, webSocketPort } from '@xomdao/bridge';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runCommand } from './commands.js';
 import { fakeServer } from './fake-server.js';
 import { Harness } from './harness.js';
@@ -202,19 +202,25 @@ describe('commands', () => {
 
 describe('NetSim', () => {
   it('keeps order and loses messages by chance', async () => {
-    const net = new NetSim(() => 0.5);
-    const lane = net.lane();
-    const order: number[] = [];
-    net.settings.latency = 30;
-    lane(() => order.push(1));
-    net.settings.latency = 0;
-    lane(() => order.push(2));
-    await wait(60);
-    expect(order).toEqual([1, 2]);
+    vi.useFakeTimers();
+    try {
+      const net = new NetSim(() => 0.5);
+      const lane = net.lane();
+      const order: number[] = [];
+      net.settings.latency = 30;
+      lane(() => order.push(1));
+      net.settings.latency = 0;
+      lane(() => order.push(2));
+      expect(order).toEqual([]);
+      await vi.advanceTimersByTimeAsync(60);
+      expect(order).toEqual([1, 2]);
 
-    net.settings.drop = 0.6;
-    expect(lane(() => order.push(3))).toBe(false);
-    net.settings.drop = 0.4;
-    expect(lane(() => order.push(4))).toBe(true);
+      net.settings.drop = 0.6;
+      expect(lane(() => order.push(3))).toBe(false);
+      net.settings.drop = 0.4;
+      expect(lane(() => order.push(4))).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
