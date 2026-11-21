@@ -1,0 +1,101 @@
+.strip {
+  --card-h: clamp(64px, 22vmin, 132px);
+  --slant: calc(var(--card-h) * 0.22);
+  display: flex;
+  align-items: end;
+  min-width: 0;
+  padding: var(--space-2) var(--slant) 0 var(--space-1);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  position: relative;
+  flex: none;
+  height: var(--card-h);
+  aspect-ratio: 16 / 9;
+  margin: 0 0 0 calc(var(--space-1) - var(--slant));
+  padding: 0;
+  border: 0;
+  background: var(--bg-sunken);
+  clip-path: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+  scroll-snap-align: center;
+  cursor: pointer;
+}
+
+.card:first-child {
+  margin-left: 0;
+}
+
+.card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.5) saturate(0.55);
+  transition: filter 160ms;
+}
+
+.card:hover img,
+.card:focus-visible img,
+.card[aria-checked="true"] img {
+  filter: none;
+}
+
+.card:hover:not([aria-checked="true"]) img {
+  filter: brightness(0.75) saturate(0.8);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+
+.name {
+  position: absolute;
+  inset: auto var(--slant) var(--space-2) var(--slant);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-align: left;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.9);
+  color: var(--text-dim);
+}
+
+.card[aria-checked="true"] .name {
+  color: var(--text);
+}
+
+.closed {
+  position: absolute;
+  inset: var(--space-1) var(--slant) auto auto;
+  padding: 1px var(--space-1);
+  background: rgb(11 13 16 / 0.85);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bar {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: var(--accent);
+  scale: 0 1;
+  transition: scale 160ms;
+}
+
+.card[aria-checked="true"] .bar {
+  scale: 1 1;
+}
