@@ -4,9 +4,9 @@
 //   node scripts/libs.mjs --watch     same, then rebuild on change (npm run dev)
 //   node scripts/libs.mjs --generate  only write the game list (npm install runs this)
 // The game list is packages/shared/src/generated/games.ts (gitignored): one static import per
-// game, so tsc, vitest and Nest all see it. Next to it, packages/shared/turbo.json (also
-// gitignored) makes shared's build wait for every game's build. Adding a game folder is enough;
-// nothing to register.
+// game, so tsc, vitest and Nest all see it. Each game must also be a devDependency of
+// @xomdao/shared (checked below), so Turborepo builds games first and re-tests shared when one
+// changes.
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
@@ -65,7 +65,7 @@ function findGames() {
   const dir = join(root, 'games');
   const found = [];
   const problems = [];
-  const shared = JSON.parse(readFileSync(join(root, 'packages/shared/package.json'), 'utf8'));
+  const sharedPkg = JSON.parse(readFileSync(join(root, 'packages/shared/package.json'), 'utf8'));
   for (const id of readdirSync(dir).sort()) {
     const folder = join(dir, id);
     const pkgPath = join(folder, 'package.json');
@@ -77,7 +77,7 @@ function findGames() {
     for (const file of ['src/index.ts', 'tsconfig.build.json']) {
       if (!existsSync(join(folder, file))) problems.push(`games/${id}: missing ${file}`);
     }
-    if (!shared.devDependencies?.[pkg.name])
+    if (!sharedPkg.devDependencies?.[pkg.name])
       problems.push(`packages/shared/package.json: add "${pkg.name}": "*" to devDependencies`);
     if (!pkg.scripts?.build) problems.push(`games/${id}/package.json: missing a "build" script`);
     if (!existsSync(join(root, 'node_modules/@xomdao', `game-${id}`)))

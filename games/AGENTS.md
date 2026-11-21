@@ -35,7 +35,6 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
   server when a game changes.
 - `scripts/libs.mjs` checks the name, the `build` script and that dependency on `npm install`.
 
-
 ## Rules
 
 - **The server is authoritative.** A game's table calls `client.send(event, payload)`,
