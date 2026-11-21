@@ -2,7 +2,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Stored } from '@xomdao/sdk';
+import type { Stored } from '@xomdao/sdk/legacy';
 import { afterEach, describe, expect, it } from 'vitest';
 import { RoomsService } from '../rooms/rooms.service.js';
 import { DevConsoleService } from './dev-console.service.js';

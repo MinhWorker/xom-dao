@@ -5,7 +5,17 @@ Where to look:
   `games/tien-len` is the fullest game.
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
-- **The source of truth for the API** is the header of `packages/sdk/src/engine.ts`.
+- **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the
+  Turn-based `Game` class, `ctx.finish(places)`) and of `packages/sdk/src/manifest.ts` (the
+  Game manifest, `games/<id>/manifest.ts`).
+
+## Two SDKs, for now
+
+- `@xomdao/sdk` is the SDK of the new platform: `Game`, `turnRules`, `testGame`,
+  `defineManifest`, `optionsSchema`. New Game servers use it.
+- `@xomdao/sdk/legacy` is the old one (`definePlugin`, `meta`, `ctx.reward`, dev commands). The
+  current server, `@xomdao/shared` and the two kept games still import it; the rest of this file
+  describes it. Delete it once the rewritten rooms, GameHostModule and games no longer need it.
 
 ## A game's folder
 
@@ -64,7 +74,7 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
   game. Examples: a system event, a `ctx` property, a view helper, a test helper.
 - Changing an SDK API means, in the same change:
   - updating every game that uses it;
-  - documenting it in the engine.ts header.
+  - documenting it in the header of `game.ts` or `manifest.ts`.
 - `meta` is also the game's hub card: `genre` (an id from `genres` in
   `packages/shared/src/catalog.ts`; none = not in the hub yet), `tagline`, `duration` in minutes,
   optional `kind` (`table`/`event` + `event`), `card` art and `rewardCap`. The registry test

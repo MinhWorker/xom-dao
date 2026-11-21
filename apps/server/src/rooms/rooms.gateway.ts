@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
-import { ConsoleError, type ConsoleIssue } from '@xomdao/sdk';
+import { ConsoleError, type ConsoleIssue } from '@xomdao/sdk/legacy';
 import {
   COIN,
   type JoinedRoom,

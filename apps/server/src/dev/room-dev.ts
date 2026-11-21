@@ -1,6 +1,6 @@
 /** Room-local random state and bounded undo frames; allocated only in dev mode. */
 
-import { seededRng } from '@xomdao/sdk';
+import { seededRng } from '@xomdao/sdk/legacy';
 import type { DevLogEntry } from '@xomdao/shared';
 import type { Room } from '../rooms/rooms.service.js';
 

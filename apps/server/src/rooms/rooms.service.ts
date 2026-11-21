@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { hookName } from '@xomdao/sdk';
+import { hookName } from '@xomdao/sdk/legacy';
 import {
   type AnyGameDefinition,
   defaultOptions,

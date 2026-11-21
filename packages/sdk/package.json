@@ -3,12 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Everything a game's rules may use: the Game class, rng helpers and testGame.",
+  "description": "Everything a Game server may use: the Turn-based Game class, the Game manifest, rng helpers and testGame.",
   "exports": {
     ".": {
       "xomdao-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./legacy": {
+      "xomdao-source": "./src/legacy/index.ts",
+      "types": "./dist/legacy/index.d.ts",
+      "default": "./dist/legacy/index.js"
     }
   },
   "scripts": {

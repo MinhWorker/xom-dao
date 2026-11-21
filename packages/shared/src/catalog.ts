@@ -1,6 +1,6 @@
-import type { GameMeta } from '@xomdao/sdk';
+import type { GameMeta } from '@xomdao/sdk/legacy';
 
-export { EVENT_POINTS } from '@xomdao/sdk';
+export { EVENT_POINTS } from '@xomdao/sdk/legacy';
 
 /**
  * A genre island in the hub. The two `main` genres (Cờ, Bài) have fixed big islands beside

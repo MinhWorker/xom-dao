@@ -9,5 +9,5 @@
     "declarationMap": true,
     "incremental": true
   },
-  "files": ["src/index.ts"]
+  "files": ["src/index.ts", "src/legacy/index.ts"]
 }

@@ -1,4 +1,4 @@
-import { seededRng, testGame } from '@xomdao/sdk';
+import { seededRng, testGame } from '@xomdao/sdk/legacy';
 import { describe, expect, it } from 'vitest';
 import plugin from '../index.js';
 import { botMove } from './bot.js';

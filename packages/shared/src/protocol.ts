@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export type { DevCommandInfo, DevConsoleSchema } from '@xomdao/sdk';
+export type { DevCommandInfo, DevConsoleSchema } from '@xomdao/sdk/legacy';
 
 import { avatarSchema, frameSchema, profileSchema } from './account.js';
 

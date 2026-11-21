@@ -1,283 +1,468 @@
-import type { z } from 'zod';
-import type { Catalogs } from './console/parser.js';
-import { type Game, type GameEvent, gameRules, type Seat, type Stored } from './engine.js';
+/**
+ * A Turn-based game's server part: a class with lifecycle hooks.
+ *
+ *   class CounterGame extends Game<State> {
+ *     events = { press: z.object({}) };                         // what players can send
+ *     onStart(ctx) { return { count: 0 }; }                     // the Match's first state
+ *     onPress(ctx) {                                            // event "press" → onPress
+ *       if (ctx.state.count === 9) ctx.finish([1, 2]);          // a place for every seat
+ *       return { count: ctx.state.count + 1 };
+ *     }
+ *   }
+ *
+ * The server checks a player's event against `events`, runs its hook for the next state, and
+ * sends every member what `view(ctx, viewer)` shows them. Hooks are pure: they never change
+ * `ctx.state` and take randomness only from `ctx.rng`. `ctx.finish(places)` ends the Match with
+ * its Match result; the shared backend settles it. `ctx.stat` counts things a player did.
+ */
+import { z } from 'zod';
+import { type Rng, seededRng } from './rng.js';
 
-/** A player's id inside a room (their account id). */
+/** A player's id in a Room (their account id; `bot:<n>` for a computer seat). */
 export type PlayerId = string;
 
-/** Returned by `getResult` once the game is over. */
-export interface GameResult {
-  /** Empty array means a draw. */
-  winners: PlayerId[];
-  /**
-   * What the game gave out with `ctx.reward` (absent when nothing). The server pays it into the
-   * players' balances once, within the game's `meta.rewardCap`.
-   */
-  rewards?: Reward[];
-  /**
-   * What the game counted with `ctx.stat` (absent when nothing). The server adds it to each
-   * person's statistics for this game, once.
-   */
-  stats?: Stat[];
+/** Someone seated in the Match. `seat` is their place at the table (0, 1, …) and never changes. */
+export interface Seat {
+  id: PlayerId;
+  name: string;
+  seat: number;
+  bot: boolean;
+  /** The account's picture; missing for bots and in tests. */
+  avatar?: string;
+  /** They left during this Match (only games with `onLeave` go on without them). */
+  left: boolean;
+}
+
+/** One seat's outcome: `place` 1 is best, tied seats share a place. */
+export interface SeatResult {
+  player: PlayerId;
+  place: number;
+  score?: number;
 }
 
 /** One `ctx.stat(player, name, amount)`. */
 export interface Stat {
   player: PlayerId;
-  /** The game's own name for it (`bomb`, `chop`): see `STAT_NAME`. */
   name: string;
-  /** A whole number above 0, added to the player's count. */
   amount: number;
 }
 
-/**
- * What a game's stat names look like: lowercase words with dashes. `played` and `won` are the
- * server's own (every finished game counts them) and can't be given with `ctx.stat`.
- */
-export const STAT_NAME = /^[a-z][a-z0-9-]*$/;
-/** Stats the server counts for every game: games finished and games won. */
-export const CORE_STATS = ['played', 'won'] as const;
-
-/** One `ctx.reward(player, resource, amount)`. */
-export interface Reward {
-  player: PlayerId;
-  /** A namespaced resource: `core:coin`. */
-  resource: string;
-  /** A whole number above 0. */
-  amount: number;
+/** How a Match ended, handed to the shared backend: every seat in seat order. */
+export interface MatchResult {
+  seats: SeatResult[];
+  /** What the game counted with `ctx.stat` (absent when nothing). */
+  stats?: Stat[];
 }
 
-/**
- * The room around a game, passed as the last argument of every rule:
- * who sits where, the host, the score and the options. `undefined` in tests that don't set it.
- */
-export interface RoomContext<Options = unknown> {
-  /** Seated players in seat order (seat = index). */
-  players: { id: PlayerId; name: string; bot: boolean; avatar?: string; frame?: string }[];
-  hostId: PlayerId | null;
-  /** Wins per seat and draws over every game in the room. */
-  score: { wins: number[]; draws: number };
+/** What every hook gets. */
+export interface GameContext<State, Options = undefined> {
+  /** The Match state now. Read it; return a new one from the hook. */
+  state: State;
+  /** Everyone seated when the Match began, in seat order (`left` set for who has gone). */
+  players: Seat[];
+  /** The Room's options (from the Game manifest's `options`). */
   options: Options;
-  /** How the previous game in this room ended; `null` for the first one or a new table. */
-  lastResult?: GameResult | null;
+  /** How the Room's previous Match ended; `null` for the first or when the seats changed. */
+  lastResult: MatchResult | null;
+  /** Randomness: a float in [0, 1). Never use Math.random. */
+  rng: Rng;
+  /**
+   * Ends the Match: `places[i]` is seat i's place. 1 is best; tied seats share a place and
+   * the next one skips (`[1, 1, 3]`). `scores`, also in seat order, are shown next to the
+   * places. The backend puts players who left last, whatever the game gives them.
+   */
+  finish(places: readonly number[], extra?: { scores?: readonly number[] }): void;
+  /**
+   * Counts `amount` (a whole number above 0, default 1) of `name` (lowercase-dash, e.g.
+   * `chop`) for a seated player. Bots' counts are dropped by the backend.
+   */
+  stat(player: PlayerId, name: string, amount?: number): void;
+  /**
+   * In `ms`, runs the hook of `event` (`'turn-over'` → `onTurnOver(ctx)`, which gets `payload`).
+   * One timer per Match: setting it again replaces it; it stops when it fires, with
+   * `clearTimer()` or when the Match ends. Players can't send timer events.
+   */
+  setTimer(ms: number, event: string, payload?: unknown): void;
+  clearTimer(): void;
+}
+
+/** The first state has no `state` yet. */
+export type StartContext<Options = undefined> = Omit<GameContext<never, Options>, 'state'>;
+
+/** What an event hook (`onPress`, …) gets on top: who sent it, with what data. */
+export interface EventContext<State, Payload = Record<string, never>, Options = undefined>
+  extends GameContext<State, Options> {
+  player: Seat;
+  /** The event's data, already checked against its schema in `events`. */
+  payload: Payload;
+  /** Refuses the event: the player sees `message` (Vietnamese) and nothing changes. */
+  reject(message: string): never;
+}
+
+/** What a timer's hook gets (see `setTimer`). */
+export interface TimerContext<State, Payload = undefined, Options = undefined>
+  extends GameContext<State, Options> {
+  payload: Payload;
+}
+
+/** What `onLeave` gets: who left (already marked `left`). */
+export interface LeaveContext<State, Options = undefined> extends GameContext<State, Options> {
+  player: Seat;
+}
+
+/** What `bot` gets: which computer seat is asked. */
+export interface BotContext<State, Options = undefined> extends GameContext<State, Options> {
+  player: Seat;
 }
 
 /**
- * What the server runs: a `Game` turned into plain functions by `gameRules`
- * (`definePlugin` does it). Games don't write these; they write a `Game`.
+ * Base class of a Turn-based game. Declare `events`, implement `onStart` and one `on<Event>`
+ * hook per event (`press` → `onPress`, `play-card` → `onPlayCard`).
+ *
+ * Optional hooks, written in the subclass (not declared here, so no `override`):
+ *   on<Timer>(ctx: TimerContext)   a timer set with ctx.setTimer(ms, '<timer>') went off
+ *   onLeave(ctx: LeaveContext)     a player left; the Match goes on without them
+ *                                  (without it, a player leaving aborts the Match)
+ *   bot(ctx: BotContext)           the computer's event for seat ctx.player, or null
+ *   view(ctx, viewer: Seat | null) what a seat (null = spectator) sees. Default: the state.
  */
-export interface GameRules<State, Move, View = State, Options = undefined> {
-  /** Validates the shape of an incoming move before any game logic runs. */
-  moveSchema: z.ZodType<Move>;
-  /** Event parameter schemas, for the dev console. */
+export abstract class Game<State, Options = undefined, View = State> {
+  /** Events players can send, each with the schema of its data (`z.object({})` for none). */
+  abstract readonly events: Record<string, z.ZodType>;
+  /** Events whose data other players must not see (e.g. a card passed face down). */
+  readonly secretEvents: readonly string[] = [];
+
+  /** A new Match begins: return its first state. */
+  abstract onStart(ctx: StartContext<Options>): State;
+}
+
+/** The optional hooks, as the runner looks them up. */
+interface OptionalHooks<State, Options, View> {
+  onLeave?(ctx: LeaveContext<State, Options>): State;
+  bot?(ctx: BotContext<State, Options>): GameEvent | null;
+  view?(ctx: GameContext<State, Options>, viewer: Seat | null): View;
+}
+
+/** `press` → `onPress`, `play-card` → `onPlayCard`. */
+export const hookName = (event: string) =>
+  `on${event.replace(/(^|-)(\w)/g, (_, __, c: string) => c.toUpperCase())}`;
+
+/** A move as it travels: the event's name and its data. */
+export interface GameEvent {
+  event: string;
+  payload?: unknown;
+}
+
+/** The pending timer: `id` changes every time one is set. */
+export interface PendingTimer {
+  id: number;
+  ms: number;
+  event: string;
+  payload?: unknown;
+}
+
+/** Who sits in a Room when a Match starts, as the server knows them. */
+export interface RoomSeat {
+  id: PlayerId;
+  name: string;
+  bot: boolean;
+  avatar?: string;
+}
+
+/** What the server keeps of a Match: its state plus bookkeeping the game doesn't see. */
+export interface Stored<State, Options> {
+  state: State;
+  players: RoomSeat[];
+  options: Options;
+  lastResult: MatchResult | null;
+  result: MatchResult | null;
+  /** Players who left during the Match. */
+  left: PlayerId[];
+  timer: PendingTimer | null;
+  /** Timers set so far (the next timer's id). */
+  timers: number;
+  stats: Stat[];
+}
+
+/** How a Match starts: the seats in order, the Room's options and its previous result. */
+export interface MatchStart<Options> {
+  players: RoomSeat[];
+  options: Options;
+  lastResult?: MatchResult | null;
+}
+
+/**
+ * A `Game` as plain functions over its stored Match, for the server's GameHostModule (to
+ * come). Built with `turnRules(game)`; games don't write it.
+ */
+export interface TurnRules<State, Options, View> {
   events: Record<string, z.ZodType>;
-  /** Optional dev-only game commands and catalog metadata. */
-  commands?: Record<string, z.ZodObject>;
-  catalogs?: Catalogs;
-  /** Runs cmd<Name> through the same hook/timer/result bookkeeping as moves. */
-  runCommand?(
-    stored: State,
-    name: string,
-    args: unknown,
-    rng: () => number,
-    room?: RoomContext<Options>,
-  ): State;
+  /** The shape of an incoming move, checked before any game code runs. */
+  moveSchema: z.ZodType<GameEvent>;
+  setup(start: MatchStart<Options>, rng: Rng): Stored<State, Options>;
   /**
-   * Creates the initial state. `rng` returns a float in [0, 1). `options` are the room's
-   * options (see `RoomSetup`), `undefined` for a game without them. Copy into the state what
-   * the other rules need.
+   * The message (Vietnamese) the move would be refused with, or `null`. Runs the hook on the
+   * side, which hooks allow since they never change their input.
    */
-  setup(
-    players: PlayerId[],
-    rng: () => number,
-    options: Options,
-    room?: RoomContext<Options>,
-  ): State;
-  /** Returns an error message (Vietnamese, shown to the player) if illegal, otherwise `null`. */
-  validateMove(
-    state: State,
-    move: Move,
-    player: PlayerId,
-    room?: RoomContext<Options>,
-  ): string | null;
-  /** Returns the NEW state. Only called after `validateMove` returned `null`. */
+  validateMove(stored: Stored<State, Options>, move: GameEvent, player: PlayerId): string | null;
+  /** The next stored Match. Call only after `validateMove` returned `null`. */
   applyMove(
-    state: State,
-    move: Move,
+    stored: Stored<State, Options>,
+    move: GameEvent,
     player: PlayerId,
-    rng: () => number,
-    room?: RoomContext<Options>,
-  ): State;
-  /**
-   * What `player` is allowed to see. Hide other players' cards here.
-   * `player` is `null` for spectators: show only what is public to everyone.
-   */
-  getView(state: State, player: PlayerId | null, room?: RoomContext<Options>): View;
-  /** Everyone seated when the game began, in seat order (`left` = gone since). */
-  seats(state: State, room?: RoomContext<Options>): Seat[];
-  /** The timer the game set (see `GameContext.setTimer`); `id` changes with each new one. */
-  timer(state: State): { id: number; ms: number; event: string } | null;
-  /** The timer went off: runs its hook. */
-  fireTimer(state: State, rng: () => number, room?: RoomContext<Options>): State;
-  /**
-   * A player left mid-game and the game goes on without them. Missing when the game has no
-   * `onLeave` hook: then leaving stops the game for everyone.
-   */
-  leave?(state: State, player: PlayerId, rng: () => number, room?: RoomContext<Options>): State;
-  /** `null` while the game is still running. */
-  getResult(state: State, room?: RoomContext<Options>): GameResult | null;
-  /**
-   * What `viewer` may see of a move `player` just made (boards animate it). Defaults to the whole
-   * move; return `null` to hide it (e.g. a card passed face down).
-   */
-  moveView?(move: Move, player: PlayerId, viewer: PlayerId | null): unknown;
-  /**
-   * The computer's move for `player` (a seat the computer took, see `RoomSetup.bots`), or
-   * `null` when it has nothing to do right now (not its turn). The server plays it after a short
-   * pause and checks it like any other move.
-   */
-  bot?(
-    state: State,
+    rng: Rng,
+  ): Stored<State, Options>;
+  /** What `player` sees (`null` = a spectator). */
+  view(stored: Stored<State, Options>, player: PlayerId | null): View;
+  /** What `viewer` may see of a move `player` made: the whole move, or only its event name. */
+  moveView(move: GameEvent, player: PlayerId, viewer: PlayerId | null): GameEvent;
+  seats(stored: Stored<State, Options>): Seat[];
+  timer(stored: Stored<State, Options>): PendingTimer | null;
+  fireTimer(stored: Stored<State, Options>, rng: Rng): Stored<State, Options>;
+  /** Missing when the game has no `onLeave`: then a player leaving aborts the Match. */
+  leave?(stored: Stored<State, Options>, player: PlayerId, rng: Rng): Stored<State, Options>;
+  /** Missing when the game has no `bot`. `null` when the seat has nothing to play now. */
+  bot?(stored: Stored<State, Options>, player: PlayerId, rng: Rng): GameEvent | null;
+  /** `null` while the Match is being played. */
+  result(stored: Stored<State, Options>): MatchResult | null;
+}
+
+/** What a game's stat names look like: lowercase words with dashes. */
+export const STAT_NAME = /^[a-z][a-z0-9-]*$/;
+
+class Rejected extends Error {}
+
+/** Checks `ctx.finish`'s arguments and builds the seats of the Match result. */
+function seatResults(
+  players: RoomSeat[],
+  places: readonly number[],
+  scores: readonly number[] | undefined,
+): SeatResult[] {
+  if (places.length !== players.length) {
+    throw new Error(`ctx.finish: ${places.length} places for ${players.length} seats`);
+  }
+  if (places.some((p) => !Number.isInteger(p) || p < 1 || p > players.length)) {
+    throw new Error(`ctx.finish: places must be whole numbers from 1 to ${players.length}`);
+  }
+  places.forEach((place, seat) => {
+    const ahead = places.filter((p) => p < place).length;
+    if (place !== ahead + 1) {
+      throw new Error(
+        `ctx.finish: ${ahead} seats are ahead, so seat ${seat} should place ${ahead + 1}`,
+      );
+    }
+  });
+  if (scores && scores.length !== players.length) {
+    throw new Error(`ctx.finish: ${scores.length} scores for ${players.length} seats`);
+  }
+  if (scores?.some((s) => !Number.isFinite(s))) {
+    throw new Error('ctx.finish: scores must be finite numbers');
+  }
+  return players.map(({ id }, i) => ({
+    player: id,
+    place: places[i]!,
+    ...(scores && { score: scores[i]! }),
+  }));
+}
+
+/** Turns a `Game` into the functions the server runs. Throws when an event has no hook. */
+export function turnRules<State, Options, View>(
+  game: Game<State, Options, View>,
+): TurnRules<State, Options, View> {
+  const hooks = game as Game<State, Options, View> & OptionalHooks<State, Options, View>;
+  const hookOf = (event: string) =>
+    (game as unknown as Record<string, ((ctx: unknown) => State) | undefined>)[hookName(event)];
+  for (const name of Object.keys(game.events)) {
+    if (typeof hookOf(name) !== 'function') {
+      throw new Error(`Event "${name}" needs a ${hookName(name)}(ctx) method`);
+    }
+  }
+
+  const seats = (stored: Pick<Stored<State, Options>, 'players' | 'left'>) =>
+    stored.players.map(
+      ({ id, name, bot, avatar }, seat): Seat => ({
+        id,
+        name,
+        bot,
+        ...(avatar !== undefined && { avatar }),
+        seat,
+        left: stored.left.includes(id),
+      }),
+    );
+
+  /** A hook's context, and what the hook did through it. */
+  const context = (stored: Omit<Stored<State, Options>, 'result'>, rng: Rng) => {
+    const out = {
+      result: null as MatchResult | null,
+      timer: stored.timer,
+      timers: stored.timers,
+      stats: [] as Stat[],
+    };
+    const ctx: GameContext<State, Options> = {
+      state: stored.state,
+      players: seats(stored),
+      options: stored.options,
+      lastResult: stored.lastResult,
+      rng,
+      finish: (places, extra) => {
+        out.result = { seats: seatResults(stored.players, places, extra?.scores) };
+      },
+      stat: (player, name, amount = 1) => {
+        if (!stored.players.some((p) => p.id === player)) {
+          throw new Error(`ctx.stat: ${player} is not seated in this Match`);
+        }
+        if (!STAT_NAME.test(name)) {
+          throw new Error(`ctx.stat: "${name}" is not a stat name (lowercase-dash, e.g. chop)`);
+        }
+        if (!Number.isInteger(amount) || amount <= 0) {
+          throw new Error(`ctx.stat: ${amount} is not a whole number above 0`);
+        }
+        out.stats.push({ player, name, amount });
+      },
+      setTimer: (ms, event, payload) => {
+        if (event === 'start' || event in game.events) {
+          throw new Error(`Timer "${event}" can't share its name with the start or an event`);
+        }
+        if (!hookOf(event)) {
+          throw new Error(`Timer "${event}" needs a ${hookName(event)}(ctx) method`);
+        }
+        out.timer = { id: ++out.timers, ms, event, payload };
+      },
+      clearTimer: () => {
+        out.timer = null;
+      },
+    };
+    return { ctx, out };
+  };
+
+  /** Runs a hook through `call`; returns the next stored Match. */
+  const runHook = (
+    stored: Stored<State, Options>,
+    rng: Rng,
+    call: (ctx: GameContext<State, Options>) => State,
+  ): Stored<State, Options> => {
+    const { ctx, out } = context(stored, rng);
+    const state = call(ctx);
+    const stats = [...stored.stats, ...out.stats];
+    const result = out.result && { ...out.result, ...(stats.length && { stats }) };
+    return {
+      ...stored,
+      state,
+      result,
+      timer: result ? null : out.timer,
+      timers: out.timers,
+      stats,
+    };
+  };
+
+  const run = (
+    stored: Stored<State, Options>,
+    move: GameEvent,
     player: PlayerId,
-    rng: () => number,
-    options: Options,
-    room?: RoomContext<Options>,
-  ): Move | null;
-}
+    rng: Rng,
+  ): Stored<State, Options> => {
+    const reject = (message: string): never => {
+      throw new Rejected(message);
+    };
+    if (stored.result) reject('Ván đã kết thúc');
+    const payload = game.events[move.event]?.safeParse(move.payload ?? {});
+    if (!payload?.success) reject('Nước đi không hợp lệ');
+    const seat = seats(stored).find((p) => p.id === player && !p.left);
+    if (!seat) reject('Bạn không ngồi ở bàn này');
+    const hook = hookOf(move.event);
+    return runHook(
+      stored,
+      rng,
+      (ctx) => hook?.call(game, { ...ctx, player: seat, payload: payload?.data, reject }) as State,
+    );
+  };
 
-/**
- * A game's room options: the object the client's Tạo phòng board sends. The server checks it here, then keeps it for the room's
- * whole life: `setup` and `bot` receive it, the table reads it as `snapshot.options`. A game
- * without `room` has no options.
- */
-export interface RoomSetup<Options> {
-  /**
-   * Checks what the client sent and fills defaults. `parse({})` must work: it gives the options
-   * of a room created without the Tạo phòng board (e.g. quick match).
-   */
-  options: z.ZodType<Options>;
-  /** How many seats the computer takes in a new room (needs `rules.bot`). */
-  bots?(options: Options): number;
-  /**
-   * The options of a quick-match room (CHƠI in the hub) once the computer takes `count` empty
-   * seats, which `bots` must then report. Without it, quick-match rooms wait for people.
-   */
-  withBots?(options: Options, count: number): Options;
-}
+  return {
+    events: game.events,
+    moveSchema: z.object({ event: z.string(), payload: z.unknown().optional() }),
 
-/** How a game appears in the app. */
-export interface GameMeta {
-  /** Same as the game's folder name: `games/<id>/`. Kebab-case. */
-  id: string;
-  /** Vietnamese name shown to players. */
-  name: string;
-  minPlayers: number;
-  maxPlayers: number;
-  /**
-   * `wip` games can be played in local dev and PR previews, and are locked ("sắp có") in
-   * production. Flip to `ready` when the game is done.
-   */
-  status: 'ready' | 'wip';
-  /** Its entry on the home map: `image` is a file name in the game's `assets/` (no extension). */
-  portal: { image: string };
-  /**
-   * `table` (the default): a game played in rooms whenever you like. `event`: open only between
-   * `event.opensAt` and `event.closesAt`.
-   */
-  kind?: GameKind;
-  /**
-   * Its genre island in the hub: an id from the core genre list (`genres` in @xomdao/shared:
-   * `co`, `bai`…). A game without one stays out of the hub's catalog.
-   */
-  genre?: string;
-  /** One short Vietnamese sentence for its game card ("Xếp năm quân liền hàng trước đối thủ."). */
-  tagline: string;
-  /** How many minutes one game usually takes, shown on the card as "min–max phút". */
-  duration: { min: number; max: number };
-  /** Its game card art: a file name in `assets/` (no extension). Defaults to `portal.image`. */
-  card?: string;
-  /**
-   * The most one player can win from one game, per resource (`{ 'core:coin': 50 }`). The server
-   * refuses rewards above it; a game without it gives none.
-   */
-  rewardCap?: Record<string, number>;
-  /** Required when `kind` is `event`: when it is open and its reward tiers. */
-  event?: EventMeta;
-  /** This game's achievements: data only, see `AchievementMeta`. */
-  achievements?: AchievementMeta[];
-}
+    setup({ players, options, lastResult = null }, rng) {
+      const empty = {
+        state: undefined as never,
+        players,
+        options,
+        lastResult,
+        left: [],
+        timer: null,
+        timers: 0,
+        stats: [],
+      };
+      return runHook({ ...empty, result: null }, rng, (ctx) => {
+        const { state: _, ...start } = ctx;
+        return game.onStart(start);
+      });
+    },
 
-/**
- * An achievement: reached once a player's count of `stat` in this game gets to `at`. The server
- * unlocks it after the game that gets there and pays `reward` once (within nothing else: it is
- * the achievement's own reward). `xp` adds to the player's level.
- */
-export interface AchievementMeta {
-  /** Unique in the game (`ten-wins`); the hub's id is `<game>:<id>`. */
-  id: string;
-  /** Vietnamese, short: "Mười ván thắng". */
-  name: string;
-  /** A stat the game counts with `ctx.stat`, or `played` / `won`. */
-  stat: string;
-  /** The count that reaches it, a whole number above 0. */
-  at: number;
-  /** Paid once when it is reached (`{ 'core:coin': 50 }`). */
-  reward?: Record<string, number>;
-  /** Experience it gives; 0 when absent. */
-  xp?: number;
-}
+    validateMove(stored, move, player) {
+      try {
+        run(stored, move, player, seededRng(1));
+        return null;
+      } catch (err) {
+        if (err instanceof Rejected) return err.message;
+        throw err;
+      }
+    },
 
-/** `meta.kind`: see `GameMeta`. */
-export type GameKind = 'table' | 'event';
+    applyMove: run,
 
-/**
- * A time-limited event (`kind: 'event'`). Players earn its points with
- * `ctx.reward(player, EVENT_POINTS, amount)` (`'event:point'`, within `meta.rewardCap`); the
- * server adds them to each player's progress in this event while it is open, and pays a tier's
- * `reward` once when the player claims it.
- */
-export interface EventMeta {
-  /** ISO 8601 date-times, `opensAt` before `closesAt`. Outside them the event is hidden. */
-  opensAt: string;
-  closesAt: string;
-  /** Rewards by milestone, in increasing `points`. */
-  tiers: { points: number; reward: Record<string, number> }[];
-  /** Its detail board's colour (`#RRGGBB`), e.g. lacquer red for Trung Thu. */
-  color?: string;
-}
+    view(stored, player) {
+      const { ctx } = context(stored, seededRng(1));
+      const viewer = ctx.players.find((p) => p.id === player) ?? null;
+      return hooks.view ? hooks.view(ctx, viewer) : (stored.state as unknown as View);
+    },
 
-/** The resource an event's game gives points in (`ctx.reward(player, EVENT_POINTS, 3)`). */
-export const EVENT_POINTS = 'event:point';
+    moveView(move, player, viewer) {
+      if (player === viewer || !game.secretEvents.includes(move.event)) return move;
+      return { event: move.event };
+    },
 
-/** What `games/<id>/src/index.ts` exports by default. Safe to load on the server. */
-export interface GamePlugin<State = unknown, Move = unknown, View = State, Options = undefined> {
-  meta: GameMeta;
-  rules: GameRules<State, Move, View, Options>;
-  /** Optional room options, picked on the game's own setup screen. */
-  room?: RoomSetup<Options>;
-}
+    seats,
 
-// biome-ignore lint/suspicious/noExplicitAny: a list of plugins holds games of different types
-export type AnyGamePlugin = GamePlugin<any, any, any, any>;
+    timer(stored) {
+      return stored.result ? null : stored.timer;
+    },
 
-/**
- * Declares a game: `export default definePlugin({ meta, game: new MyGame(), room? })`. The server
- * runs the `Game` through `gameRules`.
- */
-export function definePlugin<State, Options, View>({
-  meta,
-  game,
-  room,
-}: {
-  meta: GameMeta;
-  game: Game<State, Options, View>;
-  /** Optional room options, picked on the game's own setup screen. */
-  room?: RoomSetup<Options>;
-}): GamePlugin<Stored<State>, GameEvent, View, Options> {
-  return { meta, rules: gameRules(game), room };
-}
+    fireTimer(stored, rng) {
+      const timer = stored.timer;
+      if (!timer || stored.result) return stored;
+      const hook = hookOf(timer.event);
+      return runHook(
+        { ...stored, timer: null },
+        rng,
+        (ctx) => hook?.call(game, { ...ctx, payload: timer.payload }) as State,
+      );
+    },
 
-/** A room's options when nothing was picked (`undefined` for a game without `room`). */
-export function defaultOptions<Options>(plugin: { room?: RoomSetup<Options> }): Options {
-  return plugin.room?.options.parse({}) as Options;
+    ...(hooks.onLeave && {
+      leave(stored: Stored<State, Options>, player: PlayerId, rng: Rng) {
+        if (stored.result || stored.left.includes(player)) return stored;
+        const gone = { ...stored, left: [...stored.left, player] };
+        const seat = seats(gone).find((p) => p.id === player);
+        if (!seat) return stored;
+        return runHook(
+          gone,
+          rng,
+          (ctx) => hooks.onLeave?.call(game, { ...ctx, player: seat }) as State,
+        );
+      },
+    }),
+
+    ...(hooks.bot && {
+      bot(stored: Stored<State, Options>, player: PlayerId, rng: Rng) {
+        if (stored.result) return null;
+        const { ctx } = context(stored, rng);
+        const seat = ctx.players.find((p) => p.id === player && !p.left);
+        return seat ? (hooks.bot?.call(game, { ...ctx, player: seat }) ?? null) : null;
+      },
+    }),
+
+    result(stored) {
+      return stored.result;
+    },
+  };
 }
