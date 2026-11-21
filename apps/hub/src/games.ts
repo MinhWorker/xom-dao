@@ -9,10 +9,23 @@ export interface GameArt {
   loop?: string;
 }
 
-/** A Game the Hub ships: its manifest, its art and the version of its bundle (`dist/version.json`). */
+export type RulesBlock =
+  | { kind: 'text'; text: string }
+  | { kind: 'list'; items: string[] }
+  | { kind: 'table'; head: string[]; rows: string[][] };
+
+/** One page of a Game's rules (a `##` of its `RULES.md`), as `tools/hub-assets` wrote it. */
+export interface RulesPage {
+  title: string;
+  image?: { url: string; alt: string };
+  blocks: RulesBlock[];
+}
+
+/** A Game the Hub ships: its manifest, its art, its rules and the version of its bundle (`dist/version.json`). */
 export interface HubGame {
   manifest: GameManifest;
   art: GameArt;
+  rules: RulesPage[];
   version: string;
 }
 
@@ -25,10 +38,11 @@ const versions = import.meta.glob<string>('../../../games/*/dist/version.json', 
   import: 'version',
 });
 
-const arts = import.meta.glob<{ art: Pick<GameArt, 'lobby' | 'card' | 'thumb'>; loop?: string }>(
-  '../../../games/*/dist/hub/hub.json',
-  { eager: true, import: 'default' },
-);
+const arts = import.meta.glob<{
+  art: Pick<GameArt, 'lobby' | 'card' | 'thumb'>;
+  loop?: string;
+  rules?: RulesPage[];
+}>('../../../games/*/dist/hub/hub.json', { eager: true, import: 'default' });
 
 const folder = (path: string) => path.split('/')[4] ?? '';
 
@@ -42,10 +56,13 @@ export const GAMES: HubGame[] = Object.entries(manifests)
     return {
       manifest,
       art: hubJson && { ...hubJson.art, loop: hubJson.loop },
+      rules: hubJson?.rules ?? [],
       version: sibling(versions, path) ?? '',
     };
   })
-  .flatMap(({ manifest, art, version }) => (art && version ? [{ manifest, art, version }] : []))
+  .flatMap(({ manifest, art, rules, version }) =>
+    art && version ? [{ manifest, art, rules, version }] : [],
+  )
   .filter(({ manifest }) => __SHOW_WIP__ || manifest.status === 'ready')
   .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name, 'vi'));
 

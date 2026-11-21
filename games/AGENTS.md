@@ -81,7 +81,7 @@ Caro without a client: `create --headless`, `join --headless`, `start`, then
 
 ```
 games/<id>/          src/index.ts is required, unless server/index.ts exists (new platform)
-  RULES.md             Current Vietnamese gameplay rules (non-starter games); the client's Luật board
+  RULES.md             Current Vietnamese gameplay rules; the Hub's rules pager (below)
   src/index.ts         export default definePlugin({ meta, game: new MyGame(), room? }); server
   src/game/            Pure rules, no DOM: <Name>Game.ts (+ test), model.ts, options.ts, bot.ts
   manifest.ts          New platform: the Game's static Hub declaration
@@ -89,6 +89,7 @@ games/<id>/          src/index.ts is required, unless server/index.ts exists (ne
   server/game/         New platform: pure server rules and model (+ tests)
   client/              New platform: the client bundle's source (Caro: Vite, index.html at its root)
   hub/key-art.png      New platform: the Hub's art for the Game (below); optional hub/loop.mp4
+  hub/rules/<name>.webp  Optional illustration of one rules page (below)
   assets/              Full-size images/sounds, atlases and normals
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
 ```
@@ -111,6 +112,14 @@ hash, and `hub.json` with their `/games/<id>/hub/…` URLs for the Hub to import
 naming the Game, when the manifest breaks the schema or its `id` is not the folder name, when
 `RULES.md` or `hub/key-art.png` is missing, when the art is not a 20:9 PNG of at least
 2560×1152, or when the optional `hub/loop.mp4` (copied to `dist/hub/`) is over 2 MB or 8 s.
+**Rules pager.** The Hub draws `RULES.md` as pages: the text under `#` is the first page and each
+`##` another, named by its heading (a file with no `##` is one scrolling page). A page holds
+paragraphs, `-` lists and tables, with `**bold**`, `*italic*` and `` `code` ``; at most 8 pages and
+400 characters each (marks not counted), so split a long section. A page may carry one image line
+`![alt](hub/rules/<name>.webp)`: a 16:9 WebP of at least 1280×720. `hub-assets` fails the build
+over the same limits, a missing or misnamed image, and writes the pages into `hub.json` (`rules`).
+`tools/hub-assets/src/rules.ts` is the parser.
+
 The art is a render from the Game's scene (code or Blender, no AI-made images) with the subject
 in the right 60%: the Hub darkens the left for the Game's name. It checks nothing about looks.
 

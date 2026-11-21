@@ -10,10 +10,12 @@ X màu đỏ đi trước; chủ phòng có thể đổi bên giữa các ván.
   Chặn hai đầu không làm mất hàng thắng; chuỗi dài hơn 5 vẫn thắng.
 - Quân đã đặt không được di chuyển hoặc lấy lại.
 
-## Bàn mở rộng và hoà
+## Bàn mở rộng
 
 Bàn bắt đầu 9×9. Đặt quân ở một mép khi ván chưa kết thúc mở thêm 3 hàng hoặc cột về
 phía mép đó; ô góc có thể mở cả hai chiều. Mỗi chiều tối đa 15 ô.
+
+## Hoà và rời ván
 
 Ván hoà khi bàn đã đạt 15×15 và mọi đoạn 5 ô theo các hướng đều chứa quân của cả hai bên,
 nghĩa là không bên nào còn có thể hoàn thành hàng thắng. Không cần chờ lấp kín bàn.
