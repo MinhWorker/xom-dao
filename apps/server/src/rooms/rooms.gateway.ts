@@ -411,8 +411,19 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     socket.data.roomCode = room.code;
     this.rooms.setConnected(room.code, userId, true);
     this.broadcast(room);
+    this.replayMatchState(socket, room.matchId);
     this.friendsMoved(userId);
     return { roomCode: room.code, playerId: userId };
+  }
+
+  /** Resends the active Match and this seat's view when a player rejoins a Room. */
+  private replayMatchState(socket: Client, matchId: string | null) {
+    if (!matchId) return;
+    const match = this.gameHost.match(matchId);
+    if (!match) return;
+    const view =
+      match.status === 'playing' ? this.gameHost.view(matchId, socket.data.user.id) : undefined;
+    socket.emit('match:state', { ...match, ...(view !== undefined && { view }) });
   }
 
   /** Before entering a Room: quit the account's other Room, if any. */

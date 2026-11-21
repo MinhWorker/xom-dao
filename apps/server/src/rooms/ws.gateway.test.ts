@@ -236,6 +236,51 @@ describe('WebSocket transport', () => {
     minh.ws.close();
   });
 
+  it('replays the viewer Game snapshot when a player resumes during a Match', async () => {
+    const lan = await connect();
+    const minh = await connect();
+    const account = await lan.request('auth:guest', {
+      protocol: PROTOCOL_VERSION,
+      name: 'Lan',
+    });
+    await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
+
+    const created = await lan.request('room:create', { gameId: 'tic-tac-toe' });
+    await minh.request('room:join', { roomCode: created.roomCode as string });
+    await minh.request('room:ready', { ready: true });
+    const started = await lan.request('match:start');
+    const matchId = started.matchId as string;
+    await lan.request('match:ready', { matchId });
+    await minh.request('match:ready', { matchId });
+    await settle();
+
+    lan.ws.close();
+    await settle();
+    const back = await connect();
+    await back.request('auth:token', {
+      protocol: PROTOCOL_VERSION,
+      token: account.token as string,
+    });
+    expect(await back.request('session:resume')).toMatchObject({
+      room: { roomCode: created.roomCode },
+    });
+    await settle();
+
+    const matchState = back.pushed
+      .filter((message) => message.event === 'match:state')
+      .at(-1)?.data;
+    await minh.request('match:move', { matchId, event: 'finish' });
+    await settle();
+    back.ws.close();
+    minh.ws.close();
+
+    expect(matchState).toMatchObject({
+      matchId,
+      status: 'playing',
+      view: { turn: 0 },
+    });
+  });
+
   it('answers unknown events without closing', async () => {
     const { ws, request } = await connect();
     await request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Hoa' });
