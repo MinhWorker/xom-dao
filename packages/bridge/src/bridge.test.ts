@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BridgeError, createGameBridge, type GameBridgeHandlers } from './game.js';
 import { createGameHost, type GameHostOptions } from './hub.js';
+import { bridgeInit } from './init.js';
 import { windowPort } from './port.js';
 import {
   BRIDGE_RESET,
@@ -309,5 +310,38 @@ describe('Rebuilding from any snapshot', () => {
     await flush();
     host.init(makeInit({ cells: [] }));
     await expect(pending).rejects.toMatchObject({ code: BRIDGE_RESET });
+  });
+});
+
+describe('bridgeInit', () => {
+  const user = { id: 'u1', name: 'An', avatar: 'cat' };
+  const settings = { volume: 1, muted: false };
+
+  it('lists the seated players in order, skipping empty seats', () => {
+    const init = bridgeInit({
+      user,
+      room: {
+        code: 'ABCD',
+        seats: [
+          { id: 'u1', name: 'An', avatar: 'cat' },
+          null,
+          { id: 'b1', name: 'Máy', bot: true },
+        ],
+      },
+      match: { view: { cells: [] } },
+      settings,
+    });
+    expect(init.room.seats).toEqual([
+      { id: 'u1', name: 'An', avatar: 'cat', bot: false },
+      { id: 'b1', name: 'Máy', bot: true },
+    ]);
+    expect(init.match).toEqual({ cells: [] });
+    expect(init.locale).toBe('vi');
+  });
+
+  it('sends a null match before there is a view', () => {
+    const room = { code: 'ABCD', seats: [] };
+    expect(bridgeInit({ user, room, match: null, settings }).match).toBeNull();
+    expect(bridgeInit({ user, room, match: {}, settings }).match).toBeNull();
   });
 });

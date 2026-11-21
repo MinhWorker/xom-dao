@@ -18,6 +18,9 @@ import { z } from 'zod';
  *
  * In-match payloads (`data`, `match`) are opaque: the Hub passes them on as they are.
  * Every message carries `bridge: 'xomdao'` so other `postMessage` traffic is ignored.
+ *
+ * The same messages also travel over a WebSocket to the Harness (`webSocketPort`, one JSON text
+ * frame each), for a Game run without the Hub.
  */
 
 /** Bump when a change here breaks Games or Hubs built against the previous version. */
@@ -78,7 +81,7 @@ export const GameToHub = z.discriminatedUnion('type', [
     type: z.literal('send'),
     id: z.int(),
     event: z.string(),
-    data: z.unknown(),
+    data: z.unknown().optional(),
   }),
   z.object({ ...tag, type: z.literal('done') }),
 ]);
@@ -93,7 +96,7 @@ export const HubToGame = z.discriminatedUnion('type', [
     ok: z.boolean(),
     error: z.string().optional(),
   }),
-  z.object({ ...tag, type: z.literal('message'), event: z.string(), data: z.unknown() }),
+  z.object({ ...tag, type: z.literal('message'), event: z.string(), data: z.unknown().optional() }),
   z.object({ ...tag, type: z.literal('settings'), settings: BridgeSettings }),
   z.object({ ...tag, type: z.literal('visibility'), hidden: z.boolean() }),
 ]);
