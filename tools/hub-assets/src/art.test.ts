@@ -138,6 +138,73 @@ describe('buildHubAssets', () => {
     expect((await buildHubAssets(game, manifest)).problems).toEqual(['RULES.md is missing']);
   });
 
+  it('writes the rules as pages in hub.json, with page images by content hash', async () => {
+    await art();
+    mkdirSync(join(game, 'hub/rules'), { recursive: true });
+    const picture = await sharp({
+      create: { width: 1280, height: 720, channels: 3, background: '#345' },
+    })
+      .webp()
+      .toBuffer();
+    writeFileSync(join(game, 'hub/rules/ban.webp'), picture);
+    writeFileSync(
+      join(game, 'RULES.md'),
+      '# Luật Demo\n\nMở đầu.\n\n## Bàn\n\n![Cái bàn](hub/rules/ban.webp)\n\nĐặt quân.\n',
+    );
+    const { problems, hub } = await buildHubAssets(game, manifest);
+    expect(problems).toEqual([]);
+    expect(hub?.rules.map((p) => p.title)).toEqual(['Luật Demo', 'Bàn']);
+    const image = hub?.rules[1]?.image;
+    expect(image?.alt).toBe('Cái bàn');
+    expect(image?.url).toMatch(/^\/games\/demo\/hub\/rules-ban\.[0-9a-f]{8}\.webp$/);
+    expect(readFileSync(join(game, 'dist/hub', image?.url.split('/').pop() ?? ''))).toEqual(
+      picture,
+    );
+  });
+
+  it('fails on a rules page that is too long or has a wrong image', async () => {
+    await art();
+    writeFileSync(join(game, 'RULES.md'), `## Dài\n\n${'a'.repeat(401)}\n`);
+    expect((await buildHubAssets(game, manifest)).problems).toEqual([
+      expect.stringContaining('"Dài" has 401 characters'),
+    ]);
+
+    const image = (path: string) =>
+      writeFileSync(join(game, 'RULES.md'), `## Bàn\n\n![](${path})\n\nChữ.\n`);
+    image('hub/rules/thieu.webp');
+    expect((await buildHubAssets(game, manifest)).problems).toEqual([
+      expect.stringContaining('hub/rules/thieu.webp is missing'),
+    ]);
+    image('anh.png');
+    expect((await buildHubAssets(game, manifest)).problems).toEqual([
+      expect.stringContaining('must be hub/rules/<name>.webp'),
+    ]);
+
+    mkdirSync(join(game, 'hub/rules'), { recursive: true });
+    const write = async (name: string, width: number, height: number, png = false) => {
+      const base = sharp({ create: { width, height, channels: 3, background: '#000' } });
+      writeFileSync(
+        join(game, 'hub/rules', name),
+        await (png ? base.png() : base.webp()).toBuffer(),
+      );
+    };
+    await write('vuong.webp', 800, 800);
+    image('hub/rules/vuong.webp');
+    expect((await buildHubAssets(game, manifest)).problems).toEqual([
+      expect.stringContaining('the ratio must be 16:9'),
+    ]);
+    await write('nho.webp', 640, 360);
+    image('hub/rules/nho.webp');
+    expect((await buildHubAssets(game, manifest)).problems).toEqual([
+      expect.stringContaining('at least 1280×720'),
+    ]);
+    await write('png.webp', 1280, 720, true);
+    image('hub/rules/png.webp');
+    expect((await buildHubAssets(game, manifest)).problems).toEqual([
+      expect.stringContaining('must be a WebP'),
+    ]);
+  });
+
   it('copies a loop video and checks its size and length', async () => {
     await art();
     writeFileSync(join(game, 'hub/loop.mp4'), mp4(6));

@@ -1,0 +1,319 @@
+.pager {
+  --slant: 28px;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: calc(var(--safe-top) + var(--space-2)) calc(var(--safe-right) + max(var(--space-4), 2vw))
+    calc(var(--safe-bottom) + var(--space-2)) calc(var(--safe-left) + max(var(--space-4), 2vw));
+  border: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.pager[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
+.pager::backdrop {
+  background: rgb(0 0 0 / 0.7);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.top h2 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--text-lg);
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+}
+
+.close,
+.arrow {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close:hover,
+.arrow:hover:not(:disabled) {
+  background: var(--line);
+}
+
+.arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.track {
+  display: flex;
+  min-height: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  touch-action: pan-x pan-y;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .track {
+    scroll-behavior: smooth;
+  }
+}
+
+.slide {
+  flex: 0 0 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--space-5);
+  min-width: 0;
+  min-height: 0;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+/* The slanted right edge echoes the lobby's card strip. */
+.media {
+  position: relative;
+  align-self: center;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--bg-sunken);
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+}
+
+.media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Without a page image the Game's own art stands in, darkened under the page number. */
+.media:has(.numeral) img {
+  filter: brightness(0.45) saturate(0.7);
+}
+
+.numeral {
+  position: absolute;
+  inset: auto auto var(--space-1) var(--space-4);
+  font-family: var(--font-display);
+  font-size: clamp(64px, 22vmin, 160px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.5);
+}
+
+.text {
+  display: grid;
+  align-content: center;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+  overflow-y: auto;
+  font-size: var(--text-md);
+  line-height: 1.55;
+}
+
+.text > * {
+  margin: 0;
+}
+
+.text h3 {
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--accent);
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.text ul {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.text li {
+  position: relative;
+  padding-left: var(--space-4);
+}
+
+.text li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  transform: rotate(45deg);
+}
+
+.text code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--accent-hi);
+}
+
+.text table {
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.text th,
+.text td {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  text-align: left;
+  vertical-align: top;
+}
+
+.text th {
+  background: var(--bg-raised);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: var(--tap);
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The button is the 24px+ target; the drawn dot is its ::before. */
+.dot {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.dot::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  background: var(--line-strong);
+  transform: skewX(-20deg);
+  transition:
+    width 160ms,
+    background 160ms;
+}
+
+.dot:hover::before {
+  background: var(--text-dim);
+}
+
+.dot[aria-current="true"]::before {
+  width: 26px;
+  background: var(--accent);
+}
+
+.status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A short landscape phone: tighter header and a narrower picture so the text keeps its room. */
+@media (max-height: 420px) {
+  .pager {
+    --slant: 20px;
+  }
+
+  .slide {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: var(--space-4);
+  }
+
+  .media {
+    align-self: start;
+    margin-top: var(--space-2);
+  }
+
+  .text {
+    align-content: start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .text h3 {
+    font-size: var(--text-lg);
+  }
+}
+
+/* Portrait: the picture sits above the text. */
+@media (max-aspect-ratio: 1 / 1) {
+  .slide {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .media {
+    align-self: start;
+    max-height: 30dvh;
+    justify-self: start;
+    width: 100%;
+  }
+
+  .text {
+    align-content: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot::before {
+    transition: none;
+  }
+}

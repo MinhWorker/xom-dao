@@ -66,6 +66,12 @@
   color: var(--text-dim);
 }
 
+.rules {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .game {
   margin-left: auto;
   font-family: var(--font-mono);
@@ -149,13 +155,10 @@
   top: calc(var(--safe-top) + var(--space-1));
   right: calc(var(--safe-right) + var(--space-1));
   z-index: 2;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--line-strong);
+}
+
+.corner button[aria-haspopup] {
   background: rgb(13 16 20 / 0.7);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
 }
 
 .overlay {

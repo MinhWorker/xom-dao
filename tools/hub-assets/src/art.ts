@@ -4,6 +4,7 @@ import { basename, join } from 'node:path';
 import { GameManifestSchema } from '@xomdao/sdk';
 import sharp, { type Metadata } from 'sharp';
 import { mp4Duration } from './mp4.js';
+import { parseRules, RULES_IMAGE, type RulesDraft, type RulesPage } from './rules.js';
 
 /** The original art: 20:9, at least this big. */
 export const KEY_ART = { width: 2560, height: 1152 } as const;
@@ -25,6 +26,8 @@ export interface HubJson {
   id: string;
   art: Record<ArtName, string>;
   loop?: string;
+  /** The Game's `RULES.md` as pages for the Hub's pager; page images are under `/games/<id>/hub/`. */
+  rules: RulesPage[];
 }
 
 export interface HubAssetsResult {
@@ -35,7 +38,7 @@ export interface HubAssetsResult {
 
 /**
  * Checks a Game's Hub submission and writes `dist/hub/` (WebP sizes named by content hash, the
- * loop video, `hub.json`). `manifest` is what `games/<id>/manifest.ts` exports; `gameDir` is
+ * loop video, the rules page images, `hub.json`). `manifest` is what `games/<id>/manifest.ts` exports; `gameDir` is
  * `games/<id>/`, whose folder name must equal the manifest's `id`. Nothing is written when
  * there are problems.
  */
@@ -51,7 +54,11 @@ export async function buildHubAssets(gameDir: string, manifest: unknown): Promis
   }
   const { id, focus } = parsed.data;
   if (id !== folder) problems.push(`manifest id "${id}" must equal the folder name "${folder}"`);
-  if (!existsSync(join(gameDir, 'RULES.md'))) problems.push('RULES.md is missing');
+  const rulesPath = join(gameDir, 'RULES.md');
+  const rules = existsSync(rulesPath) ? parseRules(readFileSync(rulesPath, 'utf8')) : undefined;
+  if (rules) problems.push(...rules.problems);
+  else problems.push('RULES.md is missing');
+  const pictures = rules ? await readRulesImages(gameDir, rules.pages, problems) : new Map();
 
   const artPath = join(gameDir, 'hub/key-art.png');
   const art = existsSync(artPath) ? await readKeyArt(artPath, problems) : missingArt(problems);
@@ -72,6 +79,13 @@ export async function buildHubAssets(gameDir: string, manifest: unknown): Promis
   const hub: HubJson = {
     id,
     art: { lobby: url(files.lobby), card: url(files.card), thumb: url(files.thumb) },
+    rules: (rules?.pages ?? []).map(({ title, image, blocks }) => {
+      const picture = image && pictures.get(image.path);
+      if (!image || !picture) return { title, blocks };
+      const file = `rules-${picture.name}.${hash(picture.bytes)}.webp`;
+      writeFileSync(join(out, file), picture.bytes);
+      return { title, image: { url: url(file), alt: image.alt }, blocks };
+    }),
   };
   if (loop) {
     const file = `loop.${hash(loop)}.mp4`;
@@ -80,6 +94,47 @@ export async function buildHubAssets(gameDir: string, manifest: unknown): Promis
   }
   writeFileSync(join(out, 'hub.json'), `${JSON.stringify(hub, null, 2)}\n`);
   return { problems, hub };
+}
+
+/** The page images the rules ask for, by their path in `RULES.md`; bad ones go to `problems`. */
+async function readRulesImages(gameDir: string, pages: RulesDraft[], problems: string[]) {
+  const found = new Map<string, { name: string; bytes: Buffer }>();
+  for (const page of pages) {
+    const path = page.image?.path;
+    if (path === undefined || found.has(path)) continue;
+    const name = /^hub\/rules\/([a-z0-9][a-z0-9-]*)\.webp$/.exec(path)?.[1];
+    if (!name) {
+      problems.push(
+        `RULES.md "${page.title}": the image must be hub/rules/<name>.webp, not "${path}"`,
+      );
+      continue;
+    }
+    const file = join(gameDir, path);
+    if (!existsSync(file)) {
+      problems.push(`RULES.md "${page.title}": ${path} is missing`);
+      continue;
+    }
+    const bytes = readFileSync(file);
+    const before = problems.length;
+    let meta: Metadata | undefined;
+    try {
+      meta = await sharp(bytes).metadata();
+    } catch {
+      problems.push(`${path} is not an image`);
+    }
+    if (!meta) continue;
+    const { width = 0, height = 0 } = meta;
+    if (meta.format !== 'webp') problems.push(`${path} must be a WebP, not ${meta.format}`);
+    if (Math.abs(width * 9 - height * 16) > height * 16 * 0.005) {
+      problems.push(`${path} is ${width}×${height}: the ratio must be 16:9`);
+    } else if (width < RULES_IMAGE.width || height < RULES_IMAGE.height) {
+      problems.push(
+        `${path} is ${width}×${height}: at least ${RULES_IMAGE.width}×${RULES_IMAGE.height} is needed`,
+      );
+    }
+    if (problems.length === before) found.set(path, { name, bytes });
+  }
+  return found;
 }
 
 function missingArt(problems: string[]): undefined {

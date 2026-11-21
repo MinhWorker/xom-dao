@@ -1,10 +1,11 @@
-import { IconArrowLeft, IconX } from '@tabler/icons-react';
+import { IconArrowLeft, IconBook2, IconMenu2 } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { gameById } from '../../games.js';
-import { Button, Dialog, toast } from '../../kit/index.js';
+import { Button, Dialog, Menu, toast } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate, router } from '../../router.js';
 import { focusPosition } from '../lobby/summary.js';
+import { RulesPager } from '../rules/RulesPager.js';
 import screen from '../Screen.module.css';
 import { GameFrame } from './GameFrame.js';
 import { PlayerSlot } from './PlayerSlot.js';
@@ -28,6 +29,7 @@ export function Room({ code }: { code: string }) {
   const [frameOpen, setFrameOpen] = useState(false);
   const [doneFor, setDoneFor] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   const here = room?.code === code ? room : null;
   const game = here ? gameById(here.gameId) : undefined;
@@ -148,6 +150,12 @@ export function Room({ code }: { code: string }) {
           <span className={styles.codeLabel}>Phòng /</span> {here.code}
         </h1>
         <span className={styles.game}>{name}</span>
+        {game && game.rules.length > 0 && (
+          <Button variant="ghost" className={styles.rules} onClick={() => setRulesOpen(true)}>
+            <IconBook2 stroke={2} aria-hidden />
+            Luật chơi
+          </Button>
+        )}
       </header>
 
       <ol className={styles.slots} aria-label="Người chơi">
@@ -209,14 +217,22 @@ export function Room({ code }: { code: string }) {
       {frameOpen && game && (
         <div className={styles.play}>
           <GameFrame gameId={game.manifest.id} gameName={name} onDone={setDoneFor} />
-          <button
-            type="button"
-            className={styles.corner}
-            aria-label="Rời ván"
-            onClick={() => (playing ? setLeaving(true) : setFrameOpen(false))}
-          >
-            <IconX stroke={2} aria-hidden />
-          </button>
+          <div className={styles.corner}>
+            <Menu
+              label="Menu ván"
+              trigger={<IconMenu2 stroke={2} aria-hidden />}
+              items={[
+                ...(game.rules.length > 0
+                  ? [{ label: 'Luật chơi', onSelect: () => setRulesOpen(true) }]
+                  : []),
+                {
+                  label: playing ? 'Rời ván' : 'Về phòng chờ',
+                  danger: playing,
+                  onSelect: () => (playing ? setLeaving(true) : setFrameOpen(false)),
+                },
+              ]}
+            />
+          </div>
           {showResults && (
             <Results
               room={here}
@@ -233,6 +249,8 @@ export function Room({ code }: { code: string }) {
           )}
         </div>
       )}
+
+      {rulesOpen && game && <RulesPager game={game} onClose={() => setRulesOpen(false)} />}
 
       <Dialog
         open={leaving}
