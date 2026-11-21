@@ -14,7 +14,6 @@ games/<id>/          src/index.ts is required
   RULES.md             Current Vietnamese gameplay rules (non-starter games); the client's Luật board
   src/index.ts         export default definePlugin({ meta, game: new MyGame(), room? }); server
   src/game/            Pure rules, no DOM: <Name>Game.ts (+ test), model.ts, options.ts, bot.ts
-  godot/               Legacy Godot table (dead code until the legacy games are removed)
   assets/              Full-size images/sounds, atlases and normals
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
 ```
@@ -69,7 +68,7 @@ games/<id>/          src/index.ts is required
   `result.rewards`.
 - **Events** (`kind: 'event'`, genre `su-kien`, `meta.event`): points go through
   `ctx.reward(player, EVENT_POINTS, n)` within `meta.rewardCap`. The server neither keeps nor pays
-  them for now. `games/trung-thu` is the sample.
+  them for now.
 - **Stats**: `ctx.stat(playerId, 'chop', n = 1)` counts something a player did (lowercase-dash
   names; `played` and `won` are counted by the server). `testGame` shows counts in
   `result.stats`. The server ignores `meta.achievements` for now.

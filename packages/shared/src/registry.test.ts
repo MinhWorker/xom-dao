@@ -57,13 +57,10 @@ describe('genres', () => {
     expect(genres.filter((g) => g.main).map((g) => g.id)).toEqual(['co', 'bai']);
   });
 
-  it('puts every game in Cờ or Bài, every event in Sự kiện, and Bom Nguyên Tố in Hành động', () => {
+  it('puts every game in Cờ or Bài, and every event in Sự kiện', () => {
     for (const game of Object.values(games)) {
       const genre = game.kind === 'event' ? EVENT_GENRE : expect.stringMatching(/^(co|bai)$/);
-      expect([game.id, game.genre]).toEqual([
-        game.id,
-        game.id === 'bom-nguyen-to' ? 'hanh-dong' : genre,
-      ]);
+      expect([game.id, game.genre]).toEqual([game.id, genre]);
     }
   });
 
