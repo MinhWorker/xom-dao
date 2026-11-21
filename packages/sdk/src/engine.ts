@@ -9,7 +9,7 @@
  *   export default definePlugin({ meta, rules: gameRules(new CounterGame()) });
  *
  * The server runs it: a player's event is checked against `events`, its hook returns the next
- * state, and every client gets the new state and the last event (a game's Godot table draws it
+ * state, and every client gets the new state and the last event (a game's table draws it
  * from `snapshot.view`). Hooks get one
  * `ctx` with everything about the room. They must not change `ctx.state`: return a new one.
  *

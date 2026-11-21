@@ -146,8 +146,7 @@ export interface GameRules<State, Move, View = State, Options = undefined> {
 }
 
 /**
- * A game's room options: the object the client's Tạo phòng board sends (its rows come from the
- * game's `room_setup()` in godot/main.gd). The server checks it here, then keeps it for the room's
+ * A game's room options: the object the client's Tạo phòng board sends. The server checks it here, then keeps it for the room's
  * whole life: `setup` and `bot` receive it, the table reads it as `snapshot.options`. A game
  * without `room` has no options.
  */
