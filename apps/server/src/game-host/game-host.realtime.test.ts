@@ -2,6 +2,7 @@ import {
   defineManifest,
   type InitContext,
   type InputContext,
+  type RealtimeBotContext,
   type RealtimeContext,
   RealtimeGame,
   type RealtimeLeaveContext,
@@ -94,6 +95,13 @@ class LeavingGame extends CountGame {
   }
 }
 
+/** The computer adds 10 to its seat's sum every tick. */
+class BotCountGame extends CountGame {
+  bot(_ctx: RealtimeBotContext<State>) {
+    return { n: 10 };
+  }
+}
+
 const matchStart = {
   matchId: 'match-1',
   roomCode: 'ABCD',
@@ -108,15 +116,17 @@ const matchStart = {
 
 const input = (seq: number, n = 1) => ({ event: 'input', payload: { seq, input: { n } } });
 
-function playing(game: RealtimeGame<State, { n: number }>) {
+function playing(
+  game: RealtimeGame<State, { n: number }>,
+  { bots = false, players = matchStart.players } = {},
+) {
   vi.useFakeTimers();
-  const server: HostedGame = { manifest, version: 'v1', game };
+  const server: HostedGame = { manifest: { ...manifest, bots }, version: 'v1', game };
   const host = new GameHostService([server], memoryResults());
   const updates: MatchState[] = [];
   host.onState((match) => updates.push(match));
-  host.startMatch(matchStart);
-  host.ready('match-1', 'lan');
-  host.ready('match-1', 'minh');
+  host.startMatch({ ...matchStart, players });
+  for (const { id, bot } of players) if (!bot) host.ready('match-1', id);
   return { host, updates };
 }
 
@@ -367,14 +377,40 @@ describe('GameHostService with a Realtime Game', () => {
     });
   });
 
-  it('refuses a Realtime Game whose manifest asks for bots', () => {
-    const bots = { ...manifest, bots: true };
-    expect(
-      () =>
-        new GameHostService(
-          [{ manifest: bots, version: 'v1', game: new CountGame() }],
-          memoryResults(),
-        ),
-    ).toThrow('no bot hook');
+  describe('computer seats', () => {
+    const withComputer = [
+      { id: 'lan', name: 'Lan', bot: false },
+      { id: 'bot:1', name: 'Máy', bot: true },
+    ];
+
+    it('asks the Game’s bot for each computer seat at every tick', () => {
+      const { host } = playing(new BotCountGame(), { bots: true, players: withComputer });
+
+      vi.advanceTimersByTime(200);
+
+      expect(host.view('match-1', 'lan')).toMatchObject({ ticks: 4, sums: [0, 40] });
+      expect(host.ack('match-1', 'bot:1')).toBe(3);
+    });
+
+    it('lets the computer take the seat of a person who left', () => {
+      const { host, updates } = playing(new BotCountGame(), { bots: true });
+
+      host.leave('match-1', 'minh');
+      vi.advanceTimersByTime(100);
+
+      expect(updates.at(-1)).toMatchObject({ status: 'playing' });
+      expect(host.view('match-1', 'lan')).toMatchObject({ sums: [0, 20] });
+      expect(() => host.move('match-1', 'minh', input(9))).toThrow('Bạn đã rời ván này');
+    });
+
+    it('refuses a Game whose manifest asks for bots without a bot hook', () => {
+      expect(
+        () =>
+          new GameHostService(
+            [{ manifest: { ...manifest, bots: true }, version: 'v1', game: new CountGame() }],
+            memoryResults(),
+          ),
+      ).toThrow('has no bot');
+    });
   });
 });

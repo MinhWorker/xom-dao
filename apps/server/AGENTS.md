@@ -58,8 +58,10 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   apply as above) and queued; the next tick applies the queue, then the Game's `tick`. Every
   `tickRate / snapshotRate` ticks each member gets `match:state` with their `view`, its `tick`
   and their `ack` (the last `seq` applied), and the Game's `result` settles the Match. A
-  reconnecting player gets the last snapshot. A Realtime Game has no bots yet: its manifest says
-  `bots: false` and the host refuses to load one that doesn't.
+  reconnecting player gets the last snapshot. A Realtime Game with a `bot` hook may say
+  `bots: true` (the host refuses one that says it without the hook): each tick, after the queued
+  inputs and before `tick`, the host asks `bot` for every computer seat and for each person who
+  left, so the computer takes their seat instead of `onLeave`.
 - A player who drops mid-Match keeps the seat for 60 s (`disconnect` / `reconnect`, from the
   gateway). After that, or on `room:leave`, they have left: placed last, the computer plays
   their seat if the Game has `bot`, otherwise the Game's leave hook runs, otherwise the Match is

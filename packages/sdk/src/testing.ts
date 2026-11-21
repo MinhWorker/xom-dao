@@ -108,7 +108,8 @@ export function testGame<State, Options, View>(
  *   expect(game.ack('a')).toBe(0);
  *   expect(game.error({ seq: 1, input: { dir: 'up' } })).toBe('Nước đi không hợp lệ');
  *
- * `bots` lists the players the computer plays (`ctx.players[i].bot`); `options` are passed as given.
+ * `bots` lists the players the computer plays (`ctx.players[i].bot`): each tick asks the game's
+ * `bot` hook for them, after the queued inputs, as the server does; `options` are passed as given.
  */
 export function testRealtimeGame<State, Input, Options, View>(
   game: RealtimeGame<State, Input, Options, View>,
@@ -156,13 +157,24 @@ export function testRealtimeGame<State, Input, Options, View>(
     error(payload: unknown) {
       return rules.parseInput(payload) ? null : 'Nước đi không hợp lệ';
     },
-    /** Runs `count` ticks: the queued inputs first, then the game's `tick` (stops when it ends). */
+    /** What the computer would play for `player` now: the next `seq` and input, or `null`. */
+    bot(player: PlayerId) {
+      return rules.bot?.(stored, player, rng) ?? null;
+    },
+    /**
+     * Runs `count` ticks: the queued inputs first, then the computer seats' inputs, then the
+     * game's `tick` (stops when it ends).
+     */
     tick(count = 1) {
       for (let i = 0; i < count && !stored.result; i++) {
         for (const { player, input } of queue) {
           stored = rules.applyInput(stored, player, input, rng);
         }
         queue = [];
+        for (const player of bots) {
+          const input = rules.bot?.(stored, player, rng);
+          if (input) stored = rules.applyInput(stored, player, input, rng);
+        }
         stored = rules.tick(stored, rng);
       }
       return session;

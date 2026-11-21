@@ -121,6 +121,7 @@ interface RealtimeRuntime {
     playerId: string,
     rng: Rng,
   ): RealtimeStored<unknown, unknown>;
+  bot?(stored: RealtimeStored<unknown, unknown>, playerId: string, rng: Rng): RealtimeInput | null;
   view(stored: RealtimeStored<unknown, unknown>, playerId: string): unknown;
   result(stored: RealtimeStored<unknown, unknown>): MatchResult | null;
 }
@@ -150,8 +151,14 @@ export class GameHostService implements OnModuleDestroy {
       const id = server.manifest.id;
       if (ids.has(id)) throw new Error(`Duplicate Game server: ${id}`);
       ids.add(id);
-      if (server.manifest.bots && isRealtimeGame(server.game)) {
-        throw new Error(`Game server ${id}: a Realtime game has no bot hook yet`);
+      if (
+        server.manifest.bots &&
+        isRealtimeGame(server.game) &&
+        typeof (server.game as { bot?: unknown }).bot !== 'function'
+      ) {
+        throw new Error(
+          `Game server ${id}: its manifest says bots but its Realtime game has no bot`,
+        );
       }
     }
   }
@@ -395,6 +402,7 @@ export class GameHostService implements OnModuleDestroy {
       return;
     }
     if (match.realtime && match.realtimeStored && rng) {
+      if (match.realtime.bot) return;
       this.forfeitRealtime(match, match.realtime, match.realtimeStored, playerId, rng);
       return;
     }
@@ -415,7 +423,7 @@ export class GameHostService implements OnModuleDestroy {
     }
   }
 
-  /** A Realtime game has no computer yet: the Game's leave hook runs, else the Match is aborted. */
+  /** A Realtime game without `bot`: the Game's leave hook runs, else the Match is aborted. */
   private forfeitRealtime(
     match: ActiveMatch,
     realtime: RealtimeRuntime,
@@ -595,7 +603,10 @@ export class GameHostService implements OnModuleDestroy {
     this.scheduleTick(match);
   }
 
-  /** One tick: the queued inputs, then the Game's `tick`. False once the Match is over. */
+  /**
+   * One tick: the queued inputs, the computer seats' inputs (and the seats of people who left),
+   * then the Game's `tick`. False once the Match is over.
+   */
   private tickOnce(match: ActiveMatch, realtime: RealtimeRuntime) {
     const { realtimeStored, rng } = match;
     if (!realtimeStored || !rng) return false;
@@ -605,6 +616,13 @@ export class GameHostService implements OnModuleDestroy {
         for (const input of inputs) stored = realtime.applyInput(stored, playerId, input, rng);
       }
       match.inputs.clear();
+      if (realtime.bot) {
+        for (const { id, bot } of match.start.players) {
+          if (!bot && !match.forfeited.has(id)) continue;
+          const move = realtime.bot(stored, id, rng);
+          if (move) stored = realtime.applyInput(stored, id, move, rng);
+        }
+      }
       stored = realtime.tick(stored, rng);
       match.realtimeStored = stored;
       const result = realtime.result(stored);
@@ -828,7 +846,7 @@ function createRuntime(server: AnyGameServer, gameId: string): GameRuntime {
 function createRealtimeRuntime(server: AnyGameServer, gameId: string): RealtimeRuntime {
   const game = server.game as unknown as RealtimeGame<unknown, unknown, unknown, unknown>;
   const rules = realtimeRules(game);
-  const { leave } = rules;
+  const { leave, bot } = rules;
   return {
     tickRate: rules.tickRate,
     snapshotEvery: rules.snapshotEvery,
@@ -840,6 +858,7 @@ function createRealtimeRuntime(server: AnyGameServer, gameId: string): RealtimeR
     leave:
       leave &&
       ((stored, playerId, rng) => timed(gameId, 'leave', () => leave(stored, playerId, rng))),
+    bot: bot && ((stored, playerId, rng) => timed(gameId, 'bot', () => bot(stored, playerId, rng))),
     view: (stored, playerId) => timed(gameId, 'view', () => rules.view(stored, playerId)),
     result: (stored) => rules.result(stored),
   };

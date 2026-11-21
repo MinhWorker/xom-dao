@@ -31,12 +31,18 @@
  * their size) apply as to a Turn-based game, and a hook that throws aborts only that Match.
  *
  * Optional hooks, written in the subclass (not declared here, so no `override`):
+ *   bot(ctx: RealtimeBotContext)        the computer's input for seat ctx.player, or null to
+ *                                       keep what it last sent. Asked every tick for each
+ *                                       computer seat (and for a person who left), after the
+ *                                       people's inputs and before `tick`, so it is a pure
+ *                                       function of the state; keep its memory in the state.
+ *                                       A Game with it says `bots: true` in its manifest.
  *   onLeave(ctx: RealtimeLeaveContext)  a player left; the Match goes on without them
- *                                       (without it, a player leaving aborts the Match)
+ *                                       (without it, a player leaving aborts the Match; with
+ *                                       `bot`, the computer takes their seat instead)
  *   view(ctx, viewer: Seat | null)      what a seat (null = spectator) sees. Default: the state.
  *
- * A Realtime game has no `bot` hook yet, so its manifest says `bots: false`. Its clients send an
- * input as the Match move `input` with data `{ seq, input }`.
+ * Its clients send an input as the Match move `input` with data `{ seq, input }`.
  */
 import { z } from 'zod';
 import {
@@ -94,6 +100,12 @@ export interface InputContext<State, Input, Options = undefined>
 
 /** What `onLeave` gets: who left (already marked `left`). */
 export interface RealtimeLeaveContext<State, Options = undefined>
+  extends RealtimeContext<State, Options> {
+  player: Seat;
+}
+
+/** What `bot` gets: which computer seat is asked. */
+export interface RealtimeBotContext<State, Options = undefined>
   extends RealtimeContext<State, Options> {
   player: Seat;
 }
@@ -188,11 +200,18 @@ export interface RealtimeRules<State, Options, View> {
     player: PlayerId,
     rng: Rng,
   ): RealtimeStored<State, Options>;
+  /**
+   * Missing when the game has no `bot`. The input the computer plays for `player` now, with the
+   * next `seq` for the seat, or `null` when it keeps what it last sent. Throws if the game's
+   * answer fails `inputSchema`.
+   */
+  bot?(stored: RealtimeStored<State, Options>, player: PlayerId, rng: Rng): RealtimeInput | null;
   /** `null` while the Match is being played. */
   result(stored: RealtimeStored<State, Options>): MatchResult | null;
 }
 
-interface OptionalHooks<State, Options, View> {
+interface OptionalHooks<State, Input, Options, View> {
+  bot?(ctx: RealtimeBotContext<State, Options>): Input | null;
   onLeave?(ctx: RealtimeLeaveContext<State, Options>): State;
   view?(ctx: RealtimeContext<State, Options>, viewer: Seat | null): View;
 }
@@ -220,7 +239,7 @@ export function realtimeRules<State, Input, Options, View>(
     throw new Error(`tickRate ${tickRate} must be a multiple of snapshotRate ${snapshotRate}`);
   }
   const hooks = game as RealtimeGame<State, Input, Options, View> &
-    OptionalHooks<State, Options, View>;
+    OptionalHooks<State, Input, Options, View>;
   const dt = 1 / tickRate;
 
   const seats = (stored: Pick<RealtimeStored<State, Options>, 'players' | 'left'>) =>
@@ -327,6 +346,18 @@ export function realtimeRules<State, Input, Options, View>(
         if (!seat) return stored;
         const state = hooks.onLeave?.call(game, { ...context(gone, rng), player: seat }) as State;
         return settled({ ...gone, state }, rng);
+      },
+    }),
+
+    ...(hooks.bot && {
+      bot(stored: RealtimeStored<State, Options>, player: PlayerId, rng: Rng) {
+        const seat = seats(stored).find((p) => p.id === player && !p.left);
+        if (stored.result || !seat) return null;
+        const answer = hooks.bot?.call(game, { ...context(stored, rng), player: seat });
+        if (answer === null || answer === undefined) return null;
+        const input = game.inputSchema.safeParse(answer);
+        if (!input.success) throw new Error(`bot input of ${player} was refused by inputSchema`);
+        return { seq: (stored.acks[player] ?? -1) + 1, input: input.data };
       },
     }),
 
