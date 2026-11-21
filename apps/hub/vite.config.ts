@@ -1,8 +1,5 @@
-// The Hub: a React SPA at `/`, with each Game's bundle (games/<id>/dist/) at /games/<id>/.
-// XOMDAO_SERVER_URL bakes in where the server is; without it the Hub calls its own origin, and
-// the dev server forwards /api and /ws to XOMDAO_DEV_SERVER (default http://localhost:8033).
 import { cpSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join, normalize, resolve } from 'node:path';
+import { dirname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -49,7 +46,7 @@ function gameBundles(): Plugin {
         if (!id) return next();
         const root = join(games, id, 'dist');
         let file = normalize(join(root, ...rest));
-        if (!file.startsWith(root)) return next();
+        if (file !== root && !file.startsWith(root + sep)) return next();
         if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
         if (!existsSync(file)) {
           res.statusCode = 404;
@@ -65,7 +62,10 @@ function gameBundles(): Plugin {
       for (const id of gameIds()) {
         cpSync(join(games, id, 'dist'), join(outDir, 'games', id), {
           recursive: true,
-          filter: (src) => !src.startsWith(join(games, id, 'dist/server')),
+          filter: (src) => {
+            const server = join(games, id, 'dist/server');
+            return src !== server && !src.startsWith(server + sep);
+          },
         });
       }
     },

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { Button } from './kit/index.js';
 import { hub, useHub } from './net/hub.js';
+import { OFFLINE } from './net/store.js';
 import { navigate, useRoute } from './router.js';
 import { Lobby } from './screens/lobby/Lobby.js';
 import { Login } from './screens/login/Login.js';
@@ -54,10 +55,10 @@ export function App() {
     <>
       {phase === 'offline' && (
         <div className={screen.banner} role="status">
-          Mất kết nối, đang kết nối lại
+          {OFFLINE}
         </div>
       )}
-      {route.name === 'room' ? <Room code={route.code} /> : <Lobby />}
+      {route.name === 'room' ? <Room key={route.code} code={route.code} /> : <Lobby />}
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { GAMES, type HubGame } from '../../games.js';
 import { Button, Chip, CutPanel, TextField } from '../../kit/index.js';
-import { hub, serverGameIds, useHub } from '../../net/hub.js';
+import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
 import screen from '../Screen.module.css';
 import styles from './Lobby.module.css';
@@ -14,7 +14,7 @@ export function Lobby() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void serverGameIds().then(setRunning);
+    void hub.gameIds().then(setRunning);
   }, []);
 
   async function create(game: HubGame) {

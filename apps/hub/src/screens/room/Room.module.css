@@ -65,7 +65,6 @@
   accent-color: var(--accent);
 }
 
-/** The Hub's fixed corner over the Game (top right, 48 × 48). */
 .corner {
   position: absolute;
   top: calc(var(--safe-top) + var(--space-1));
@@ -75,7 +74,8 @@
   height: 44px;
   border: 1px solid var(--line-strong);
   background: rgb(13 16 20 / 0.7);
-  font-size: 18px;
+  display: grid;
+  place-items: center;
   cursor: pointer;
 }
 
@@ -116,7 +116,7 @@
 }
 
 .me {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .wait {

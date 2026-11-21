@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { IconX } from '@tabler/icons-react';
+import { useEffect, useRef, useState } from 'react';
 import { gameById } from '../../games.js';
 import { Button, Chip, CutPanel, Dialog } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
@@ -16,7 +17,7 @@ export function Room({ code }: { code: string }) {
   const user = useHub((s) => s.user);
   const room = useHub((s) => s.room);
   const match = useHub((s) => s.match);
-  const result = useHub((s) => s.result);
+  const notice = useHub((s) => s.result);
   const closed = useHub((s) => s.closed);
   const [joinError, setJoinError] = useState('');
   const [error, setError] = useState('');
@@ -29,10 +30,13 @@ export function Room({ code }: { code: string }) {
   const game = here ? gameById(here.gameId) : undefined;
   const playing = here?.status === 'playing';
 
+  const triedJoin = useRef(false);
   useEffect(() => {
-    if (phase !== 'online' || here || joinError) return;
+    if (here) triedJoin.current = true;
+    if (phase !== 'online' || here || triedJoin.current) return;
+    triedJoin.current = true;
     hub.request('room:join', { roomCode: code }).catch((err: Error) => setJoinError(err.message));
-  }, [phase, here, code, joinError]);
+  }, [phase, here, code]);
 
   useEffect(() => {
     if (closed) navigate('/', { replace: true, force: true });
@@ -190,13 +194,15 @@ export function Room({ code }: { code: string }) {
             aria-label="Rời ván"
             onClick={() => (playing ? setLeaving(true) : setFrameOpen(false))}
           >
-            ✕
+            <IconX stroke={2} aria-hidden />
           </button>
           {showResults && (
             <Results
               room={here}
               result={
-                over?.outcome === 'settled' && result?.matchId === over.matchId ? result : null
+                over?.outcome === 'settled'
+                  ? (over.result?.seats ?? (notice?.matchId === over.matchId ? notice.seats : null))
+                  : null
               }
               me={user.id}
               busy={busy}

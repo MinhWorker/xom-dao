@@ -1,13 +1,8 @@
-import {
-  BRIDGE_UNAVAILABLE,
-  type BridgeInit,
-  createGameHost,
-  type GameHost,
-  windowPort,
-} from '@xomdao/bridge';
+import { type BridgeInit, createGameHost, type GameHost, windowPort } from '@xomdao/bridge';
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
-import { OFFLINE } from '../../net/store.js';
+import { HubError } from '../../net/store.js';
 import styles from './Room.module.css';
 
 const SETTINGS = { volume: 1, muted: false };
@@ -47,9 +42,8 @@ async function forward(event: string, data: unknown) {
     await hub.request('match:move', { matchId: match.matchId, event, payload: data });
     return { ok: true as const };
   } catch (err) {
-    const message = err instanceof Error ? err.message : BRIDGE_UNAVAILABLE;
-    if (message === OFFLINE) throw err;
-    return { ok: false as const, error: message };
+    if (!(err instanceof HubError) || err.offline) throw err;
+    return { ok: false as const, error: err.message };
   }
 }
 
@@ -79,7 +73,6 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
   const frame = useRef<HTMLIFrameElement>(null);
   const host = useRef<GameHost | null>(null);
   const reported = useRef<string | null>(null);
-  /** The Match and connection the Game last got an `init` for. */
   const initedFor = useRef('');
   const [ready, setReady] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -154,7 +147,12 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
         <div className={styles.loading}>
           <h2>{gameName}</h2>
           {refused ? (
-            <p>Trò này cần bản Hub mới, hãy tải lại trang</p>
+            <>
+              <p>Cần bản Hub mới</p>
+              <Button variant="primary" onClick={() => location.reload()}>
+                Tải lại
+              </Button>
+            </>
           ) : (
             <progress max={1} value={progress || undefined} aria-label="Đang tải" />
           )}

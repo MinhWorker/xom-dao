@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useId, useRef } from 'react';
 import styles from './Dialog.module.css';
 
 export interface DialogProps {
@@ -13,6 +13,7 @@ export interface DialogProps {
 /** A modal `<dialog>` opened with `showModal()`. */
 export function Dialog({ open, onClose, title, children, actions }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -30,9 +31,9 @@ export function Dialog({ open, onClose, title, children, actions }: DialogProps)
         e.preventDefault();
         onClose();
       }}
-      aria-labelledby="dialog-title"
+      aria-labelledby={titleId}
     >
-      <h2 id="dialog-title">{title}</h2>
+      <h2 id={titleId}>{title}</h2>
       {children}
       <div className={styles.actions}>{actions}</div>
     </dialog>

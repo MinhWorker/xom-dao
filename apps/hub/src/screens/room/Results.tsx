@@ -2,20 +2,22 @@ import type { MatchResultNotice, RoomState } from '@xomdao/shared/client';
 import { Button, Chip, CutPanel } from '../../kit/index.js';
 import styles from './Room.module.css';
 
+type Places = MatchResultNotice['seats'];
+
 export interface ResultsProps {
   room: RoomState;
-  /** `null` for an aborted Match. */
-  result: MatchResultNotice | null;
+  /** Each seat's place; `null` for an aborted Match. */
+  result: Places | null;
   me: string;
   busy: boolean;
   onReplay(): void;
   onBack(): void;
 }
 
-/** The end of a Match, over the Game: places from `match:result`, then play again or go back. */
+/** The end of a Match, over the Game: each seat's place, then play again or go back. */
 export function Results({ room, result, me, busy, onReplay, onBack }: ResultsProps) {
   const names = new Map(room.seats.flatMap((s) => (s ? [[s.id, s.name] as const] : [])));
-  const seats = [...(result?.seats ?? [])].sort((a, b) => a.place - b.place);
+  const seats = [...(result ?? [])].sort((a, b) => a.place - b.place);
   const host = room.hostId === me;
 
   return (

@@ -1,0 +1,10 @@
+import '@fontsource/barlow-condensed/latin-600.css';
+import '@fontsource/barlow-condensed/latin-700.css';
+import '@fontsource/barlow-condensed/vietnamese-600.css';
+import '@fontsource/barlow-condensed/vietnamese-700.css';
+import '@fontsource/be-vietnam-pro/latin-400.css';
+import '@fontsource/be-vietnam-pro/latin-600.css';
+import '@fontsource/be-vietnam-pro/vietnamese-400.css';
+import '@fontsource/be-vietnam-pro/vietnamese-600.css';
+import '@fontsource/roboto-mono/latin-400.css';
+import '@fontsource/roboto-mono/vietnamese-400.css';

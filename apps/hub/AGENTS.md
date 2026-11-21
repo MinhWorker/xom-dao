@@ -15,7 +15,7 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `games/*/dist/ve
                    globbed at build time; `wip` ones are hidden on Vercel production
 src/kit/           Button, CutPanel, Chip, TextField, Dialog: no server knowledge
 src/screens/       login/, lobby/, room/ (waiting room, GameFrame = iframe + Bridge, Results), kit/
-src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css
+src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
 ```
 
@@ -35,7 +35,9 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
 - Plain CSS: tokens in `styles/tokens.css`, one CSS Module per component. Native `<dialog>` and
   `popover` instead of component libraries; no animation library.
 - Server state lives in the store and reaches components through `useHub(select)`
-  (`useSyncExternalStore`). One-off HTTP (login) goes through `fetch` in the store.
+  (`useSyncExternalStore`). One-off HTTP (login, `/api/games`) goes through `fetch` in the store.
+- Icons: `@tabler/icons-react`, one import per icon, `stroke={2}`. Fonts: Barlow Condensed
+  (display), Be Vietnam Pro (body), Roboto Mono (labels), only the weights `styles/fonts.ts` loads.
 - Import the protocol from `@xomdao/shared/client`. The package root also loads every Game's
   rules, which the browser never needs.
 - Touch targets ≥ 44 px and main buttons ≥ 56 px on `pointer: coarse`, text ≥ 14 px, inputs
@@ -54,10 +56,14 @@ goes back to the waiting room, so playing again reuses it.
 - A new Match or a reconnect → a fresh `init`.
 - Every `match:state` push → `message('match:state', data)`: the whole push, `view` included.
 - `send` → `match:move { matchId, event, payload }`; the server's refusal goes back in `ack`.
-- Results show on `done`, or 4 s after the Match is over if the Game never says it.
+- Results show on `done`, or 4 s after the Match is over if the Game never says it. Places come
+  from the `match:state` that ends it (`match:result` is not resent after a reconnect).
+- Not built yet: the settings menu (`settings` is fixed at full volume) and emotes in the corner.
 
 ## Deploy
 
 One Vercel project (`vercel.json` at the root): the Hub at `/`, each Game at `/games/<id>/`.
+`turbo run build --filter=@xomdao/hub` builds every Game first, through `@xomdao/shared`'s
+devDependencies.
 The build bakes in `XOMDAO_SERVER_URL` (the Render server); the Hub calls it directly for
 `/api` and `/ws`. Every other path serves `index.html`.

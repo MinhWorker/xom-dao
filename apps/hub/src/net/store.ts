@@ -52,7 +52,15 @@ type Req<E extends RequestName> = z.input<Requests[E]['req']>;
 type Res<E extends RequestName> = z.output<Requests[E]['res']>;
 
 /** A refused request or login; `message` is Vietnamese, ready to show. */
-export class HubError extends Error {}
+export class HubError extends Error {
+  /** `offline`: it never reached the server. */
+  constructor(
+    message: string,
+    readonly offline = false,
+  ) {
+    super(message);
+  }
+}
 
 export const OFFLINE = 'Mất kết nối, đang kết nối lại';
 const TOKEN_KEY = 'xomdao:token';
@@ -104,7 +112,7 @@ export function createStore(deps: StoreDeps) {
   };
 
   const failPending = () => {
-    for (const request of pending.values()) request.reject(new HubError(OFFLINE));
+    for (const request of pending.values()) request.reject(new HubError(OFFLINE, true));
     pending.clear();
   };
 
@@ -114,7 +122,7 @@ export function createStore(deps: StoreDeps) {
       !ws ||
       (state.phase !== 'online' && !event.startsWith('auth:') && event !== 'session:resume')
     )
-      return Promise.reject(new HubError(OFFLINE));
+      return Promise.reject(new HubError(OFFLINE, true));
     return new Promise((resolve, reject) => {
       const id = ++nextId;
       pending.set(id, { resolve, reject });
@@ -129,29 +137,18 @@ export function createStore(deps: StoreDeps) {
       console.warn(`Dropped a malformed ${event}`, parsed.error.issues);
       return;
     }
-    switch (event) {
-      case 'room:state':
-        set({ room: parsed.data as RoomState, closed: null });
-        break;
-      case 'match:state': {
-        const match = parsed.data as MatchStateEvent;
-        const fresh = match.matchId !== state.match?.matchId;
-        set({ match, ...(fresh && { result: null }) });
-        break;
-      }
-      case 'match:result':
-        set({ result: parsed.data as MatchResultNotice });
-        break;
-      case 'room:closed':
-        set({
-          room: null,
-          match: null,
-          result: null,
-          closed: (parsed.data as { reason: string }).reason,
-        });
-        break;
-    }
+    (pushes[event as keyof typeof events] as ((data: unknown) => void) | undefined)?.(parsed.data);
   }
+
+  const pushes: { [E in keyof typeof events]?: (data: z.output<(typeof events)[E]>) => void } = {
+    'room:state': (room) => set({ room, closed: null }),
+    'match:state': (match) => {
+      const fresh = match.matchId !== state.match?.matchId;
+      set({ match, ...(fresh && { result: null }) });
+    },
+    'match:result': (result) => set({ result }),
+    'room:closed': ({ reason }) => set({ room: null, match: null, result: null, closed: reason }),
+  };
 
   function connect() {
     const saved = token();
@@ -178,15 +175,18 @@ export function createStore(deps: StoreDeps) {
         request?.resolve(message.ack);
       } else if (typeof message.event === 'string') onPush(message.event, message.data);
     };
-    ws.onclose = () => {
-      if (socket !== ws) return;
-      socket = null;
-      failPending();
-      if (state.phase === 'signed-out' || state.phase === 'outdated') return;
-      set({ phase: 'offline' });
-      retry = setTimeout(connect, deps.reconnectMs);
-    };
+    ws.onclose = () => dropped(ws);
     ws.onopen = () => void login(ws, saved);
+  }
+
+  /** The socket is gone: fail what waits on it and try again later. */
+  function dropped(ws: SocketLike) {
+    if (socket !== ws) return;
+    socket = null;
+    failPending();
+    if (state.phase === 'signed-out' || state.phase === 'outdated') return;
+    set({ phase: 'offline' });
+    retry = setTimeout(connect, deps.reconnectMs);
   }
 
   async function login(ws: SocketLike, saved: string) {
@@ -214,7 +214,8 @@ export function createStore(deps: StoreDeps) {
         ...(!info.room && { room: null, match: null }),
       });
     } catch {
-      // A drop mid-login: onclose retries.
+      dropped(ws);
+      ws.close();
     }
   }
 
@@ -240,6 +241,7 @@ export function createStore(deps: StoreDeps) {
   }
 
   async function request<E extends RequestName>(event: E, data: Req<E>): Promise<Res<E>> {
+    if (event === 'room:join' || event === 'room:create') set({ closed: null });
     const ack = await raw(String(event), data);
     if (!ack.ok) throw new HubError(String(ack.error ?? 'Máy chủ gặp lỗi'));
     const { ok: _ok, ...rest } = ack;
@@ -250,6 +252,16 @@ export function createStore(deps: StoreDeps) {
     getState: () => state,
     /** Asks the server; resolves with the reply's data, rejects with its error (`HubError`). */
     request,
+    /** The Game ids the server runs (`/api/games`); `null` when it cannot tell. */
+    async gameIds(): Promise<string[] | null> {
+      try {
+        const res = await deps.fetch(`${deps.serverUrl}/api/games`);
+        const data: unknown = res.ok ? await res.json() : null;
+        return Array.isArray(data) ? data.map(String) : null;
+      } catch {
+        return null;
+      }
+    },
     /** The server sends no `room:state` to whoever leaves, so the store forgets the Room. */
     async leaveRoom() {
       await request('room:leave', {});

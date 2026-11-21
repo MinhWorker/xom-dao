@@ -174,6 +174,29 @@ describe('store', () => {
     expect(deps.storage.getItem('xomdao:token')).toBe('t1');
   });
 
+  it('drops the socket and retries when the session cannot resume', async () => {
+    deps.storage.setItem('xomdao:token', 't1');
+    const store = createStore(deps);
+    store.start();
+    const first = lastSocket();
+    first.open();
+    first.reply('auth:token', { ok: true, token: 't1', user });
+    await flush();
+    first.reply('session:resume', { ok: false, error: 'Server gặp lỗi, thử lại sau' });
+    await flush();
+    expect(first.closed).toBe(true);
+    expect(store.getState().phase).toBe('offline');
+  });
+
+  it('lists the Game ids the server runs, or null when it cannot tell', async () => {
+    const store = createStore(deps);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(['tic-tac-toe'])));
+    await expect(store.gameIds()).resolves.toEqual(['tic-tac-toe']);
+    expect(fetchMock).toHaveBeenLastCalledWith('http://srv/api/games');
+    fetchMock.mockRejectedValueOnce(new Error('down'));
+    await expect(store.gameIds()).resolves.toBeNull();
+  });
+
   it('keeps the Room the server pushes and ignores malformed pushes', async () => {
     const store = await online();
     lastSocket().push('room:state', roomState);
@@ -210,6 +233,13 @@ describe('store', () => {
       result: null,
       closed: 'Phòng đã giải tán',
     });
+  });
+
+  it('forgets why the last Room closed once we ask for another', async () => {
+    const store = await online();
+    lastSocket().push('room:closed', { gameId: 'tic-tac-toe', reason: 'Phòng đã giải tán' });
+    void store.request('room:join', { roomCode: 'WXYZ' }).catch(() => {});
+    expect(store.getState().closed).toBeNull();
   });
 
   it('a new Match clears the last result', async () => {
