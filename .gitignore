@@ -26,3 +26,5 @@ codex-session-*.md
 smoke-web/
 # Screenshots from npm run smoke:hub
 smoke-hub/
+# Screenshots from npm run e2e
+e2e/

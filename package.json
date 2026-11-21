@@ -26,6 +26,7 @@
     "smoke": "node scripts/smoke.mjs",
     "smoke:web": "node scripts/smoke-web.mjs",
     "smoke:hub": "node scripts/smoke-hub.mjs",
+    "e2e": "node scripts/e2e.mjs",
     "harness": "node scripts/harness.mjs",
     "wt": "node scripts/worktree.mjs",
     "assets": "node scripts/assets.mjs"

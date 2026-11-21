@@ -35,6 +35,8 @@ the wayfinder map, issue #200, and the decisions linked from it.
   (`games/AGENTS.md`). CI runs it.
 - `npm run smoke:hub`: two headless browsers become friends, invite each other into a Room and open
   a profile on the Hub (`apps/hub/AGENTS.md`). CI runs it.
+- `npm run e2e`: two headless browsers sign in, make a Caro Room and play a Match to its result
+  through the Hub; screenshots go to `e2e/`. Needs the server and Caro built. CI runs it.
 
 ## Conventions
 
