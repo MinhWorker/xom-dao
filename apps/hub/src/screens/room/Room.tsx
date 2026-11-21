@@ -1,5 +1,7 @@
 import { IconArrowLeft, IconBook2, IconMenu2 } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
+import { FullscreenToggle } from '../../display/FullscreenToggle.js';
+import { enterFullscreen, exitFullscreen } from '../../display/fullscreen.js';
 import { gameById } from '../../games.js';
 import { Button, Dialog, Menu, toast } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
@@ -37,6 +39,11 @@ export function Room({ code }: { code: string }) {
   const here = room?.code === code ? room : null;
   const game = here ? gameById(here.gameId) : undefined;
   const playing = here?.status === 'playing';
+
+  useEffect(() => {
+    if (!frameOpen) void exitFullscreen();
+  }, [frameOpen]);
+  useEffect(() => () => void exitFullscreen(), []);
 
   const triedJoin = useRef(false);
   useEffect(() => {
@@ -93,7 +100,10 @@ export function Room({ code }: { code: string }) {
       navigate('/', { force: true });
     });
 
-  const start = () => run(() => hub.request('match:start', { version: game?.version ?? '' }));
+  const start = () => {
+    void enterFullscreen();
+    return run(() => hub.request('match:start', { version: game?.version ?? '' }));
+  };
 
   if (joinError) {
     return (
@@ -211,7 +221,10 @@ export function Room({ code }: { code: string }) {
             variant="primary"
             className={styles.start}
             disabled={busy}
-            onClick={() => void run(() => hub.request('room:ready', { ready: !me?.ready }))}
+            onClick={() => {
+              if (!me?.ready) void enterFullscreen();
+              void run(() => hub.request('room:ready', { ready: !me?.ready }));
+            }}
           >
             {me?.ready ? 'Huỷ sẵn sàng' : 'Sẵn sàng'}
           </Button>
@@ -222,6 +235,7 @@ export function Room({ code }: { code: string }) {
         <div className={styles.play}>
           <GameFrame gameId={game.manifest.id} gameName={name} onDone={setDoneFor} />
           <div className={styles.corner}>
+            <FullscreenToggle />
             <SoundToggle />
             <Menu
               label="Menu ván"
