@@ -34,6 +34,9 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   a fake socket, `fetch` and storage (`StoreDeps`). Add to them when you change either.
 - `npm run smoke:hub` (root) drives two headless pages through friends and invites against a real
   server and the dev Hub; it saves screenshots to `smoke-hub/`. Run it when you change `screens/friends/`.
+- `npm run e2e` (root) plays a whole Caro Match between two pages, from sign-up to Results, against a
+  real server and the dev Hub; it saves screenshots to `e2e/`. Run it when you change the login,
+  lobby, Room, GameFrame or Results.
 - Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
