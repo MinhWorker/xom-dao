@@ -3,10 +3,16 @@
 // then reconnects on another device and must be put back in his seat. The smoke test sends no moves.
 // It speaks the clients' transport: plain WebSocket + JSON on /ws (packages/shared/src/protocol.ts).
 // Usage: node scripts/smoke.mjs [serverUrl] [gameId]
+import { existsSync, readFileSync } from 'node:fs';
 import WebSocket from 'ws';
 
 const url = process.argv[2] ?? 'http://localhost:8033';
 const gameId = process.argv[3] ?? 'tic-tac-toe';
+
+const versionFile = new URL(`../games/${gameId}/dist/version.json`, import.meta.url);
+const version = existsSync(versionFile)
+  ? JSON.parse(readFileSync(versionFile, 'utf8')).version
+  : '';
 
 const tag = Date.now().toString(36);
 // Bots speak whatever protocol the server speaks (see PROTOCOL_VERSION).
@@ -62,14 +68,14 @@ const wait = () => new Promise((r) => setTimeout(r, 200));
 try {
   const resumed = await alice.send('session:resume', {});
   if (resumed.room !== null) throw new Error('A new account should not be in a Room');
-  const room = await alice.send('room:create', { gameId }).catch((e) => e);
+  const room = await alice.send('room:create', { gameId, version }).catch((e) => e);
   if (room instanceof Error) {
     if (!room.message.startsWith('Không có game')) throw room;
     console.log(`OK: login and resume; the server runs no Game "${gameId}", Rooms skipped`);
   } else {
     await bob.send('room:join', { roomCode: room.roomCode.toLowerCase() });
     await bob.send('room:ready', { ready: true });
-    const { matchId } = await alice.send('match:start', {});
+    const { matchId } = await alice.send('match:start', { version });
     await wait();
     if (alice.state()?.status !== 'playing' || alice.state()?.matchId !== matchId)
       throw new Error(`Match did not start: ${JSON.stringify(alice.state())}`);

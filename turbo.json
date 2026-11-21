@@ -6,7 +6,8 @@
     "games/tsconfig.base.json",
     "games/tsconfig.build.json",
     "games/tsconfig.server.build.json",
-    "scripts/libs.mjs"
+    "scripts/libs.mjs",
+    "scripts/game-version.mjs"
   ],
   "remoteCache": { "enabled": true },
   "tasks": {

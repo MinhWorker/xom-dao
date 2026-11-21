@@ -16,10 +16,16 @@ import { avatarSchema, frameSchema, profileSchema } from './account.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 15;
+export const PROTOCOL_VERSION = 16;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
+
+/**
+ * Error when the Hub's `version` (the Game bundle's `dist/version.json`) differs from the Game
+ * server's: the two were built from different code, mid-deploy. The Hub shows it as it is.
+ */
+export const GAME_UPDATING = 'Game đang cập nhật, thử lại sau ít phút';
 
 /** The main currency. */
 export const COIN = 'core:coin';
@@ -321,9 +327,10 @@ export const requests = {
   /**
    * Creating or joining a Room first leaves the Room you were in (if it is another one).
    * `options` are picks for the Game manifest's options; missing ones take their default.
+   * `version` is the Game bundle's (`dist/version.json`); another one is refused (`GAME_UPDATING`).
    */
   'room:create': {
-    req: z.object({ gameId: z.string(), options: RoomOptions.optional() }),
+    req: z.object({ gameId: z.string(), version: z.string(), options: RoomOptions.optional() }),
     res: JoinedRoom,
   },
   /** Takes the first empty seat of the Room with this code (any case), between Matches. */
@@ -344,8 +351,11 @@ export const requests = {
   'room:add-bot': { req: Empty, res: Empty },
   /** Host only, between Matches: the computer leaves seat `seat`. */
   'room:remove-bot': { req: z.object({ seat: z.int() }), res: Empty },
-  /** Host only: starts a Match with everyone seated (at least the Game's `minPlayers`). */
-  'match:start': { req: Empty, res: z.object({ matchId: z.string() }) },
+  /**
+   * Host only: starts a Match with everyone seated (at least the Game's `minPlayers`).
+   * `version` is checked like `room:create`'s.
+   */
+  'match:start': { req: z.object({ version: z.string() }), res: z.object({ matchId: z.string() }) },
   /** A player tells the server that their Game iframe loaded this Match. */
   'match:ready': { req: z.object({ matchId: z.string() }), res: Empty },
   /** The Hub forwards one player's Game event to the server-authoritative rules. */

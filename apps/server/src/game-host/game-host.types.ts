@@ -1,4 +1,4 @@
-import type { MatchResult, RoomSeat } from '@xomdao/sdk';
+import type { AnyGameServer, MatchResult, RoomSeat } from '@xomdao/sdk';
 import type { MatchTimer, RoomOptions } from '@xomdao/shared';
 
 export interface MatchStart {
@@ -23,3 +23,6 @@ export interface MatchState {
   timer: MatchTimer | null;
   result?: MatchResult;
 }
+
+/** A Game server with the hash of the code it was built from (`scripts/game-version.mjs`). */
+export type HostedGame = AnyGameServer & { version: string };

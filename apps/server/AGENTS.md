@@ -4,7 +4,9 @@ The server is only the API: rooms over the `/ws` WebSocket and `/api` over HTTP.
 files.
 
 ```
-src/game-host/  GameHostModule = generated Game servers, Match lifecycle and /api/games IDs
+src/game-host/  GameHostModule = generated Game servers, Match lifecycle, MATCH_LIMITS and
+                /api/games IDs; disabled-games.* = the `disabled_games` switch
+src/cli/        games.ts = `npm run games -w @xomdao/server -- list | disable <id> | enable <id>`
 src/rooms/      rooms.service.ts = Rooms, seats and options (unit tested); manifests.ts = the
                 host's GAME_MANIFESTS; rooms.gateway.ts = the `@On(event)` handlers and broadcasts;
                 ws.gateway.ts = the transport: plain WebSocket + JSON on /ws, login + protocol
@@ -40,6 +42,24 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   them. Playing again needs no second yes.
 - Leaving frees the seat, also mid-Match. The next person seated becomes host; a Room with
   nobody left is disbanded.
+
+## Matches
+
+- `GameHostService` alone moves a Match through `loading → playing → over` (`settled` or
+  `aborted`). `MATCH_LIMITS` holds the platform's limits; a Game declares none. A hook over
+  250 ms (logged over 50 ms), a `view` over 64 KB, 2 hours of play or 5 minutes without a
+  person's message abort the Match, logged with the reason and the Game's id. A seat's 11th
+  move within a second is refused.
+- A player who drops mid-Match keeps the seat for 60 s (`disconnect` / `reconnect`, from the
+  gateway). After that, or on `room:leave`, they have left: placed last, the computer plays
+  their seat if the Game has `bot`, otherwise the Game's leave hook runs, otherwise the Match is
+  aborted. With no person left it is aborted.
+- `disabled_games` (`DisabledGamesService`, cached `DISABLED_GAMES_CACHE_MS`) hides a Game from
+  `/api/games` and refuses `room:create`; Matches already playing finish. Switch it with the
+  CLI against the DB in `DATABASE_URL` (never with a Render env var: that restarts the server).
+- Each Game server carries `version` (`scripts/game-version.mjs`, through the generated list).
+  `room:create` and `match:start` send the bundle's; another one is refused with
+  `GAME_UPDATING`.
 
 ## Accounts and connection
 

@@ -11,11 +11,22 @@ import {
   seededRng,
   turnRules,
 } from '@xomdao/sdk';
-import type { MatchTimer, RoomOptions } from '@xomdao/shared';
-import type { MatchStart, MatchState, MatchStatus } from './game-host.types.js';
+import { GAME_UPDATING, type MatchTimer, type RoomOptions } from '@xomdao/shared';
+import type { HostedGame, MatchStart, MatchState, MatchStatus } from './game-host.types.js';
 import { GAME_SERVERS } from './games.js';
 
 export const LOADING_TIMEOUT_MS = 30_000;
+
+/** The platform's limits for every Match; a Game does not declare its own. */
+export const MATCH_LIMITS = {
+  hookWarnMs: 50,
+  hookMs: 250,
+  viewBytes: 64 * 1024,
+  movesPerSecond: 10,
+  matchMs: 2 * 60 * 60 * 1000,
+  idleMs: 5 * 60 * 1000,
+  seatHoldMs: 60 * 1000,
+} as const;
 
 interface ActiveMatch {
   start: MatchStart;
@@ -23,6 +34,10 @@ interface ActiveMatch {
   readyPlayerIds: Set<string>;
   disconnectedPlayerIds: string[];
   timer?: NodeJS.Timeout;
+  /** Ends the Match at `MATCH_LIMITS.matchMs`. */
+  lifeTimer?: NodeJS.Timeout;
+  /** Ends the Match after `MATCH_LIMITS.idleMs` without a person's message. */
+  idleTimer?: NodeJS.Timeout;
   gameTimer?: NodeJS.Timeout;
   gameTimerId?: number;
   gameTimerDeadline?: number;
@@ -31,6 +46,12 @@ interface ActiveMatch {
   stored?: Stored<unknown, unknown>;
   rng?: Rng;
   views?: Map<string, unknown>;
+  /** When each seat's moves of the last second arrived. */
+  recentMoves: Map<string, number[]>;
+  /** Seats kept for disconnected players, until `MATCH_LIMITS.seatHoldMs`. */
+  holds: Map<string, NodeJS.Timeout>;
+  /** People who left the Match: they place last and the computer may play their seat. */
+  forfeited: Set<string>;
 }
 
 interface GameRuntime {
@@ -57,14 +78,17 @@ type PendingGameTimer = Pick<NonNullable<Stored<unknown, unknown>['timer']>, 'id
 
 export class GameHostError extends Error {}
 
+/** A Match broke one of `MATCH_LIMITS`: it is aborted. */
+class LimitError extends Error {}
+
 /** Loads Game servers and owns each Match's loading, playing and over transitions. */
 @Injectable()
 export class GameHostService implements OnModuleDestroy {
-  private readonly servers: readonly AnyGameServer[];
+  private readonly servers: readonly HostedGame[];
   private readonly matches = new Map<string, ActiveMatch>();
   private readonly listeners = new Set<(match: MatchState) => void>();
 
-  constructor(@Inject(GAME_SERVERS) gameServers: readonly AnyGameServer[]) {
+  constructor(@Inject(GAME_SERVERS) gameServers: readonly HostedGame[]) {
     this.servers = gameServers;
     const ids = new Set<string>();
     for (const server of gameServers) {
@@ -84,6 +108,12 @@ export class GameHostService implements OnModuleDestroy {
     return this.servers.map(({ manifest }) => manifest.id).sort();
   }
 
+  /** Refuses a Hub whose Game bundle was built from other Game server code. */
+  checkVersion(gameId: string, version: unknown) {
+    const server = this.server(gameId);
+    if (server && server.version !== version) throw new GameHostError(GAME_UPDATING);
+  }
+
   /** A listener receives every lifecycle transition, including the initial loading state. */
   onState(listener: (match: MatchState) => void) {
     this.listeners.add(listener);
@@ -101,6 +131,9 @@ export class GameHostService implements OnModuleDestroy {
       status: 'loading',
       readyPlayerIds: new Set(start.players.filter((player) => player.bot).map((p) => p.id)),
       disconnectedPlayerIds: [],
+      recentMoves: new Map(),
+      holds: new Map(),
+      forfeited: new Set(),
     };
     this.matches.set(start.matchId, match);
     this.publish(match);
@@ -108,9 +141,12 @@ export class GameHostService implements OnModuleDestroy {
     if (this.allReady(match)) this.startPlaying(match, server);
     else {
       match.timer = setTimeout(() => {
-        match.disconnectedPlayerIds = start.players
-          .filter((player) => !match.readyPlayerIds.has(player.id))
-          .map((player) => player.id);
+        const missed = start.players
+          .filter(
+            ({ id }) => !match.readyPlayerIds.has(id) && !match.disconnectedPlayerIds.includes(id),
+          )
+          .map(({ id }) => id);
+        match.disconnectedPlayerIds.push(...missed);
         this.startPlaying(match, server);
       }, LOADING_TIMEOUT_MS);
       match.timer.unref();
@@ -125,7 +161,11 @@ export class GameHostService implements OnModuleDestroy {
     if (!match.start.players.some((player) => player.id === playerId)) {
       throw new GameHostError('Bạn không ngồi ở ván này');
     }
-    if (match.status !== 'loading') return this.snapshot(match);
+    if (match.status !== 'loading') {
+      this.reconnect(matchId, playerId);
+      this.heard(match, playerId);
+      return this.snapshot(match);
+    }
 
     match.readyPlayerIds.add(playerId);
     if (this.allReady(match)) {
@@ -155,6 +195,9 @@ export class GameHostService implements OnModuleDestroy {
     if (match?.status !== 'playing' || !match.rules || !match.stored || !match.rng) {
       throw new GameHostError('Ván chưa bắt đầu');
     }
+    if (match.forfeited.has(playerId)) throw new GameHostError('Bạn đã rời ván này');
+    this.countMove(match, playerId);
+    this.heard(match, playerId);
 
     try {
       this.applyMove(match, playerId, move);
@@ -164,35 +207,117 @@ export class GameHostService implements OnModuleDestroy {
     }
   }
 
-  /** Applies the Game's leave hook or aborts a Match that cannot continue without the player. */
+  /** A player left the Match: aborted while loading, otherwise their seat is forfeited. */
   leave(matchId: string, playerId: string) {
     const match = this.matches.get(matchId);
     if (!match) return;
     if (!match.start.players.some((player) => player.id === playerId)) {
       throw new GameHostError('Bạn không ngồi ở ván này');
     }
-    if (match.status === 'loading') {
-      this.end(match, 'aborted');
-      return;
-    }
-    if (match.status !== 'playing' || !match.rules || !match.stored || !match.rng) return;
-    if (!match.rules.leave) {
-      this.end(match, 'aborted');
-      return;
-    }
+    if (match.status === 'loading') this.end(match, 'aborted');
+    else if (match.status === 'playing') this.forfeit(match, playerId);
+  }
 
-    try {
-      match.stored = match.rules.leave(match.stored, playerId, match.rng);
-      this.updatePlaying(match);
-    } catch (error) {
-      this.abort(match, error);
-    }
+  /**
+   * A player lost their connection: their seat is held for `MATCH_LIMITS.seatHoldMs`, from when
+   * the Match starts playing if it is still loading.
+   */
+  disconnect(matchId: string, playerId: string) {
+    const match = this.matches.get(matchId);
+    if (!match || match.status === 'over' || match.disconnectedPlayerIds.includes(playerId)) return;
+    if (!match.start.players.some((player) => player.id === playerId && !player.bot)) return;
+    match.disconnectedPlayerIds.push(playerId);
+    if (match.status === 'playing') this.hold(match, playerId);
+    this.publish(match);
+  }
+
+  /** A disconnected player is back: their held seat is theirs again. */
+  reconnect(matchId: string, playerId: string) {
+    const match = this.matches.get(matchId);
+    if (!match?.disconnectedPlayerIds.includes(playerId)) return;
+    this.release(match, playerId);
+    match.disconnectedPlayerIds = match.disconnectedPlayerIds.filter((id) => id !== playerId);
+    if (match.status !== 'playing') return;
+    this.heard(match, playerId);
+    this.publish(match);
   }
 
   /** Aborts a Match whose Room is gone, so its timers and bot turns stop. */
   stop(matchId: string) {
     const match = this.matches.get(matchId);
     if (match) this.end(match, 'aborted');
+  }
+
+  /** Refuses a seat's move past `MATCH_LIMITS.movesPerSecond`. */
+  private countMove(match: ActiveMatch, playerId: string) {
+    const now = Date.now();
+    const recent = (match.recentMoves.get(playerId) ?? []).filter((at) => now - at < 1000);
+    if (recent.length >= MATCH_LIMITS.movesPerSecond) {
+      throw new GameHostError('Gửi nhanh quá, chậm lại một chút');
+    }
+    recent.push(now);
+    match.recentMoves.set(playerId, recent);
+  }
+
+  /** A person sent something: the idle limit starts again. */
+  private heard(match: ActiveMatch, playerId: string) {
+    if (this.people(match).some((player) => player.id === playerId)) this.restartIdle(match);
+  }
+
+  /** People still playing: not computers and not gone from the Match. */
+  private people(match: ActiveMatch) {
+    return match.start.players.filter(({ id, bot }) => !bot && !match.forfeited.has(id));
+  }
+
+  private hold(match: ActiveMatch, playerId: string) {
+    if (match.holds.has(playerId) || match.forfeited.has(playerId)) return;
+    const timer = setTimeout(() => this.forfeit(match, playerId), MATCH_LIMITS.seatHoldMs);
+    timer.unref();
+    match.holds.set(playerId, timer);
+  }
+
+  private release(match: ActiveMatch, playerId: string) {
+    clearTimeout(match.holds.get(playerId));
+    match.holds.delete(playerId);
+  }
+
+  /**
+   * The player is out of the Match. The computer plays their seat when the Game has one, else
+   * the Game's leave hook runs; without either, or with no person left, the Match is aborted.
+   */
+  private forfeit(match: ActiveMatch, playerId: string) {
+    if (match.status !== 'playing' || match.forfeited.has(playerId)) return;
+    this.release(match, playerId);
+    match.forfeited.add(playerId);
+    const { rules, stored, rng } = match;
+    if (!rules || !stored || !rng) return;
+    if (this.people(match).length === 0) {
+      this.abort(match, 'no person is left playing');
+      return;
+    }
+    if (rules.bot) {
+      this.scheduleBotTurn(match);
+      return;
+    }
+    if (!rules.leave) {
+      this.abort(match, `${playerId} left a Game without a leave hook`);
+      return;
+    }
+    try {
+      match.stored = rules.leave(stored, playerId, rng);
+      this.updatePlaying(match);
+    } catch (error) {
+      this.abort(match, error);
+    }
+  }
+
+  private restartIdle(match: ActiveMatch) {
+    clearTimeout(match.idleTimer);
+    match.idleTimer = setTimeout(
+      () => this.abort(match, 'nobody sent anything for too long'),
+      MATCH_LIMITS.idleMs,
+    );
+    match.idleTimer.unref();
   }
 
   private allReady(match: ActiveMatch) {
@@ -202,7 +327,7 @@ export class GameHostService implements OnModuleDestroy {
   private startPlaying(match: ActiveMatch, server: AnyGameServer) {
     clearTimeout(match.timer);
     try {
-      const rules = createRuntime(server);
+      const rules = createRuntime(server, match.start.gameId);
       const rng = seededRng(randomInt(0, 0x1_0000_0000));
       const stored = rules.setup(
         {
@@ -221,6 +346,13 @@ export class GameHostService implements OnModuleDestroy {
       match.stored = stored;
       match.rng = rng;
       match.status = 'playing';
+      match.lifeTimer = setTimeout(
+        () => this.abort(match, 'Match ran past its time limit'),
+        MATCH_LIMITS.matchMs,
+      );
+      match.lifeTimer.unref();
+      for (const playerId of match.disconnectedPlayerIds) this.hold(match, playerId);
+      this.restartIdle(match);
       this.updatePlaying(match);
     } catch (error) {
       this.abort(match, error);
@@ -232,7 +364,8 @@ export class GameHostService implements OnModuleDestroy {
     this.matches.delete(match.start.matchId);
     this.clearMatchTimers(match);
     match.status = 'over';
-    this.publish({ ...match, outcome, ...(result && { result }) });
+    const ranked = result && rankForfeitsLast(result, match.forfeited);
+    this.publish({ ...match, outcome, ...(ranked && { result: ranked }) });
   }
 
   private updatePlaying(match: ActiveMatch) {
@@ -304,7 +437,7 @@ export class GameHostService implements OnModuleDestroy {
       if (match.status !== 'playing' || !match.rules?.bot || !match.stored || !match.rng) return;
       try {
         for (const player of match.start.players) {
-          if (!player.bot) continue;
+          if (!player.bot && !match.forfeited.has(player.id)) continue;
           const move = match.rules.bot(match.stored, player.id, match.rng);
           if (move) {
             this.applyMove(match, player.id, move, true);
@@ -317,16 +450,23 @@ export class GameHostService implements OnModuleDestroy {
     });
   }
 
-  private abort(match: ActiveMatch, error: unknown) {
-    console.error(`Game ${match.start.gameId} aborted Match ${match.start.matchId}`, error);
+  /** Logs why the Match is aborted, with the Game's id, and ends it. */
+  private abort(match: ActiveMatch, reason: unknown) {
+    console.error(`Game ${match.start.gameId} aborted Match ${match.start.matchId}:`, reason);
     this.end(match, 'aborted');
   }
 
   private clearMatchTimers(match: ActiveMatch) {
     clearTimeout(match.timer);
+    clearTimeout(match.lifeTimer);
+    clearTimeout(match.idleTimer);
     clearTimeout(match.gameTimer);
     clearImmediate(match.botTurn);
+    for (const hold of match.holds.values()) clearTimeout(hold);
+    match.holds.clear();
     match.timer = undefined;
+    match.lifeTimer = undefined;
+    match.idleTimer = undefined;
     match.gameTimer = undefined;
     match.gameTimerId = undefined;
     match.gameTimerDeadline = undefined;
@@ -336,7 +476,14 @@ export class GameHostService implements OnModuleDestroy {
   private refreshViews(match: ActiveMatch) {
     const { rules, stored } = match;
     if (!rules || !stored) throw new Error('Match has no Game state');
-    match.views = new Map(match.start.players.map(({ id }) => [id, rules.view(stored, id)]));
+    match.views = new Map(
+      match.start.players.map(({ id }) => {
+        const view = rules.view(stored, id);
+        const bytes = Buffer.byteLength(JSON.stringify(view) ?? '');
+        if (bytes > MATCH_LIMITS.viewBytes) throw new LimitError(`view is ${bytes} bytes`);
+        return [id, view];
+      }),
+    );
   }
 
   private server(gameId: string) {
@@ -377,24 +524,56 @@ export class GameHostService implements OnModuleDestroy {
   }
 }
 
-function createRuntime(server: AnyGameServer): GameRuntime {
+/**
+ * Puts players who left last, whatever place the Game gave them; the others keep their order,
+ * tied places sharing a rank (`[1, 1, 3]`).
+ */
+function rankForfeitsLast(result: MatchResult, forfeited: ReadonlySet<string>): MatchResult {
+  if (!result.seats.some(({ player }) => forfeited.has(player))) return result;
+  const staying = result.seats.filter(({ player }) => !forfeited.has(player));
+  return {
+    ...result,
+    seats: result.seats.map((seat) => ({
+      ...seat,
+      place: forfeited.has(seat.player)
+        ? staying.length + 1
+        : 1 + staying.filter((other) => other.place < seat.place).length,
+    })),
+  };
+}
+
+/** Times one Game hook: slow ones are logged, too slow ones break `MATCH_LIMITS.hookMs`. */
+function timed<T>(gameId: string, hook: string, fn: () => T): T {
+  const started = performance.now();
+  const value = fn();
+  const ms = performance.now() - started;
+  if (ms > MATCH_LIMITS.hookMs) throw new LimitError(`${hook} took ${Math.round(ms)} ms`);
+  if (ms > MATCH_LIMITS.hookWarnMs) {
+    console.warn(`Game ${gameId}: ${hook} took ${Math.round(ms)} ms`);
+  }
+  return value;
+}
+
+function createRuntime(server: AnyGameServer, gameId: string): GameRuntime {
   const game = server.game as unknown as Game<unknown, unknown, unknown>;
   const rules = turnRules(game);
+  const { leave, bot } = rules;
   return {
-    setup(start, rng) {
-      return rules.setup(start, rng);
-    },
-    validateMove: (stored, move, playerId) => rules.validateMove(stored, move, playerId),
-    applyMove: (stored, move, playerId, rng) => rules.applyMove(stored, move, playerId, rng),
+    setup: (start, rng) => timed(gameId, 'setup', () => rules.setup(start, rng)),
+    validateMove: (stored, move, playerId) =>
+      timed(gameId, 'validateMove', () => rules.validateMove(stored, move, playerId)),
+    applyMove: (stored, move, playerId, rng) =>
+      timed(gameId, move.event, () => rules.applyMove(stored, move, playerId, rng)),
     timer: (stored) => {
-      const timer = rules.timer(stored);
+      const timer = timed(gameId, 'timer', () => rules.timer(stored));
       return timer && { id: timer.id, event: timer.event, ms: timer.ms };
     },
-    fireTimer: (stored, rng) => rules.fireTimer(stored, rng),
+    fireTimer: (stored, rng) => timed(gameId, 'fireTimer', () => rules.fireTimer(stored, rng)),
     leave:
-      rules.leave && ((stored, playerId, rng) => rules.leave?.(stored, playerId, rng) ?? stored),
-    bot: rules.bot && ((stored, playerId, rng) => rules.bot?.(stored, playerId, rng) ?? null),
-    view: (stored, playerId) => rules.view(stored, playerId),
-    result: (stored) => rules.result(stored),
+      leave &&
+      ((stored, playerId, rng) => timed(gameId, 'leave', () => leave(stored, playerId, rng))),
+    bot: bot && ((stored, playerId, rng) => timed(gameId, 'bot', () => bot(stored, playerId, rng))),
+    view: (stored, playerId) => timed(gameId, 'view', () => rules.view(stored, playerId)),
+    result: (stored) => timed(gameId, 'result', () => rules.result(stored)),
   };
 }

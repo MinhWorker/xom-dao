@@ -2,6 +2,7 @@ import { Controller, Get, Inject } from '@nestjs/common';
 import { PROTOCOL_VERSION } from '@xomdao/shared';
 import { sql } from 'drizzle-orm';
 import { DB, type Db } from './db/db.module.js';
+import { DisabledGamesService } from './game-host/disabled-games.service.js';
 import { GameHostService } from './game-host/game-host.service.js';
 import { APP_COMMIT, APP_VERSION } from './version.js';
 
@@ -12,6 +13,7 @@ export class HealthController {
   constructor(
     @Inject(DB) private readonly db: Db | null,
     private readonly gameHost: GameHostService,
+    private readonly disabledGames: DisabledGamesService,
   ) {}
 
   @Get('health')
@@ -25,8 +27,9 @@ export class HealthController {
     }
   }
 
+  /** The loaded Game servers that are not switched off. */
   @Get('games')
   games() {
-    return this.gameHost.gameIds();
+    return this.disabledGames.enabled(this.gameHost.gameIds());
   }
 }

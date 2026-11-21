@@ -3,7 +3,6 @@ import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
-  type AnyGameServer,
   defineManifest,
   type EventContext,
   Game,
@@ -11,11 +10,13 @@ import {
   type MatchResult,
   type StartContext,
 } from '@xomdao/sdk';
-import { PROTOCOL_MISMATCH, PROTOCOL_VERSION, type RoomState } from '@xomdao/shared';
+import { GAME_UPDATING, PROTOCOL_MISMATCH, PROTOCOL_VERSION, type RoomState } from '@xomdao/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { z } from 'zod';
 import { AppModule } from '../app.module.js';
+import { DisabledGamesService } from '../game-host/disabled-games.service.js';
+import type { HostedGame } from '../game-host/game-host.types.js';
 import { GAME_SERVERS } from '../game-host/games.js';
 import { GAME_MANIFESTS } from './manifests.js';
 
@@ -46,6 +47,8 @@ class CaroServer extends Game<{ turn: number }> {
   }
 }
 
+const CARO_VERSION = 'caro-1';
+
 let app: INestApplication;
 let url: string;
 let httpUrl: string;
@@ -57,7 +60,9 @@ beforeAll(async () => {
   // Load one fake Game server for the test.
   app.get<GameManifest[]>(GAME_MANIFESTS).push(caro);
   caroServer = new CaroServer();
-  app.get<AnyGameServer[]>(GAME_SERVERS).push({ manifest: caro, game: caroServer });
+  app
+    .get<HostedGame[]>(GAME_SERVERS)
+    .push({ manifest: caro, game: caroServer, version: CARO_VERSION });
   await app.listen(0, '127.0.0.1');
   httpUrl = await app.getUrl();
   url = httpUrl.replace('http', 'ws');
@@ -132,17 +137,20 @@ describe('WebSocket transport', () => {
       balances: {},
     });
 
-    const created = await lan.request('room:create', { gameId: 'tic-tac-toe' });
+    const created = await lan.request('room:create', {
+      gameId: 'tic-tac-toe',
+      version: CARO_VERSION,
+    });
     const code = created.roomCode as string;
     expect(code).toMatch(/^[A-HJ-NP-Z2-9]{4}$/);
     const joined = await minh.request('room:join', { roomCode: ` ${code.toLowerCase()}` });
     expect(joined).toMatchObject({ ok: true, roomCode: code });
-    expect(await lan.request('match:start')).toEqual({
+    expect(await lan.request('match:start', { version: CARO_VERSION })).toEqual({
       ok: false,
       error: 'Chờ mọi người sẵn sàng đã',
     });
     expect(await minh.request('room:ready', { ready: true })).toEqual({ ok: true });
-    const started = await lan.request('match:start');
+    const started = await lan.request('match:start', { version: CARO_VERSION });
     expect(started).toEqual({ ok: true, matchId: expect.any(String) });
     expect(await lan.request('match:ready', { matchId: started.matchId })).toEqual({ ok: true });
     expect(await minh.request('match:ready', { matchId: started.matchId })).toEqual({ ok: true });
@@ -196,7 +204,7 @@ describe('WebSocket transport', () => {
     expect(caroServer.previousResults).toHaveLength(1);
     expect(caroServer.previousResults[0]).toBeNull();
 
-    const rematch = await lan.request('match:start');
+    const rematch = await lan.request('match:start', { version: CARO_VERSION });
     const rematchId = rematch.matchId as string;
     await lan.request('match:ready', { matchId: rematchId });
     await minh.request('match:ready', { matchId: rematchId });
@@ -234,11 +242,14 @@ describe('WebSocket transport', () => {
     await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
     await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
 
-    const created = await lan.request('room:create', { gameId: 'tic-tac-toe' });
+    const created = await lan.request('room:create', {
+      gameId: 'tic-tac-toe',
+      version: CARO_VERSION,
+    });
     const code = created.roomCode as string;
     await minh.request('room:join', { roomCode: code });
     await minh.request('room:ready', { ready: true });
-    const started = await lan.request('match:start');
+    const started = await lan.request('match:start', { version: CARO_VERSION });
     const matchId = started.matchId as string;
     await lan.request('match:ready', { matchId });
     await minh.request('match:ready', { matchId });
@@ -267,10 +278,13 @@ describe('WebSocket transport', () => {
     });
     await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
 
-    const created = await lan.request('room:create', { gameId: 'tic-tac-toe' });
+    const created = await lan.request('room:create', {
+      gameId: 'tic-tac-toe',
+      version: CARO_VERSION,
+    });
     await minh.request('room:join', { roomCode: created.roomCode as string });
     await minh.request('room:ready', { ready: true });
-    const started = await lan.request('match:start');
+    const started = await lan.request('match:start', { version: CARO_VERSION });
     const matchId = started.matchId as string;
     await lan.request('match:ready', { matchId });
     await minh.request('match:ready', { matchId });
@@ -301,6 +315,90 @@ describe('WebSocket transport', () => {
       status: 'playing',
       view: { turn: 0 },
     });
+  });
+
+  it('refuses a Hub built against another version of the Game server', async () => {
+    const lan = await connect();
+    const minh = await connect();
+    await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
+    await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
+
+    expect(await lan.request('room:create', { gameId: 'tic-tac-toe', version: 'old' })).toEqual({
+      ok: false,
+      error: GAME_UPDATING,
+    });
+    const created = await lan.request('room:create', {
+      gameId: 'tic-tac-toe',
+      version: CARO_VERSION,
+    });
+    await minh.request('room:join', { roomCode: created.roomCode as string });
+    await minh.request('room:ready', { ready: true });
+
+    expect(await lan.request('match:start', { version: 'old' })).toEqual({
+      ok: false,
+      error: GAME_UPDATING,
+    });
+    lan.ws.close();
+    minh.ws.close();
+  });
+
+  it('takes a disabled Game out of the lobby and opens no Room for it', async () => {
+    const games = app.get(DisabledGamesService);
+    const lan = await connect();
+    await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
+
+    await games.disable('tic-tac-toe');
+    const listed = await (await fetch(`${httpUrl}/api/games`)).json();
+    const refused = await lan.request('room:create', {
+      gameId: 'tic-tac-toe',
+      version: CARO_VERSION,
+    });
+    await games.enable('tic-tac-toe');
+    lan.ws.close();
+
+    expect(listed).toEqual([]);
+    expect(refused).toEqual({ ok: false, error: 'Game đang tạm đóng' });
+  });
+
+  it('holds the seat of a player who drops mid-Match', async () => {
+    const lan = await connect();
+    const minh = await connect();
+    const account = await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
+    await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
+    const lanId = (account.user as { id: string }).id;
+    const created = await lan.request('room:create', {
+      gameId: 'tic-tac-toe',
+      version: CARO_VERSION,
+    });
+    await minh.request('room:join', { roomCode: created.roomCode as string });
+    await minh.request('room:ready', { ready: true });
+    const { matchId } = await lan.request('match:start', { version: CARO_VERSION });
+    await lan.request('match:ready', { matchId });
+    await minh.request('match:ready', { matchId });
+    await settle();
+
+    lan.ws.close();
+    await settle();
+    const matchStates = () =>
+      minh.pushed
+        .filter((message) => message.event === 'match:state')
+        .map((message) => message.data as { status: string; disconnectedPlayerIds: string[] });
+    expect(matchStates().at(-1)).toMatchObject({
+      status: 'playing',
+      disconnectedPlayerIds: [lanId],
+    });
+    const back = await connect();
+    await back.request('auth:token', {
+      protocol: PROTOCOL_VERSION,
+      token: account.token as string,
+    });
+    await back.request('session:resume');
+    await settle();
+    expect(matchStates().at(-1)).toMatchObject({ status: 'playing', disconnectedPlayerIds: [] });
+
+    await minh.request('match:move', { matchId, event: 'finish' });
+    back.ws.close();
+    minh.ws.close();
   });
 
   it('answers unknown events without closing', async () => {
@@ -343,7 +441,7 @@ describe('Bạn bè over the socket', () => {
       ok: false,
       error: 'Bạn chưa ở trong phòng nào',
     });
-    const room = await lan.request('room:create', { gameId: 'tic-tac-toe' });
+    const room = await lan.request('room:create', { gameId: 'tic-tac-toe', version: CARO_VERSION });
     expect(await lan.request('friends:invite', { userId: minhUser.id })).toEqual({ ok: true });
     await settle();
     const invite = minh.pushed.find((m) => m.event === 'room:invite');
