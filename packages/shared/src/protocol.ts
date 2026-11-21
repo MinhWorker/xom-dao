@@ -447,46 +447,6 @@ export const events = {
   'room:invite': RoomInvite,
 };
 
-/**
- * The named data shapes, for the named object schemas and enums. Add a schema here when a request or event uses it.
- */
-export const types = {
-  User,
-  PlayerInfo,
-  RoomStatus,
-  RoomRole,
-  RoomScore,
-  Reward,
-  GameResult: GameResultSchema,
-  LastMove,
-  RoomTimer,
-  Played,
-  RoomSnapshot,
-  RoomSummary,
-  JoinedRoom,
-  RewardNotice,
-  MatchPlayer,
-  MatchRecord,
-  RankInfo,
-  PlayerStats,
-  RankingEntry,
-  Ranking,
-  ProfileUpdate: profileSchema,
-  AuthReply,
-  SessionInfo,
-  RoomList,
-  LobbyRooms,
-  RoomClosed,
-  FriendState,
-  Friend,
-  FriendList,
-  Person,
-  PeopleList,
-  ChatMessage,
-  ChatHistory,
-  RoomInvite,
-};
-
 /** Every request gets either `{ ok: true, ...data }` or `{ ok: false, error }`. */
 export type Ack<T = object> = (res: ({ ok: true } & T) | { ok: false; error: string }) => void;
 

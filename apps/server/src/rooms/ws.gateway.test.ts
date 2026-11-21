@@ -26,7 +26,7 @@ interface Ack {
   [key: string]: unknown;
 }
 
-/** A Godot-like client: numbered requests, and every pushed event kept by name. */
+/** A client: numbered requests, and every pushed event kept by name. */
 async function connect() {
   const ws = new WebSocket(`${url}/ws`);
   await new Promise((resolve, reject) => ws.once('open', resolve).once('error', reject));
