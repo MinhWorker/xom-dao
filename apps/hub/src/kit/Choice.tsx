@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { playSound } from '../sound/index.js';
 import styles from './Choice.module.css';
 import { rovingKeyDown } from './roving.js';
 
@@ -39,7 +40,10 @@ export function Choice({ label, options, value, onChange, disabled }: ChoiceProp
             tabIndex={option.value === value ? 0 : -1}
             disabled={disabled}
             className={`${styles.option} cut-br`}
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              playSound('click');
+              onChange(option.value);
+            }}
           >
             {option.label}
           </button>

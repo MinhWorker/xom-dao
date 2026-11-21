@@ -1,5 +1,7 @@
 import type { MatchResultNotice, RoomState } from '@xomdao/shared/client';
+import { useEffect, useRef } from 'react';
 import { Button, Chip, CutPanel } from '../../kit/index.js';
+import { playSound } from '../../sound/index.js';
 import styles from './Room.module.css';
 
 type Places = MatchResultNotice['seats'];
@@ -19,6 +21,14 @@ export function Results({ room, result, me, busy, onReplay, onBack }: ResultsPro
   const names = new Map(room.seats.flatMap((s) => (s ? [[s.id, s.name] as const] : [])));
   const seats = [...(result ?? [])].sort((a, b) => a.place - b.place);
   const host = room.hostId === me;
+  const mine = seats.find((s) => s.player === me);
+  const played = useRef(false);
+
+  useEffect(() => {
+    if (played.current || !mine) return;
+    played.current = true;
+    playSound(mine.place === 1 ? 'win' : 'lose');
+  }, [mine]);
 
   return (
     <div className={styles.overlay}>

@@ -1,3 +1,4 @@
+import { playSound } from '../sound/index.js';
 import styles from './Toggle.module.css';
 
 export interface ToggleProps {
@@ -16,7 +17,10 @@ export function Toggle({ label, checked, onChange, disabled }: ToggleProps) {
       aria-checked={checked}
       disabled={disabled}
       className={styles.toggle}
-      onClick={() => onChange(!checked)}
+      onClick={() => {
+        playSound('click');
+        onChange(!checked);
+      }}
     >
       <span className={styles.track} aria-hidden="true" />
       <span>{label}</span>
