@@ -1,0 +1,59 @@
+.games {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  --cut: 18px;
+  width: 100%;
+  min-height: 120px;
+  display: grid;
+  align-content: end;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: linear-gradient(160deg, var(--bg-raised), var(--bg-sunken));
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  border-left-color: var(--accent);
+}
+
+.card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.join {
+  display: flex;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.code input {
+  width: 8ch;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}

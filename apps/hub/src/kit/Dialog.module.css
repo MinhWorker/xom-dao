@@ -1,0 +1,20 @@
+.dialog {
+  --cut: 18px;
+  max-width: min(420px, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-5);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--accent);
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

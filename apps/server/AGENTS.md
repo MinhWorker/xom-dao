@@ -20,6 +20,7 @@ src/friends/    Bạn bè: requests, friendships and chat (`friendships`, `frien
 src/db/         Drizzle schema; migrations in drizzle/
 src/version.ts  For /api/health
 packages/shared/src/protocol.ts   The protocol as zod schemas (types, requests, events) + PROTOCOL_VERSION
+packages/shared/src/client.ts     `@xomdao/shared/client`: account + protocol for browsers, no Game registry
 packages/shared/src/catalog.ts    Genre list (core data), metaProblems (registry test)
 packages/shared/src/stats.ts      XP_PER_GAME, levels, ranking boards
 packages/shared/src/registry.ts   games/getGame, from the generated (gitignored) src/generated/games.ts

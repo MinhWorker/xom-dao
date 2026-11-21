@@ -40,7 +40,9 @@ games/<id>/          src/index.ts is required
 ```
 
 Each new platform Game exports `./server` from its package, pointing to `dist/server/`. Its
-`tsconfig.server.build.json` extends `games/tsconfig.server.build.json`; `scripts.build` builds that
+client bundle is `dist/index.html` with relative paths: the Hub (`apps/hub`) ships every Game
+that has `manifest.ts` and that file, at `/games/<id>/`, and forwards each `match:state` push
+to it as a Bridge `message`. Its `tsconfig.server.build.json` extends `games/tsconfig.server.build.json`; `scripts.build` builds that
 config and ends with `node ../../scripts/game-version.mjs`, which writes `dist/version.json`:
 the hash of `server/**` and the shared packages it imports. The Hub sends it with
 `room:create` and `match:start`. `scripts/libs.mjs` adds every `server/index.ts` to the generated registry in
@@ -129,7 +131,7 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
     yet).
 - **Snapshots** carry `round` and `last` (the last event). `ctx.lastResult` is how the room's
   previous game ended.
-- **Tables**: the game draws only its board, from the room snapshot; the Hub is not built yet.
+- **Tables**: the game draws only its board, from the room snapshot.
 - **`testGame`** takes a plugin or a `Game`. It offers:
   - `send`, `error`, `view` and `assertHidden`;
   - `command(line)` for optional game dev commands, catalog references and semicolon chains;

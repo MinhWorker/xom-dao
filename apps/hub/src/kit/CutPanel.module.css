@@ -1,0 +1,16 @@
+.panel {
+  --cut: 18px;
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-raised);
+  border-left: 3px solid var(--accent);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}

@@ -15,7 +15,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/libs.mjs --generate",
-    "dev": "node scripts/libs.mjs && concurrently -k -n shared,server -c magenta,blue \"npm run dev -w @xomdao/shared\" \"npm run dev -w @xomdao/server\"",
+    "dev": "node scripts/libs.mjs && concurrently -k -n shared,server,hub -c magenta,blue,green \"npm run dev -w @xomdao/shared\" \"npm run dev -w @xomdao/server\" \"npm run dev -w @xomdao/hub\"",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
