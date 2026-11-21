@@ -1,11 +1,17 @@
 // End-to-end test of the Hub: a real server (no database), the Hub in dev mode and two headless
-// Chromium pages on a phone-sized screen. Alice signs up, Bob logs in, Alice opens a Caro Room,
-// Bob joins by its code and gets ready, Alice starts, and they click marks on the board inside the
-// Game's iframe until Alice's five in a row ends the Match. Both pages must receive `match:result`
-// and show the Results. Needs a built server and Caro (`npx turbo run build
-// --filter=@xomdao/server --filter=@xomdao/game-tic-tac-toe`) and Chromium (`npx playwright-core
-// install chromium`). Saves screenshots to e2e/.
-// Usage: node scripts/e2e.mjs
+// Chromium pages on a phone-sized screen. Alice signs up, Bob logs in, Alice opens a Room for a
+// Game, Bob joins by its code and gets ready, Alice starts, and they play the Game inside its
+// iframe until the Match ends. Both pages must receive `match:result` and show the Results.
+//   caro       Caro (TypeScript canvas): they click marks until Alice's five in a row wins.
+//   tien-len   Tiến Lên (Godot, a one-round Match): the player who leads taps the lowest card and
+//              Đánh each trick and the other taps Bỏ lượt, so the leader empties their hand first.
+//              The taps land on the Godot canvas by the layout in games/tien-len/godot/main.gd
+//              (`_hand_slot`, `_layout_buttons`), which `tienLenGeometry` mirrors.
+// Needs a built server and the Games (`npx turbo run build --filter=@xomdao/server
+// --filter=@xomdao/game-tic-tac-toe --filter=@xomdao/game-tien-len`; Tiến Lên needs `npm run
+// setup:godot` first) and Chromium (`npx playwright-core install chromium`). Saves screenshots
+// to e2e/.
+// Usage: node scripts/e2e.mjs [caro|tien-len]   (no argument: both, one after the other)
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -59,29 +65,12 @@ async function until(what, read, seconds = 30) {
   }
 }
 
-async function main() {
-  const serverPort = await freePort();
-  const hubPort = await freePort();
-  const server = `http://127.0.0.1:${serverPort}`;
-  const hub = `http://127.0.0.1:${hubPort}`;
-
-  start(['dist/main.js'], {
-    cwd: resolve(root, 'apps/server'),
-    env: { ...process.env, PORT: String(serverPort), DATABASE_URL: '' },
-  });
-  await until('the server', async () =>
-    (await (await fetch(`${server}/api/games`)).json()).includes('tic-tac-toe'),
-  );
-  start([resolve(root, 'node_modules/vite/bin/vite.js')], {
-    cwd: resolve(root, 'apps/hub'),
-    env: { ...process.env, HUB_PORT: String(hubPort), XOMDAO_DEV_SERVER: server },
-  });
-  await until('the Hub', async () => (await fetch(hub)).ok);
-
+/** Alice (host, signs up through the form) and Bob (logs in), both in a Room for the Game. */
+async function seat(browser, { server, hub }, game) {
   const tag = Date.now().toString(36);
   const password = 'e2e12345';
-  const alice = { name: 'Alice', username: `alice${tag}`, results: [] };
-  const bob = { name: 'Bob', username: `bob${tag}`, results: [] };
+  const alice = { name: 'Alice', username: `alice${tag}`, results: [], view: null, problems: [] };
+  const bob = { name: 'Bob', username: `bob${tag}`, results: [], view: null, problems: [] };
   const registered = await fetch(`${server}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -95,117 +84,253 @@ async function main() {
   });
   if (!registered.ok) throw new Error((await registered.json()).message);
 
+  /** A fresh page on the Hub, as a phone held sideways, that records what the server pushes. */
+  async function open(who) {
+    const context = await browser.newContext({
+      viewport: { width: 844, height: 390 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await context.newPage();
+    page.setDefaultTimeout(15000);
+    page.on('pageerror', (error) => who.problems.push(`${who.name}: ${error.message}`));
+    page.on('console', (message) => {
+      if (message.type() === 'error') who.problems.push(`${who.name}: ${message.text()}`);
+    });
+    page.on('websocket', (socket) =>
+      socket.on('framereceived', ({ payload }) => {
+        const text = String(payload);
+        if (text.includes('match:result')) who.results.push(text);
+        if (!text.includes('"match:state"')) return;
+        try {
+          const push = JSON.parse(text);
+          if (push.event === 'match:state' && push.data?.view) who.view = push.data.view;
+        } catch {}
+      }),
+    );
+    await page.goto(hub);
+    return page;
+  }
+  const a = await open(alice);
+  const b = await open(bob);
+
+  await a.getByRole('tab', { name: 'Tạo tài khoản' }).click();
+  await a.getByLabel('Tên đăng nhập').fill(alice.username);
+  await a.getByLabel('Mật khẩu').fill(password);
+  await a.getByLabel('Tên hiển thị').fill(alice.name);
+  await a.screenshot({ path: resolve(shots, `${game.id}-1-sign-up.png`) });
+  await a.getByRole('button', { name: 'Tạo', exact: true }).click();
+  await b.getByLabel('Tên đăng nhập').fill(bob.username);
+  await b.getByLabel('Mật khẩu').fill(password);
+  await b.getByRole('button', { name: 'Vào', exact: true }).click();
+  await a.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
+  await b.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
+
+  await a.getByRole('radio', { name: game.pick }).click();
+  await a.getByRole('heading', { name: game.name }).waitFor();
+  await a.getByRole('button', { name: 'Tạo phòng' }).click();
+  await a.waitForURL(/\/room\/[A-Z0-9]{4}$/);
+  const code = new URL(a.url()).pathname.split('/').pop();
+  if (game.rounds) await a.getByRole('radio', { name: game.rounds }).click();
+
+  await b.getByRole('button', { name: 'Vào phòng' }).click();
+  await b.getByLabel('Mã phòng').fill(code);
+  await b.getByRole('button', { name: 'Vào', exact: true }).click();
+  await b.waitForURL(new RegExp(`/room/${code}$`));
+  await b.getByRole('button', { name: 'Sẵn sàng' }).click();
+  const aliceSlots = a.getByRole('list', { name: 'Người chơi' });
+  await aliceSlots.getByText('Bob', { exact: true }).waitFor();
+  await aliceSlots.getByText('Sẵn sàng').waitFor();
+  await a.screenshot({ path: resolve(shots, `${game.id}-2-room.png`) });
+  await a.getByRole('button', { name: /^Bắt đầu/ }).click();
+  return { alice, bob, a, b, code };
+}
+
+/** Clicks marks in the Game's iframe; each player waits for their own turn. */
+async function playCaro({ alice, bob, a, b }) {
+  const games = new Map([
+    [alice, a.frameLocator('iframe')],
+    [bob, b.frameLocator('iframe')],
+  ]);
+  /** Clicks the middle of board cell (x, y) on the 9×9 board; unless `last`, waits for the turn to pass. */
+  async function mark(who, { x, y }, last = false) {
+    const game = games.get(who);
+    await game.locator('.seat.me.active').waitFor();
+    const canvas = game.locator('#board');
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('The board is not on screen');
+    const cell = Math.min(box.width - PAD * 2, box.height - PAD * 2) / SIDE;
+    await canvas.click({
+      position: {
+        x: (box.width - SIDE * cell) / 2 + (x + 0.5) * cell,
+        y: (box.height - SIDE * cell) / 2 + (y + 0.5) * cell,
+      },
+    });
+    if (!last) await game.locator('.seat.me:not(.active)').waitFor();
+  }
+  for (const [turn, cell] of X_CELLS.entries()) {
+    await mark(alice, cell, turn === X_CELLS.length - 1);
+    if (turn === 2) await b.screenshot({ path: resolve(shots, 'tic-tac-toe-3-playing.png') });
+    if (turn < O_CELLS.length) await mark(bob, O_CELLS[turn]);
+  }
+  return alice;
+}
+
+/** Where a tap lands on the Godot canvas of Tiến Lên: its virtual 844×390 screen, stretched. */
+function tienLenGeometry(box, handSize) {
+  const scale = Math.min(box.width / 844, box.height / 390);
+  const width = box.width / scale;
+  const height = box.height / scale;
+  const hand = Math.min(Math.max((height * 0.185) / 72, 0.7), 1.1);
+  const cardWidth = 72 * hand;
+  const cardHeight = 101 * hand;
+  const span = width - 16 - 132 - 28 - 16;
+  const step = Math.min(cardWidth * 0.7, (span - cardWidth) / Math.max(handSize - 1, 1));
+  const total = cardWidth + step * (handSize - 1);
+  const first = 16 + (span - total) / 2 + cardWidth / 2;
+  const at = (x, y) => ({ x: box.x + x * scale, y: box.y + y * scale });
+  return {
+    /** Empty table: a tap there puts the selection down. */
+    blank: at(width / 2, height * 0.3),
+    /** The left edge of the lowest card, which no other card covers. */
+    lowest: at(first - cardWidth / 2 + 8, height - 14 - cardHeight / 2 + 7),
+    play: at(width - 16 - 66, height - 16 - 23),
+    pass: at(width - 16 - 66, height - 16 - 46 - 46 * 0.85 - 10 + (46 * 0.85) / 2),
+  };
+}
+
+/** Plays a one-round Match of two people: the leader leads singles, the other passes. */
+async function playTienLen({ alice, bob, a, b }) {
+  const pages = new Map([
+    [alice, { page: a, seat: 0 }],
+    [bob, { page: b, seat: 1 }],
+  ]);
+  await until(
+    'both Godot Games to deal',
+    () => alice.view?.hand?.length && bob.view?.hand?.length,
+    90,
+  );
+  const leader = alice.view.lead === 0 ? alice : bob;
+  await b.screenshot({ path: resolve(shots, 'tien-len-3-dealt.png') });
+
+  /** One attempt at the move the player owes: clear the selection, then tap the buttons. */
+  async function move(who) {
+    const { page } = pages.get(who);
+    const box = await page.locator('iframe').boundingBox();
+    if (!box) throw new Error('The Game is not on screen');
+    const tap = tienLenGeometry(box, who.view.hand.length);
+    if (who.view.table) {
+      await page.touchscreen.tap(tap.pass.x, tap.pass.y);
+      return;
+    }
+    await page.touchscreen.tap(tap.blank.x, tap.blank.y);
+    await page.touchscreen.tap(tap.lowest.x, tap.lowest.y);
+    await sleep(200);
+    await page.touchscreen.tap(tap.play.x, tap.play.y);
+  }
+
+  const tried = new Map();
+  const deadline = Date.now() + 240_000;
+  let shot = false;
+  while (!(alice.results.length && bob.results.length)) {
+    if (Date.now() > deadline) throw new Error('The Tiến Lên Match did not finish');
+    for (const who of [alice, bob]) {
+      const view = who.view;
+      if (!view || view.phase !== 'play' || view.turn !== pages.get(who).seat) continue;
+      const key = `${view.played.length}:${view.turn}:${view.passed.join()}`;
+      const before = tried.get(who);
+      if (before?.key === key && Date.now() - before.at < 2500) continue;
+      tried.set(who, { key, at: Date.now() });
+      if (!shot && view.played.length > 4) {
+        shot = true;
+        await pages.get(who).page.screenshot({ path: resolve(shots, 'tien-len-4-playing.png') });
+      }
+      await move(who);
+    }
+    await sleep(250);
+  }
+  return leader;
+}
+
+const GAMES = {
+  caro: {
+    id: 'tic-tac-toe',
+    name: 'Caro',
+    pick: /Caro/,
+    play: playCaro,
+    summary: 'Alice beat Bob at Caro',
+  },
+  'tien-len': {
+    id: 'tien-len',
+    name: 'Tiến Lên',
+    pick: /Tiến Lên/,
+    rounds: '1 vòng',
+    play: playTienLen,
+    summary: 'The leader won a one-round Tiến Lên Match',
+  },
+};
+
+async function main(game, stack, browser) {
+  const room = await seat(browser, stack, game);
+  const { alice, bob, a, b, code } = room;
+  const winnerOf = await game.play(room);
+
+  // Both get the result and the Results panel, which puts the winner first.
+  for (const [who, page] of [
+    [alice, a],
+    [bob, b],
+  ]) {
+    await page.getByText('Kết quả', { exact: true }).waitFor({ timeout: 30000 });
+    await until(`${who.name}'s match:result`, () => who.results.length > 0, 5);
+  }
+  const winner = a.getByRole('listitem').filter({ hasText: 'Thắng' });
+  await winner.getByText(winnerOf.name).waitFor();
+  await winner.getByText('Thắng').waitFor();
+  await a.screenshot({ path: resolve(shots, `${game.id}-5-results.png`) });
+  await b.screenshot({ path: resolve(shots, `${game.id}-5-results-bob.png`) });
+
+  const problems = [...alice.problems, ...bob.problems];
+  if (problems.length) throw new Error(`The pages reported errors:\n${problems.join('\n')}`);
+  console.log(`OK: ${game.summary} in Room ${code}, and both got match:result`);
+}
+
+async function run(names) {
+  const serverPort = await freePort();
+  const hubPort = await freePort();
+  const server = `http://127.0.0.1:${serverPort}`;
+  const hub = `http://127.0.0.1:${hubPort}`;
+
+  start(['dist/main.js'], {
+    cwd: resolve(root, 'apps/server'),
+    env: { ...process.env, PORT: String(serverPort), DATABASE_URL: '' },
+  });
+  await until('the server', async () => {
+    const ids = await (await fetch(`${server}/api/games`)).json();
+    return names.every((name) => ids.includes(GAMES[name].id));
+  });
+  start([resolve(root, 'node_modules/vite/bin/vite.js')], {
+    cwd: resolve(root, 'apps/hub'),
+    env: { ...process.env, HUB_PORT: String(hubPort), XOMDAO_DEV_SERVER: server },
+  });
+  await until('the Hub', async () => (await fetch(hub)).ok);
+
   const browser = await chromium.launch();
   try {
-    const problems = [];
-    /** A fresh page on the Hub, as a phone held sideways, that records `match:result` pushes. */
-    async function open(who) {
-      const context = await browser.newContext({
-        viewport: { width: 844, height: 390 },
-        hasTouch: true,
-        isMobile: true,
-      });
-      const page = await context.newPage();
-      page.setDefaultTimeout(15000);
-      page.on('pageerror', (error) => problems.push(`${who.name}: ${error.message}`));
-      page.on('console', (message) => {
-        if (message.type() === 'error') problems.push(`${who.name}: ${message.text()}`);
-      });
-      page.on('websocket', (socket) =>
-        socket.on('framereceived', ({ payload }) => {
-          if (String(payload).includes('match:result')) who.results.push(String(payload));
-        }),
-      );
-      await page.goto(hub);
-      return page;
-    }
-    const a = await open(alice);
-    const b = await open(bob);
-
-    // Alice signs up through the form, Bob logs into the account he already has.
-    await a.getByRole('tab', { name: 'Tạo tài khoản' }).click();
-    await a.getByLabel('Tên đăng nhập').fill(alice.username);
-    await a.getByLabel('Mật khẩu').fill(password);
-    await a.getByLabel('Tên hiển thị').fill(alice.name);
-    await a.screenshot({ path: resolve(shots, '1-sign-up.png') });
-    await a.getByRole('button', { name: 'Tạo', exact: true }).click();
-    await b.getByLabel('Tên đăng nhập').fill(bob.username);
-    await b.getByLabel('Mật khẩu').fill(password);
-    await b.getByRole('button', { name: 'Vào', exact: true }).click();
-    await a.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
-    await b.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
-
-    // Alice picks Caro and opens a Room.
-    await a.getByRole('radio', { name: /Caro/ }).click();
-    await a.getByRole('heading', { name: 'Caro' }).waitFor();
-    await a.getByRole('button', { name: 'Tạo phòng' }).click();
-    await a.waitForURL(/\/room\/[A-Z0-9]{4}$/);
-    const code = new URL(a.url()).pathname.split('/').pop();
-
-    // Bob joins by the code and is ready; Alice starts the Match.
-    await b.getByRole('button', { name: 'Vào phòng' }).click();
-    await b.getByLabel('Mã phòng').fill(code);
-    await b.getByRole('button', { name: 'Vào', exact: true }).click();
-    await b.waitForURL(new RegExp(`/room/${code}$`));
-    await b.getByRole('button', { name: 'Sẵn sàng' }).click();
-    const aliceSlots = a.getByRole('list', { name: 'Người chơi' });
-    await aliceSlots.getByText('Bob', { exact: true }).waitFor();
-    await aliceSlots.getByText('Sẵn sàng').waitFor();
-    await a.screenshot({ path: resolve(shots, '2-room.png') });
-    await a.getByRole('button', { name: /^Bắt đầu/ }).click();
-
-    // The board is in an iframe; each player waits for their own turn, then clicks a cell.
-    const games = new Map([
-      [alice, a.frameLocator('iframe')],
-      [bob, b.frameLocator('iframe')],
-    ]);
-    /** Clicks the middle of board cell (x, y) on the 9×9 board; unless `last`, waits for the turn to pass. */
-    async function mark(who, { x, y }, last = false) {
-      const game = games.get(who);
-      await game.locator('.seat.me.active').waitFor();
-      const canvas = game.locator('#board');
-      const box = await canvas.boundingBox();
-      if (!box) throw new Error('The board is not on screen');
-      const cell = Math.min(box.width - PAD * 2, box.height - PAD * 2) / SIDE;
-      await canvas.click({
-        position: {
-          x: (box.width - SIDE * cell) / 2 + (x + 0.5) * cell,
-          y: (box.height - SIDE * cell) / 2 + (y + 0.5) * cell,
-        },
-      });
-      if (!last) await game.locator('.seat.me:not(.active)').waitFor();
-    }
-    for (const [turn, cell] of X_CELLS.entries()) {
-      await mark(alice, cell, turn === X_CELLS.length - 1);
-      if (turn === 2) await b.screenshot({ path: resolve(shots, '3-playing.png') });
-      if (turn < O_CELLS.length) await mark(bob, O_CELLS[turn]);
-    }
-
-    // Both get the result and the Results panel, which puts Alice first.
-    for (const [who, page] of [
-      [alice, a],
-      [bob, b],
-    ]) {
-      await page.getByText('Kết quả', { exact: true }).waitFor({ timeout: 20000 });
-      await until(`${who.name}'s match:result`, () => who.results.length > 0, 5);
-    }
-    const winner = a.getByRole('listitem').filter({ hasText: 'Thắng' });
-    await winner.getByText('Alice').waitFor();
-    await winner.getByText('Thắng').waitFor();
-    await a.screenshot({ path: resolve(shots, '4-results.png') });
-    await b.screenshot({ path: resolve(shots, '4-results-bob.png') });
-
-    if (problems.length) throw new Error(`The pages reported errors:\n${problems.join('\n')}`);
-    console.log(`OK: Alice beat Bob at Caro in Room ${code}, and both got match:result`);
+    for (const name of names) await main(GAMES[name], { server, hub }, browser);
   } finally {
     await browser.close();
   }
 }
 
+const requested = process.argv[2];
+if (requested && !GAMES[requested]) {
+  console.error(`Usage: node scripts/e2e.mjs [${Object.keys(GAMES).join('|')}]`);
+  process.exit(1);
+}
 mkdirSync(shots, { recursive: true });
 let failed = false;
 try {
-  await main();
+  await run(requested ? [requested] : Object.keys(GAMES));
 } catch (error) {
   failed = true;
   console.error(error instanceof Error ? error.message : error);
