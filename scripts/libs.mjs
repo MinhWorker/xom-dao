@@ -1,5 +1,6 @@
 // Finds every game in games/* and builds the libraries the server runs:
-// @xomdao/sdk, each game's server part (src/index.ts), then @xomdao/shared.
+// @xomdao/sdk, each game's server part (src/index.ts, the legacy plugin; server/index.ts, the
+// new platform's Game server), then @xomdao/shared.
 //   node scripts/libs.mjs             generate the game list + build
 //   node scripts/libs.mjs --watch     same, then rebuild on change (npm run dev)
 //   node scripts/libs.mjs --generate  only write the game list (npm install runs this)
@@ -27,13 +28,14 @@ const args = process.argv.slice(2);
 
 const ids = findGames();
 const serverIds = findGameServers(ids);
-writeGameList(ids, serverIds);
+const legacyIds = ids.filter((id) => existsSync(join(root, 'games', id, 'src/index.ts')));
+writeGameList(legacyIds, serverIds);
 if (args.includes('--generate')) process.exit(0);
 
 const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
 const projects = [
   'packages/sdk/tsconfig.build.json',
-  ...ids.map((id) => `games/${id}/tsconfig.build.json`),
+  ...legacyIds.map((id) => `games/${id}/tsconfig.build.json`),
   ...serverIds.map((id) => `games/${id}/tsconfig.server.build.json`),
   'packages/shared/tsconfig.build.json',
 ];
@@ -77,7 +79,11 @@ function findGames() {
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) problems.push(`games/${id}: use a kebab-case name`);
     if (pkg.name !== `@xomdao/game-${id}`)
       problems.push(`games/${id}/package.json: "name" must be "@xomdao/game-${id}"`);
-    for (const file of ['src/index.ts', 'tsconfig.build.json']) {
+    // A Game made for the new platform has `server/index.ts` and no legacy plugin in `src/`.
+    const files = existsSync(join(folder, 'server/index.ts'))
+      ? []
+      : ['src/index.ts', 'tsconfig.build.json'];
+    for (const file of files) {
       if (!existsSync(join(folder, file))) problems.push(`games/${id}: missing ${file}`);
     }
     if (!sharedPkg.devDependencies?.[pkg.name])

@@ -4,13 +4,17 @@ Where to look:
 - **Examples**: `games/tic-tac-toe` (Caro) is the new platform's test Game: `manifest.ts`,
   `server/` (rules with room options and a computer player) and `client/` (TypeScript + canvas,
   no engine). Its `src/` is the legacy plugin, still loaded by the legacy registry.
+  `games/dat-bom` (Đặt Bom) is the Realtime example: a `RealtimeGame` with a `bot` hook, its
+  arena physics in `server/game/arena.ts`, no client yet. It has no `src/`: a Game made for the
+  new platform needs only `server/index.ts`, and the legacy registry skips it.
   `games/tien-len` is the fullest legacy game.
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the
   Turn-based `Game` class, `ctx.finish(places)`), of `packages/sdk/src/manifest.ts` (the
   Game manifest, `games/<id>/manifest.ts`) and of `packages/sdk/src/realtime.ts` (the Realtime
-  `RealtimeGame`: `init`/`input`/`tick`/`view`/`result`, a fixed tick and 10-20 Hz snapshots).
+  `RealtimeGame`: `init`/`input`/`tick`/`view`/`result`/`bot`, a fixed tick and 10-20 Hz
+  snapshots).
 
 ## Two SDKs, for now
 
@@ -67,7 +71,7 @@ Caro without a client: `create --headless`, `join --headless`, `start`, then
 ## A game's folder
 
 ```
-games/<id>/          src/index.ts is required
+games/<id>/          src/index.ts is required, unless server/index.ts exists (new platform)
   RULES.md             Current Vietnamese gameplay rules (non-starter games); the client's Luật board
   src/index.ts         export default definePlugin({ meta, game: new MyGame(), room? }); server
   src/game/            Pure rules, no DOM: <Name>Game.ts (+ test), model.ts, options.ts, bot.ts
