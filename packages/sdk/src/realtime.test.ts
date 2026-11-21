@@ -5,6 +5,7 @@ import {
   type InitContext,
   type InputContext,
   isRealtimeGame,
+  type RealtimeBotContext,
   type RealtimeContext,
   RealtimeGame,
   type RealtimeLeaveContext,
@@ -160,6 +161,54 @@ describe('a Realtime Game', () => {
     expect(isRealtimeGame(new RunGame())).toBe(true);
     expect(isRealtimeGame({ events: {} })).toBe(false);
     expect(isRealtimeGame(null)).toBe(false);
+  });
+});
+
+describe('a Realtime Game with a bot', () => {
+  /** The computer runs right until it is past 1, then waits (null). */
+  class BotGame extends RunGame {
+    bot(ctx: RealtimeBotContext<State>) {
+      return (ctx.state.x[ctx.player.seat] ?? 0) < 1 ? { dir: 'right' as const } : null;
+    }
+  }
+
+  it('asks the bot for each computer seat every tick, with the next seq', () => {
+    const game = testRealtimeGame(new BotGame(), ['a', 'b'], { bots: ['b'] });
+    expect(game.bot('b')).toEqual({ seq: 0, input: { dir: 'right' } });
+    game.tick(2);
+    expect(game.ack('b')).toBe(0);
+    expect(game.ack('a')).toBeUndefined();
+    expect(game.state.x[0]).toBeCloseTo(0.1);
+    expect(game.state.x[1]).toBeCloseTo(1.1);
+  });
+
+  it('keeps what the bot last sent when it answers null', () => {
+    const game = testRealtimeGame(new BotGame(), ['a', 'b'], { bots: ['b'] });
+    game.tick(3);
+    expect(game.bot('b')).toBeNull();
+  });
+
+  it('plays a Match of bots to its end', () => {
+    const game = testRealtimeGame(new BotGame(), ['a', 'b'], { bots: ['a', 'b'] });
+    game.tick(100);
+    expect(game.result?.seats.map((seat) => seat.place)).toEqual([1, 1]);
+  });
+
+  it('refuses a bot input its inputSchema does not take', () => {
+    class Bad extends BotGame {
+      override bot() {
+        return { dir: 'up' } as never;
+      }
+    }
+    const game = testRealtimeGame(new Bad(), ['a', 'b'], { bots: ['b'] });
+    expect(() => game.tick()).toThrow('inputSchema');
+  });
+
+  it('has no bot when the game declares none', () => {
+    const game = testRealtimeGame(new RunGame(), ['a', 'b'], { bots: ['b'] });
+    expect(game.bot('b')).toBeNull();
+    game.tick(3);
+    expect(game.ack('b')).toBeUndefined();
   });
 });
 

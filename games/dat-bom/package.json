@@ -1,0 +1,25 @@
+{
+  "name": "@xomdao/game-dat-bom",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": {
+      "xomdao-source": "./server/index.ts",
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@xomdao/sdk": "*",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.5"
+  }
+}
