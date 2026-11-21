@@ -1,8 +1,8 @@
 # AGENTS.md
 
 Games to play with friends in the browser; a solo project. npm-workspaces monorepo: a NestJS server
-(WebSocket + JSON), one folder per game. The Godot client, web shell and console are removed;
-the Hub is not built yet.
+(WebSocket + JSON), a React Hub (`apps/hub`), one folder per game. The Godot client, web shell
+and console are removed.
 
 **Direction:** the project is moving to a web Hub that embeds each Game, built in any engine, in
 an iframe. The old Godot hub and its games are legacy (tag `legacy-godot`); only the rules and tests of
@@ -14,14 +14,15 @@ the wayfinder map, issue #200, and the decisions linked from it.
 | Working on | Read |
 | --- | --- |
 | A game, the SDK or the Bridge (`games/`, `packages/sdk/`, `packages/bridge/`) | `games/AGENTS.md` |
+| The Hub web app (`apps/hub/`) | `apps/hub/AGENTS.md` |
 | The server, rooms, accounts, DB, protocol, deploy (`apps/server/`, `packages/shared/`) | `apps/server/AGENTS.md` |
 | Images or sounds | `assets/AGENTS.md` |
 
 ## Commands (repo root)
 
 - `npm install` (npm only). After adding a game folder, follow `games/AGENTS.md` (build contract), rerun it and restart dev.
-- `npm run dev`: the server on :8033. The owner often runs it; start your own on another port
-  (`PORT=8133`) and stop it when done.
+- `npm run dev`: the server on :8033 and the Hub on :8030. The owner often runs it; start your
+  own on other ports (`apps/hub/AGENTS.md`) and stop them when done.
 - `npm run build`, `npm run typecheck`, `npm run test`: Turborepo (`turbo.json`) runs the task in
   every workspace that has it, in dependency order, and caches the result. CI adds `--affected`
   on PRs and uses the remote cache (`TURBO_TOKEN` secret, `TURBO_TEAM` variable).

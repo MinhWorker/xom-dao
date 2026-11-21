@@ -1,0 +1,7 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": { "env": ["XOMDAO_SERVER_URL", "VERCEL_ENV"] }
+  }
+}
