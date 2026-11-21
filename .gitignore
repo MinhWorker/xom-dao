@@ -24,3 +24,5 @@ packages/shared/src/generated/
 codex-session-*.md
 # Screenshots from npm run smoke:web
 smoke-web/
+# Screenshots from npm run smoke:hub
+smoke-hub/

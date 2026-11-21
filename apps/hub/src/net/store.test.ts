@@ -10,6 +10,17 @@ const user = {
   frame: 'gold',
 };
 
+const lan = {
+  id: 'u2',
+  username: 'lan',
+  name: 'Lan',
+  avatar: 'girl',
+  frame: 'gold',
+  state: 'friend',
+  online: true,
+  unread: 0,
+};
+
 const roomState = {
   code: 'ABCD',
   gameId: 'tic-tac-toe',
@@ -316,5 +327,45 @@ describe('store', () => {
     expect(socket.closed).toBe(true);
     expect(store.getState()).toMatchObject({ phase: 'signed-out', user: null, room: null });
     expect(deps.storage.getItem('xomdao:token')).toBeNull();
+  });
+
+  it("loads Bạn bè after login and follows the server's pushes and replies", async () => {
+    const store = await online();
+    lastSocket().reply('friends:list', { ok: true, friends: [lan] });
+    await flush();
+    expect(store.getState().friends).toMatchObject([{ id: 'u2', online: true }]);
+
+    lastSocket().push('friends:changed', {
+      friends: [{ ...lan, roomCode: 'ABCD', gameId: 'caro' }],
+    });
+    expect(store.getState().friends[0]).toMatchObject({ roomCode: 'ABCD' });
+
+    const removed = store.request('friends:remove', { userId: 'u2' });
+    lastSocket().reply('friends:remove', { ok: true, friends: [] });
+    await removed;
+    expect(store.getState().friends).toEqual([]);
+
+    lastSocket().push('friends:changed', { friends: [{ ...lan, state: 'bogus' }] });
+    expect(store.getState().friends).toEqual([]);
+  });
+
+  it('keeps the latest invite until it is dismissed, and logging out clears it', async () => {
+    const store = await online();
+    const invite = {
+      fromId: 'u2',
+      fromName: 'Lan',
+      avatar: 'girl',
+      frame: 'gold',
+      roomCode: 'WXYZ',
+      gameId: 'tic-tac-toe',
+    };
+    lastSocket().push('room:invite', invite);
+    expect(store.getState().invite).toMatchObject({ roomCode: 'WXYZ' });
+    store.dismissInvite();
+    expect(store.getState().invite).toBeNull();
+
+    lastSocket().push('room:invite', invite);
+    store.logout();
+    expect(store.getState()).toMatchObject({ invite: null, friends: [] });
   });
 });

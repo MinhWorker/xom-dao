@@ -35,7 +35,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npx turbo run typecheck test build ${{ github.event_name == 'pull_request' && '--affected' || '' }}
-      # A browser plays Đặt Bom against the real server through the Harness. Build what it runs
+      # Browsers play Đặt Bom through the Harness and use the Hub's friends against the real server. Build what they run
       # first: --affected may have skipped them.
       - run: npx turbo run build --filter=@xomdao/game-dat-bom --filter=@xomdao/harness --filter=@xomdao/server
       - run: npx playwright-core install --with-deps chromium
@@ -45,4 +45,12 @@ jobs:
         with:
           name: smoke-web
           path: smoke-web/
+          if-no-files-found: ignore
+      # Friends and invites on the Hub: two browsers against the server and the dev Hub.
+      - run: npm run smoke:hub
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: smoke-hub
+          path: smoke-hub/
           if-no-files-found: ignore

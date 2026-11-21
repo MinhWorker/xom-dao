@@ -1,10 +1,12 @@
 import {
   AuthReply,
   events,
+  type Friend,
   type MatchResultNotice,
   PROTOCOL_MISMATCH,
   PROTOCOL_VERSION,
   type RegisterRequest,
+  type RoomInvite,
   type RoomState,
   requests,
   SessionInfo,
@@ -42,6 +44,10 @@ export interface HubState {
   result: MatchResultNotice | null;
   /** Why the Room was closed on us, until the next Room. */
   closed: string | null;
+  /** Bạn bè: friends and requests, as the server last told. */
+  friends: Friend[];
+  /** The latest invite to a friend's Room, until it is answered. */
+  invite: RoomInvite | null;
   /** Counts logins on the socket: a new one means the Game needs a fresh `init`. */
   connection: number;
 }
@@ -72,6 +78,8 @@ const signedOut: HubState = {
   match: null,
   result: null,
   closed: null,
+  friends: [],
+  invite: null,
   connection: 0,
 };
 
@@ -148,6 +156,8 @@ export function createStore(deps: StoreDeps) {
     },
     'match:result': (result) => set({ result }),
     'room:closed': ({ reason }) => set({ room: null, match: null, result: null, closed: reason }),
+    'friends:changed': ({ friends }) => set({ friends }),
+    'room:invite': (invite) => set({ invite }),
   };
 
   function connect() {
@@ -213,6 +223,7 @@ export function createStore(deps: StoreDeps) {
         connection: state.connection + 1,
         ...(!info.room && { room: null, match: null }),
       });
+      void request('friends:list', {}).catch(() => {});
     } catch {
       dropped(ws);
       ws.close();
@@ -245,7 +256,9 @@ export function createStore(deps: StoreDeps) {
     const ack = await raw(String(event), data);
     if (!ack.ok) throw new HubError(String(ack.error ?? 'Máy chủ gặp lỗi'));
     const { ok: _ok, ...rest } = ack;
-    return requests[event].res.parse(rest) as Res<E>;
+    const reply = requests[event].res.parse(rest) as Res<E>;
+    if (event.startsWith('friends:') && 'friends' in reply) set({ friends: reply.friends });
+    return reply;
   }
 
   return {
@@ -267,6 +280,8 @@ export function createStore(deps: StoreDeps) {
       await request('room:leave', {});
       set({ room: null, match: null, result: null });
     },
+    /** Forgets the invite: it was answered or turned down. */
+    dismissInvite: () => set({ invite: null }),
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {

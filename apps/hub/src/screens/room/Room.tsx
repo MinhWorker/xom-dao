@@ -5,6 +5,7 @@ import { Button, Dialog, Menu, toast } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate, router } from '../../router.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
+import { InviteSheet } from '../friends/InviteSheet.js';
 import { focusPosition } from '../lobby/summary.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import screen from '../Screen.module.css';
@@ -31,6 +32,7 @@ export function Room({ code }: { code: string }) {
   const [doneFor, setDoneFor] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const here = room?.code === code ? room : null;
   const game = here ? gameById(here.gameId) : undefined;
@@ -116,7 +118,7 @@ export function Room({ code }: { code: string }) {
   const canBot = isHost && game?.manifest.bots === true;
   const minPlayers = game?.manifest.minPlayers ?? 1;
 
-  const invite = async () => {
+  const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(`${location.origin}/room/${here.code}`);
       toast('Đã chép liên kết phòng');
@@ -171,7 +173,7 @@ export function Room({ code }: { code: string }) {
             canRemove={isHost}
             canAddBot={canBot}
             busy={busy}
-            onInvite={() => void invite()}
+            onInvite={() => setInviteOpen(true)}
             onAddBot={() => void run(() => hub.request('room:add-bot', {}))}
             onRemove={() => void run(() => hub.request('room:remove-bot', { seat: i }))}
           />
@@ -252,6 +254,13 @@ export function Room({ code }: { code: string }) {
           )}
         </div>
       )}
+
+      <InviteSheet
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        roomCode={here.code}
+        onCopyLink={() => void copyLink()}
+      />
 
       {rulesOpen && game && <RulesPager game={game} onClose={() => setRulesOpen(false)} />}
 

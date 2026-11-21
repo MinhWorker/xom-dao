@@ -12,6 +12,8 @@ describe('parseRoute', () => {
     expect(parseRoute('/room/ab3x')).toEqual({ name: 'room', code: 'AB3X' });
     expect(parseRoute('/room/AB3X/')).toEqual({ name: 'room', code: 'AB3X' });
     expect(parseRoute('/dev/kit')).toEqual({ name: 'kit' });
+    expect(parseRoute('/profile')).toEqual({ name: 'profile' });
+    expect(parseRoute('/profile/u-1')).toEqual({ name: 'profile', userId: 'u-1' });
   });
 
   it('sends unknown paths to the lobby', () => {

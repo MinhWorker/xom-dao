@@ -3,8 +3,10 @@ import { Button } from './kit/index.js';
 import { hub, useHub } from './net/hub.js';
 import { OFFLINE } from './net/store.js';
 import { navigate, useRoute } from './router.js';
+import { InviteNotice } from './screens/friends/InviteNotice.js';
 import { Lobby } from './screens/lobby/Lobby.js';
 import { Login } from './screens/login/Login.js';
+import { Profile } from './screens/profile/Profile.js';
 import { Room } from './screens/room/Room.js';
 import screen from './screens/Screen.module.css';
 
@@ -58,7 +60,10 @@ export function App() {
           {OFFLINE}
         </div>
       )}
-      {route.name === 'room' ? <Room key={route.code} code={route.code} /> : <Lobby />}
+      {route.name === 'room' && <Room key={route.code} code={route.code} />}
+      {route.name === 'profile' && <Profile key={route.userId ?? 'me'} userId={route.userId} />}
+      {(route.name === 'lobby' || route.name === 'kit') && <Lobby />}
+      <InviteNotice />
     </>
   );
 }

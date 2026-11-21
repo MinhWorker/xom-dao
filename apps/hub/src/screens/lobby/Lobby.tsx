@@ -1,4 +1,4 @@
-import { IconDots } from '@tabler/icons-react';
+import { IconDots, IconUsers } from '@tabler/icons-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { GAMES, type HubGame } from '../../games.js';
@@ -6,6 +6,7 @@ import { Button, Chip, Dialog, Icon, Menu, TextField } from '../../kit/index.js'
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
+import { FriendsSheet } from '../friends/FriendsSheet.js';
 import { GameStrip } from './GameStrip.js';
 import styles from './Lobby.module.css';
 import { durationLabel, focusPosition, playersLabel } from './summary.js';
@@ -49,10 +50,12 @@ function Backdrop({ game }: { game: HubGame }) {
 export function Lobby() {
   const user = useHub((s) => s.user);
   const closed = useHub((s) => s.closed);
+  const requests = useHub((s) => s.friends.filter((f) => f.state === 'incoming').length);
   const [running, setRunning] = useState<string[] | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [friendsOpen, setFriendsOpen] = useState(false);
   const [pickedId, setPickedId] = useState(lastPicked);
 
   useEffect(() => {
@@ -106,13 +109,27 @@ export function Lobby() {
       {game && <Backdrop key={game.manifest.id} game={game} />}
 
       <header className={styles.top}>
-        <span className={styles.profile}>
+        <button
+          type="button"
+          className={styles.profile}
+          aria-label={`Hồ sơ ${user?.name ?? ''}`}
+          onClick={() => navigate('/profile')}
+        >
           <span className={styles.initial} aria-hidden="true">
             {user?.name.slice(0, 1).toUpperCase()}
           </span>
           {user?.name}
-        </span>
+        </button>
         <span className={styles.tools}>
+          <button
+            type="button"
+            className={styles.friends}
+            aria-label={requests > 0 ? `Bạn bè, ${requests} lời mời` : 'Bạn bè'}
+            onClick={() => setFriendsOpen(true)}
+          >
+            <Icon icon={IconUsers} />
+            {requests > 0 && <span className={styles.badge}>{requests}</span>}
+          </button>
           <SoundToggle />
           <Menu
             label="Menu"
@@ -164,6 +181,8 @@ export function Lobby() {
           </div>
         </footer>
       )}
+
+      <FriendsSheet open={friendsOpen} onClose={() => setFriendsOpen(false)} />
 
       <Dialog
         open={joinOpen}
