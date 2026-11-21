@@ -24,6 +24,7 @@
     "format": "biome check --write .",
     "check": "npm run lint && turbo run typecheck test",
     "smoke": "node scripts/smoke.mjs",
+    "smoke:web": "node scripts/smoke-web.mjs",
     "harness": "node scripts/harness.mjs",
     "wt": "node scripts/worktree.mjs",
     "assets": "node scripts/assets.mjs"
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
     "concurrently": "^10.0.6",
+    "playwright-core": "^1.65.1",
     "sharp": "^0.35.5",
     "turbo": "^2.11.13",
     "typescript": "~6.0.2",

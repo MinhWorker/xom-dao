@@ -46,12 +46,13 @@
                       "!@xomdao/sdk/legacy",
                       "!@xomdao/bridge",
                       "!zod",
+                      "!three",
                       "!vitest",
                       "!./**",
                       "!../*",
                       "!../*/**"
                     ],
-                    "message": "A game may import only @xomdao/sdk, @xomdao/bridge (client), zod, vitest (tests) and its own files (./..., ../game/...)."
+                    "message": "A game may import only @xomdao/sdk, @xomdao/bridge (client), three (a client that draws in 3D), zod, vitest (tests) and its own files (./..., ../game/...)."
                   },
                   {
                     "group": ["../../**", "!../../manifest.js"],
