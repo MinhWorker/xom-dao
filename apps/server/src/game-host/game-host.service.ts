@@ -25,6 +25,7 @@ interface ActiveMatch {
   timer?: NodeJS.Timeout;
   gameTimer?: NodeJS.Timeout;
   gameTimerId?: number;
+  gameTimerDeadline?: number;
   botTurn?: NodeJS.Immediate;
   rules?: GameRuntime;
   stored?: Stored<unknown, unknown>;
@@ -44,13 +45,15 @@ interface GameRuntime {
     playerId: string,
     rng: Rng,
   ): Stored<unknown, unknown>;
-  timer(stored: Stored<unknown, unknown>): MatchTimer | null;
+  timer(stored: Stored<unknown, unknown>): PendingGameTimer | null;
   fireTimer(stored: Stored<unknown, unknown>, rng: Rng): Stored<unknown, unknown>;
   leave?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): Stored<unknown, unknown>;
   bot?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): GameEvent | null;
   view(stored: Stored<unknown, unknown>, playerId: string): unknown;
   result(stored: Stored<unknown, unknown>): MatchResult | null;
 }
+
+type PendingGameTimer = Pick<NonNullable<Stored<unknown, unknown>['timer']>, 'id' | 'event' | 'ms'>;
 
 export class GameHostError extends Error {}
 
@@ -258,22 +261,31 @@ export class GameHostService implements OnModuleDestroy {
     clearTimeout(match.gameTimer);
     match.gameTimer = undefined;
     match.gameTimerId = undefined;
+    match.gameTimerDeadline = undefined;
     if (!timer) return;
+    if (!Number.isFinite(timer.ms) || timer.ms < 0)
+      throw new Error('Game timer duration is invalid');
 
+    const deadline = Date.now() + timer.ms;
     match.gameTimerId = timer.id;
-    match.gameTimer = setTimeout(() => {
-      if (match.gameTimerId !== timer.id) return;
-      match.gameTimer = undefined;
-      match.gameTimerId = undefined;
-      if (match.status !== 'playing' || !match.rules || !match.stored || !match.rng) return;
-      if (match.rules.timer(match.stored)?.id !== timer.id) return;
-      try {
-        match.stored = match.rules.fireTimer(match.stored, match.rng);
-        this.updatePlaying(match);
-      } catch (error) {
-        this.abort(match, error);
-      }
-    }, timer.ms);
+    match.gameTimerDeadline = deadline;
+    match.gameTimer = setTimeout(
+      () => {
+        if (match.gameTimerId !== timer.id) return;
+        match.gameTimer = undefined;
+        match.gameTimerId = undefined;
+        match.gameTimerDeadline = undefined;
+        if (match.status !== 'playing' || !match.rules || !match.stored || !match.rng) return;
+        if (match.rules.timer(match.stored)?.id !== timer.id) return;
+        try {
+          match.stored = match.rules.fireTimer(match.stored, match.rng);
+          this.updatePlaying(match);
+        } catch (error) {
+          this.abort(match, error);
+        }
+      },
+      Math.max(0, deadline - Date.now()),
+    );
     match.gameTimer.unref();
   }
 
@@ -309,6 +321,7 @@ export class GameHostService implements OnModuleDestroy {
     match.timer = undefined;
     match.gameTimer = undefined;
     match.gameTimerId = undefined;
+    match.gameTimerDeadline = undefined;
     match.botTurn = undefined;
   }
 
@@ -329,11 +342,15 @@ export class GameHostService implements OnModuleDestroy {
       gameId: match.start.gameId,
       status: match.status,
       disconnectedPlayerIds: [...match.disconnectedPlayerIds],
-      timer:
-        match.status === 'playing' && match.rules && match.stored
-          ? match.rules.timer(match.stored)
-          : null,
+      timer: this.timerSnapshot(match),
     };
+  }
+
+  private timerSnapshot(match: ActiveMatch): MatchTimer | null {
+    if (match.status !== 'playing' || !match.rules || !match.stored) return null;
+    const timer = match.rules.timer(match.stored);
+    if (!timer) return null;
+    return { ...timer, deadline: match.gameTimerDeadline ?? Date.now() + timer.ms };
   }
 
   private publish(match: ActiveMatch & { outcome?: 'settled' | 'aborted'; result?: MatchResult }) {

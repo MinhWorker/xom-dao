@@ -248,6 +248,26 @@ describe('starting a Match', () => {
     rooms.join(room.code, acc('Hoa'));
     expect(rooms.start(room.code, 'lan').lastResult).toBeNull();
   });
+
+  it('does not pass a result forward when the roster changed during that Match', () => {
+    const rooms = setup();
+    const room = rooms.create('caro', acc('Lan'));
+    rooms.join(room.code, acc('Minh'));
+    rooms.setReady(room.code, 'minh', true);
+    const first = rooms.start(room.code, 'lan');
+    const result = {
+      seats: [
+        { player: 'lan', place: 1 },
+        { player: 'minh', place: 2 },
+      ],
+    };
+
+    rooms.leave(room.code, 'minh');
+    rooms.endMatch(room.code, first.matchId, result);
+    rooms.join(room.code, acc('Hoa'));
+
+    expect(rooms.start(room.code, 'lan').lastResult).toBeNull();
+  });
 });
 
 describe('profiles and empty Rooms', () => {

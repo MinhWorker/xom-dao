@@ -130,6 +130,7 @@ export const MatchTimer = z.object({
   id: z.int().min(1),
   event: z.string().min(1),
   ms: z.number(),
+  deadline: z.number(),
 });
 export type MatchTimer = z.infer<typeof MatchTimer>;
 

@@ -30,6 +30,8 @@ export interface Room {
   played: boolean;
   /** The last settled result, passed to a rematch while the seats stay the same. */
   lastResult: MatchResult | null;
+  /** Seat order when the current Match started; guards results after a mid-Match leave. */
+  matchPlayers: string[] | null;
 }
 
 /** Four characters with no 0/O/1/I, so a code is easy to read aloud and type. */
@@ -68,6 +70,7 @@ export class RoomsService {
       matchId: null,
       played: false,
       lastResult: null,
+      matchPlayers: null,
     };
     this.rooms.set(room.code, room);
     return room;
@@ -176,6 +179,7 @@ export class RoomsService {
     if (!room.played && seated.some((s) => !s.bot && s.id !== room.hostId && !s.ready)) {
       throw new RoomError('Chờ mọi người sẵn sàng đã');
     }
+    room.matchPlayers = seated.map(({ id }) => id);
     room.matchId = randomUUID();
     room.played = true;
     for (const seat of seated) seat.ready = undefined;
@@ -198,8 +202,15 @@ export class RoomsService {
   endMatch(code: string, matchId: string, result?: MatchResult) {
     const room = this.rooms.get(code);
     if (!room || room.matchId !== matchId) return undefined;
+    const currentPlayers = room.seats.filter((seat) => seat !== null).map(({ id }) => id);
+    const matchPlayers = room.matchPlayers;
+    const samePlayers =
+      matchPlayers !== null &&
+      matchPlayers.length === currentPlayers.length &&
+      matchPlayers.every((id, seat) => currentPlayers[seat] === id);
     room.matchId = null;
-    room.lastResult = result ?? null;
+    room.lastResult = samePlayers ? (result ?? null) : null;
+    room.matchPlayers = null;
     return room;
   }
 

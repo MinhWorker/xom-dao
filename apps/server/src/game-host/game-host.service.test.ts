@@ -241,7 +241,11 @@ describe('GameHostService', () => {
       status: 'playing',
       timer: { id: 1, event: 'timeout', ms: 100 },
     });
-    vi.advanceTimersByTime(100);
+    const deadline = host.match('match-1')?.timer?.deadline;
+    expect(deadline).toBe(Date.now() + 100);
+    vi.advanceTimersByTime(40);
+    expect(host.match('match-1')?.timer?.deadline).toBe(deadline);
+    vi.advanceTimersByTime(60);
 
     expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled', timer: null });
   });
