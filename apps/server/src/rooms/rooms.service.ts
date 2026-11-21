@@ -21,10 +21,10 @@ export interface Room {
   hostId: PlayerId;
   /** `manifest.maxPlayers` seats in order; `null` is an empty one. */
   seats: (RoomMember | null)[];
-  /** The running Match, `null` while waiting. */
-  match: { id: string; startedAt: number } | null;
-  /** Matches started so far. */
-  matches: number;
+  /** The running Match's id, `null` while waiting. */
+  matchId: string | null;
+  /** A Match was started here before: playing again needs no Sẵn sàng. */
+  played: boolean;
 }
 
 /** What GameHostModule needs to run a Match the host just started. */
@@ -36,8 +36,14 @@ export interface MatchStart {
   options: RoomOptions;
 }
 
-// Four characters with no 0/O/1/I, so a code is easy to read aloud and type.
+/** Four characters with no 0/O/1/I, so a code is easy to read aloud and type. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/** A Room code as typed (any case, stray spaces) in the form Rooms are kept under. */
+export const normalizeCode = (code: unknown) =>
+  String(code ?? '')
+    .replace(/\s/g, '')
+    .toUpperCase();
 
 /**
  * Session state: which Rooms exist, who sits where and with which options. Rooms live in
@@ -63,8 +69,8 @@ export class RoomsService {
       options: parseOptions(manifest, rawOptions),
       hostId: account.id,
       seats,
-      match: null,
-      matches: 0,
+      matchId: null,
+      played: false,
     };
     this.rooms.set(room.code, room);
     return room;
@@ -78,7 +84,7 @@ export class RoomsService {
       mine.connected = true;
       return room;
     }
-    if (room.match) throw new RoomError('Ván đang chơi, chờ hết ván nhé');
+    if (room.matchId) throw new RoomError('Ván đang chơi, chờ hết ván nhé');
     const free = room.seats.indexOf(null);
     if (free < 0) throw new RoomError('Phòng đã đủ người');
     room.seats[free] = member(account);
@@ -135,7 +141,7 @@ export class RoomsService {
     const room = this.get(code);
     const seat = room.seats.find((s) => s?.id === userId);
     if (!seat) throw new RoomError('Bạn chưa ở trong phòng này');
-    if (room.match) throw new RoomError('Ván đã bắt đầu');
+    if (room.matchId) throw new RoomError('Ván đã bắt đầu');
     seat.ready = ready;
     return room;
   }
@@ -166,14 +172,14 @@ export class RoomsService {
     if (seated.length < room.manifest.minPlayers) {
       throw new RoomError(`Cần ít nhất ${room.manifest.minPlayers} người chơi`);
     }
-    if (room.matches === 0 && seated.some((s) => !s.bot && s.id !== room.hostId && !s.ready)) {
+    if (!room.played && seated.some((s) => !s.bot && s.id !== room.hostId && !s.ready)) {
       throw new RoomError('Chờ mọi người sẵn sàng đã');
     }
-    room.match = { id: randomUUID(), startedAt: Date.now() };
-    room.matches++;
+    room.matchId = randomUUID();
+    room.played = true;
     for (const seat of seated) seat.ready = undefined;
     return {
-      matchId: room.match.id,
+      matchId: room.matchId,
       gameId: room.manifest.id,
       players: seated.map(({ id, name, bot, avatar }) => ({
         id,
@@ -188,8 +194,8 @@ export class RoomsService {
   /** The Match is over (settled or aborted): the Room waits to play again. */
   endMatch(code: string, matchId: string) {
     const room = this.rooms.get(code);
-    if (room?.match?.id !== matchId) return undefined;
-    room.match = null;
+    if (!room || room.matchId !== matchId) return undefined;
+    room.matchId = null;
     return room;
   }
 
@@ -202,8 +208,8 @@ export class RoomsService {
       hostId: room.hostId,
       seats: room.seats.map((s) => s && { ...s }),
       options: room.options,
-      status: room.match ? 'playing' : 'waiting',
-      matchId: room.match?.id ?? null,
+      status: room.matchId ? 'playing' : 'waiting',
+      matchId: room.matchId,
     };
   }
 
@@ -217,7 +223,7 @@ export class RoomsService {
   private hostBetweenMatches(code: string, userId: PlayerId) {
     const room = this.get(code);
     if (room.hostId !== userId) throw new RoomError('Chỉ chủ phòng mới làm được');
-    if (room.match) throw new RoomError('Đợi hết ván đã');
+    if (room.matchId) throw new RoomError('Đợi hết ván đã');
     return room;
   }
 
