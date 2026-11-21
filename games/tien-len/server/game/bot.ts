@@ -1,12 +1,9 @@
 /**
- * The computer's brain: which cards to play (or `null` to pass).
- *   easy    any legal play, and sometimes passes when it could play
- *   normal  the weakest play that works; leading, sheds its lowest card in the longest set
- *   hard    like normal, but keeps its 2s and bombs until they matter
+ * The computer's brain, one level: which cards to play (or `null` to pass). Following, it plays
+ * the weakest play that works; leading, it sheds its lowest card in the longest set.
  */
-import { pick, type Rng } from '@xomdao/sdk/legacy';
-import { beats, type Card, type Combo, comboOf, rankOf, TWO } from './cards.js';
-import type { BotLevel, State } from './model.js';
+import { beats, type Card, comboOf, rankOf, TWO } from './cards.js';
+import type { State } from './model.js';
 
 /** Every combination this hand can make (for the bot; enough variety, not every subset). */
 export function combosOf(hand: readonly Card[]): Card[][] {
@@ -44,10 +41,9 @@ function choose(cards: Card[], size: number): Card[][] {
   );
 }
 
-const isBomb = (c: Combo) => c.kind === 'quad' || c.kind === 'pairs';
 const strength = (cards: Card[]) => Math.max(...cards);
 
-export function botPlay(state: State, seat: number, level: BotLevel, rng: Rng): Card[] | null {
+export function botPlay(state: State, seat: number): Card[] | null {
   const hand = state.hands[seat] ?? [];
   const table = state.table && comboOf(state.table.cards);
   const legal = combosOf(hand).filter((cards) => {
@@ -56,9 +52,7 @@ export function botPlay(state: State, seat: number, level: BotLevel, rng: Rng): 
     return state.mustPlay === null || cards.includes(state.mustPlay);
   });
   if (legal.length === 0) return null;
-  if (level === 'easy') return table && rng() < 0.25 ? null : pick(rng, legal);
 
-  // Leading: get rid of the lowest card, in the longest set that holds it.
   if (!table) {
     const lowest = Math.min(...hand);
     const withLowest = legal.filter((cards) => cards.includes(lowest));
@@ -73,15 +67,5 @@ export function botPlay(state: State, seat: number, level: BotLevel, rng: Rng): 
   // Following: the weakest play of the same shape, bombs only when nothing else works.
   const same = legal.filter((cards) => comboOf(cards)?.kind === table.kind);
   const pool = same.length ? same : legal;
-  const choice = pool.reduce((best, cards) => (strength(cards) < strength(best) ? cards : best));
-  if (level === 'hard') {
-    const combo = comboOf(choice) as Combo;
-    const spendsTwo = choice.some((c) => rankOf(c) === TWO);
-    const onTwo = rankOf(table.top) === TWO;
-    const danger = state.hands.some((h, s) => s !== seat && h.length > 0 && h.length <= 3);
-    if ((spendsTwo || isBomb(combo)) && !onTwo && !danger && hand.length > choice.length) {
-      return null;
-    }
-  }
-  return choice;
+  return pool.reduce((best, cards) => (strength(cards) < strength(best) ? cards : best));
 }

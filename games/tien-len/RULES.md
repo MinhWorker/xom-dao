@@ -1,16 +1,15 @@
 # Luật Tiến Lên
 
-Tiến Lên miền Nam cho 2–4 người, có thể thêm máy ở mức Dễ, Vừa, Khó.
-Một ván đấu gồm 1, 3, 5 hoặc 10 vòng, mặc định 5; mỗi vòng chia 13 lá cho từng người còn chơi.
+Tiến Lên miền Nam cho 2–4 người, có thể thêm máy. Một ván đấu gồm 1, 3, 5 hoặc 10 vòng,
+mặc định 5; mỗi vòng chia 13 lá cho từng người.
 
 ## Lá bài và người đi trước
 
 Bộ 52 lá, không Joker. Thứ tự số từ nhỏ tới lớn là 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A, 2.
 Cùng số thì so chất: ♠ < ♣ < ♦ < ♥. Lá nhỏ nhất là 3♠, lớn nhất là 2♥.
 
-Vòng đầu, người thắng ván đấu trước đi trước nếu vẫn ở bàn. Nếu không,
-người giữ lá nhỏ nhất đã chia đi trước và nước đầu phải chứa lá ấy.
-Các vòng sau do người về nhất vòng trước mở đầu; nếu người đó rời bàn thì người kế tiếp mở đầu.
+Vòng đầu, người giữ 3♠ đi trước và nước đầu phải chứa lá ấy; nếu phòng vừa chơi xong một ván
+đấu thì người thắng ván đó đi trước. Các vòng sau do người về nhất vòng trước mở đầu.
 
 ## Bộ bài và chặn
 
@@ -41,20 +40,17 @@ Người đang mở bộ mới phải đánh, không được bỏ lượt.
 ## Xếp hạng và điểm
 
 Hết bài trước được hạng cao hơn. Khi chỉ còn một người giữ bài, người đó xếp bét và vòng kết thúc.
-Mỗi vòng, hạng nhất nhận số người tham gia vòng trừ 1 điểm; mỗi hạng sau giảm 1,
-bét nhận 0. Ví dụ bàn 4 người nhận 3/2/1/0 điểm.
+Hạng nhất nhận số người trừ 1 điểm, mỗi hạng sau giảm 1, bét nhận 0. Bàn 4 người nhận 3/2/1/0 điểm.
 
-Hết ván đấu, xếp theo tổng điểm, rồi số vòng về nhất, rồi thứ tự ghế. Người đứng đầu thắng
-và nhận 30 xu. Không thưởng tới trắng hoặc phạt điểm cho bài còn lại, kể cả heo.
+Hết ván đấu, xếp theo tổng điểm, rồi số vòng về nhất, rồi thứ tự ghế.
+Không thưởng tới trắng hoặc phạt điểm cho bài còn lại, kể cả heo.
 
 ## Thời gian
 
-Thời gian lượt chọn 15, 20 hoặc 30 giây, mặc định 20. Đồng hồ chạy khi còn ít nhất 2 người thật.
+Mỗi lượt có 20 giây khi bàn có ít nhất 2 người thật; bàn chỉ có một người thì không có đồng hồ.
 Hết giờ khi đang chặn thì tự bỏ lượt; khi đang mở bộ mới thì tự đánh lá nhỏ nhất.
 
 ## Rời bàn
 
-Người rời khi còn bài xếp dưới những người tiếp tục chơi trong vòng đó và nhận 0 điểm;
-người rời trước xếp thấp hơn. Người đã về hạng giữ kết quả vòng đó.
-Người rời không được chia bài các vòng sau và đứng dưới mọi người còn lại trong bảng tổng kết.
-Còn dưới 2 người ở bàn thì ván đấu kết thúc.
+Người rời giữa ván không làm ván dừng: máy chơi tiếp ghế đó tới hết ván đấu.
+Người rời xếp hạng chót trong bảng tổng kết; ván huỷ nếu không còn ai ở lại.

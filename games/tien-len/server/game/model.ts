@@ -1,12 +1,13 @@
 /**
- * What Tiến Lên remembers and what a room picks. Read this first; the logic is TienLenGame.ts.
+ * What Tiến Lên remembers and what a Room picks. Read this first; the logic is TienLenGame.ts.
  *
- * A game in the room is a match of several rounds ("vòng"). Each round deals 13 cards to
- * everyone still at the table and ends when all of them are ranked; ranks give points, and the
- * most points after the last round wins. A round is played in tricks: a trick ends when everyone
- * else passes on the last play.
+ * A Match is several rounds ("vòng"). Each round deals 13 cards to every seat and ends when all
+ * of them are ranked; ranks give points, and the most points after the last round wins. A round
+ * is played in tricks: a trick ends when everyone else passes on the last play. A seat whose
+ * person left is played by the computer, so every seat plays every round.
  */
-import { z } from 'zod';
+import type { ManifestOptions } from '@xomdao/sdk';
+import type manifest from '../../manifest.js';
 import type { Card, Kind } from './cards.js';
 
 /**
@@ -21,8 +22,8 @@ export const dealMs = (cards: number) =>
 export const INTRO = { roundMs: 1200, leadMs: 1200 };
 /** The round's ranking stays up this long before the next deal. */
 export const ROUND_OVER_MS = 5000;
-/** Coins for winning a match (a placeholder amount; also the game's `meta.rewardCap`). */
-export const WIN_COINS = 30;
+/** The turn clock (ms), when two or more people play (a table with one person has none). */
+export const TURN_MS = 20_000;
 
 /** Cards someone put on the table. */
 export interface Play {
@@ -35,13 +36,13 @@ export interface Play {
 
 /** How a round ended. */
 export interface RoundResult {
-  /** Seats best first (who left mid-round are at the bottom). */
+  /** Seats best first. */
   order: number[];
-  /** Points each seat got in this round (0 for seats not in it). */
+  /** Points each seat got in this round. */
   points: number[];
   /**
-   * Who was still holding cards when the round ended (`null` when everyone else left), and
-   * those cards: last with 2s in hand is "thối heo".
+   * Who was still holding cards when the round ended, and those cards: last with 2s in hand is
+   * "thối heo".
    */
   holder: number | null;
   leftover: Card[];
@@ -49,21 +50,19 @@ export interface RoundResult {
 
 /**
  * deal: the cards are flying out and the round is announced (no moves yet);
- * play: the round is on; over: its ranking is shown until the next deal (or the match ends).
+ * play: the round is on; over: its ranking is shown until the next deal (or the Match ends).
  */
 export type Phase = 'deal' | 'play' | 'over';
 
-/** Everything about a match in progress (on the server). */
+/** Everything about a Match in progress (on the server). */
 export interface State {
   /** The round being played, from 1. */
   round: number;
-  /** Rounds in the match (from the options). */
+  /** Rounds in the Match (from the options). */
   rounds: number;
   phase: Phase;
-  /** Each seat's cards, sorted weakest first (empty for seats not in the round). */
+  /** Each seat's cards, sorted weakest first. */
   hands: Card[][];
-  /** Seats dealt into this round. */
-  inRound: boolean[];
   /** Who leads this round. */
   lead: number;
   /** What must be beaten now; `null` when the turn player starts a new trick. */
@@ -76,14 +75,10 @@ export interface State {
   turn: number;
   /** Who passed in this trick (they sit out until the next trick). */
   passed: boolean[];
-  /** The match's first play must include this card (the lowest one dealt). */
+  /** The Match's first play must include this card (the lowest one dealt). */
   mustPlay: Card | null;
   /** Seats that emptied their hand this round, best first. */
   out: number[];
-  /** Seats that left during this round, placed from the bottom (the first to leave is last). */
-  sunk: number[];
-  /** Seats that left the match, in the order they left. */
-  gone: number[];
   /** Match points per seat. */
   points: number[];
   /** Rounds won per seat (breaks ties on points). */
@@ -99,17 +94,5 @@ export interface View extends Omit<State, 'hands'> {
   counts: number[];
 }
 
-export type BotLevel = 'easy' | 'normal' | 'hard';
-
-export const ROUNDS = [1, 3, 5, 10] as const;
-export const TURN_SECONDS = [15, 20, 30] as const;
-
-/** Picked on the setup screen: computer players, how strong, how many rounds, the turn clock. */
-export const optionsSchema = z.object({
-  bots: z.number().int().min(0).max(3).default(0),
-  level: z.enum(['easy', 'normal', 'hard']).default('normal'),
-  rounds: z.number().int().min(1).max(10).default(5),
-  /** Seconds per turn when two or more people play (a table with the computer has no clock). */
-  turnSeconds: z.number().int().min(5).max(60).default(20),
-});
-export type Options = z.infer<typeof optionsSchema>;
+/** Picked in the waiting room: how many rounds. */
+export type Options = ManifestOptions<typeof manifest>;
