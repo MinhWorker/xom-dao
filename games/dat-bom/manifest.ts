@@ -9,7 +9,7 @@ export default defineManifest({
   duration: { min: 2, max: 3 },
   status: 'wip',
   bots: true,
-  focus: { x: 50, y: 50 },
+  focus: { x: 64, y: 50 },
   options: {
     level: {
       type: 'choice',
