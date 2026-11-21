@@ -13,9 +13,9 @@ src/net/store.ts   The one socket (`/ws`) and the Session state; every push and 
                    `@xomdao/shared/client` first. `net/hub.ts` makes the page's store + `useHub`
 src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.json` + the art and
                    rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production
-src/kit/           Button, CutPanel, Chip, TextField, Dialog, Tabs, Choice, Toggle, Menu, Toast, Icon:
+src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Menu, Toast, Icon:
                    no server knowledge. `toast()` needs `<ToastRegion />` (mounted in main.tsx)
-src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), kit/
+src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), kit/
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
@@ -30,6 +30,8 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   Game first.
 - Tests (Vitest) cover the router and the store through their public functions; the store takes
   a fake socket, `fetch` and storage (`StoreDeps`). Add to them when you change either.
+- `npm run smoke:hub` (root) drives two headless pages through friends and invites against a real
+  server and the dev Hub; it saves screenshots to `smoke-hub/`. Run it when you change `screens/friends/`.
 - Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 

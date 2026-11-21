@@ -5,6 +5,7 @@ export { CutPanel } from './CutPanel.js';
 export { Dialog } from './Dialog.js';
 export { CoinIcon, GemIcon, Icon } from './Icon.js';
 export { Menu } from './Menu.js';
+export { Sheet } from './Sheet.js';
 export { Tabs } from './Tabs.js';
 export { TextField } from './TextField.js';
 export { ToastRegion } from './Toast.js';

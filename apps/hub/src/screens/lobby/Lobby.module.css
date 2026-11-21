@@ -62,11 +62,44 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
   font-family: var(--font-display);
   font-size: var(--text-md);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.friends {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  padding: 0 5px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
 }
 
 .initial {
