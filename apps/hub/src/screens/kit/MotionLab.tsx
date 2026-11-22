@@ -1,6 +1,7 @@
 import {
   IconAnchor,
   IconBell,
+  IconChevronLeft,
   IconChevronRight,
   IconMail,
   IconSettings,
@@ -8,6 +9,7 @@ import {
 } from '@tabler/icons-react';
 import {
   type CSSProperties,
+  type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
   useEffect,
@@ -50,11 +52,13 @@ function LabDialog({
   open,
   onClose,
   className,
+  onKeyDown,
   children,
 }: {
   open: boolean;
   onClose(): void;
   className: string;
+  onKeyDown?(e: KeyboardEvent<HTMLDialogElement>): void;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -69,6 +73,7 @@ function LabDialog({
     <dialog
       ref={ref}
       className={className}
+      onKeyDown={onKeyDown}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -235,6 +240,163 @@ function Loading({ kind, onDone }: { kind: 'match' | 'harbour'; onDone(): void }
   );
 }
 
+const PAGES: { title: string; body(art?: string): ReactNode }[] = [
+  {
+    title: 'Luật chơi',
+    body: () => (
+      <>
+        <p>
+          Hai người lần lượt đặt quân X và O lên bàn. Ai có năm quân liền nhau theo hàng ngang, hàng
+          dọc hoặc đường chéo trước thì thắng.
+        </p>
+        <p>
+          Người cầm X đi trước. Mỗi lượt chỉ được đặt một quân vào một ô trống, và quân đã đặt thì
+          không đi lại được.
+        </p>
+        <p>
+          Nếu bàn kín mà chưa ai có năm quân liền nhau, ván hoà. Hết giờ mà chưa đặt quân thì mất
+          lượt.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: 'Một lượt',
+    body: () => (
+      <ol className={styles.steps}>
+        <li>Chờ tới lượt mình: tên bạn sáng lên.</li>
+        <li>Chạm vào một ô trống để đặt quân.</li>
+        <li>Chạm lần nữa để xác nhận.</li>
+        <li>Đồng hồ của đối thủ bắt đầu chạy.</li>
+      </ol>
+    ),
+  },
+  {
+    title: 'Bàn cờ',
+    body: (art) => (
+      <figure className={styles.figure}>
+        {art ? <img src={art} alt="" /> : <span />}
+        <figcaption>Bàn 15 × 15, ô giữa có dấu chấm.</figcaption>
+      </figure>
+    ),
+  },
+  {
+    title: 'Tính điểm',
+    body: () => (
+      <ul className={styles.scores}>
+        {PLAYERS.map((p, i) => (
+          <li key={p.name}>
+            <img src={p.avatar} alt="" />
+            <span>{p.name}</span>
+            <span>{['+3', '+1', '0'][i]}</span>
+          </li>
+        ))}
+      </ul>
+    ),
+  },
+  {
+    title: 'Mẹo',
+    body: () => (
+      <p>
+        Chặn ngay khi đối thủ có ba quân liền nhau và hai đầu còn trống: để tới bốn thì đã muộn.
+      </p>
+    ),
+  },
+];
+
+/** The pager overlay: pages on a swipeable snap track inside one glass panel, the HUD's band left clear. */
+function Pager({ open, onClose, art }: { open: boolean; onClose(): void; art?: string }) {
+  const [page, setPage] = useState(0);
+  const track = useRef<HTMLDivElement>(null);
+  const last = PAGES.length - 1;
+
+  useEffect(() => {
+    if (!open || !track.current) return;
+    track.current.scrollLeft = 0;
+    setPage(0);
+  }, [open]);
+
+  const go = (to: number) => {
+    const el = track.current;
+    if (!el) return;
+    const n = Math.max(0, Math.min(last, to));
+    const still =
+      el.closest('[data-reduce]') !== null ||
+      matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollTo({ left: n * el.clientWidth, behavior: still ? 'instant' : 'smooth' });
+  };
+
+  return (
+    <LabDialog
+      open={open}
+      onClose={onClose}
+      className={styles.pager}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowLeft') go(page - 1);
+        else if (e.key === 'ArrowRight') go(page + 1);
+        else return;
+        e.preventDefault();
+      }}
+    >
+      <div className={styles.pagerMain}>
+        <button
+          type="button"
+          className={`${styles.nav} ${styles.glass}`}
+          aria-label="Trang trước"
+          disabled={page === 0}
+          onClick={() => go(page - 1)}
+        >
+          <Icon icon={IconChevronLeft} size={32} />
+        </button>
+        <div className={`${styles.pagerPanel} ${styles.glass} cut-br`}>
+          <header className={styles.sheetTop}>
+            <h2>{PAGES[page]?.title}</h2>
+            <span className={styles.count}>
+              {page + 1} / {PAGES.length}
+            </span>
+            <button type="button" className={styles.close} aria-label="Đóng" onClick={onClose}>
+              <Icon icon={IconX} size={28} />
+            </button>
+          </header>
+          <div
+            ref={track}
+            className={styles.track}
+            onScroll={(e) =>
+              setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))
+            }
+          >
+            {PAGES.map((p, i) => (
+              <section
+                key={p.title}
+                className={styles.page}
+                data-active={i === page || undefined}
+                aria-label={p.title}
+                aria-hidden={i !== page}
+              >
+                {p.body(art)}
+              </section>
+            ))}
+          </div>
+        </div>
+        <button
+          type="button"
+          className={`${styles.nav} ${styles.glass}`}
+          aria-label="Trang sau"
+          disabled={page === last}
+          onClick={() => go(page + 1)}
+        >
+          <Icon icon={IconChevronRight} size={32} />
+        </button>
+      </div>
+      <div className={styles.dots} aria-hidden="true">
+        {PAGES.map((p, i) => (
+          <span key={p.title} className={styles.dot} data-active={i === page || undefined} />
+        ))}
+      </div>
+    </LabDialog>
+  );
+}
+
 /** On touch, a press plays the sheen and underline a mouse gets on hover. */
 function pressFlash(e: PointerEvent<HTMLElement>) {
   if (e.pointerType === 'mouse') return;
@@ -271,7 +433,8 @@ function pressFlash(e: PointerEvent<HTMLElement>) {
 export function MotionLab({ full }: { full?: boolean }) {
   const [level, setLevel] = useState('high');
   const [reduce, setReduce] = useState(false);
-  const [dialog, setDialog] = useState<'box' | 'band' | null>(null);
+  const [dialog, setDialog] = useState<'notify' | 'confirm' | 'band' | null>(null);
+  const [pager, setPager] = useState(false);
   const [sheet, setSheet] = useState<'friends' | 'settings' | null>(null);
   const [wait, setWait] = useState<{ blocking: boolean; shown: boolean } | null>(null);
   const [loading, setLoading] = useState<'match' | 'harbour' | null>(null);
@@ -363,9 +526,11 @@ export function MotionLab({ full }: { full?: boolean }) {
             </span>
           </Button>
           <div className={`${styles.row} ${styles.even}`}>
-            <Button className={styles.alive}>Hàng xóm</Button>
-            <Button variant="ghost" className={styles.alive}>
-              Rời
+            <Button className={styles.alive} onClick={() => setLoading('match')}>
+              Tải ván
+            </Button>
+            <Button variant="ghost" className={styles.alive} onClick={() => setLoading('harbour')}>
+              Về Bến
             </Button>
             <Button className={styles.alive} disabled>
               Khoá
@@ -378,14 +543,25 @@ export function MotionLab({ full }: { full?: boolean }) {
           <div className={styles.group}>
             <span className={styles.label}>Hộp thoại</span>
             <div className={styles.row}>
-              <Button className={styles.alive} onClick={() => setDialog('box')}>
-                Hộp
+              <Button className={styles.alive} onClick={() => setDialog('notify')}>
+                Báo
+              </Button>
+              <Button className={styles.alive} onClick={() => setDialog('confirm')}>
+                Hỏi
               </Button>
               <Button className={styles.alive} onClick={() => setDialog('band')}>
                 Dải ngang
               </Button>
+            </div>
+          </div>
+          <div className={styles.group}>
+            <span className={styles.label}>Lớp phủ</span>
+            <div className={styles.row}>
               <Button className={styles.alive} onClick={() => setSheet('friends')}>
                 Sheet
+              </Button>
+              <Button className={styles.alive} onClick={() => setPager(true)}>
+                Trang
               </Button>
             </div>
           </div>
@@ -400,17 +576,6 @@ export function MotionLab({ full }: { full?: boolean }) {
               </Button>
               <Button className={styles.alive} onClick={() => request(2500, true)}>
                 Vào phòng
-              </Button>
-            </div>
-          </div>
-          <div className={styles.group}>
-            <span className={styles.label}>Màn tải</span>
-            <div className={styles.row}>
-              <Button className={styles.alive} onClick={() => setLoading('match')}>
-                Tải ván
-              </Button>
-              <Button className={styles.alive} onClick={() => setLoading('harbour')}>
-                Về Bến
               </Button>
             </div>
           </div>
@@ -430,17 +595,33 @@ export function MotionLab({ full }: { full?: boolean }) {
         </div>
       )}
 
+      <Pager open={pager} onClose={() => setPager(false)} art={art} />
+
       {loading && <Loading kind={loading} onDone={() => setLoading(null)} />}
 
       <LabDialog
-        open={dialog === 'box'}
+        open={dialog === 'notify'}
+        onClose={() => setDialog(null)}
+        className={`${styles.box} ${styles.glass} cut-br`}
+      >
+        <h2>Đã gửi lời mời</h2>
+        <p>Lan sẽ thấy lời mời khi vào Bến.</p>
+        <div className={styles.actions}>
+          <Button variant="primary" className={styles.alive} onClick={() => setDialog(null)}>
+            Đã hiểu
+          </Button>
+        </div>
+      </LabDialog>
+
+      <LabDialog
+        open={dialog === 'confirm'}
         onClose={() => setDialog(null)}
         className={`${styles.box} ${styles.glass} cut-br`}
       >
         <h2>Rời ván?</h2>
         <p>Bạn sẽ bị tính hạng chót.</p>
         <div className={styles.actions}>
-          <Button variant="ghost" className={styles.alive} onClick={() => setDialog(null)}>
+          <Button className={styles.alive} onClick={() => setDialog(null)}>
             Ở lại
           </Button>
           <Button variant="primary" className={styles.alive} onClick={() => setDialog(null)}>
