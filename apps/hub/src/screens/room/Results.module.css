@@ -1,0 +1,142 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--safe-top) + var(--space-4)) calc(var(--safe-right) + var(--space-4))
+    calc(var(--safe-bottom) + var(--space-4)) calc(var(--safe-left) + var(--space-4));
+  background: radial-gradient(ellipse at center, rgb(0 0 0 / 0.45), rgb(0 0 0 / 0.75));
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-3);
+  width: min(460px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.verdict {
+  font-size: var(--text-xl);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.verdict[data-outcome="win"] {
+  color: var(--accent);
+}
+
+.verdict[data-outcome="lose"] {
+  color: var(--danger);
+}
+
+.places {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.places li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 40px;
+  padding: 0 var(--space-3) 0 0;
+  border-left: 3px solid transparent;
+  background: rgb(255 255 255 / 0.03);
+}
+
+.places li.me {
+  border-left-color: var(--accent);
+  background: rgb(255 194 52 / 0.08);
+}
+
+.place {
+  width: 2.5ch;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.places li[data-first] .place {
+  color: var(--accent);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me .name {
+  font-weight: 600;
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.wait {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel {
+    animation: rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .verdict {
+    animation: stamp 320ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1.2) both;
+  }
+
+  .places li {
+    animation: rise 220ms both;
+  }
+
+  .places li:nth-child(2) {
+    animation-delay: 60ms;
+  }
+
+  .places li:nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .places li:nth-child(n + 4) {
+    animation-delay: 180ms;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
