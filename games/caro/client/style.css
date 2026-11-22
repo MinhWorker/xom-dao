@@ -172,6 +172,12 @@ body::after {
   animation: none;
 }
 
+.paused *,
+.paused *::before {
+  animation-play-state: paused;
+  transition: none;
+}
+
 @keyframes beat {
   50% {
     opacity: 0.35;

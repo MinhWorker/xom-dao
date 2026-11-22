@@ -41,6 +41,7 @@ let status: MatchPush['status'] = 'loading';
 let doneSentFor: string | null = null;
 let donePendingFor: string | null = null;
 let doneTimer = 0;
+let hidden = false;
 const scene: Scene = {
   state: null,
   pending: null,
@@ -83,8 +84,20 @@ const bridge = createGameBridge({
     if (status === 'over') finish(push);
   },
   onSettings: (settings) => sounds.apply(settings),
-  onVisibility: (hidden) => sounds.setHidden(hidden),
+  onVisibility: pause,
 });
+
+/** Mutes and stops every animation while the Hub's tab is hidden; redraws when it shows again. */
+function pause(paused: boolean) {
+  hidden = paused;
+  sounds.setHidden(paused);
+  document.documentElement.classList.toggle('paused', paused);
+  if (!paused) frame();
+  else if (raf) {
+    cancelAnimationFrame(raf);
+    raf = 0;
+  }
+}
 
 /** Shows a state; `animate` draws what changed since the last one. */
 function show(state: State | null, animate: boolean) {
@@ -202,7 +215,7 @@ function updateSeats() {
 
 let raf = 0;
 function frame() {
-  if (raf) return;
+  if (raf || hidden) return;
   raf = requestAnimationFrame((now) => {
     raf = 0;
     view.draw(scene, now);
