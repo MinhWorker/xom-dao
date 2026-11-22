@@ -7,6 +7,7 @@ import {
   IconInfoCircle,
   IconMail,
   IconSettings,
+  IconWifiOff,
   IconX,
 } from '@tabler/icons-react';
 import {
@@ -68,6 +69,8 @@ function LabDialog({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const wanted = useRef(open);
+  wanted.current = open;
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
@@ -79,6 +82,9 @@ function LabDialog({
       ref={ref}
       className={className}
       onKeyDown={onKeyDown}
+      onClose={(e) => {
+        if (wanted.current) e.currentTarget.showModal();
+      }}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -603,6 +609,86 @@ function ToastCard({
   );
 }
 
+/** A fishing boat adrift on flat faceted water under a lost signal: the offline screen's picture. */
+function AdriftArt() {
+  return (
+    <svg className={styles.adrift} viewBox="36 22 148 138" aria-hidden="true">
+      <g className={`${styles.lost} ${styles.loop}`}>
+        <path
+          d="M84 46a40 40 0 0 1 52 0M94 58a24 24 0 0 1 32 0"
+          fill="none"
+          stroke="#ffc234"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray="7 7"
+        />
+        <polygon points="104,70 116,70 110,78" fill="#ffc234" />
+      </g>
+      <path d="M86 32 134 78" stroke="#e8ecf1" strokeWidth="5" strokeLinecap="round" />
+      <g className={`${styles.boat} ${styles.loop}`}>
+        <g stroke="#0b0d10" strokeWidth="3" strokeLinejoin="round">
+          <polygon points="108,92 108,128 76,128" fill="#e8ecf1" />
+          <polygon points="112,98 112,128 136,128" fill="#c3ccd7" />
+          <polygon points="62,130 158,130 146,148 74,148" fill="#e8ecf1" />
+        </g>
+        <polygon points="62,130 110,130 104,148 74,148" fill="#f8fafc" />
+        <polygon points="62,130 158,130 157,134 63,134" fill="#ffc234" />
+        <path d="M110 88V130" stroke="#0b0d10" strokeWidth="3" />
+      </g>
+      <g className={`${styles.waves} ${styles.loop}`} fill="#3a4048">
+        <polygon points="0,150 30,144 60,152 90,145 120,152 150,145 180,152 210,145 240,152 240,170 0,170" />
+      </g>
+      <g fill="#2f343b">
+        <polygon points="0,160 40,155 80,161 120,156 160,161 200,156 220,159 220,170 0,170" />
+      </g>
+    </svg>
+  );
+}
+
+/** The connection is lost: frosted glass over everything, a picture, the retries, and only "Thử lại" closes it. */
+function Offline({ open, onDone }: { open: boolean; onDone(): void }) {
+  const [tries, setTries] = useState(1);
+  const [retrying, setRetrying] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setTries(1);
+    setRetrying(false);
+    const id = setInterval(() => setTries((n) => n + 1), 2500);
+    return () => clearInterval(id);
+  }, [open]);
+
+  useEffect(() => {
+    if (!retrying) return;
+    const id = setTimeout(onDone, 1500);
+    return () => clearTimeout(id);
+  }, [retrying, onDone]);
+
+  return (
+    <LabDialog open={open} onClose={() => {}} className={styles.offline ?? ''}>
+      <div className={styles.offlineInner}>
+        <AdriftArt />
+        <div className={styles.offlineText}>
+          <h2>Có gì đó sai sai</h2>
+          <p>Server không phản hồi</p>
+          <span className={styles.retryLine} role="status">
+            <Diamond size={20} />
+            {retrying ? 'Đang thử lại…' : `Đang kết nối lại · lần ${tries}`}
+          </span>
+          <Button
+            variant="primary"
+            className={styles.alive}
+            disabled={retrying}
+            onClick={() => setRetrying(true)}
+          >
+            Thử lại
+          </Button>
+        </div>
+      </div>
+    </LabDialog>
+  );
+}
+
 /** On touch, a press plays the sheen and underline a mouse gets on hover. */
 function pressFlash(e: PointerEvent<HTMLElement>) {
   if (e.pointerType === 'mouse') return;
@@ -642,10 +728,12 @@ export function MotionLab({ full }: { full?: boolean }) {
   const [dialog, setDialog] = useState<'notify' | 'confirm' | 'band' | null>(null);
   const [pager, setPager] = useState(false);
   const [sheet, setSheet] = useState<'friends' | 'settings' | null>(null);
+  const [offline, setOffline] = useState(false);
+  const endOffline = useCallback(() => setOffline(false), []);
   const toasts = useToasts();
   const region = useRef<HTMLElement>(null);
   const showing = toasts.items.length > 0;
-  const overlays = `${dialog}${sheet}${pager}`;
+  const overlays = `${dialog}${sheet}${pager}${offline}`;
   const [wait, setWait] = useState<{ blocking: boolean; shown: boolean } | null>(null);
   const [loading, setLoading] = useState<'match' | 'harbour' | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -656,7 +744,7 @@ export function MotionLab({ full }: { full?: boolean }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: an overlay opening re-raises the toasts above it in the top layer
   useEffect(() => {
     const el = region.current;
-    if (!el) return;
+    if (!el || offline) return;
     if (el.matches(':popover-open')) el.hidePopover();
     if (showing) el.showPopover();
   }, [showing, overlays]);
@@ -756,6 +844,13 @@ export function MotionLab({ full }: { full?: boolean }) {
                 </Button>
                 <Button className={styles.alive} onClick={() => setDialog('band')}>
                   Dải ngang
+                </Button>
+                <Button
+                  className={`${styles.alive} ${styles.kind}`}
+                  aria-label="Mất kết nối"
+                  onClick={() => setOffline(true)}
+                >
+                  <Icon icon={IconWifiOff} size={26} />
                 </Button>
               </div>
             </div>
@@ -982,6 +1077,8 @@ export function MotionLab({ full }: { full?: boolean }) {
           </div>
         </>
       )}
+
+      <Offline open={offline} onDone={endOffline} />
     </section>
   );
 }
