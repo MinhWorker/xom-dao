@@ -96,6 +96,31 @@ class BotGame extends Game<{ turn: number }> {
   }
 }
 
+/** BotGame whose computer thinks 800 ms; `poke` changes the state without passing the turn. */
+class ThinkingBotGame extends Game<{ turn: number; pokes: number }> {
+  readonly events = { take: z.object({}), poke: z.object({}) };
+
+  onStart() {
+    return { turn: 1, pokes: 0 };
+  }
+
+  onTake(ctx: EventContext<{ turn: number; pokes: number }>) {
+    return { ...ctx.state, turn: 0 };
+  }
+
+  onPoke(ctx: EventContext<{ turn: number; pokes: number }>) {
+    return { ...ctx.state, pokes: ctx.state.pokes + 1 };
+  }
+
+  bot({ state, player }: BotContext<{ turn: number; pokes: number }>) {
+    return state.turn === player.seat ? { event: 'take' } : null;
+  }
+
+  botDelay() {
+    return 800;
+  }
+}
+
 class LeavingGame extends Game<{ started: boolean }> {
   readonly events = {};
 
@@ -335,6 +360,55 @@ describe('GameHostService', () => {
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(host.view('match-1', 'lan')).toEqual({ turn: 0 });
+  });
+
+  describe('a computer that thinks', () => {
+    const botStart = {
+      ...matchStart,
+      players: matchStart.players.map((player) =>
+        player.id === 'minh' ? { id: 'bot:2', name: 'Máy', bot: true } : player,
+      ),
+    };
+    function playing() {
+      vi.useFakeTimers();
+      const host = hostOf([{ manifest, version: 'v1', game: new ThinkingBotGame() }]);
+      const updates: { status: string; outcome?: string }[] = [];
+      host.onState((match) => updates.push(match));
+      host.startMatch(botStart);
+      host.ready('match-1', 'lan');
+      return { host, updates };
+    }
+
+    it('waits the Game’s think time before playing the move', () => {
+      const { host } = playing();
+
+      vi.advanceTimersByTime(799);
+      expect(host.view('match-1', 'lan')).toMatchObject({ turn: 1 });
+      vi.advanceTimersByTime(1);
+      expect(host.view('match-1', 'lan')).toMatchObject({ turn: 0 });
+    });
+
+    it('thinks again when the state changes while it waits', () => {
+      const { host } = playing();
+
+      vi.advanceTimersByTime(500);
+      host.move('match-1', 'lan', { event: 'poke' });
+      vi.advanceTimersByTime(500);
+      expect(host.view('match-1', 'lan')).toMatchObject({ turn: 1, pokes: 1 });
+      vi.advanceTimersByTime(300);
+      expect(host.view('match-1', 'lan')).toMatchObject({ turn: 0, pokes: 1 });
+    });
+
+    it('drops the wait when the Match ends', () => {
+      const { host, updates } = playing();
+
+      vi.advanceTimersByTime(400);
+      host.stop('match-1');
+      vi.advanceTimersByTime(1000);
+
+      expect(updates.map(({ status }) => status)).toEqual(['loading', 'playing', 'over']);
+      expect(updates.at(-1)).toMatchObject({ outcome: 'aborted' });
+    });
   });
 
   it('aborts a Match when a player leaves and the Game has no leave hook', () => {

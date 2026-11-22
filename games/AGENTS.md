@@ -130,8 +130,9 @@ Make a Godot Game:
    to the Master bus; `music` and `effects` (0 to 1, may be missing) are not applied, for a Game
    with a channel of each. A `match:state` push whose `status` is `over` carries the `result`
    (`seats[].player`, `place`, `score`) and no `view`: the last move never arrives as a view, so
-   show the end from the result (Tiến Lên shows its standings from it). The server applies the
-   computer's moves with no pause: queue the pushes and pace them on screen (`main.gd`).
+   show the end from the result (Tiến Lên shows its standings from it). Unless the Game declares
+   `botDelay`, the server applies the computer's moves with no pause: queue the pushes and pace
+   them on screen (`main.gd`).
 4. Run it against a Game server: start the server and the Harness as above and `create` a Room
    first (the Harness refuses a Game client until a Room exists; the addon retries every second),
    then run the scene from the editor or `godot --path games/<id>/godot -- --harness=ws://127.0.0.1:8040/bridge?player=0`.
@@ -290,6 +291,10 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
   - `room.options` is a zod schema, and `optionsSchema.parse({})` must work.
   - The `Game` reads them as `ctx.options`; the table gets them in the snapshot's `options`.
   - `room.bots` seats computer players, whose moves come from `bot(ctx)`.
+  - New platform: the optional `botDelay(ctx)` (same context as `bot`) returns the ms the computer
+    thinks before each move, e.g. `600 + Math.floor(ctx.rng() * 600)`. The server waits that long,
+    then plays it, and drops the wait when the Match ends or its state changes. Without it the
+    move is played at once. `testGame(...).botDelay(player)` returns it.
   - `room.withBots(options, count)` gives the options with the computer in `count` empty seats:
     quick match (CHƠI) fills a room with it when nobody else comes (`QUICK_WAIT_MS`).
   - The host may replace them between games with `room:options` (the hub has no board for it
