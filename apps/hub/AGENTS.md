@@ -74,6 +74,9 @@ goes back to the waiting room, so playing again reuses it.
 - `send` → `match:move { matchId, event, payload }`; the server's refusal goes back in `ack`.
 - Results show on `done`, or 4 s after the Match is over if the Game never says it. Places come
   from the `match:state` that ends it (`match:result` is not resent after a reconnect).
+- While Results show, the eye button (`screens/room/Peek`) in the corner hides every element marked
+  `data-hud` (Results and the corner's other buttons) while a mouse hovers it or a finger holds it,
+  so the Game's last state shows. The Game does nothing for it.
 - Rules: `screens/rules/RulesPager` is a modal `<dialog>` over everything, opened from the
   waiting room's "Luật chơi" button and from the corner menu during a Match (the Match keeps
   running under it). It is a scroll-snap track, one slide per page of `HubGame.rules`; mount it to

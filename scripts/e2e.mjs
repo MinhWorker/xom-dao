@@ -1,7 +1,8 @@
 // End-to-end test of the Hub: a real server (no database), the Hub in dev mode and two headless
 // Chromium pages on a phone-sized screen. Alice signs up, Bob logs in, Alice opens a Room for a
 // Game, Bob joins by its code and gets ready, Alice starts, and they play the Game inside its
-// iframe until the Match ends. Both pages must receive `match:result` and show the Results.
+// iframe until the Match ends. Both pages must receive `match:result` and show the Results, and
+// holding the eye button must hide the HUD.
 //   caro       Caro (TypeScript canvas): they click marks until Alice's five in a row wins.
 //   tien-len   Tiến Lên (Godot, a one-round Match): the player who leads taps the lowest card and
 //              Đánh each trick and the other taps Bỏ lượt, so the leader empties their hand first.
@@ -288,6 +289,16 @@ async function main(game, stack, browser) {
   await winner.getByText('Thắng').waitFor();
   await a.screenshot({ path: resolve(shots, `${game.id}-5-results.png`) });
   await b.screenshot({ path: resolve(shots, `${game.id}-5-results-bob.png`) });
+
+  // Holding the eye hides the whole HUD, Results included, so the Game's last state shows.
+  const eye = a.getByRole('button', { name: 'Xem ván' });
+  const panel = a.getByText('Kết quả', { exact: true });
+  const opacity = () => panel.evaluate((el) => getComputedStyle(el.closest('[data-hud]')).opacity);
+  await eye.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 7, isPrimary: true });
+  await until('the HUD to hide', async () => (await opacity()) === '0', 5);
+  await a.screenshot({ path: resolve(shots, `${game.id}-6-peek.png`) });
+  await eye.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 7, isPrimary: true });
+  await until('the HUD to come back', async () => (await opacity()) === '1', 5);
 
   const problems = [...alice.problems, ...bob.problems];
   if (problems.length) throw new Error(`The pages reported errors:\n${problems.join('\n')}`);
