@@ -6,8 +6,10 @@
   and each Island's `apps/hub/src/island-art/<island>.png`, 2560×1152) come from
   `npm run splash -- [caro|tien-len|islands]`. A Game's splash uses its client's own colours
   and shapes, so it matches the game (Caro: ink marks on squared paper; Tiến Lên: ivory cards on
-  felt). A Game whose look is not settled gets a placeholder: the Island's Emblem on a tinted
-  backdrop (the Islands'). Đặt Bom's `key-art.png` is an older render that already matches
+  felt). An Island's splash is a wallpaper of objects of its genre (`MOTIFS` in the script: marks, stones and
+  discs for Cờ; cards for Bài; dice and pawns for Xúc Xắc; bombs, stars and crates for Náo Nhiệt) on
+  a tinted backdrop, fading out to the left. A Game whose look is not settled gets the same kind of
+  placeholder. Đặt Bom's `key-art.png` is an older render that already matches
   its scene. Keep the subject in the right 60% and the left 40% dark and empty. Do not use AI image
   generation for splash art. `tools/hub-assets` checks the Games' art in its build and the
   Islands' in its tests (`checkIslandArt`).

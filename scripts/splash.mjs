@@ -4,7 +4,6 @@
 // `games/tien-len/godot/style.gd`). The Islands' art is a placeholder: the Island's Emblem on a
 // tinted backdrop, until the Games of that Island have a look of their own. Đặt Bom's
 // `hub/key-art.png` is not made here.
-import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -205,7 +204,7 @@ function suit(kind, extent, color) {
   const shapes = {
     heart,
     diamond: `<path d="M0 ${-u}L${0.72 * u} 0L0 ${u}L${-0.72 * u} 0Z"/>`,
-    spade: `<g transform="scale(1 -1) translate(0 ${-0.18 * u})">${heart}</g><path d="M${-0.1 * u} ${0.2 * u}L${0.1 * u} ${0.2 * u}L${0.36 * u} ${0.98 * u}L${-0.36 * u} ${0.98 * u}Z"/>`,
+    spade: `<path d="M0 ${-u}C${0.2 * u} ${-0.5 * u} ${1.05 * u} ${-0.2 * u} ${1.05 * u} ${0.3 * u}C${1.05 * u} ${0.75 * u} ${0.35 * u} ${0.85 * u} ${0.08 * u} ${0.45 * u}L${0.3 * u} ${u}L${-0.3 * u} ${u}L${-0.08 * u} ${0.45 * u}C${-0.35 * u} ${0.85 * u} ${-1.05 * u} ${0.75 * u} ${-1.05 * u} ${0.3 * u}C${-1.05 * u} ${-0.2 * u} ${-0.2 * u} ${-0.5 * u} 0 ${-u}Z"/>`,
     club: `<circle cx="0" cy="${-0.46 * u}" r="${0.4 * u}"/><circle cx="${-0.48 * u}" cy="${0.2 * u}" r="${0.4 * u}"/><circle cx="${0.48 * u}" cy="${0.2 * u}" r="${0.4 * u}"/><path d="M${-0.09 * u} 0L${0.09 * u} 0L${0.36 * u} ${0.98 * u}L${-0.36 * u} ${0.98 * u}Z"/>`,
   };
   return `<g fill="${color}">${shapes[kind]}</g>`;
@@ -297,18 +296,139 @@ function hsl(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+const hash = (a, b, k) => {
+  const v = Math.sin(a * 127.1 + b * 311.7 + k * 74.7) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+const dot = (x, y, r, fill) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}"/>`;
+
+const PIPS = {
+  1: [[0, 0]],
+  2: [
+    [-17, -17],
+    [17, 17],
+  ],
+  3: [
+    [-17, -17],
+    [0, 0],
+    [17, 17],
+  ],
+  4: [
+    [-17, -17],
+    [17, -17],
+    [-17, 17],
+    [17, 17],
+  ],
+  5: [
+    [-17, -17],
+    [17, -17],
+    [0, 0],
+    [-17, 17],
+    [17, 17],
+  ],
+  6: [
+    [-17, -19],
+    [17, -19],
+    [-17, 0],
+    [17, 0],
+    [-17, 19],
+    [17, 19],
+  ],
+};
+const die = (n) =>
+  `<rect x="-34" y="-34" width="68" height="68" rx="10" fill="#f3ecd9" stroke="#c9bb97" stroke-width="2.5"/>${PIPS[
+    n
+  ]
+    .map(([x, y]) => dot(x, y, n === 1 ? 10 : 6.5, n === 1 ? T.red : T.ink))
+    .join('')}`;
+const pawn = (color) =>
+  `<path d="M-22 30L-9 -4L9 -4L22 30Z" fill="${color}"/>${dot(0, -17, 14, color)}<ellipse cx="0" cy="31" rx="26" ry="6" fill="${color}" opacity="0.8"/>`;
+const stone = (fill, edge) =>
+  `${dot(0, 0, 34, fill)}<circle r="34" fill="none" stroke="${edge}" stroke-width="2"/><ellipse cx="-11" cy="-13" rx="12" ry="7" fill="#fff" opacity="0.28" transform="rotate(-35 -11 -13)"/>`;
+const starPoints = (n, outer, inner) =>
+  Array.from({ length: n * 2 }, (_, i) => {
+    const a = (Math.PI * i) / n - Math.PI / 2;
+    const r = i % 2 ? inner : outer;
+    return `${(r * Math.cos(a)).toFixed(1)},${(r * Math.sin(a)).toFixed(1)}`;
+  }).join(' ');
+
+/** What each Island's pattern is made of, centred on (0, 0) in a box about 70 across. */
+const MOTIFS = {
+  co: [
+    () =>
+      `<path d="M-28-28L28 28M28-28L-28 28" stroke="${INK.X}" stroke-width="11" stroke-linecap="round"/>`,
+    () => `<ellipse rx="30" ry="28" fill="none" stroke="${INK.O}" stroke-width="11"/>`,
+    () => stone('#1b1d22', '#000'),
+    () => stone('#ece6d6', '#b9b09a'),
+    () =>
+      `${dot(0, 0, 36, '#8f2a22')}<circle r="28" fill="none" stroke="#e8c27a" stroke-width="3"/><circle r="17" fill="none" stroke="#e8c27a" stroke-width="2"/>`,
+    () =>
+      `<path d="M-26 32V22H-20L-17-8H-24V-30H-14V-20H-5V-30H5V-20H14V-30H24V-8H17L20 22H26V32Z" fill="#e9dfc6" stroke="#bca97d" stroke-width="2.5" stroke-linejoin="round"/>`,
+    () =>
+      `${dot(0, 0, 34, '#c43d2f')}<circle r="24" fill="none" stroke="#e86a58" stroke-width="3"/><circle r="14" fill="none" stroke="#e86a58" stroke-width="3"/>`,
+  ],
+  bai: [
+    () => suit('heart', 62, T.red),
+    () => suit('spade', 62, '#d9d4c6'),
+    () => suit('diamond', 62, T.red),
+    () => suit('club', 62, '#d9d4c6'),
+    () =>
+      `<rect x="-26" y="-37" width="52" height="74" rx="7" fill="${T.ivory}" stroke="${T.ivoryEdge}" stroke-width="2"/><rect x="-21" y="-32" width="42" height="64" rx="4" fill="${T.back}"/><path d="M0-14L10 0L0 14L-10 0Z" fill="${T.brass}"/>`,
+    () =>
+      `<rect x="-26" y="-37" width="52" height="74" rx="7" fill="${T.ivory}" stroke="${T.ivoryEdge}" stroke-width="2"/><g transform="translate(0 4)">${suit('heart', 32, T.red)}</g><g transform="translate(-14 -22)">${suit('heart', 10, T.red)}</g>`,
+    () =>
+      `<rect x="-26" y="-37" width="52" height="74" rx="7" fill="${T.ivory}" stroke="${T.ivoryEdge}" stroke-width="2"/><g transform="translate(0 4)">${suit('spade', 32, T.ink)}</g><g transform="translate(-14 -22)">${suit('spade', 10, T.ink)}</g>`,
+  ],
+  'xuc-xac': [
+    () => die(1),
+    () => die(2),
+    () => die(3),
+    () => die(4),
+    () => die(5),
+    () => die(6),
+    () => pawn('#d9503c'),
+    () => pawn('#3f7fd0'),
+    () => pawn('#3fa066'),
+    () => pawn('#e0b43a'),
+  ],
+  'nao-nhiet': [
+    () =>
+      `${dot(0, 4, 30, '#23252e')}<ellipse cx="-10" cy="-8" rx="9" ry="6" fill="#fff" opacity="0.18"/><path d="M8-24Q14-36 26-38" stroke="#8a6a43" stroke-width="5" fill="none" stroke-linecap="round"/>${dot(27, -38, 12, '#ff8a2a').replace('/>', ' opacity="0.45"/>')}${dot(27, -38, 6, '#ffb347')}`,
+    () =>
+      `<polygon points="${starPoints(5, 38, 17)}" fill="#e8a33d" stroke="#8a4f1b" stroke-width="3" stroke-linejoin="round"/><polygon points="${starPoints(5, 20, 9)}" fill="#ffd479"/>`,
+    () =>
+      `<rect x="-30" y="-30" width="60" height="60" fill="#a8743f" stroke="#80532c" stroke-width="4"/><path d="M-30-30L30 30M30-30L-30 30" stroke="#80532c" stroke-width="4"/>`,
+    () => `<polygon points="${starPoints(4, 30, 7)}" fill="#ffd479"/>`,
+    () =>
+      `<rect x="-11" y="-34" width="22" height="68" rx="5" fill="#c43d2f" stroke="#7d2018" stroke-width="2.5"/><path d="M-11-14H11M-11 6H11" stroke="#f0c46a" stroke-width="3"/><path d="M0-34Q4-44 12-46" stroke="#8a6a43" stroke-width="3" fill="none"/>`,
+  ],
+};
+
+/** An Island's splash: a wallpaper of its genre's objects, fading into the dark left side. */
 function island(id) {
   const hue = ISLANDS[id];
-  const emblem = readFileSync(resolve(ROOT, `apps/hub/src/emblems/${id}.svg`), 'utf8');
-  const inner = emblem.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
-  const [fx, fy] = FOCUS.island;
-  const [cx, cy] = [px(fx, W), px(fy, H)];
-  const size = 600;
-  const tint = hsl(hue, 55, 66);
-  return frame(`${backdrop({ top: hsl(hue, 38, 13), bottom: hsl(hue, 34, 8), glow: hsl(hue, 52, 34), focus: FOCUS.island, glowAlpha: 0.75 })}
-  <circle cx="${cx}" cy="${cy}" r="${size * 0.62}" fill="none" stroke="${tint}" stroke-opacity="0.16" stroke-width="3"/>
-  <circle cx="${cx}" cy="${cy}" r="${size * 0.74}" fill="none" stroke="${tint}" stroke-opacity="0.08" stroke-width="2"/>
-  <g color="${tint}" transform="translate(${cx - size / 2} ${cy - size / 2}) scale(${size / 64})">${inner}</g>`);
+  const motifs = MOTIFS[id];
+  const stepX = 190;
+  const stepY = 150;
+  const items = [];
+  for (let row = -1; row * stepY < H + stepY; row++) {
+    for (let col = -1; col * stepX < W + stepX; col++) {
+      const x = col * stepX + (row % 2 ? stepX / 2 : 0) + (hash(row, col, 1) - 0.5) * 70;
+      const y = row * stepY + (hash(row, col, 2) - 0.5) * 50;
+      const fade = Math.min(1, Math.max(0, (x - W * 0.34) / (W * 0.2)));
+      if (fade === 0) continue;
+      const pick = Math.floor(hash(row, col, 3) * motifs.length);
+      const turn = (hash(row, col, 4) - 0.5) * 70;
+      const size = 0.85 + hash(row, col, 5) * 0.55;
+      items.push(
+        `<g transform="translate(${x.toFixed(0)} ${y.toFixed(0)}) rotate(${turn.toFixed(0)}) scale(${size.toFixed(2)})" opacity="${(0.82 * fade).toFixed(2)}">${motifs[pick]()}</g>`,
+      );
+    }
+  }
+  return frame(`${backdrop({ top: hsl(hue, 34, 17), bottom: hsl(hue, 34, 9), glow: hsl(hue, 45, 30), focus: FOCUS.island, glowAlpha: 0.6 })}
+  <g filter="url(#sink)">${items.join('')}</g>
+  <defs><filter id="sink" x="-5%" y="-5%" width="110%" height="110%"><feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.45"/></filter></defs>`);
 }
 
 const jobs = {
