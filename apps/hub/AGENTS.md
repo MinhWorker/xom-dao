@@ -19,7 +19,7 @@ src/island-art/    Each Island's splash art (`<island>.png`, 20:9), drawn by `sc
 src/harbour-art/   The Bến's characters (transparent) and backdrops, listed in `arts.ts`: to add art, drop the image here and add a line to `CHARACTERS` or `BACKGROUNDS`; see "Harbour art" in `assets/AGENTS.md`
 src/emblems/       The Hub's (`hub.svg`) and each Island's (`<island>.svg`) Emblem, same contract as a Game's;
                    `tools/hub-assets` tests them
-src/kit/           Button, CutPanel, Chip, TextField, Select (native dropdown), Dialog, Emblem (inlines an Emblem's SVG), Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
+src/kit/           Button, CutPanel, Chip, TextField, Select (popover dropdown, placed by hand: `select.ts`), Dialog, Emblem (inlines an Emblem's SVG), Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
                    Loops (looping HUD icons): no server knowledge. `toast()` needs `<ToastRegion />` (mounted in
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
                    `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;

@@ -12,32 +12,27 @@
   color: var(--text-dim);
 }
 
-/* The same cut corner and display type as the kit's Choice. */
-.box {
+/* The button: the same cut corner and display type as the kit's Choice. */
+.trigger {
   --cut: 8px;
-  position: relative;
-  display: grid;
-  border-left: 3px solid var(--accent);
-}
-
-.select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
   inline-size: 100%;
   min-inline-size: 0;
   min-block-size: var(--tap);
-  padding: 0 calc(var(--space-3) + 24px) 0 var(--space-3);
+  padding: 0 var(--space-3);
   border: 1px solid var(--line-strong);
-  border-left: 0;
-  border-radius: 0;
+  border-left: 3px solid var(--accent);
   background: var(--bg-sunken);
   color: var(--text);
-  color-scheme: dark;
   font-family: var(--font-display);
   font-size: var(--text-md);
   font-weight: 600;
   letter-spacing: 0.04em;
+  text-align: left;
   text-transform: uppercase;
-  text-overflow: ellipsis;
-  appearance: none;
   cursor: pointer;
   clip-path: polygon(
     0 0,
@@ -48,34 +43,109 @@
   );
 }
 
-.select option {
-  background: var(--bg-raised);
-  color: var(--text);
-  font-family: var(--font-body);
-  text-transform: none;
+.value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow {
+  display: grid;
+  flex: none;
+  color: var(--accent);
+  transition: rotate 150ms var(--ease-out);
+}
+
+.trigger[aria-expanded="true"] .arrow {
+  rotate: 180deg;
 }
 
 @media (hover: hover) {
-  .select:hover:not(:disabled) {
+  .trigger:hover:not(:disabled) {
     background: var(--bg-raised);
   }
 }
 
-.select:focus-visible {
+.trigger:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.select:disabled {
+.trigger:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.arrow {
-  position: absolute;
-  inset: 0 var(--space-3) 0 auto;
+/* The list: placed by `Select` (top or bottom, left, width and height), in the top layer like a Menu. */
+.popover {
+  --cut: 12px;
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+}
+
+.list {
   display: grid;
-  place-items: center;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.item[aria-selected="true"] {
   color: var(--accent);
-  pointer-events: none;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--line);
+  outline: none;
+}
+
+.item:focus-visible {
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .popover {
+    opacity: 0;
+    translate: 0 -4px;
+    transition: opacity, translate, display, overlay;
+    transition-duration: 150ms;
+    transition-behavior: allow-discrete;
+  }
+
+  .popover:popover-open {
+    opacity: 1;
+    translate: 0 0;
+    transition-duration: 100ms;
+
+    @starting-style {
+      opacity: 0;
+      translate: 0 -4px;
+    }
+  }
 }
