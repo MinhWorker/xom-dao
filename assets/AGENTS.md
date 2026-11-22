@@ -11,6 +11,11 @@
   its scene. Keep the subject in the right 60% and the left 40% dark and empty. Do not use AI image
   generation for splash art. `tools/hub-assets` checks the Games' art in its build and the
   Islands' in its tests (`checkIslandArt`).
+  - A scene seen at an angle uses a real perspective camera, not a rotate-and-squash (that is a
+    parallel projection: the far edge is as long as the near one and the picture looks flat).
+    `caro()` in `scripts/splash.mjs` projects every point through `project`; tune the view with
+    `away` (camera distance: smaller is stronger perspective), `pitch` (look-down angle) and `yaw`,
+    then run `npm run splash -- caro` and check the sheet stays inside the frame, right of 40%.
 - Pick what looks and sounds best for a card/board game in the app's style.
 - Keep a third-party license file next to assets whose license requires one.
 - Use only free, clearly allowed assets, and never sell anything.
