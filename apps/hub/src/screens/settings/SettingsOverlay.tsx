@@ -1,21 +1,40 @@
 import { IconX } from '@tabler/icons-react';
-import { useEffect, useId, useRef } from 'react';
+import { useId } from 'react';
 import { GAMES } from '../../games.js';
-import { Chip, Icon, Slider, Tabs, Toggle } from '../../kit/index.js';
-import { canScaleHud, graphics, HUD_SCALE, MARGIN, useGraphics } from '../../settings/graphics.js';
+import { Chip, Choice, Icon, Slider, Tabs, Toggle } from '../../kit/index.js';
+import { useModal } from '../../kit/modal.js';
+import {
+  canScaleHud,
+  type GraphicsLevel,
+  graphics,
+  HUD_SCALE,
+  MARGIN,
+  useGraphics,
+} from '../../settings/graphics.js';
 import { sounds, useEffects, useMusic, useMuted, useVolume } from '../../sound/index.js';
 import styles from './SettingsOverlay.module.css';
 
 const percent = (value: number) => `${value}%`;
+
+const LEVELS: { value: GraphicsLevel; label: string }[] = [
+  { value: 'high', label: 'Cao' },
+  { value: 'low', label: 'Thấp' },
+];
 
 const MARGIN_NAMES = ['Không', 'Vừa', 'Rộng'];
 const marginName = (value: number) =>
   MARGIN_NAMES[Math.round((value - MARGIN.min) / MARGIN.step)] ?? `${value}px`;
 
 function GraphicsTab() {
-  const { loopVideo, transitions, hudScale, margin } = useGraphics();
+  const { level, loopVideo, transitions, hudScale, margin } = useGraphics();
   return (
     <div className={styles.tab}>
+      <Choice
+        label="Mức đồ họa"
+        options={LEVELS}
+        value={level}
+        onChange={(value) => graphics.set({ level: value === 'low' ? 'low' : 'high' })}
+      />
       <Toggle
         label="Video nền ở sảnh"
         checked={loopVideo}
@@ -114,27 +133,11 @@ const TABS = [
  * graphics, sound and About. The title and tabs stay where they are whichever tab shows; nothing scrolls.
  */
 export function SettingsOverlay({ open, onClose }: { open: boolean; onClose(): void }) {
-  const ref = useRef<HTMLDialogElement>(null);
+  const modal = useModal(open, onClose);
   const titleId = useId();
 
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
-
   return (
-    <dialog
-      ref={ref}
-      className={styles.overlay}
-      onClose={onClose}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      aria-labelledby={titleId}
-    >
+    <dialog {...modal} className={styles.overlay} aria-labelledby={titleId}>
       <div className={styles.frame}>
         <header className={styles.top}>
           <h2 id={titleId}>Cài đặt</h2>

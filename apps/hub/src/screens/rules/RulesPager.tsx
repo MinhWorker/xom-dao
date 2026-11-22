@@ -1,6 +1,7 @@
-import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react';
+import { IconX } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import type { HubGame, RulesBlock, RulesPage } from '../../games.js';
+import { closeAnimated } from '../../kit/modal.js';
 import { focusPosition } from '../lobby/summary.js';
 import { parseInline } from './inline.js';
 import { nearestPage, pageLabel } from './pager.js';
@@ -8,6 +9,21 @@ import styles from './RulesPager.module.css';
 
 /** After the last scroll event, how long to wait before calling the scroll settled (no `scrollend`). */
 const SETTLE_FALLBACK_MS = 120;
+
+function Chevron() {
+  return (
+    <svg className={styles.chevron} viewBox="0 0 32 64" width={32} height={64} aria-hidden="true">
+      <path
+        d="M23 8 9 32l14 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function Inline({ text }: { text: string }) {
   return parseInline(text).map((part) => {
@@ -68,15 +84,18 @@ function Slide({
   index,
   count,
   game,
+  active,
 }: {
   page: RulesPage;
   index: number;
   count: number;
   game: HubGame;
+  active: boolean;
 }) {
   return (
     <section
       className={styles.slide}
+      data-active={active || undefined}
       aria-roledescription="trang"
       aria-label={pageLabel(index, count)}
     >
@@ -180,10 +199,11 @@ export function RulesPager({ game, onClose }: RulesPagerProps) {
     el.scrollTo({ left: index * el.clientWidth, behavior: 'auto' });
   };
 
-  /** `close()` first, so the browser hands focus back to what opened the pager. */
+  /** The exit plays and `close()` runs before unmounting, so the browser hands focus back to what opened the pager. */
   const close = () => {
-    dialog.current?.close();
-    onClose();
+    const el = dialog.current;
+    if (!el?.open) return onClose();
+    void closeAnimated(el).then(onClose);
   };
 
   const step = (delta: number) => goTo((pending.current ?? current) + delta);
@@ -198,69 +218,86 @@ export function RulesPager({ game, onClose }: RulesPagerProps) {
         close();
       }}
     >
-      <header className={styles.top}>
-        <h2 id="rules-title">
-          <span className={styles.kicker}>Luật chơi</span>
-          {game.manifest.name}
-        </h2>
-        <button type="button" className={styles.close} aria-label="Đóng luật chơi" onClick={close}>
-          <IconX stroke={2} aria-hidden />
+      <div className={styles.main}>
+        <button
+          ref={previous}
+          type="button"
+          className={styles.arrow}
+          aria-label="Trang trước"
+          hidden={count < 2}
+          disabled={current === 0}
+          onClick={() => step(-1)}
+        >
+          <Chevron />
         </button>
-      </header>
+        <div className={`${styles.panel} glass cut-br`}>
+          <header className={styles.top}>
+            <h2 id="rules-title">
+              <span className={styles.kicker}>Luật chơi</span>
+              {game.manifest.name}
+            </h2>
+            {count > 1 && (
+              <span className={styles.count} aria-hidden="true">
+                {current + 1} / {count}
+              </span>
+            )}
+            <button
+              type="button"
+              className={styles.close}
+              aria-label="Đóng luật chơi"
+              onClick={close}
+            >
+              <IconX size={28} stroke={2} aria-hidden />
+            </button>
+          </header>
 
-      <section
-        ref={track}
-        className={styles.track}
-        aria-roledescription="băng trang"
-        aria-label={`Luật ${game.manifest.name}`}
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region takes focus so arrow keys page it
-        tabIndex={0}
-        onScroll={onScroll}
-        onScrollEnd={settle}
-      >
+          <section
+            ref={track}
+            className={styles.track}
+            aria-roledescription="băng trang"
+            aria-label={`Luật ${game.manifest.name}`}
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region takes focus so arrow keys page it
+            tabIndex={0}
+            onScroll={onScroll}
+            onScrollEnd={settle}
+          >
+            {pages.map((page, i) => (
+              <Slide
+                key={page.title}
+                page={page}
+                index={i}
+                count={count}
+                game={game}
+                active={i === current}
+              />
+            ))}
+          </section>
+        </div>
+        <button
+          ref={next}
+          type="button"
+          className={styles.arrow}
+          aria-label="Trang sau"
+          hidden={count < 2}
+          disabled={current === count - 1}
+          onClick={() => step(1)}
+        >
+          <Chevron />
+        </button>
+      </div>
+
+      <nav className={styles.dots} aria-label="Chọn trang" hidden={count < 2}>
         {pages.map((page, i) => (
-          <Slide key={page.title} page={page} index={i} count={count} game={game} />
+          <button
+            key={page.title}
+            type="button"
+            className={styles.dot}
+            aria-label={`${page.title}, trang ${pageLabel(i, count)}`}
+            aria-current={i === current ? 'true' : undefined}
+            onClick={() => goTo(i)}
+          />
         ))}
-      </section>
-
-      <footer className={styles.bottom}>
-        {count > 1 && (
-          <>
-            <button
-              ref={previous}
-              type="button"
-              className={styles.arrow}
-              aria-label="Trang trước"
-              disabled={current === 0}
-              onClick={() => step(-1)}
-            >
-              <IconChevronLeft stroke={2} aria-hidden />
-            </button>
-            <nav className={styles.dots} aria-label="Chọn trang">
-              {pages.map((page, i) => (
-                <button
-                  key={page.title}
-                  type="button"
-                  className={styles.dot}
-                  aria-label={`${page.title}, trang ${pageLabel(i, count)}`}
-                  aria-current={i === current ? 'true' : undefined}
-                  onClick={() => goTo(i)}
-                />
-              ))}
-            </nav>
-            <button
-              ref={next}
-              type="button"
-              className={styles.arrow}
-              aria-label="Trang sau"
-              disabled={current === count - 1}
-              onClick={() => step(1)}
-            >
-              <IconChevronRight stroke={2} aria-hidden />
-            </button>
-          </>
-        )}
-      </footer>
+      </nav>
       <p className={styles.status} role="status" aria-live="polite">
         {status}
       </p>

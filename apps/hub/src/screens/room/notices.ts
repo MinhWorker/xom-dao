@@ -13,6 +13,8 @@ export interface Table {
 export interface Notice {
   player: string;
   message: string;
+  /** `warning` when someone left or dropped, `success` when they came back. */
+  tone: 'warning' | 'success';
 }
 
 /**
@@ -27,17 +29,22 @@ export function tableNotices(before: Table, after: Table, me: string): Notice[] 
   const notices: Notice[] = [];
   for (const [id, name] of was) {
     if (!now.has(id))
-      notices.push({ player: id, message: `${name} đã rời ${before.playing ? 'ván' : 'phòng'}` });
+      notices.push({
+        player: id,
+        message: `${name} đã rời ${before.playing ? 'ván' : 'phòng'}`,
+        tone: 'warning',
+      });
   }
   const dropped = new Set(before.matchId === after.matchId ? before.disconnected : []);
   for (const id of after.disconnected) {
     const name = now.get(id);
-    if (name && !dropped.has(id)) notices.push({ player: id, message: `${name} mất kết nối` });
+    if (name && !dropped.has(id))
+      notices.push({ player: id, message: `${name} mất kết nối`, tone: 'warning' });
   }
   for (const id of dropped) {
     const name = now.get(id);
     if (name && !after.disconnected.includes(id)) {
-      notices.push({ player: id, message: `${name} đã kết nối lại` });
+      notices.push({ player: id, message: `${name} đã kết nối lại`, tone: 'success' });
     }
   }
   return notices;

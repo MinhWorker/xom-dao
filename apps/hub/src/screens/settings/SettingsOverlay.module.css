@@ -15,10 +15,17 @@
   color: var(--text);
 }
 
-@supports (backdrop-filter: blur(1px)) {
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .overlay {
     background: rgb(11 13 16 / 0.55);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
     backdrop-filter: blur(24px) saturate(1.3);
+  }
+
+  [data-graphics="low"] .overlay {
+    background: rgb(11 13 16 / 0.92);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 
@@ -66,21 +73,26 @@
   background: var(--line);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .overlay {
-    transition:
-      opacity 160ms ease-out,
-      display 160ms allow-discrete,
-      overlay 160ms allow-discrete;
+.overlay {
+  opacity: 0;
+  transition: opacity 220ms var(--ease-out);
+}
+
+.overlay[open]:not([data-closing]) {
+  opacity: 1;
+
+  @starting-style {
     opacity: 0;
   }
+}
 
-  .overlay[open] {
-    opacity: 1;
+.frame {
+  transition: translate 260ms var(--ease-out);
+}
 
-    @starting-style {
-      opacity: 0;
-    }
+.overlay[open]:not([data-closing]) .frame {
+  @starting-style {
+    translate: 0 12px;
   }
 }
 

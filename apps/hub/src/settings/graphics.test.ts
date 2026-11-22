@@ -22,6 +22,7 @@ function memory(initial?: string) {
 describe('graphics', () => {
   it('starts with everything on', () => {
     expect(createGraphics(memory()).getState()).toEqual({
+      level: 'high',
       loopVideo: true,
       transitions: true,
       hudScale: 100,
@@ -48,6 +49,8 @@ describe('graphics', () => {
     ).toMatchObject({ loopVideo: false, transitions: true });
     expect(createGraphics(memory('not json')).getState().loopVideo).toBe(true);
     expect(createGraphics(memory('null')).getState().transitions).toBe(true);
+    expect(createGraphics(memory('{"level":"low"}')).getState().level).toBe('low');
+    expect(createGraphics(memory('{"level":"ultra"}')).getState().level).toBe('high');
   });
 
   it('survives storage that throws', () => {
@@ -82,10 +85,13 @@ describe('graphics', () => {
     });
   });
 
-  it('puts the scale and the margin on the page as CSS variables, and follows changes', () => {
+  it('puts the level, the scale and the margin on the page, and follows changes', () => {
     const root = document.createElement('div');
     const graphics = createGraphics(memory());
     const stop = watchGraphics(root, graphics);
+    expect(root.dataset.graphics).toBe('high');
+    graphics.set({ level: 'low' });
+    expect(root.dataset.graphics).toBe('low');
     expect(root.style.getPropertyValue('--hud-scale')).toBe('1');
     expect(root.style.getPropertyValue('--margin')).toBe('0px');
     graphics.set({ hudScale: 120, margin: 16 });

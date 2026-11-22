@@ -79,3 +79,33 @@ h3 {
     animation: none;
   }
 }
+
+/* One hand cursor on a mouse, over buttons and backdrops too; text fields keep theirs. Hotspot at the fingertip.
+   It beats the components' own `cursor: pointer` and disabled cursors, hence the !important. */
+@media (hover: hover) and (pointer: fine) {
+  html,
+  html :not(input, textarea, [contenteditable]),
+  ::backdrop {
+    cursor:
+      url("../../../../assets/app/images/cursor-hand.png") 7 2,
+      auto !important;
+  }
+
+  @supports (
+      cursor:
+        image-set(url("data:,") 1x) 0 0,
+        auto
+    ) {
+    html,
+    html :not(input, textarea, [contenteditable]),
+    ::backdrop {
+      cursor:
+        image-set(
+          url("../../../../assets/app/images/cursor-hand.png") 1x,
+          url("../../../../assets/app/images/cursor-hand@2x.png") 2x
+        )
+        7 2,
+        auto !important;
+    }
+  }
+}

@@ -4,6 +4,7 @@ export { Choice } from './Choice.js';
 export { CutPanel } from './CutPanel.js';
 export { Dialog } from './Dialog.js';
 export { CoinIcon, GemIcon, Icon } from './Icon.js';
+export { Loop, OnlineDot, SignalIcon, SyncIcon } from './Loops.js';
 export { Menu } from './Menu.js';
 export { Sheet } from './Sheet.js';
 export { Slider } from './Slider.js';

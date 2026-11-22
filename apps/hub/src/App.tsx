@@ -1,14 +1,45 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { Button } from './kit/index.js';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { Button, SignalIcon } from './kit/index.js';
 import { hub, useHub } from './net/hub.js';
 import { OFFLINE } from './net/store.js';
 import { navigate, useRoute } from './router.js';
 import { InviteNotice } from './screens/friends/InviteNotice.js';
 import { Lobby } from './screens/lobby/Lobby.js';
 import { Login } from './screens/login/Login.js';
+import { OfflineOverlay } from './screens/offline/OfflineOverlay.js';
 import { Profile } from './screens/profile/Profile.js';
 import { Room } from './screens/room/Room.js';
 import screen from './screens/Screen.module.css';
+
+/** How long the connection may be down before the offline overlay covers the screen. */
+const OFFLINE_GRACE_MS = 1000;
+
+/** Waits out a short drop, then covers the screen until the Hub is back or the player dismisses it. */
+function Offline({ down }: { down: boolean }) {
+  const [shown, setShown] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!down) {
+      setShown(false);
+      setDismissed(false);
+      return;
+    }
+    const timer = setTimeout(() => setShown(true), OFFLINE_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [down]);
+
+  return (
+    <>
+      {down && dismissed && (
+        <div className={screen.banner} role="status">
+          {OFFLINE}
+        </div>
+      )}
+      <OfflineOverlay open={shown && !dismissed} onDismiss={() => setDismissed(true)} />
+    </>
+  );
+}
 
 const Kit = import.meta.env.DEV
   ? lazy(() => import('./screens/kit/Kit.js').then((m) => ({ default: m.Kit })))
@@ -49,17 +80,16 @@ export function App() {
   if (!user || (phase === 'connecting' && route.name !== 'room')) {
     return (
       <main className={screen.center}>
-        <p className={screen.dim}>Đang kết nối…</p>
+        <p className={`${screen.dim} ${screen.connecting}`}>
+          <SignalIcon size={28} />
+          Đang kết nối…
+        </p>
       </main>
     );
   }
   return (
     <>
-      {phase === 'offline' && (
-        <div className={screen.banner} role="status">
-          {OFFLINE}
-        </div>
-      )}
+      <Offline down={phase === 'offline'} />
       {route.name === 'room' && <Room key={route.code} code={route.code} />}
       {route.name === 'profile' && <Profile key={route.userId ?? 'me'} userId={route.userId} />}
       {(route.name === 'lobby' || route.name === 'kit') && <Lobby />}

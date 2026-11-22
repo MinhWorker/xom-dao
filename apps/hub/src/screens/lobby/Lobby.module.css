@@ -81,9 +81,14 @@
   min-height: var(--tap);
   padding: 0;
   border: 1px solid var(--line-strong);
-  background: var(--bg-raised);
   color: var(--text);
   cursor: pointer;
+  transition: scale 120ms var(--ease-out);
+}
+
+.tool:active {
+  scale: 0.9;
+  transition-duration: 40ms;
 }
 
 .friends {
