@@ -242,7 +242,11 @@ async function caroAfterMatch({ a, b, code }) {
   await b.getByRole('menuitem', { name: 'Rời ván' }).click();
   const leave = b.getByRole('dialog', { name: 'Rời ván?' });
   await leave.getByRole('button', { name: 'Rời', exact: true }).click();
+  const homeward = b.getByRole('status').filter({ hasText: 'Đang về' });
+  await homeward.waitFor();
   await b.waitForURL((url) => url.pathname === '/');
+  await b.screenshot({ path: resolve(shots, 'caro-8-homeward.png') });
+  await homeward.waitFor({ state: 'detached' });
   await a.getByText('Bob đã rời ván').waitFor();
   await results(a).waitFor({ timeout: 15000 });
   await a.getByRole('heading', { name: 'Thắng' }).waitFor();
@@ -250,7 +254,7 @@ async function caroAfterMatch({ a, b, code }) {
   if (!(await a.getByRole('button', { name: 'Chơi lại' }).isDisabled())) {
     throw new Error('Alice can play again alone');
   }
-  await a.screenshot({ path: resolve(shots, 'caro-8-left.png') });
+  await a.screenshot({ path: resolve(shots, 'caro-9-left.png') });
 }
 
 /** Where a tap lands on the Godot canvas of Tiến Lên: its virtual 844×390 screen, stretched. */
