@@ -12,7 +12,7 @@ const BLUE = '#2ec8e6';
 const GOLD = '#ffc234';
 
 /** Mouse position over the tile, -1 to 1 on each axis, for the layers' parallax. */
-function tilt(e: PointerEvent<HTMLElement>) {
+export function tilt(e: PointerEvent<HTMLElement>) {
   if (e.pointerType !== 'mouse') return;
   const el = e.currentTarget;
   if (el.closest('[data-reduce]') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -23,7 +23,7 @@ function tilt(e: PointerEvent<HTMLElement>) {
   el.style.setProperty('--py', y.toFixed(3));
 }
 
-function untilt(e: PointerEvent<HTMLElement>) {
+export function untilt(e: PointerEvent<HTMLElement>) {
   e.currentTarget.style.removeProperty('--px');
   e.currentTarget.style.removeProperty('--py');
 }

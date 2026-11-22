@@ -104,6 +104,7 @@
 
 .title {
   display: grid;
+  gap: var(--space-2);
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-lg);
@@ -248,8 +249,19 @@
   gap: var(--space-2);
 }
 
+.facts > span {
+  background: rgb(7 9 11 / 0.72);
+}
+
 .go {
   margin-left: var(--space-2);
+}
+
+.rules {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding-inline: var(--space-2);
+  background: rgb(7 9 11 / 0.72);
 }
 
 /* A thin course line the cards sit on, a light running along it. */
@@ -272,7 +284,7 @@
   animation: route-run 5s linear infinite;
 }
 
-/* The Island's Games: one card per snap, the snap line at the track's left edge. */
+/* The Island's Games: one card per snap, the snap line at the track's left edge; the last cards stop at the right edge and stay in view. */
 .track {
   grid-row: 2;
   grid-column: 1;
@@ -281,7 +293,7 @@
   align-items: end;
   gap: var(--space-2);
   margin-right: calc(-1 * var(--pad-x));
-  padding: var(--space-2) calc(100% - var(--card-w)) var(--space-2) var(--space-1);
+  padding: var(--space-2) calc(var(--pad-x) + var(--space-1)) var(--space-2) var(--space-1);
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
@@ -295,6 +307,8 @@
 
 /* The snap target stays untransformed so snap positions never move; its face grows and slides. */
 .card {
+  --px: 0;
+  --py: 0;
   position: relative;
   flex: none;
   width: var(--card-w);
@@ -312,42 +326,17 @@
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   justify-items: center;
-  background: hsl(var(--hue) 30% 14%);
   transform-origin: 50% 100%;
   scale: 0.8;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%,
-    0 100%
-  );
-  transition:
-    scale 320ms var(--ease-out),
-    background-color 320ms;
+  transition: scale 320ms var(--ease-out);
   animation: card-in 420ms var(--ease-out) backwards;
   animation-delay: calc(var(--i) * 45ms);
 }
 
-.face::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  box-shadow: inset 0 0 0 1px var(--glass-edge);
-  pointer-events: none;
-  transition: box-shadow 320ms;
-}
-
 .card[data-on] .face {
   scale: 1;
-}
-
-.card[data-on] .face::after {
-  box-shadow:
-    inset 0 0 0 2px var(--accent),
-    inset 0 -40px 40px -20px hsl(var(--hue) 80% 50% / 0.35);
 }
 
 .card:focus-visible {
@@ -355,23 +344,105 @@
   outline-offset: -4px;
 }
 
-.cardArt {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, hsl(var(--hue) 50% 28%), transparent 75%);
+/* The card is glass in three layers apart in depth, like the kit's card tile: a pane behind, the art, a pane in front. */
+.stage {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  perspective: 720px;
 }
 
-.cardArt img {
+.stack {
+  position: absolute;
+  inset: 4% 8% 2%;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(8deg - var(--py) * 8deg)) rotateY(calc(-14deg + var(--px) * 12deg))
+    rotateZ(-5deg);
+  transition: transform 260ms var(--ease-out);
+}
+
+.card[data-on] .stack {
+  animation: float 4.4s ease-in-out infinite;
+}
+
+.glassBack,
+.glassMid,
+.glassFront {
+  position: absolute;
+  transition:
+    translate 260ms var(--ease-out),
+    border-color 320ms,
+    box-shadow 320ms;
+}
+
+.glassBack {
+  inset: 0;
+  border: 1.5px solid rgb(255 255 255 / 0.4);
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.22),
+    rgb(255 255 255 / 0.04) 40%,
+    hsl(var(--hue) 80% 70% / 0.12) 70%,
+    rgb(255 255 255 / 0.2)
+  );
+  box-shadow:
+    inset 0 0 0 4px rgb(255 255 255 / 0.06),
+    0 12px 20px rgb(0 0 0 / 0.45);
+  translate: calc(var(--px) * -5px) calc(var(--py) * -5px) -22px;
+}
+
+.glassMid {
+  inset: 10% 12% 12% 9%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid rgb(11 13 16 / 0.6);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 55%, hsl(var(--hue) 70% 50% / 0.28), transparent 60%),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.03) 0 6px, transparent 6px 12px),
+    linear-gradient(160deg, hsl(var(--hue) 28% 24%), hsl(var(--hue) 25% 11%));
+  translate: calc(var(--px) * 2px) calc(var(--py) * 2px) 0;
+}
+
+.glassMid img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   opacity: 0.45;
 }
 
+.glassFront {
+  inset: 0 2% 4% 3%;
+  border: 2px solid rgb(255 255 255 / 0.6);
+  border-radius: 10px;
+  background: linear-gradient(
+    115deg,
+    rgb(255 255 255 / 0.3) 0 10%,
+    transparent 10% 26%,
+    rgb(255 255 255 / 0.12) 26% 32%,
+    transparent 32% 72%,
+    rgb(160 220 255 / 0.16)
+  );
+  box-shadow:
+    inset 2px 2px 0 rgb(255 255 255 / 0.45),
+    inset -3px -3px 0 hsl(var(--hue) 90% 60% / 0.35),
+    inset 0 0 0 6px rgb(255 255 255 / 0.07);
+  translate: calc(var(--px) * 9px) calc(var(--py) * 9px) 26px;
+}
+
+.card[data-on] .glassFront {
+  border-color: var(--accent);
+}
+
 .cardCode {
-  position: relative;
-  justify-self: start;
-  padding: var(--space-1) var(--space-2);
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
   color: var(--text-dim);
 }
 
@@ -381,10 +452,10 @@
 
 .cardEmblem {
   position: relative;
-  align-self: center;
-  width: 52%;
+  width: 58%;
   aspect-ratio: 1;
   transition: color 320ms;
+  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.4));
 }
 
 .card[data-on] .cardEmblem {
@@ -394,23 +465,30 @@
 .cardName {
   position: relative;
   width: 100%;
-  padding: var(--space-1) var(--space-2) var(--space-2);
+  padding-top: var(--space-1);
   font-family: var(--font-display);
   font-size: var(--text-md);
   font-weight: 600;
   line-height: 1.1;
+  text-align: center;
   text-transform: uppercase;
-  background: linear-gradient(0deg, rgb(7 9 11 / 0.85), transparent);
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.8);
+}
+
+/* Less motion: the layers settle without easing (the pointer already does not tilt them). */
+[data-reduce] :is(.stack, .glassBack, .glassMid, .glassFront) {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.stack, .glassBack, .glassMid, .glassFront) {
+    transition: none;
+  }
 }
 
 /* A Game not made yet: dimmed and locked, its name still readable. */
-.card[data-soon] .face {
-  background: var(--bg-sunken);
-}
-
-.card[data-soon] .cardArt,
-.card[data-soon] .cardEmblem {
-  filter: grayscale(1) brightness(0.55);
+.card[data-soon] .stage {
+  filter: grayscale(0.9) brightness(0.65);
 }
 
 .card[data-soon] .cardName {
@@ -442,6 +520,17 @@
 
   .card:not([data-on]):hover .face {
     scale: 0.84;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 -5px;
   }
 }
 

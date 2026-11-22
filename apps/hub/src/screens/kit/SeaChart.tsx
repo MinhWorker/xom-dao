@@ -1,12 +1,15 @@
-import { IconChevronLeft, IconLock } from '@tabler/icons-react';
+import { IconBook2, IconChevronLeft, IconLock } from '@tabler/icons-react';
 import type { AnyManifest, Island } from '@xomdao/sdk';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { gameById } from '../../games.js';
 import { type HubIsland, ISLANDS } from '../../islands.js';
 import { Button, Chip, Icon } from '../../kit/index.js';
 import { rovingKeyDown } from '../../kit/roving.js';
 import { prefersReducedMotion } from '../../settings/graphics.js';
 import { hoverSound, playSound } from '../../sound/index.js';
 import { durationLabel, playersLabel } from '../lobby/summary.js';
+import { RulesPager } from '../rules/RulesPager.js';
+import { tilt, untilt } from './GameTiles.js';
 import styles from './SeaChart.module.css';
 
 const manifests = import.meta.glob<AnyManifest>('../../../../../games/*/manifest.ts', {
@@ -66,49 +69,93 @@ function Svg({ markup, className }: { markup: string; className?: string }) {
   );
 }
 
-/** The card at the track's snap line: the one whose left edge is nearest the scroll padding. */
+/** The scroll offset that puts a card on the track's snap line. */
+function offsetOf(track: HTMLElement, index: number): number {
+  const card = track.children[index] as HTMLElement | undefined;
+  const padding = Number.parseFloat(getComputedStyle(track).scrollPaddingLeft || '0');
+  return card ? card.offsetLeft - padding : 0;
+}
+
+/** The card nearest the snap line. */
 function snappedIndex(track: HTMLElement): number {
-  const line =
-    track.scrollLeft + Number.parseFloat(getComputedStyle(track).scrollPaddingLeft || '0');
   let best = 0;
   let bestDistance = Number.POSITIVE_INFINITY;
-  [...track.children].forEach((card, index) => {
-    const distance = Math.abs((card as HTMLElement).offsetLeft - line);
+  for (let index = 0; index < track.children.length; index++) {
+    const distance = Math.abs(offsetOf(track, index) - track.scrollLeft);
     if (distance < bestDistance) {
       bestDistance = distance;
       best = index;
     }
-  });
+  }
   return best;
 }
 
+/** The first card that cannot go past the snap line: it and every card after it stay on screen. */
+function tailStart(track: HTMLElement): number {
+  const max = track.scrollWidth - track.clientWidth;
+  for (let index = 0; index < track.children.length; index++) {
+    if (offsetOf(track, index) >= max - 1) return index;
+  }
+  return Math.max(0, track.children.length - 1);
+}
+
 function scrollToCard(track: HTMLElement | null, index: number) {
-  const card = track?.children[index] as HTMLElement | undefined;
-  if (!track || !card) return;
-  const padding = Number.parseFloat(getComputedStyle(track).scrollPaddingLeft || '0');
+  if (!track) return;
   track.scrollTo({
-    left: card.offsetLeft - padding,
+    left: offsetOf(track, index),
     behavior: prefersReducedMotion() ? 'instant' : 'smooth',
   });
 }
 
-/** The track of Game cards: scroll-snaps one card at a time and reports the card at the snap line. */
-function useSnapTrack(count: number, onFocus: (index: number) => void) {
+/**
+ * The track of Game cards: scroll-snaps one card at a time and reports the focused card. Cards in
+ * the tail cannot reach the snap line, so there the focus is the last one picked, not read from the scroll.
+ */
+function useSnapTrack(scope: string, count: number, onFocus: (index: number) => void) {
   const ref = useRef<HTMLDivElement>(null);
   const focusRef = useRef(0);
+  const lockRef = useRef({ index: 0, until: 0 });
 
+  const focusOn = useCallback(
+    (index: number) => {
+      if (index === focusRef.current) return;
+      focusRef.current = index;
+      onFocus(index);
+    },
+    [onFocus],
+  );
+
+  /** Focuses a card and scrolls to it; scroll events are ignored until the scroll has settled. */
+  const select = useCallback(
+    (index: number) => {
+      const target = Math.max(0, Math.min(count - 1, index));
+      lockRef.current = { index: target, until: performance.now() + 500 };
+      focusOn(target);
+      scrollToCard(ref.current, target);
+    },
+    [count, focusOn],
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `scope` remounts the track, so listeners rebind
   useEffect(() => {
     const track = ref.current;
     if (!track) return;
     let frame = 0;
     const sync = () => {
       frame = 0;
-      const index = snappedIndex(track);
-      if (index === focusRef.current) return;
-      focusRef.current = index;
-      onFocus(index);
+      const lock = lockRef.current;
+      if (performance.now() < lock.until) {
+        focusOn(lock.index);
+        return;
+      }
+      const tail = tailStart(track);
+      const atEnd = track.scrollLeft >= track.scrollWidth - track.clientWidth - 1;
+      focusOn(atEnd ? Math.max(tail, focusRef.current) : snappedIndex(track));
     };
     const onScroll = () => {
+      const lock = lockRef.current;
+      const now = performance.now();
+      if (now < lock.until) lock.until = Math.max(lock.until, now + 150);
       if (!frame) frame = requestAnimationFrame(sync);
     };
     let lastStep = 0;
@@ -118,8 +165,7 @@ function useSnapTrack(count: number, onFocus: (index: number) => void) {
       const now = performance.now();
       if (now - lastStep < 280) return;
       lastStep = now;
-      const next = focusRef.current + Math.sign(event.deltaY);
-      scrollToCard(track, Math.max(0, Math.min(count - 1, next)));
+      select(focusRef.current + Math.sign(event.deltaY));
     };
     track.addEventListener('scroll', onScroll, { passive: true });
     track.addEventListener('wheel', onWheel, { passive: false });
@@ -128,9 +174,9 @@ function useSnapTrack(count: number, onFocus: (index: number) => void) {
       track.removeEventListener('scroll', onScroll);
       track.removeEventListener('wheel', onWheel);
     };
-  }, [count, onFocus]);
+  }, [scope, focusOn, select]);
 
-  return { ref, focusRef };
+  return { ref, focusRef, lockRef, select };
 }
 
 function Splash({ card, island, on }: { card: ChartCard; island: HubIsland; on: boolean }) {
@@ -156,13 +202,15 @@ function Splash({ card, island, on }: { card: ChartCard; island: HubIsland; on: 
 }
 
 /**
- * `/dev/kit#sea`, dev only: a throwaway prototype of the Sea chart for review (#306), after
- * Arknights' stage select. Islands in a column, the Island's Games on a track that snaps one card at
- * a time; the card at the snap line grows and the screen's art follows it. Splash art is a stand-in.
+ * `/dev/kit#sea`, dev only: the approved prototype of the Sea chart (#306), after Arknights' stage
+ * select. Islands in a column, the Island's Games as glass cards on a track that snaps one card at a
+ * time; the focused card grows and the screen's art follows it. A button opens the Game's rules in
+ * `RulesPager`. Splash art is a stand-in.
  */
 export function SeaChart() {
   const [islandId, setIslandId] = useState<Island>(ISLANDS[0]?.id ?? 'co');
   const [focus, setFocus] = useState(0);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const island = ISLANDS.find((i) => i.id === islandId) ?? (ISLANDS[0] as HubIsland);
   const cards = cardsOf(island.id);
   const current = cards[focus] ?? cards[0];
@@ -171,7 +219,7 @@ export function SeaChart() {
     setFocus(index);
     playSound('cardHover');
   }, []);
-  const { ref: track, focusRef } = useSnapTrack(cards.length, onFocus);
+  const { ref: track, focusRef, lockRef, select } = useSnapTrack(island.id, cards.length, onFocus);
 
   const pickIsland = (id: Island) => {
     if (id === islandId) return;
@@ -179,10 +227,13 @@ export function SeaChart() {
     setIslandId(id);
     setFocus(0);
     focusRef.current = 0;
+    lockRef.current = { index: 0, until: 0 };
     track.current?.scrollTo({ left: 0, behavior: 'instant' });
   };
 
   const soon = current?.manifest.status === 'soon';
+  const rulesOf = current && !soon ? gameById(current.manifest.id) : undefined;
+  const hasRules = !!rulesOf && rulesOf.rules.length > 0;
 
   return (
     <main className={styles.chart} style={{ '--hue': HUES[island.id] } as CSSProperties}>
@@ -252,6 +303,16 @@ export function SeaChart() {
               <Button variant="primary" forward={!soon} disabled={soon} className={styles.go}>
                 {soon ? 'Chưa mở' : 'Ra khơi'}
               </Button>
+              {hasRules && (
+                <Button
+                  variant="ghost"
+                  className={styles.rules}
+                  aria-label={`Luật chơi ${current.manifest.name}`}
+                  onClick={() => setRulesOpen(true)}
+                >
+                  <IconBook2 stroke={2} aria-hidden />
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -268,7 +329,7 @@ export function SeaChart() {
             if (!step) return;
             e.preventDefault();
             const next = Math.max(0, Math.min(cards.length - 1, focus + step));
-            scrollToCard(track.current, next);
+            select(next);
             (track.current?.children[next] as HTMLElement | undefined)?.focus({
               preventScroll: true,
             });
@@ -288,31 +349,40 @@ export function SeaChart() {
                 aria-current={on || undefined}
                 tabIndex={on ? 0 : -1}
                 onPointerEnter={(e) => hoverSound(e, 'cardHover')}
+                onPointerMove={tilt}
+                onPointerLeave={untilt}
                 onClick={() => {
                   if (on) playSound(locked ? 'locked' : 'pick');
-                  else scrollToCard(track.current, index);
+                  else select(index);
                 }}
               >
                 <span className={styles.face}>
-                  <span className={styles.cardArt}>
-                    {card.art && <img src={card.art} alt="" decoding="async" />}
-                  </span>
-                  <span className={styles.cardCode}>
-                    {CODES[island.id]}-{pad(index + 1)}
-                  </span>
-                  <Svg markup={card.emblem} className={styles.cardEmblem} />
-                  <span className={styles.cardName}>{card.manifest.name}</span>
-                  {locked && (
-                    <span className={styles.lock}>
-                      <Icon icon={IconLock} size={20} />
+                  <span className={styles.stage}>
+                    <span className={styles.stack} data-loop={on || undefined}>
+                      <span className={styles.glassBack} />
+                      <span className={styles.glassMid}>
+                        {card.art && <img src={card.art} alt="" decoding="async" />}
+                        <Svg markup={card.emblem} className={styles.cardEmblem} />
+                        <span className={styles.cardCode}>
+                          {CODES[island.id]}-{pad(index + 1)}
+                        </span>
+                      </span>
+                      <span className={styles.glassFront} />
                     </span>
-                  )}
+                    {locked && (
+                      <span className={styles.lock}>
+                        <Icon icon={IconLock} size={20} />
+                      </span>
+                    )}
+                  </span>
+                  <span className={styles.cardName}>{card.manifest.name}</span>
                 </span>
               </button>
             );
           })}
         </div>
       </section>
+      {rulesOpen && rulesOf && <RulesPager game={rulesOf} onClose={() => setRulesOpen(false)} />}
     </main>
   );
 }

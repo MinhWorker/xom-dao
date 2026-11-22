@@ -48,8 +48,8 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   lobby, Room, GameFrame or Results.
 - Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes, at both
   graphics levels and with less motion; `/dev/kit#motion` is the approved motion prototype (#295), still the
-  reference for the loading screens. `/dev/kit#emblems` shows every Emblem: the Hub's, the Islands' (#302) and the Games' (#303). `/dev/kit#sea` is the Sea chart prototype (#306,
-  in review), with stand-in splash art. `/dev/kit#harbour` is the Bến prototype (#308, in review), with stand-in art.
+  reference for the loading screens. `/dev/kit#emblems` shows every Emblem: the Hub's, the Islands' (#302) and the Games' (#303). `/dev/kit#sea` is the approved Sea chart prototype (#306), with stand-in splash art,
+  glass three-layer cards (`GameTiles`) and a rules button that opens `RulesPager`. `/dev/kit#harbour` is the Bến prototype (#308, in review), with stand-in art.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
 ## Conventions
