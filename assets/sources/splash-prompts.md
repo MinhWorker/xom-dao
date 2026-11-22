@@ -5,11 +5,11 @@ Splash art is the 20:9 background of the Sea chart: one per Island (`co`, `bai`,
 it around the manifest's `focus` and checks it.
 
 Every image uses the frame below unchanged; only `{subject}`, `{x}` and `{y}` change. `{x}` and
-`{y}` are the manifest's `focus` (an Island's art uses `x: 70, y: 50`). Make it with `agy -p`,
-asking it to call `generate_image` once with the filled frame; the reply names the file under
-`~/.gemini/antigravity-cli/brain/`. It comes out about 1376×768 (16:9): crop it to 20:9 keeping
-the subject, and resize it with sharp (lanczos3) to a 2560×1152 PNG.
-`splash-caro-sample.png` is the Caro sample made this way.
+`{y}` are the manifest's `focus` (an Island's art uses `x: 70, y: 50`). The owner pastes the
+filled frame into an AI image platform of their choice. Whatever it returns, crop it to 20:9 keeping
+the subject, and save it as a 2560×1152 PNG; `tools/hub-assets` checks the ratio and size.
+`splash-caro-sample.png` is a reference sample made with `agy` (Antigravity CLI) from this frame;
+the owner may replace it.
 
 ## Frame
 
