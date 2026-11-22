@@ -2,8 +2,8 @@
   <defs>
     <clipPath id="bai-left"><path d="M-2 -2H19.13L19.13 13C16.95 20 16.95 29 19.13 36C21.3 43 26.38 48.5 30 49.5V66H-2Z"/></clipPath>
     <clipPath id="bai-right"><path d="M66 -2H44.88L44.88 13C47.05 20 47.05 29 44.88 36C42.7 43 37.63 48.5 34 49.5V66H66Z"/></clipPath>
-    <clipPath id="bai-c0"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM11.67 27.4L24.89 23.61L38.6 71.44L25.38 75.23Z"/></clipPath>
-    <clipPath id="bai-c1"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM6.07 32.78L17.73 25.49L44.1 67.68L32.44 74.97Z"/></clipPath>
+    <clipPath id="bai-c0"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM11.67 27.4L24.89 23.61L30.33 42.6L17.11 46.39Z"/></clipPath>
+    <clipPath id="bai-c1"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM6.07 32.78L17.73 25.49L28.2 42.24L16.54 49.53Z"/></clipPath>
     <clipPath id="bai-c2"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM-0.83 39.65L11.22 26.27L29.05 42.33L17.01 55.71Z"/></clipPath>
   </defs>
   <path fill="none" stroke="currentColor" stroke-width="2" d="M6.89 29.76L6.89 17.5L32 3L57.11 17.5L57.11 28.28M57.11 37.84L57.11 46.5L32 61L19.01 53.5"/>
