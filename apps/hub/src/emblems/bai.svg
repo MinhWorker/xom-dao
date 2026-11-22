@@ -1,16 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <clipPath id="bai-left"><path d="M0 0H25.55L25.55 13C24.26 20 24.26 29 25.55 36C26.84 43 29.85 48.5 32 49.5V64H0Z"/></clipPath>
-    <clipPath id="bai-right"><path d="M64 0H42.45L42.45 13C43.74 20 43.74 29 42.45 36C41.16 43 38.15 48.5 36 49.5V64H64Z"/></clipPath>
-    <clipPath id="bai-card1"><path clip-rule="evenodd" d="M0 0H64V64H0ZM16.63 21.15L33.37 18.2L37.37 40.85L20.63 43.8Z"/></clipPath>
-    <clipPath id="bai-card2"><path clip-rule="evenodd" d="M0 0H64V64H0ZM12.2 21.93L28.94 18.98L32.94 41.63L16.19 44.58Z"/></clipPath>
+    <clipPath id="bai-f0"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM9.2 26.03L26.26 21.14L32.8 43.97L15.74 48.86Z"/></clipPath><clipPath id="bai-f1"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM3.32 32.14L18.37 22.74L30.96 42.88L15.9 52.28Z"/></clipPath><clipPath id="bai-f2"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM-0.65 39.64L11.23 26.45L28.88 42.34L17 55.53Z"/></clipPath><clipPath id="bai-f3"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM45.82 21.64L60.97 29.36L50.98 48.96L35.83 41.24Z"/></clipPath>
+    <clipPath id="bai-left"><path d="M-2 -2H19.13L19.13 13C16.95 20 16.95 29 19.13 36C21.3 43 26.38 48.5 30 49.5V66H-2Z"/></clipPath>
+    <clipPath id="bai-right"><path d="M66 -2H44.88L44.88 13C47.05 20 47.05 29 44.88 36C42.7 43 37.63 48.5 34 49.5V66H66Z"/></clipPath>
+    <clipPath id="bai-c0"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM11.67 27.4L24.89 23.61L30.33 42.6L17.11 46.39Z"/></clipPath>
+    <clipPath id="bai-c1"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM6.07 32.78L17.73 25.49L28.2 42.24L16.54 49.53Z"/></clipPath>
+    <clipPath id="bai-c2"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM-0.83 39.65L11.22 26.27L29.05 42.33L17.01 55.71Z"/></clipPath>
   </defs>
-  <path fill="none" stroke="currentColor" stroke-width="2" d="M32 3L57.11 17.5L57.11 46.5L32 61L6.89 46.5L6.89 17.5Z"/>
+  <g clip-path="url(#bai-f0)"><g clip-path="url(#bai-f1)"><g clip-path="url(#bai-f2)"><g clip-path="url(#bai-f3)"><path fill="none" stroke="currentColor" stroke-width="2" d="M6.89 32.9L6.89 17.5L32 3L57.11 17.5L57.11 30.38M57.11 33.94L57.11 46.5L32 61L16.31 51.94"/></g></g></g></g>
   <g fill="none" stroke="currentColor" stroke-width="2" clip-path="url(#bai-left)">
-    <rect x="21.5" y="22.5" width="11" height="17" rx="2" transform="rotate(-10 27 31)"/>
-    <g clip-path="url(#bai-card1)"><rect x="17" y="22.5" width="11" height="17" rx="2" transform="rotate(-10 27 31)"/></g>
-    <g clip-path="url(#bai-card1)"><g clip-path="url(#bai-card2)"><rect x="12.5" y="22.5" width="11" height="17" rx="2" transform="rotate(-10 27 31)"/></g></g>
+    <g transform="rotate(-16 21 35)"><rect stroke-width="1.75" x="15" y="26" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="17.6" y="28.6" width="6.8" height="12.8" rx="0.5"/></g>
+    <g clip-path="url(#bai-c0)"><g transform="rotate(-32 17.14 37.51)"><rect stroke-width="1.75" x="11.14" y="28.51" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="13.74" y="31.11" width="6.8" height="12.8" rx="0.5"/></g></g>
+    <g clip-path="url(#bai-c0)"><g clip-path="url(#bai-c1)"><g transform="rotate(-48 14.11 40.99)"><rect stroke-width="1.75" x="8.11" y="31.99" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="10.71" y="34.59" width="6.8" height="12.8" rx="0.5"/></g></g></g>
   </g>
-  <g clip-path="url(#bai-right)"><path fill="currentColor" fill-rule="evenodd" transform="rotate(15 47 37)" d="M44 29.5h6a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2ZM48 33.5l2.5 3.5-2.5 3.5-2.5-3.5Z"/></g>
-  <path fill="currentColor" fill-rule="evenodd" d="M27.55 13C26.26 20 26.26 29 27.55 36C28.84 43 31.85 48.5 34 49.5C36.15 48.5 39.16 43 40.45 36C41.74 29 41.74 20 40.45 13Q39.59 17 38.73 22.5L37.44 18.5L34 22L30.56 18.5L29.27 22.5Q28.41 17 27.55 13ZM30.5 26.15C31.45 27.48 33.35 28.43 33.35 29.86C33.35 31.09 31.83 31.47 30.98 30.71L31.55 32.04H29.45L30.02 30.71C29.17 31.47 27.65 31.09 27.65 29.86C27.65 28.43 29.55 27.48 30.5 26.15ZM37.5 31.85C36.36 30.52 34.65 29.38 34.65 27.86C34.65 26.53 36.5 25.96 37.5 27.48C38.5 25.96 40.35 26.53 40.35 27.86C40.35 29.38 38.64 30.52 37.5 31.85ZM28.84 36.5Q34 40 39.16 36.5Q37.87 44.5 34 44.5Q30.13 44.5 28.84 36.5Z"/>
+  <g clip-path="url(#bai-right)"><path fill="currentColor" fill-rule="evenodd" transform="rotate(27 48.4 35.3)" d="M43.4 26.3h10a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-10a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5ZM49.2 31.5l2.6 3.8-2.6 3.8-2.6-3.8Z"/></g>
+  <path fill="currentColor" fill-rule="evenodd" d="M21.13 13C18.95 20 18.95 29 21.13 36C23.3 43 28.38 48.5 32 49.5C35.63 48.5 40.7 43 42.88 36C45.05 29 45.05 20 42.88 13Q41.42 17 39.98 22.5L37.8 18.5L32 22L26.2 18.5L24.02 22.5Q22.58 17 21.13 13ZM26.4 25.1C27.7 26.92 30.3 28.22 30.3 30.17C30.3 31.86 28.22 32.38 27.05 31.34L27.83 33.16H24.97L25.75 31.34C24.58 32.38 22.5 31.86 22.5 30.17C22.5 28.22 25.1 26.92 26.4 25.1ZM37.6 32.9C36.04 31.08 33.7 29.52 33.7 27.44C33.7 25.62 36.3 24.84 37.6 26.92C38.9 24.84 41.5 25.62 41.5 27.44C41.5 29.52 39.16 31.08 37.6 32.9ZM23.3 36.5Q32 40 40.7 36.5Q38.52 44.5 32 44.5Q25.48 44.5 23.3 36.5Z"/>
 </svg>

@@ -1,7 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width="2"/>
-  <path fill="none" stroke="currentColor" stroke-width="1.5" d="M6.13 15.84A30.5 30.5 0 0 1 26.18 2.06M37.82 2.06A30.5 30.5 0 0 1 57.87 15.84"/>
-  <path fill="currentColor" d="M32 1l3 6h-6zM63 32l-6 3v-6zM32 63l-3-6h6zM1 32l6-3v6z"/>
+  <defs>
+    <clipPath id="hub-points"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM32 -3.68L38.37 8L25.63 8ZM67.68 32L56 38.37L56 25.63ZM32 67.68L25.63 56L38.37 56ZM-3.68 32L8 25.63L8 38.37Z"/></clipPath>
+  </defs>
+  <g fill="none" stroke="currentColor" clip-path="url(#hub-points)">
+    <circle cx="32" cy="32" r="27" stroke-width="2"/>
+    <path stroke-width="1.5" d="M6.13 15.84A30.5 30.5 0 0 1 57.87 15.84"/>
+  </g>
+  <path fill="currentColor" d="M32 .5l3 5.5h-6zM63.5 32l-5.5 3v-6zM32 63.5l-3-5.5h6zM.5 32l5.5-3v6z"/>
   <path fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" d="M18 18L24 11L27 13.5L32 8.5L37 13.5L40 11L46 18ZM51.12 26.88L54.19 35.57L50.52 36.92L52.35 43.75L45.52 45.58L46.19 49.43L37.12 51.12ZM26.88 51.12L17.81 49.43L18.48 45.58L11.65 43.75L13.48 36.92L9.81 35.57L12.88 26.88Z"/>
   <g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
     <path transform="translate(32 32)" d="M-6 -7q2 -1.6 4 0t4 0t4 0M-10 -10.5q2 -1.6 4 0t4 0t4 0t4 0t4 0"/>

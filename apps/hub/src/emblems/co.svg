@@ -1,5 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <path fill="none" stroke="currentColor" stroke-width="2" d="M32 3L57.11 17.5V46.5L32 61L6.89 46.5V17.5Z"/>
-  <path fill="none" stroke="currentColor" stroke-width="2" d="M17 17H47V47H17ZM32 17V20M32 44V47M17 32H20M44 32H47M17 17L23.5 23.5M47 17L40.5 23.5M47 47L40.5 40.5M17 47L23.5 40.5"/>
-  <path fill="currentColor" fill-rule="evenodd" d="M23 32a9 9 0 1 0 18 0a9 9 0 1 0-18 0ZM25.5 32a6.5 6.5 0 1 0 13 0a6.5 6.5 0 1 0-13 0ZM27.5 32a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0-9 0Z"/>
+  <defs>
+    <clipPath id="co-crown"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM19 -2H45V19H19Z"/></clipPath>
+    <clipPath id="co-base"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM17 54H47V66H17Z"/></clipPath>
+  </defs>
+  <g clip-path="url(#co-crown)"><path fill="none" stroke="currentColor" stroke-width="2" clip-path="url(#co-base)" d="M32 3L57.11 17.5V46.5L32 61L6.89 46.5V17.5Z"/></g>
+  <path fill="currentColor" d="M21 17V7.5L25.5 11.5L28 8.5L32 3.5L36 8.5L38.5 11.5L43 7.5V17ZM22 19H42V21.5H22ZM19.5 23.5H44.5L43 27.5H21ZM23 51.5H41V54H23ZM19 56H45V59H19Z"/>
+  <path fill="currentColor" fill-rule="evenodd" d="M21 29.5H43V42.5L37.5 47.5V49.5H26.5V47.5L21 42.5ZM25 40a7 7 0 1 0 14 0a7 7 0 1 0-14 0Z"/>
+  <path fill="currentColor" d="M32 35C33.4 37 33.4 41.5 32 44C30.6 41.5 30.6 37 32 35ZM27.6 37.8C29.3 38.3 30 40.4 29.8 43C28.1 42.4 27.4 40.6 27.6 37.8ZM36.4 37.8C34.7 38.3 34 40.4 34.2 43C35.9 42.4 36.6 40.6 36.4 37.8Z"/>
 </svg>
