@@ -15,12 +15,25 @@ const WASH: Record<Mark, string> = { X: 'rgb(179 55 44 / 0.13)', O: 'rgb(44 79 1
 /** How long a fresh mark takes to draw, the board to grow and the winning line to strike. */
 export const MARK_MS = 220;
 export const GROW_MS = 320;
-export const LINE_MS = 650;
+const LINE_MS = 650;
 /** How long the ink ring of a fresh mark spreads, and the pencil circle of the last move takes. */
 const RIPPLE_MS = 460;
 const CIRCLE_MS = 280;
 /** How long the cells a growth added stay lighter than the rest of the sheet. */
 const FRESH_MS = 1100;
+/** The end of a Match, from when it is called: the line strikes once the last mark is drawn. */
+export const LINE_AT = MARK_MS;
+const FLOURISH_AT = LINE_AT + LINE_MS;
+/** The five marks pop one after another; the loser's board dims; a draw fades out from the middle. */
+const POP_STEP_MS = 90;
+const POP_MS = 280;
+const DIM_MS = 600;
+const DRAW_WAVE_MS = 650;
+/** When the end has played out and the Hub may show the results. */
+export const END_MS = 2000;
+
+/** How the Match ended for this player; `watch` is a spectator's view of a win. */
+export type Ending = 'win' | 'lose' | 'draw' | 'watch';
 
 /** The board window on screen, in board coordinates (a float while the board grows). */
 interface Frame {
@@ -41,11 +54,14 @@ export interface Scene {
   mine: Mark | null;
   /** When each mark appeared (performance.now()), by cell key. */
   placedAt: Map<string, number>;
-  /** When the winning line appeared, or the draw was called. */
+  /** When the end began (the winning line or the draw), and how it ended for the player. */
   overAt: number | null;
+  ending: Ending | null;
 }
 
 const ease = (t: number) => 1 - (1 - Math.min(Math.max(t, 0), 1)) ** 3;
+/** Rises and falls back over `t` from 0 to 1; 0 outside. */
+const bump = (t: number) => (t <= 0 || t >= 1 ? 0 : Math.sin(Math.PI * t));
 
 export class BoardView {
   private readonly ctx: CanvasRenderingContext2D;
@@ -105,7 +121,7 @@ export class BoardView {
   /** Whether something still moves at `now` (keep drawing frames). */
   animating(scene: Scene, now: number) {
     if (now - this.grewAt < (this.before ? FRESH_MS : GROW_MS)) return true;
-    if (scene.overAt !== null && now - scene.overAt < LINE_MS) return true;
+    if (scene.overAt !== null && now - scene.overAt < END_MS) return true;
     for (const t of scene.placedAt.values()) if (now - t < RIPPLE_MS + CIRCLE_MS) return true;
     return false;
   }
@@ -151,6 +167,22 @@ export class BoardView {
       }
     }
 
+    const since = scene.overAt === null ? -Infinity : now - scene.overAt;
+    const line = state.line ?? [];
+    const lineIndex = new Map(line.map((p, i) => [keyOf(p), i]));
+    if (since >= FLOURISH_AT && line.length) {
+      const glow = ease((since - FLOURISH_AT) / POP_MS);
+      ctx.fillStyle = WASH[at(board, line[0] as Point) as Mark];
+      ctx.globalAlpha = glow;
+      for (const p of line) {
+        const { cx, cy } = centre(p);
+        ctx.fillRect(cx - cell / 2 + 1, cy - cell / 2 + 1, cell - 1, cell - 1);
+      }
+      ctx.globalAlpha = 1;
+    }
+    const middle = { x: board.left + board.cols / 2, y: board.top + board.rows / 2 };
+    const far = Math.hypot(board.cols, board.rows) / 2;
+
     for (const p of points(board)) {
       const mark = at(board, p);
       if (!mark) continue;
@@ -158,7 +190,29 @@ export class BoardView {
       const age = placed === undefined ? Infinity : now - placed;
       if (age < RIPPLE_MS) drawRipple(ctx, mark, centre(p), cell, age / RIPPLE_MS);
       const t = ease(age / MARK_MS);
-      drawMark(ctx, mark, centre(p), cell, t, 1, 1 + 0.25 * (1 - t));
+      let alpha = 1;
+      let scale = 1 + 0.25 * (1 - t);
+      const index = lineIndex.get(keyOf(p));
+      if (index !== undefined && scene.ending !== 'lose') {
+        scale *= 1 + 0.3 * bump((since - FLOURISH_AT - index * POP_STEP_MS) / POP_MS);
+      } else if (scene.ending === 'draw') {
+        const reach = Math.hypot(p.x + 0.5 - middle.x, p.y + 0.5 - middle.y) / far;
+        const k = (since - LINE_AT - reach * DRAW_WAVE_MS) / POP_MS;
+        scale *= 1 + 0.15 * bump(k);
+        alpha = 1 - 0.45 * ease(k);
+      }
+      drawMark(ctx, mark, centre(p), cell, t, alpha, scale);
+    }
+
+    if (scene.ending === 'lose' && since > FLOURISH_AT) {
+      const veil = new Path2D();
+      veil.rect(x0 - 5, y0 - 5, w + 10, h + 10);
+      for (const p of line) {
+        const { cx, cy } = centre(p);
+        veil.rect(cx - cell / 2, cy - cell / 2, cell, cell);
+      }
+      ctx.fillStyle = `rgb(42 30 22 / ${0.28 * ease((since - FLOURISH_AT) / DIM_MS)})`;
+      ctx.fill(veil, 'evenodd');
     }
 
     const ghost = scene.pending ?? scene.hover;
@@ -170,7 +224,7 @@ export class BoardView {
       const first = centre(state.line[0] as Point);
       const last = centre(state.line[state.line.length - 1] as Point);
       const mark = at(board, state.line[0] as Point) as Mark;
-      const t = ease((now - scene.overAt) / LINE_MS);
+      const t = ease((since - LINE_AT) / LINE_MS);
       const length = Math.max(1, Math.hypot(last.cx - first.cx, last.cy - first.cy));
       const dx = (last.cx - first.cx) / length;
       const dy = (last.cy - first.cy) / length;
@@ -178,6 +232,7 @@ export class BoardView {
       const sy = first.cy - dy * cell * 0.45;
       const ex = last.cx + dx * cell * 0.45;
       const ey = last.cy + dy * cell * 0.45;
+      if (t <= 0) return;
       ctx.strokeStyle = INK[mark];
       ctx.globalAlpha = 0.85;
       ctx.lineCap = 'round';

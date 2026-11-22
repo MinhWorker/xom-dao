@@ -554,11 +554,12 @@ export class GameHostService implements OnModuleDestroy {
     const { rules, stored } = match;
     if (!rules || !stored) throw new Error('Match has no Game state');
     const result = rules.result(stored);
+    this.refreshViews(match);
     if (result) {
+      this.publish(match);
       this.end(match, 'settled', result);
       return;
     }
-    this.refreshViews(match);
     this.scheduleGameTimer(match);
     this.publish(match);
     clearTimeout(match.botWait);

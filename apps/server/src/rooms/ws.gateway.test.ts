@@ -182,7 +182,14 @@ describe('WebSocket transport', () => {
       minh.pushed
         .filter((message) => message.event === 'match:state')
         .map((message) => (message.data as { status: string }).status),
-    ).toEqual(['loading', 'playing', 'over']);
+    ).toEqual(['loading', 'playing', 'playing', 'over']);
+    expect(
+      (
+        minh.pushed.filter((message) => message.event === 'match:state').at(-2)?.data as {
+          view: unknown;
+        }
+      )?.view,
+    ).toEqual({ turn: 0 });
     expect(
       (
         minh.pushed.filter((message) => message.event === 'match:state').at(-1)?.data as {

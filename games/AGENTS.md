@@ -38,8 +38,10 @@ Where to look:
 A Game's client talks to the Hub only through `@xomdao/bridge` (`packages/bridge`): it calls
 `createGameBridge({ onInit, onMessage, ... })`, then `ready()`, sends moves with `send` and
 calls `done()` after its end-of-match animation. Every `init` (reconnect, replay) must redraw
-the whole screen from its `match` snapshot. The message list and `BRIDGE_VERSION` are in the
-header of `packages/bridge/src/protocol.ts`; the Hub's side is `createGameHost`.
+the whole screen from its `match` snapshot; after the Match is over that is its last view, so
+draw how it ended at once (Caro: `games/caro/client/main.ts`). The message list and
+`BRIDGE_VERSION` are in the header of `packages/bridge/src/protocol.ts`; the Hub's side is
+`createGameHost`.
 
 ## The Harness: running a Game without the Hub
 
@@ -128,9 +130,9 @@ Make a Godot Game:
    `XomdaoBridge.done()` after the end-of-match animation. JSON numbers are floats: `int()` them.
    Leave the top-right 48×48 px to the Hub. Volume and mute from `settings` are already applied
    to the Master bus; `music` and `effects` (0 to 1, may be missing) are not applied, for a Game
-   with a channel of each. A `match:state` push whose `status` is `over` carries the `result`
-   (`seats[].player`, `place`, `score`) and no `view`: the last move never arrives as a view, so
-   show the end from the result (Tiến Lên shows its standings from it). Unless the Game declares
+   with a channel of each. The move that ends a Match arrives as a last `playing` push with its
+   `view`; then a push whose `status` is `over` carries the `result` (`seats[].player`, `place`,
+   `score`) and no `view` (Tiến Lên shows its standings from it). Unless the Game declares
    `botDelay`, the server applies the computer's moves with no pause: queue the pushes and pace
    them on screen (`main.gd`).
 4. Run it against a Game server: start the server and the Harness as above and `create` a Room

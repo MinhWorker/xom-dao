@@ -123,6 +123,20 @@ describe('caro', () => {
     game.send('b', 'place', move?.payload as object);
     expect(game.state.turn).toBe('a');
   });
+
+  it('lets the computer think for a moment, a little longer once the board fills', () => {
+    const swapped = play([], { swap: true }, ['b']);
+    const first = swapped.botDelay('b');
+    expect(first).toBeGreaterThanOrEqual(450);
+    expect(first).toBeLessThan(750);
+
+    const late = play(rows(4).slice(0, 7), {}, ['b']);
+    for (let i = 0; i < 20; i++) {
+      const ms = late.botDelay('b');
+      expect(ms).toBeGreaterThanOrEqual(600 + 7 * 15);
+      expect(ms).toBeLessThan(600 + 7 * 15 + 500);
+    }
+  });
 });
 
 /**

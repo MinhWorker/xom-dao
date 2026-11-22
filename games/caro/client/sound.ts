@@ -6,6 +6,9 @@ const FILES = {
   other: new URL('../assets/caro-o-place.wav', import.meta.url).href,
   turn: new URL('../assets/caro-select.wav', import.meta.url).href,
   refused: new URL('../assets/caro-invalid.wav', import.meta.url).href,
+  win: new URL('../assets/caro-win.wav', import.meta.url).href,
+  lose: new URL('../assets/caro-lose.wav', import.meta.url).href,
+  draw: new URL('../assets/caro-draw.wav', import.meta.url).href,
 };
 
 export type Sound = keyof typeof FILES;
