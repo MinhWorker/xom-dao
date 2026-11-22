@@ -9,6 +9,7 @@ import { hub, useHub } from '../../net/hub.js';
 import { navigate, router } from '../../router.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
 import { InviteSheet } from '../friends/InviteSheet.js';
+import { homeward } from '../homeward/homeward.js';
 import { focusPosition } from '../lobby/summary.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import screen from '../Screen.module.css';
@@ -133,6 +134,7 @@ export function Room({ code }: { code: string }) {
 
   const leave = () =>
     run(async () => {
+      if (frameOpen) return homeward.run(() => hub.leaveRoom());
       await hub.leaveRoom();
       navigate('/', { force: true });
     });

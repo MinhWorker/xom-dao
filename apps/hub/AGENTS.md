@@ -18,7 +18,7 @@ src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choic
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
                    `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;
                    `net/hub.ts` wraps every request in it, and Room create/join and Match start block
-src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, MatchLoading over it until the Match starts, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
+src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, MatchLoading over it until the Match starts, Results), rules/ (RulesPager), homeward/ (the Hub's loading screen on the way back to the Bến), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
@@ -93,8 +93,9 @@ goes back to the waiting room, so playing again reuses it.
   `data-hud` (Results and the corner's other buttons) while a mouse hovers it or a finger holds it,
   so the Game's last state shows. The Game does nothing for it.
 - Leaving a running Match (the corner menu's "Rời ván", or the back button, which `router.block`
-  turns into the same) asks first. While the Match view is open, the others hear who left,
-  lost their connection or came back as toasts (`screens/room/notices.ts`). Results keep the
+  turns into the same) asks first. Saying yes covers the screen with the Hub's loading screen
+  (`screens/homeward/`, the anchor as a stand-in Emblem) until the Bến is up. While the Match
+  view is open, the others hear who left, lost their connection or came back as toasts (`screens/room/notices.ts`). Results keep the
   names of those who left, marked "Đã rời", and "Chơi lại" waits for enough players.
 - A reload or a dropped connection mid-Match comes back through `session:resume`; the Game
   gets a fresh `init` with the latest `view` and redraws from it.

@@ -33,13 +33,13 @@ function statusOf(seat: LoadingSeat, isMe: boolean) {
   return isMe ? `${Math.round(seat.load * 100)}%` : 'Đang tải';
 }
 
-/** A stand-in for the Game's Emblem until the real ones exist: its initial on the diamond plate. */
-function Emblem({ name }: { name: string }) {
+/** The diamond plate in its turning ring that holds an Emblem on a loading screen. */
+export function LoadingEmblem({ children }: { children: ReactNode }) {
   return (
     <div className={styles.emblem} aria-hidden="true">
       <span className={styles.ring} data-loop />
       <span className={styles.plate}>
-        <span className={styles.initial}>{name.charAt(0)}</span>
+        <span className={styles.initial}>{children}</span>
       </span>
     </div>
   );
@@ -62,7 +62,7 @@ export function MatchLoading({ gameName, seats, meId, leaving, children }: Match
   return (
     <div className={styles.loading} data-leaving={leaving || undefined} role="status">
       <span className={styles.stripes} data-loop aria-hidden="true" />
-      <Emblem name={gameName} />
+      <LoadingEmblem>{gameName.charAt(0)}</LoadingEmblem>
       <div className={styles.info}>
         <span className={styles.kicker}>Đang tải ván</span>
         <h2 className={styles.title}>{gameName}</h2>
