@@ -13,3 +13,5 @@ export { TextField } from './TextField.js';
 export { ToastRegion } from './Toast.js';
 export { Toggle } from './Toggle.js';
 export { toast } from './toasts.js';
+export { WaitBadge } from './WaitBadge.js';
+export { wait } from './wait.js';

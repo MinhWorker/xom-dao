@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { closeAnimated } from './modal.js';
 import { nextIndex } from './roving.js';
 import { createToastStore, MAX_TOASTS } from './toasts.js';
+import { createWaitStore, WAIT_DELAY_MS } from './wait.js';
 
 describe('nextIndex', () => {
   it('wraps around at both ends', () => {
@@ -112,5 +113,61 @@ describe('closeAnimated', () => {
     await closeAnimated(dialog as unknown as HTMLDialogElement, () => true);
     expect(dialog.closed).toBe(false);
     expect(dialog.attrs.has('data-closing')).toBe(false);
+  });
+});
+
+describe('wait store', () => {
+  const later = () => {
+    let settle!: (fail?: boolean) => void;
+    const promise = new Promise<void>((resolve, reject) => {
+      settle = (fail) => (fail ? reject(new Error('x')) : resolve());
+    });
+    return { promise, settle };
+  };
+
+  it('never shows the badge for a quick request', async () => {
+    vi.useFakeTimers();
+    const store = createWaitStore();
+    const listener = vi.fn();
+    store.subscribe(listener);
+    const r = later();
+    store.track(r.promise);
+    await vi.advanceTimersByTimeAsync(WAIT_DELAY_MS - 50);
+    r.settle();
+    await vi.advanceTimersByTimeAsync(WAIT_DELAY_MS);
+    expect(store.snapshot()).toBeNull();
+    expect(listener).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('shows the badge past the delay until a slow request settles, even when it fails', async () => {
+    vi.useFakeTimers();
+    const store = createWaitStore();
+    const r = later();
+    const tracked = store.track(r.promise);
+    await vi.advanceTimersByTimeAsync(WAIT_DELAY_MS);
+    expect(store.snapshot()).toBe('badge');
+    r.settle(true);
+    await expect(tracked).rejects.toThrow('x');
+    expect(store.snapshot()).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('blocks while any slow blocking request is pending', async () => {
+    vi.useFakeTimers();
+    const store = createWaitStore();
+    const background = later();
+    const join = later();
+    store.track(background.promise);
+    store.track(join.promise, true);
+    await vi.advanceTimersByTimeAsync(WAIT_DELAY_MS);
+    expect(store.snapshot()).toBe('block');
+    join.settle();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.snapshot()).toBe('badge');
+    background.settle();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.snapshot()).toBeNull();
+    vi.useRealTimers();
   });
 });
