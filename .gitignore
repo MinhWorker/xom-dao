@@ -8,8 +8,7 @@ coverage/
 .DS_Store
 .vercel
 .blender
-.claude/tmp/
-.claude/worktrees/
+.claude/
 .env*
 !.env.example
 .playwright-mcp/
