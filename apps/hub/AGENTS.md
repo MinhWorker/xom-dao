@@ -15,7 +15,9 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.js
                    rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
                    Loops (looping HUD icons): no server knowledge. `toast()` needs `<ToastRegion />` (mounted in
-                   main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit
+                   main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
+                   `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;
+                   `net/hub.ts` wraps every request in it, and Room create/join and Match start block
 src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
@@ -41,7 +43,7 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   lobby, Room, GameFrame or Results.
 - Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes, at both
   graphics levels and with less motion; `/dev/kit#motion` is the approved motion prototype (#295), still the
-  reference for the wait badge and the loading screens.
+  reference for the loading screens.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
 ## Conventions
