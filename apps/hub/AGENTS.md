@@ -14,7 +14,9 @@ src/net/store.ts   The one socket (`/ws`) and the Session state; every push and 
 src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.json` + the art and
                    rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production,
                    `soon` ones are left out
-src/islands.ts     The Islands' names and order (their ids are `ISLANDS` in `@xomdao/sdk`)
+src/islands.ts     The Islands' names, order and Emblems, and `HUB_EMBLEM` (ids are `ISLANDS` in `@xomdao/sdk`)
+src/emblems/       The Hub's (`hub.svg`) and each Island's (`<island>.svg`) Emblem, same contract as a Game's;
+                   `tools/hub-assets` tests them
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
                    Loops (looping HUD icons): no server knowledge. `toast()` needs `<ToastRegion />` (mounted in
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
@@ -45,7 +47,7 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   lobby, Room, GameFrame or Results.
 - Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes, at both
   graphics levels and with less motion; `/dev/kit#motion` is the approved motion prototype (#295), still the
-  reference for the loading screens.
+  reference for the loading screens. `/dev/kit#emblems` shows the Hub's and the Islands' Emblems (#302, in review).
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
 ## Conventions

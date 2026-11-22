@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <path fill="none" stroke="currentColor" stroke-width="2" d="M32 3L57.11 17.5V46.5L32 61L6.89 46.5V17.5Z"/>
+  <path fill="none" stroke="currentColor" stroke-width="2" d="M17 17H47V47H17ZM32 17V20M32 44V47M17 32H20M44 32H47M17 17L23.5 23.5M47 17L40.5 23.5M47 47L40.5 40.5M17 47L23.5 40.5"/>
+  <path fill="currentColor" fill-rule="evenodd" d="M23 32a9 9 0 1 0 18 0a9 9 0 1 0-18 0ZM25.5 32a6.5 6.5 0 1 0 13 0a6.5 6.5 0 1 0-13 0ZM27.5 32a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0-9 0Z"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="bai-gap">
+      <path clip-rule="evenodd" d="M0 0H64V64H0ZM28.77 17.32L50.44 21.14L45.23 50.68L23.56 46.86Z"/>
+    </clipPath>
+  </defs>
+  <path fill="none" stroke="currentColor" stroke-width="2" d="M32 3L57.11 17.5V46.5L32 61L6.89 46.5V17.5Z"/>
+  <rect fill="currentColor" x="18.5" y="21.5" width="17" height="25" rx="2" transform="rotate(-14 27 34)" clip-path="url(#bai-gap)"/>
+  <path fill="currentColor" fill-rule="evenodd" transform="rotate(10 37 34)" d="M30.5 21.5h13a2 2 0 0 1 2 2v21a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-21a2 2 0 0 1 2-2ZM37 27.5l4.5 6.5-4.5 6.5-4.5-6.5Z"/>
+</svg>

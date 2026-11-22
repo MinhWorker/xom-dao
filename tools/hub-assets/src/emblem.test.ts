@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { type AnyManifest, ISLANDS, parseManifest } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
@@ -35,6 +35,14 @@ describe('emblemProblems', () => {
     expect(emblemProblems(extras)).toEqual(['must not have <style>', 'must not have <image>']);
     const big = svg(`<path fill="currentColor" d="${'M0 0'.repeat(EMBLEM_MAX_BYTES / 4)}"/>`);
     expect(emblemProblems(big)[0]).toMatch(/^is 16\.\d KB: at most 16 KB$/);
+  });
+});
+
+describe("the Hub's and the Islands' Emblems", () => {
+  const emblems = join(import.meta.dirname, '../../../apps/hub/src/emblems');
+
+  it.each(['hub', ...ISLANDS])('%s.svg follows the Emblem contract', (name) => {
+    expect(emblemProblems(readFileSync(join(emblems, `${name}.svg`), 'utf8'))).toEqual([]);
   });
 });
 
