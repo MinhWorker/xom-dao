@@ -17,6 +17,7 @@ export class Sounds {
   private ctx: AudioContext | null = null;
   private gain: GainNode | null = null;
   private readonly buffers = new Map<Sound, AudioBuffer>();
+  private readonly playing = new Set<AudioBufferSourceNode>();
   private level = 1;
   private hidden = false;
 
@@ -36,11 +37,16 @@ export class Sounds {
     this.gain?.gain.setValueAtTime(this.level, this.ctx?.currentTime ?? 0);
   }
 
-  /** Silences everything while the tab is hidden. */
+  /** Silences everything while the tab is hidden, dropping sounds still due to play. */
   setHidden(hidden: boolean) {
     this.hidden = hidden;
-    if (hidden) void this.ctx?.suspend();
-    else void this.ctx?.resume();
+    if (!hidden) {
+      void this.ctx?.resume();
+      return;
+    }
+    for (const source of this.playing) source.stop();
+    this.playing.clear();
+    void this.ctx?.suspend();
   }
 
   /** Plays a sound `delay` ms from now; dropped if audio is not available yet. */
@@ -52,6 +58,8 @@ export class Sounds {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(gain);
+    source.onended = () => this.playing.delete(source);
+    this.playing.add(source);
     source.start(ctx.currentTime + delay / 1000);
   }
 
