@@ -135,7 +135,10 @@ async function main() {
     await aliceSheet.getByRole('tab', { name: 'Danh sách' }).click();
     await aliceSheet.getByText('Bob', { exact: true }).waitFor();
     await a.keyboard.press('Escape');
-    await a.getByRole('button', { name: 'Tạo phòng' }).click();
+    await a.getByRole('button', { name: 'Ra khơi' }).click();
+    await a.waitForURL(/\/sea$/);
+    await a.getByRole('heading', { name: 'Caro' }).waitFor();
+    await a.getByRole('button', { name: 'Ra khơi' }).click();
     await a.waitForURL(/\/room\/[A-Z0-9]{4}$/);
     const code = new URL(a.url()).pathname.split('/').pop();
     await a.getByRole('button', { name: '+ Mời' }).first().click();

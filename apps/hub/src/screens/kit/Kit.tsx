@@ -31,7 +31,6 @@ import { EmblemSheet } from './EmblemSheet.js';
 import { Harbour } from './Harbour.js';
 import styles from './Kit.module.css';
 import { MotionLab } from './MotionLab.js';
-import { SeaChart } from './SeaChart.js';
 
 /** Phone landscape frames the kit is checked at, each at one graphics level. */
 const FRAMES: { width: number; height: number; level: GraphicsLevel; reduce?: boolean }[] = [
@@ -223,13 +222,11 @@ function Samples() {
 /**
  * `/dev/kit`, dev only: every kit component at the phone frames, at both graphics levels and with
  * less motion; toasts follow the real setting. `#motion` shows the motion prototype full screen,
- * `#emblems` the Hub's and the Islands' Emblems, `#sea` the Sea chart prototype, `#harbour` the Bến
- * prototype.
+ * `#emblems` the Hub's and the Islands' Emblems, `#harbour` the Bến prototype.
  */
 export function Kit() {
   if (location.hash === '#motion') return <MotionLab full />;
   if (location.hash === '#emblems') return <EmblemSheet />;
-  if (location.hash === '#sea') return <SeaChart />;
   if (location.hash === '#harbour') return <Harbour />;
   const art = (GAMES.find((g) => g.manifest.id === 'caro') ?? GAMES[0])?.art.lobby;
   return (

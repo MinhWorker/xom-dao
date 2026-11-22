@@ -1,20 +1,16 @@
 import { IconDots, IconSettings, IconUsers } from '@tabler/icons-react';
-import { type FormEvent, useEffect, useState } from 'react';
-import { flushSync } from 'react-dom';
-import { GAMES, type HubGame } from '../../games.js';
-import { Button, Chip, Dialog, Icon, Loop, Menu, TextField } from '../../kit/index.js';
+import { type FormEvent, useState } from 'react';
+import { GAMES, gameById, type HubGame } from '../../games.js';
+import { Button, Dialog, Icon, Loop, Menu, TextField } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
-import { prefersReducedMotion, transitionsAllowed, useGraphics } from '../../settings/graphics.js';
+import { prefersReducedMotion, useGraphics } from '../../settings/graphics.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
 import { FriendsSheet } from '../friends/FriendsSheet.js';
+import { lastCardId } from '../sea/SeaChart.js';
 import { SettingsOverlay } from '../settings/SettingsOverlay.js';
-import { GameStrip } from './GameStrip.js';
 import styles from './Lobby.module.css';
-import { durationLabel, focusPosition, playersLabel } from './summary.js';
-
-/** The Game picked last, so coming back from a Room shows it again. */
-let lastPicked = '';
+import { focusPosition } from './summary.js';
 
 /** The loop plays only when the player allows it and has not asked for less motion or less data. */
 function canPlayLoop(allowed: boolean) {
@@ -52,47 +48,11 @@ export function Lobby() {
   const user = useHub((s) => s.user);
   const closed = useHub((s) => s.closed);
   const requests = useHub((s) => s.friends.filter((f) => f.state === 'incoming').length);
-  const [running, setRunning] = useState<string[] | null>(null);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [pickedId, setPickedId] = useState(lastPicked);
 
-  useEffect(() => {
-    void hub.gameIds().then(setRunning);
-  }, []);
-
-  const game = GAMES.find((g) => g.manifest.id === pickedId) ?? GAMES[0];
-  const closedIds = running
-    ? GAMES.filter((g) => !running.includes(g.manifest.id)).map((g) => g.manifest.id)
-    : [];
-
-  function pick(id: string) {
-    lastPicked = id;
-    setError('');
-    const apply = () => flushSync(() => setPickedId(id));
-    if (document.startViewTransition && transitionsAllowed()) {
-      document.startViewTransition(apply).ready.catch(() => {});
-    } else apply();
-  }
-
-  async function create(target: HubGame) {
-    setBusy(true);
-    setError('');
-    try {
-      const { roomCode } = await hub.request('room:create', {
-        gameId: target.manifest.id,
-        version: target.version,
-      });
-      navigate(`/room/${roomCode}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Máy chủ gặp lỗi');
-    } finally {
-      setBusy(false);
-    }
-  }
+  const game = gameById(lastCardId()) ?? GAMES[0];
 
   function join(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,10 +61,6 @@ export function Lobby() {
     setJoinOpen(false);
     navigate(`/room/${code.toUpperCase()}`);
   }
-
-  const message = error || closed;
-  const index = game ? GAMES.indexOf(game) + 1 : 0;
-  const off = game ? closedIds.includes(game.manifest.id) : false;
 
   return (
     <main className={styles.lobby}>
@@ -151,53 +107,22 @@ export function Lobby() {
         </span>
       </header>
 
-      {game ? (
-        <section className={styles.hero} aria-labelledby="lobby-title">
-          <span className={styles.code}>
-            Trò {String(index).padStart(2, '0')} / {String(GAMES.length).padStart(2, '0')}
-          </span>
-          <h1 id="lobby-title" className={styles.title}>
-            {game.manifest.name}
-          </h1>
-          <p className={styles.tagline}>{game.manifest.tagline}</p>
-          <div className={styles.chips}>
-            <Chip>{playersLabel(game.manifest)}</Chip>
-            <Chip>{durationLabel(game.manifest)}</Chip>
-            {game.manifest.bots && <Chip>Có máy</Chip>}
-            {game.manifest.status === 'wip' && <Chip tone="accent">Đang làm</Chip>}
-            {off && <Chip tone="danger">Tạm đóng</Chip>}
-          </div>
-          {message && (
-            <p className={styles.error} role="alert">
-              {message}
-            </p>
-          )}
-        </section>
-      ) : (
-        <p className={styles.empty}>Chưa có trò nào.</p>
-      )}
+      <section className={styles.hero}>
+        {closed && (
+          <p className={styles.error} role="alert">
+            {closed}
+          </p>
+        )}
+      </section>
 
-      {game && (
-        <footer className={styles.dock}>
-          <GameStrip
-            games={GAMES}
-            selectedId={game.manifest.id}
-            closedIds={closedIds}
-            onSelect={pick}
-          />
-          <div className={styles.actions}>
-            <Button onClick={() => setJoinOpen(true)}>Vào phòng</Button>
-            <Button
-              variant="primary"
-              forward
-              disabled={busy || off}
-              onClick={() => void create(game)}
-            >
-              Tạo phòng
-            </Button>
-          </div>
-        </footer>
-      )}
+      <footer className={styles.dock}>
+        <div className={styles.actions}>
+          <Button onClick={() => setJoinOpen(true)}>Vào phòng</Button>
+          <Button variant="primary" forward onClick={() => navigate('/sea')}>
+            Ra khơi
+          </Button>
+        </div>
+      </footer>
 
       <FriendsSheet open={friendsOpen} onClose={() => setFriendsOpen(false)} />
       <SettingsOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)} />
