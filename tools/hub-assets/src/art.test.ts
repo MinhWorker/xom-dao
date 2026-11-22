@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildHubAssets, cropRegion } from './art.js';
+import { buildHubAssets, checkIslandArt, cropRegion } from './art.js';
 
 const manifest = {
   id: 'demo',
@@ -274,5 +274,24 @@ describe('cropRegion', () => {
       width: 1000,
       height: 500,
     });
+  });
+});
+
+describe('checkIslandArt', () => {
+  it("accepts the Islands' art in the Hub", async () => {
+    const dir = join(import.meta.dirname, '../../../apps/hub/src/island-art');
+    expect(await checkIslandArt(dir)).toEqual([]);
+  });
+
+  it('names a missing file and a wrongly sized one', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'islands-'));
+    try {
+      writeFileSync(join(dir, 'co.png'), await halves(1000, 1000));
+      const problems = await checkIslandArt(dir);
+      expect(problems).toContain('co.png is 1000×1000: the ratio must be 20:9');
+      expect(problems).toContain('bai.png is missing');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

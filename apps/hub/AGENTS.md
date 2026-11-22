@@ -15,6 +15,7 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.js
                    rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production,
                    `soon` ones are left out
 src/islands.ts     The Islands' names, order and Emblems, and `HUB_EMBLEM` (ids are `ISLANDS` in `@xomdao/sdk`)
+src/island-art/    Each Island's splash art (`<island>.png`, 20:9), drawn by `scripts/splash.mjs`
 src/emblems/       The Hub's (`hub.svg`) and each Island's (`<island>.svg`) Emblem, same contract as a Game's;
                    `tools/hub-assets` tests them
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Emblem (inlines an Emblem's SVG), Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,

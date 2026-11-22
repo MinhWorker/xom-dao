@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { GameManifestSchema } from '@xomdao/sdk';
+import { GameManifestSchema, ISLANDS } from '@xomdao/sdk';
 import sharp, { type Metadata } from 'sharp';
 import { checkEmblem } from './emblem.js';
 import { mp4Duration } from './mp4.js';
@@ -147,22 +147,22 @@ function missingArt(problems: string[]): undefined {
 }
 
 /** The original's size, or undefined (with `problems` filled) when it can't be used. */
-async function readKeyArt(path: string, problems: string[]) {
+async function readKeyArt(path: string, problems: string[], name = 'hub/key-art.png') {
   let meta: Metadata;
   try {
     meta = await sharp(path).metadata();
   } catch {
-    problems.push('hub/key-art.png is not an image');
+    problems.push(`${name} is not an image`);
     return undefined;
   }
   const { width = 0, height = 0 } = meta;
   const before = problems.length;
-  if (meta.format !== 'png') problems.push(`hub/key-art.png must be a PNG, not ${meta.format}`);
+  if (meta.format !== 'png') problems.push(`${name} must be a PNG, not ${meta.format}`);
   if (Math.abs(width * 9 - height * 20) > height * 20 * 0.005) {
-    problems.push(`hub/key-art.png is ${width}×${height}: the ratio must be 20:9`);
+    problems.push(`${name} is ${width}×${height}: the ratio must be 20:9`);
   } else if (width < KEY_ART.width || height < KEY_ART.height) {
     problems.push(
-      `hub/key-art.png is ${width}×${height}: at least ${KEY_ART.width}×${KEY_ART.height} is needed`,
+      `${name} is ${width}×${height}: at least ${KEY_ART.width}×${KEY_ART.height} is needed`,
     );
   }
   return problems.length === before ? { path, width, height } : undefined;
@@ -179,6 +179,18 @@ function readLoop(path: string, problems: string[]) {
     problems.push(`hub/loop.mp4 lasts ${seconds.toFixed(1)} s: at most ${LOOP_MAX_SECONDS} s`);
   }
   return bytes;
+}
+
+/** What is wrong with the Islands' splash art in `dir`: `<island>.png` missing, or not a 20:9 PNG of key-art size. */
+export async function checkIslandArt(dir: string): Promise<string[]> {
+  const problems: string[] = [];
+  for (const island of ISLANDS) {
+    const name = `${island}.png`;
+    const path = join(dir, name);
+    if (existsSync(path)) await readKeyArt(path, problems, name);
+    else problems.push(`${name} is missing`);
+  }
+  return problems;
 }
 
 /** The largest region of the original with the target's ratio, centred on `focus` (in %). */
