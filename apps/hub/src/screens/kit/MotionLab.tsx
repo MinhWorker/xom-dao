@@ -1,7 +1,10 @@
 import {
+  IconAlertTriangle,
   IconAnchor,
   IconBell,
   IconChevronRight,
+  IconCircleCheck,
+  IconInfoCircle,
   IconMail,
   IconSettings,
   IconX,
@@ -11,7 +14,9 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
+  useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -70,7 +75,6 @@ function LabDialog({
     if (!open && dialog.open) void closeAnimated(dialog);
   }, [open]);
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: a tap on the backdrop is a pointer shortcut; Escape closes too
     <dialog
       ref={ref}
       className={className}
@@ -413,6 +417,192 @@ function Pager({ open, onClose, art }: { open: boolean; onClose(): void; art?: s
   );
 }
 
+type ToastKind = 'info' | 'success' | 'warning';
+
+interface LabToast {
+  id: number;
+  kind: ToastKind;
+  text: string;
+  /** Set once it starts leaving: its top in the stack, where it stays while it fades. */
+  leaving?: number;
+}
+
+const TOAST_MS = 4000;
+const TOAST_MAX = 4;
+const TOAST_ICONS = { info: IconInfoCircle, success: IconCircleCheck, warning: IconAlertTriangle };
+const SAMPLE_TOASTS: Record<ToastKind, string> = {
+  info: 'Lan đã kết nối lại',
+  success: 'Đã gửi lời mời',
+  warning: 'Máy 1 đã rời ván',
+};
+
+function stillMotion(el: Element) {
+  return (
+    el.closest('[data-reduce]') !== null || matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+/**
+ * Toasts stacked oldest first; a new one joins at the bottom. Positions are measured before each
+ * change so the others glide to their new slots (FLIP).
+ */
+function useToasts() {
+  const [items, setItems] = useState<LabToast[]>([]);
+  const els = useRef(new Map<number, HTMLElement>());
+  const before = useRef(new Map<number, { top: number; offset: number }>());
+  const seq = useRef(0);
+
+  const snap = useCallback(() => {
+    before.current = new Map(
+      [...els.current].map(([id, el]) => [
+        id,
+        { top: el.getBoundingClientRect().top, offset: el.offsetTop },
+      ]),
+    );
+  }, []);
+
+  const leave = useCallback(
+    (t: LabToast): LabToast =>
+      t.leaving === undefined ? { ...t, leaving: before.current.get(t.id)?.offset ?? 0 } : t,
+    [],
+  );
+
+  const push = useCallback(
+    (kind: ToastKind, text = SAMPLE_TOASTS[kind]) => {
+      snap();
+      seq.current += 1;
+      const id = seq.current;
+      setItems((list) => {
+        const live = list.filter((t) => t.leaving === undefined);
+        const over = live.length - TOAST_MAX + 1;
+        const old = new Set(live.slice(0, Math.max(0, over)).map((t) => t.id));
+        return [...list.map((t) => (old.has(t.id) ? leave(t) : t)), { id, kind, text }];
+      });
+    },
+    [snap, leave],
+  );
+
+  const dismiss = useCallback(
+    (id: number) => {
+      snap();
+      setItems((list) => list.map((t) => (t.id === id ? leave(t) : t)));
+    },
+    [snap, leave],
+  );
+
+  const remove = useCallback(
+    (id: number) => {
+      snap();
+      els.current.delete(id);
+      setItems((list) => list.filter((t) => t.id !== id));
+    },
+    [snap],
+  );
+
+  useLayoutEffect(() => {
+    for (const t of items) {
+      const el = els.current.get(t.id);
+      if (!el) continue;
+      const still = stillMotion(el);
+      const ease = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+      if (t.leaving !== undefined) {
+        if ('out' in el.dataset) continue;
+        el.dataset.out = '';
+        for (const a of el.getAnimations()) a.cancel();
+        const out = el.animate(
+          still
+            ? [{ opacity: 1 }, { opacity: 0 }]
+            : [
+                { opacity: 1, translate: '0 0' },
+                { opacity: 0, translate: '32px 0' },
+              ],
+          { duration: 200, easing: ease, fill: 'forwards' },
+        );
+        out.onfinish = () => remove(t.id);
+        continue;
+      }
+      const prev = before.current.get(t.id);
+      for (const a of el.getAnimations()) a.cancel();
+      const top = el.getBoundingClientRect().top;
+      if (prev === undefined) {
+        el.animate(
+          still
+            ? [{ opacity: 0 }, { opacity: 1 }]
+            : [
+                { opacity: 0, translate: '0 16px', scale: 0.96 },
+                { opacity: 1, translate: '0 0', scale: 1 },
+              ],
+          { duration: 260, easing: ease },
+        );
+      } else if (!still && Math.abs(prev.top - top) > 0.5) {
+        el.animate([{ translate: `0 ${prev.top - top}px` }, { translate: '0 0' }], {
+          duration: 280,
+          easing: ease,
+        });
+      }
+    }
+  }, [items, remove]);
+
+  return { items, els, push, dismiss };
+}
+
+function ToastCard({
+  toast,
+  onDismiss,
+  register,
+}: {
+  toast: LabToast;
+  onDismiss(id: number): void;
+  register(el: HTMLElement | null): void;
+}) {
+  const bar = useRef<HTMLSpanElement>(null);
+  const life = useRef<Animation | null>(null);
+  const pressedAt = useRef(0);
+  const leaving = toast.leaving !== undefined;
+
+  useEffect(() => {
+    const a = bar.current?.animate([{ scale: '1 1' }, { scale: '0 1' }], {
+      duration: TOAST_MS,
+      fill: 'forwards',
+    });
+    if (!a) return;
+    life.current = a;
+    a.onfinish = () => onDismiss(toast.id);
+    return () => a.cancel();
+  }, [toast.id, onDismiss]);
+
+  const hold = (on: boolean) => {
+    if (leaving) return;
+    if (on) life.current?.pause();
+    else life.current?.play();
+  };
+
+  return (
+    <button
+      ref={register}
+      type="button"
+      className={`${styles.toast} ${styles[toast.kind]} ${styles.glass} cut-br`}
+      style={leaving ? ({ top: toast.leaving } as CSSProperties) : undefined}
+      data-leaving={leaving || undefined}
+      onPointerEnter={(e) => e.pointerType === 'mouse' && hold(true)}
+      onPointerLeave={() => hold(false)}
+      onPointerDown={() => {
+        pressedAt.current = performance.now();
+        hold(true);
+      }}
+      onPointerUp={(e) => e.pointerType !== 'mouse' && hold(false)}
+      onPointerCancel={() => hold(false)}
+      onClick={() => {
+        if (performance.now() - pressedAt.current < 500) onDismiss(toast.id);
+      }}
+    >
+      <Icon icon={TOAST_ICONS[toast.kind]} size={26} />
+      <span>{toast.text}</span>
+      <span ref={bar} className={styles.life} aria-hidden="true" />
+    </button>
+  );
+}
+
 /** On touch, a press plays the sheen and underline a mouse gets on hover. */
 function pressFlash(e: PointerEvent<HTMLElement>) {
   if (e.pointerType === 'mouse') return;
@@ -452,12 +642,32 @@ export function MotionLab({ full }: { full?: boolean }) {
   const [dialog, setDialog] = useState<'notify' | 'confirm' | 'band' | null>(null);
   const [pager, setPager] = useState(false);
   const [sheet, setSheet] = useState<'friends' | 'settings' | null>(null);
+  const toasts = useToasts();
+  const region = useRef<HTMLElement>(null);
+  const showing = toasts.items.length > 0;
+  const overlays = `${dialog}${sheet}${pager}`;
   const [wait, setWait] = useState<{ blocking: boolean; shown: boolean } | null>(null);
   const [loading, setLoading] = useState<'match' | 'harbour' | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const art = (GAMES.find((g) => g.manifest.id === 'caro') ?? GAMES[0])?.art.lobby;
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: an overlay opening re-raises the toasts above it in the top layer
+  useEffect(() => {
+    const el = region.current;
+    if (!el) return;
+    if (el.matches(':popover-open')) el.hidePopover();
+    if (showing) el.showPopover();
+  }, [showing, overlays]);
+
+  const burst = () => {
+    toasts.push('warning');
+    timers.current.push(
+      setTimeout(() => toasts.push('info'), 180),
+      setTimeout(() => toasts.push('success'), 360),
+    );
+  };
 
   /** A request that takes `ms`: the badge shows only once it has waited `BADGE_DELAY`. */
   const request = (ms: number, blocking: boolean) => {
@@ -532,6 +742,72 @@ export function MotionLab({ full }: { full?: boolean }) {
 
       <div className={styles.panels}>
         <div className={`${styles.panel} ${styles.glass} cut-br`}>
+          <div className={styles.group}>
+            <span className={styles.label}>Hộp thoại</span>
+            <div className={styles.row}>
+              <Button className={styles.alive} onClick={() => setDialog('notify')}>
+                Báo
+              </Button>
+              <Button className={styles.alive} onClick={() => setDialog('confirm')}>
+                Hỏi
+              </Button>
+              <Button className={styles.alive} onClick={() => setDialog('band')}>
+                Dải ngang
+              </Button>
+            </div>
+          </div>
+          <div className={styles.group}>
+            <span className={styles.label}>Lớp phủ</span>
+            <div className={styles.row}>
+              <Button className={styles.alive} onClick={() => setPager(true)}>
+                Trang
+              </Button>
+              <Button
+                className={`${styles.alive} ${styles.kind} ${styles.info}`}
+                aria-label="Toast thông tin"
+                onClick={() => toasts.push('info')}
+              >
+                <Icon icon={IconInfoCircle} size={26} />
+              </Button>
+              <Button
+                className={`${styles.alive} ${styles.kind} ${styles.success}`}
+                aria-label="Toast thành công"
+                onClick={() => toasts.push('success')}
+              >
+                <Icon icon={IconCircleCheck} size={26} />
+              </Button>
+              <Button
+                className={`${styles.alive} ${styles.kind} ${styles.warning}`}
+                aria-label="Toast cảnh báo"
+                onClick={() => toasts.push('warning')}
+              >
+                <Icon icon={IconAlertTriangle} size={26} />
+              </Button>
+              <Button
+                className={`${styles.alive} ${styles.kind}`}
+                aria-label="Ba toast liền"
+                onClick={burst}
+              >
+                ×3
+              </Button>
+            </div>
+          </div>
+          <div className={styles.group}>
+            <span className={styles.label}>Chờ</span>
+            <div className={styles.row}>
+              <Button className={styles.alive} onClick={() => request(200, false)}>
+                0,2 giây
+              </Button>
+              <Button className={styles.alive} onClick={() => request(2500, false)}>
+                Tải nền
+              </Button>
+              <Button className={styles.alive} onClick={() => request(2500, true)}>
+                Vào phòng
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className={`${styles.panel} ${styles.glass} cut-br`}>
           <span className={styles.label}>Nút</span>
           <Button variant="primary" className={`${styles.alive} ${styles.go}`}>
             Ra khơi
@@ -554,48 +830,6 @@ export function MotionLab({ full }: { full?: boolean }) {
           </div>
           <LoopIcons />
         </div>
-
-        <div className={`${styles.panel} ${styles.glass} cut-br`}>
-          <div className={styles.group}>
-            <span className={styles.label}>Hộp thoại</span>
-            <div className={styles.row}>
-              <Button className={styles.alive} onClick={() => setDialog('notify')}>
-                Báo
-              </Button>
-              <Button className={styles.alive} onClick={() => setDialog('confirm')}>
-                Hỏi
-              </Button>
-              <Button className={styles.alive} onClick={() => setDialog('band')}>
-                Dải ngang
-              </Button>
-            </div>
-          </div>
-          <div className={styles.group}>
-            <span className={styles.label}>Lớp phủ</span>
-            <div className={styles.row}>
-              <Button className={styles.alive} onClick={() => setSheet('friends')}>
-                Sheet
-              </Button>
-              <Button className={styles.alive} onClick={() => setPager(true)}>
-                Trang
-              </Button>
-            </div>
-          </div>
-          <div className={styles.group}>
-            <span className={styles.label}>Chờ</span>
-            <div className={styles.row}>
-              <Button className={styles.alive} onClick={() => request(200, false)}>
-                0,2 giây
-              </Button>
-              <Button className={styles.alive} onClick={() => request(2500, false)}>
-                Tải nền
-              </Button>
-              <Button className={styles.alive} onClick={() => request(2500, true)}>
-                Vào phòng
-              </Button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {wait?.blocking && <div className={styles.scrim} />}
@@ -610,6 +844,26 @@ export function MotionLab({ full }: { full?: boolean }) {
           <span className={styles.rule} aria-hidden="true" />
         </div>
       )}
+
+      <section
+        ref={region}
+        popover="manual"
+        className={styles.toasts}
+        data-pager={pager || undefined}
+        aria-live="polite"
+        aria-label="Thông báo"
+      >
+        {toasts.items.map((t) => (
+          <ToastCard
+            key={t.id}
+            toast={t}
+            onDismiss={toasts.dismiss}
+            register={(el) => {
+              if (el) toasts.els.current.set(t.id, el);
+            }}
+          />
+        ))}
+      </section>
 
       <Pager open={pager} onClose={() => setPager(false)} art={art} />
 
