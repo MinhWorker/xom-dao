@@ -1,7 +1,6 @@
 # Games and the SDK
 
 Where to look:
-
 - **Examples**: `games/caro` (Caro) is the new platform's test Game: `manifest.ts`,
   `server/` (rules with room options and a computer player) and `client/` (TypeScript + canvas,
   no engine).
@@ -74,7 +73,7 @@ a refusal exits with 1:
   (`?player=<n>`, or the first that connects).
 - `move <player> <event> [json]` sends a Game input as that player; `state` shows the Room, the
   Match and each player's `view`; `wait --match playing|over`; `log [--since n --player n
---source bridge|server|harness]`.
+  --source bridge|server|harness]`.
 - `init`, `reconnect`, `disconnect`, `leave`, `visibility <player> hidden|visible`, `settings`,
   `net --latency <ms> --drop <0-1>` replay what the Hub does around the Game.
 
@@ -275,7 +274,6 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
   - its own files, one folder deep (`../game/x.js`), plus `../../manifest.js`.
 
   `vite.config.ts` and `vitest.config.ts` are build tooling and may import anything.
-
 - Every `Game` has tests with `testGame` (`server/game/<Name>Game.test.ts`; legacy:
   `src/game/`).
 - When a mechanic or piece of data would help other games too, add it to the SDK instead of the

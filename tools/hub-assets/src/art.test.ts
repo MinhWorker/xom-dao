@@ -82,14 +82,8 @@ describe('buildHubAssets', () => {
       const { channels } = await sharp(file).stats();
       return { width, height, brightness: channels[0]?.mean };
     };
-    expect(await size(hub?.art.lobby)).toMatchObject({
-      width: 2560,
-      height: 1280,
-    });
-    expect(await size(hub?.art.card)).toMatchObject({
-      width: 480,
-      height: 270,
-    });
+    expect(await size(hub?.art.lobby)).toMatchObject({ width: 2560, height: 1280 });
+    expect(await size(hub?.art.card)).toMatchObject({ width: 480, height: 270 });
     const thumb = await size(hub?.art.thumb);
     expect(thumb).toMatchObject({ width: 256, height: 256 });
     expect(thumb.brightness).toBeGreaterThan(250);
@@ -124,9 +118,7 @@ describe('buildHubAssets', () => {
     ]);
     writeFileSync(
       join(game, 'hub/key-art.png'),
-      await sharp({
-        create: { width: 2560, height: 1152, channels: 3, background: '#000' },
-      })
+      await sharp({ create: { width: 2560, height: 1152, channels: 3, background: '#000' } })
         .jpeg()
         .toBuffer(),
     );
@@ -208,9 +200,7 @@ describe('buildHubAssets', () => {
 
     mkdirSync(join(game, 'hub/rules'), { recursive: true });
     const write = async (name: string, width: number, height: number, png = false) => {
-      const base = sharp({
-        create: { width, height, channels: 3, background: '#000' },
-      });
+      const base = sharp({ create: { width, height, channels: 3, background: '#000' } });
       writeFileSync(
         join(game, 'hub/rules', name),
         await (png ? base.png() : base.webp()).toBuffer(),

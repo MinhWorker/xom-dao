@@ -13,7 +13,6 @@ const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
 const W = 2560;
 const H = 1152;
 
-/** Where a splash's subject sits, in % of the frame (the manifest's `focus`). */
 const FOCUS = { caro: [70, 50], 'tien-len': [68, 50], island: [70, 50] };
 
 const px = (percent, whole) => (whole * percent) / 100;
@@ -50,9 +49,6 @@ const frame = (body) =>
   <rect width="${W}" height="${H}" fill="url(#vignette)"/>
   <rect width="${W}" height="${H}" fill="url(#left)"/>
 </svg>`;
-
-// ------------------------------------------------------------------------------------------
-// Caro: a sheet of squared paper with ink marks, as `render.ts` draws it.
 
 const INK = { X: '#b3372c', O: '#2c4f8a' };
 
@@ -147,9 +143,6 @@ function caro() {
   </defs>${sheet}`);
 }
 
-// ------------------------------------------------------------------------------------------
-// Tiến Lên: ivory cards on green felt with brass trim, as `style.gd` and `card_view.gd` draw them.
-
 const T = {
   felt: '#164238',
   feltDark: '#08130f',
@@ -163,7 +156,6 @@ const T = {
   backLine: '#d9b46a',
 };
 
-/** A suit as SVG centred on (0, 0), `extent` across. */
 function suit(kind, extent, color) {
   const u = extent / 2;
   const heart = `<path d="M0 ${0.98 * u}C${-1.15 * u} ${0.1 * u} ${-1.05 * u} ${-0.8 * u} ${-0.5 * u} ${-0.8 * u}C${-0.2 * u} ${-0.8 * u} 0 ${-0.55 * u} 0 ${-0.4 * u}C0 ${-0.55 * u} ${0.2 * u} ${-0.8 * u} ${0.5 * u} ${-0.8 * u}C${1.05 * u} ${-0.8 * u} ${1.15 * u} ${0.1 * u} 0 ${0.98 * u}Z"/>`;
@@ -179,12 +171,15 @@ function suit(kind, extent, color) {
 const label = (text, x, y, size, color) =>
   `<text x="${x}" y="${y}" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-weight="700" font-size="${size}" fill="${color}" text-anchor="middle" dominant-baseline="central">${text}</text>`;
 
+const cardBase = () =>
+  `<rect x="-36" y="-50.5" width="72" height="101" rx="8" fill="${T.ivory}" stroke="${T.ivoryEdge}" stroke-width="1.5" filter="url(#lift)"/>`;
+
 /** A face-up card of the game's 72×101, centred on (0, 0). */
 function face(rank, kind) {
   const color = kind === 'heart' || kind === 'diamond' ? T.red : T.ink;
   const [l, t] = [-36, -50.5];
   return `
-  <rect x="${l}" y="${t}" width="72" height="101" rx="8" fill="${T.ivory}" stroke="${T.ivoryEdge}" stroke-width="1.5" filter="url(#lift)"/>
+  ${cardBase()}
   ${label(rank, l + 15, t + 21, rank.length === 1 ? 24 : 20, color)}
   <g transform="translate(${l + 15} ${t + 41})">${suit(kind, 15, color)}</g>
   <g transform="translate(${9} ${10})">${suit(kind, 40, color)}</g>
@@ -203,7 +198,7 @@ function back() {
     );
   }
   return `
-  <rect x="${l}" y="${t}" width="${w}" height="${h}" rx="8" fill="${T.ivory}" stroke="${T.ivoryEdge}" stroke-width="1.5" filter="url(#lift)"/>
+  ${cardBase()}
   <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="5" fill="${T.back}"/>
   <path d="${lines.join('')}" stroke="${T.backLine}" stroke-opacity="0.55" stroke-width="1" clip-path="url(#field)"/>
   <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="5" fill="none" stroke="${T.backLine}" stroke-opacity="0.9" stroke-width="1.5"/>
@@ -245,9 +240,6 @@ function tienLen() {
   <g>${deck}${cards}</g>`);
 }
 
-// ------------------------------------------------------------------------------------------
-// Islands: a placeholder, the Island's Emblem over a tinted backdrop.
-
 const ISLANDS = { co: 196, bai: 352, 'xuc-xac': 150, 'nao-nhiet': 24 };
 
 function hsl(h, s, l) {
@@ -275,8 +267,6 @@ function island(id) {
   <circle cx="${cx}" cy="${cy}" r="${size * 0.74}" fill="none" stroke="${tint}" stroke-opacity="0.08" stroke-width="2"/>
   <g color="${tint}" transform="translate(${cx - size / 2} ${cy - size / 2}) scale(${size / 64})">${inner}</g>`);
 }
-
-// ------------------------------------------------------------------------------------------
 
 const jobs = {
   caro: () => ['games/caro/hub/key-art.png', caro()],

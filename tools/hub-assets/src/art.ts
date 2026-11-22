@@ -80,11 +80,7 @@ export async function buildHubAssets(gameDir: string, manifest: unknown): Promis
   }
   const hub: HubJson = {
     id,
-    art: {
-      lobby: url(files.lobby),
-      card: url(files.card),
-      thumb: url(files.thumb),
-    },
+    art: { lobby: url(files.lobby), card: url(files.card), thumb: url(files.thumb) },
     rules: (rules?.pages ?? []).map(({ title, image, blocks }) => {
       const picture = image && pictures.get(image.path);
       if (!image || !picture) return { title, blocks };
@@ -185,10 +181,7 @@ function readLoop(path: string, problems: string[]) {
   return bytes;
 }
 
-/**
- * What is wrong with the Islands' splash art in `dir` (`<island>.png` for every Island): a missing
- * file, or one that is not a 20:9 PNG of at least the key art's size.
- */
+/** What is wrong with the Islands' splash art in `dir`: `<island>.png` missing, or not a 20:9 PNG of key-art size. */
 export async function checkIslandArt(dir: string): Promise<string[]> {
   const problems: string[] = [];
   for (const island of ISLANDS) {
