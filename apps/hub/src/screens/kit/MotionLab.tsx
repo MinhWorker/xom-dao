@@ -419,9 +419,14 @@ export function MotionLab({ full }: { full?: boolean }) {
 
       {wait?.blocking && <div className={styles.scrim} />}
       {wait?.shown && (
-        <div className={`${styles.badge} ${styles.glass} cut-br`} role="status">
+        <div className={`${styles.badge} ${styles.glass}`} role="status">
+          <span className={styles.rule} aria-hidden="true" />
           <Diamond size={22} />
-          Đang tải
+          <span className={styles.badgeText}>Đang tải</span>
+          <span className={styles.mirror}>
+            <Diamond size={22} />
+          </span>
+          <span className={styles.rule} aria-hidden="true" />
         </div>
       )}
 
