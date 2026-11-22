@@ -71,62 +71,105 @@ function caro() {
     [5, 2],
     [7, 3],
   ];
+  const [fx, fy] = FOCUS.caro;
+
+  const yaw = (14 * Math.PI) / 180;
+  const pitch = (44 * Math.PI) / 180;
+  const away = 2300;
+  const height = away * Math.tan(pitch);
+  const focal = (1.02 * away) / Math.cos(pitch);
+  /** A point of the sheet (in its own units, origin at the corner) seen by a camera above and in front of it. */
+  const project = (x, y) => {
+    const u = x - w / 2;
+    const depth = h / 2 - y;
+    const px3 = u * Math.cos(yaw) - depth * Math.sin(yaw);
+    const pz3 = u * Math.sin(yaw) + depth * Math.cos(yaw);
+    const zc = height * Math.sin(pitch) + (pz3 + away) * Math.cos(pitch);
+    const yc = -height * Math.cos(pitch) + (pz3 + away) * Math.sin(pitch);
+    const k = focal / zc;
+    return { x: px(fx, W) + px3 * k, y: px(fy, H) - yc * k, k };
+  };
+  const pt = (x, y) => {
+    const p = project(x, y);
+    return `${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+  };
+  const poly = (corners, attrs) =>
+    `<polygon points="${corners.map(([x, y]) => pt(x, y)).join(' ')}" ${attrs}/>`;
+  const rect = (x0, y0, x1, y1, attrs) =>
+    poly(
+      [
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+      ],
+      attrs,
+    );
+
   const centre = ([c, r]) => [(c + 0.5) * cell, (r + 0.5) * cell];
   const jitter = (c, r, k) => Math.sin(c * 12.9898 + r * 78.233 + k * 3.7) * 3.5;
+  const widthAt = (x, y, scale) => cell * scale * project(x, y).k;
 
   const stroke = (d, color, width) => `
-    <path d="${d}" fill="none" stroke="${color}" stroke-width="${width * 1.9}" stroke-linecap="round" opacity="0.18"/>
-    <path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="${width * 1.9}" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
   const markX = (p) => {
     const [cx, cy] = centre(p);
     const r = cell * 0.3;
     const j = (k) => jitter(p[0], p[1], k);
     return stroke(
-      `M${cx - r + j(1)} ${cy - r + j(2)}L${cx + r + j(3)} ${cy + r + j(4)}M${cx + r + j(5)} ${cy - r + j(6)}L${cx - r + j(7)} ${cy + r + j(8)}`,
+      `M${pt(cx - r + j(1), cy - r + j(2))}L${pt(cx + r + j(3), cy + r + j(4))}M${pt(cx + r + j(5), cy - r + j(6))}L${pt(cx - r + j(7), cy + r + j(8))}`,
       INK.X,
-      cell * 0.11,
+      widthAt(cx, cy, 0.11),
     );
   };
   const markO = (p) => {
     const [cx, cy] = centre(p);
     const r = cell * 0.3;
-    const tilt = jitter(p[0], p[1], 9) * 4;
-    return stroke(
-      `M${cx} ${cy - r * 0.96}a${r * 1.02} ${r * 0.96} ${tilt} 1 1 -0.1 0z`,
-      INK.O,
-      cell * 0.11,
-    );
+    const lean = jitter(p[0], p[1], 9) / 10;
+    const steps = 56;
+    const ring = Array.from({ length: steps }, (_, i) => {
+      const a = -Math.PI / 2 - 0.3 + (2 * Math.PI * i) / steps;
+      const x = cx + r * 1.02 * Math.cos(a) - r * 0.96 * lean * Math.sin(a);
+      const y = cy + r * 0.96 * Math.sin(a);
+      return `${i ? 'L' : 'M'}${pt(x, y)}`;
+    });
+    return stroke(`${ring.join('')}Z`, INK.O, widthAt(cx, cy, 0.11));
   };
 
-  const wash = X.map((p) => {
-    const [cx, cy] = centre(p);
-    return `<rect x="${cx - cell / 2 + 1}" y="${cy - cell / 2 + 1}" width="${cell - 1}" height="${cell - 1}" fill="rgb(179 55 44 / 0.13)"/>`;
-  }).join('');
+  const wash = X.map(([c, r]) =>
+    rect(
+      c * cell + 1,
+      r * cell + 1,
+      (c + 1) * cell,
+      (r + 1) * cell,
+      'fill="rgb(179 55 44 / 0.13)"',
+    ),
+  ).join('');
 
   const grid = [
-    ...Array.from({ length: cols + 1 }, (_, c) => `M${c * cell + 0.5} 0V${h}`),
-    ...Array.from({ length: rows + 1 }, (_, r) => `M0 ${r * cell + 0.5}H${w}`),
+    ...Array.from({ length: cols + 1 }, (_, c) => `M${pt(c * cell, 0)}L${pt(c * cell, h)}`),
+    ...Array.from({ length: rows + 1 }, (_, r) => `M${pt(0, r * cell)}L${pt(w, r * cell)}`),
   ].join('');
 
   const [x1, y1] = centre(X[0]);
   const [x2, y2] = centre(X[4]);
   const len = Math.hypot(x2 - x1, y2 - y1);
-  const dx = (x2 - x1) / len;
-  const dy = (y2 - y1) / len;
-  const strike = `M${x1 - dx * cell * 0.45} ${y1 - dy * cell * 0.45}L${x2 + dx * cell * 0.45} ${y2 + dy * cell * 0.45}`;
+  const dx = ((x2 - x1) / len) * cell * 0.45;
+  const dy = ((y2 - y1) / len) * cell * 0.45;
+  const strike = `M${pt(x1 - dx, y1 - dy)}L${pt(x2 + dx, y2 + dy)}`;
+  const [gx0, gy0] = pt(-5, -5).split(' ');
+  const [gx1, gy1] = pt(w + 5, h + 5).split(' ');
 
-  const [fx, fy] = FOCUS.caro;
   const sheet = `
-  <g transform="translate(${px(fx, W)} ${px(fy, H)}) scale(1 0.62) rotate(-16) translate(${-w / 2} ${-h / 2})">
-    <rect x="-3" y="-1" width="${w + 9}" height="${h + 9}" fill="#000" opacity="0.55" filter="url(#blur)" transform="translate(14 26)"/>
-    <rect x="-3" y="-1" width="${w + 9}" height="${h + 9}" fill="#cbbd9c"/>
-    <rect x="-4" y="-3" width="${w + 10}" height="${h + 9}" fill="#ddd0b2"/>
-    <rect x="-5" y="-5" width="${w + 10}" height="${h + 10}" fill="url(#paper)" stroke="#cdbf9f"/>
+    ${rect(-3 + 14, -1 + 26, w + 6 + 14, h + 8 + 26, 'fill="#000" opacity="0.55" filter="url(#blur)"')}
+    ${rect(-3, -1, w + 6, h + 8, 'fill="#cbbd9c"')}
+    ${rect(-4, -3, w + 6, h + 6, 'fill="#ddd0b2"')}
+    ${rect(-5, -5, w + 5, h + 5, 'fill="url(#paper)" stroke="#cdbf9f"')}
     ${wash}
     <path d="${grid}" stroke="rgb(59 53 44 / 0.24)" stroke-width="1.5" fill="none"/>
     ${O.map(markO).join('')}${X.map(markX).join('')}
-    <path d="${strike}" stroke="${INK.X}" stroke-width="${cell * 0.14}" stroke-linecap="round" opacity="0.85" fill="none"/>
-  </g>`;
+    <path d="${strike}" stroke="${INK.X}" stroke-width="${widthAt(x1, y1, 0.14)}" stroke-linecap="round" opacity="0.85" fill="none"/>`;
 
   return frame(`${backdrop({
     top: '#3c2b1f',
@@ -137,7 +180,7 @@ function caro() {
   })}
   <defs>
     <filter id="blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="22"/></filter>
-    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="paper" gradientUnits="userSpaceOnUse" x1="${gx0}" y1="${gy0}" x2="${gx1}" y2="${gy1}">
       <stop offset="0" stop-color="#f7f0de"/><stop offset="1" stop-color="#e6d9bc"/>
     </linearGradient>
   </defs>${sheet}`);
