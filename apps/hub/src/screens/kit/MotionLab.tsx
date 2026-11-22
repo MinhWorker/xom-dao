@@ -330,7 +330,7 @@ function Pager({ open, onClose, art }: { open: boolean; onClose(): void; art?: s
     <LabDialog
       open={open}
       onClose={onClose}
-      className={styles.pager}
+      className={styles.pager ?? ''}
       onKeyDown={(e) => {
         if (e.key === 'ArrowLeft') go(page - 1);
         else if (e.key === 'ArrowRight') go(page + 1);
