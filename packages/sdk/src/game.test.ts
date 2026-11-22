@@ -141,6 +141,7 @@ const manifest = defineManifest({
   duration: { min: 1, max: 5 },
   status: 'wip',
   bots: true,
+  island: 'co',
   focus: { x: 50, y: 50 },
   options: {
     rounds: {

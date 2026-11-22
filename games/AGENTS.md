@@ -15,6 +15,8 @@ Where to look:
   cards, plates and boards are drawn in code, `main.gd` presents each `match:state` push paced
   one after another and sounds come from `assets/`. `assets/*.webp` and `sources/` are the legacy
   AI-made art, which the client does not use.
+- **Soon Games**: every other folder (`co-vua`, `bai-cao`, `hai-chien`, ...) is a Game not made
+  yet (below).
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the
@@ -167,6 +169,7 @@ games/<id>/          src/index.ts is required, unless server/index.ts exists (ne
   client/              New platform: the client bundle's source (Caro: Vite, index.html at its root)
   godot/               New platform, Godot client instead of client/: the Godot project (above)
   hub/key-art.png      New platform: the Hub's art for the Game (below); optional hub/loop.mp4
+  hub/emblem.svg       The Game's Emblem: one colour, currentColor (below)
   hub/rules/<name>.webp  Optional illustration of one rules page (below)
   assets/              Full-size images/sounds, atlases and normals
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
@@ -190,6 +193,17 @@ hash, and `hub.json` with their `/games/<id>/hub/…` URLs for the Hub to import
 naming the Game, when the manifest breaks the schema or its `id` is not the folder name, when
 `RULES.md` or `hub/key-art.png` is missing, when the art is not a 20:9 PNG of at least
 2560×1152, or when the optional `hub/loop.mp4` (copied to `dist/hub/`) is over 2 MB or 8 s.
+**Island and Emblem.** The manifest's `island` is the Game's Island, one of `ISLANDS` in
+`packages/sdk/src/manifest.ts` (`co`, `bai`, `xuc-xac`, `nao-nhiet`); the Hub's names and order
+for them are in `apps/hub/src/islands.ts`. `hub/emblem.svg` is a hand-written SVG with a `viewBox`
+that paints only with `currentColor` (or `none`): the Hub inlines and tints it. `hub-assets` fails
+the build when it is missing, over 16 KB, has another colour or a `<script>`, `<style>`, `<image>`
+or `<foreignObject>`; `tools/hub-assets/src/emblem.ts` is the check.
+**Soon Games.** A Game not made yet has only `manifest.ts`, with `status: 'soon'`, `id`, `name`,
+`tagline` and `island` (a `SoonManifest`), and `hub/emblem.svg`: no `package.json`, so it is no
+workspace and the build, the server and the Hub's game list skip it. `npm run test -w
+@xomdao/hub-assets` checks every Game's manifest and Emblem, and that a soon Game has nothing
+else. Making it a real Game means adding the rest of this folder and dropping `soon`.
 **Rules pager.** The Hub draws `RULES.md` as pages: the text under `#` is the first page and each
 `##` another, named by its heading (a file with no `##` is one scrolling page). A page holds
 paragraphs, `-` lists and tables, with `**bold**`, `*italic*` and `` `code` ``; at most 8 pages and

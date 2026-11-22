@@ -9,6 +9,7 @@ export default defineManifest({
   duration: { min: 5, max: 15 },
   status: 'wip',
   bots: true,
+  island: 'bai',
   focus: { x: 68, y: 50 },
   options: {
     rounds: {
