@@ -6,7 +6,14 @@ import {
   IconSettings,
   IconX,
 } from '@tabler/icons-react';
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import avatarBot from '../../../../../assets/app/images/avatar-bot.webp';
 import avatarCat from '../../../../../assets/app/images/avatar-cat.webp';
 import avatarFox from '../../../../../assets/app/images/avatar-fox.webp';
@@ -75,9 +82,15 @@ function LabDialog({
   );
 }
 
-function SignalIcon() {
+function SignalIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg className={styles.signal} viewBox="0 0 24 24" width={22} height={22} aria-hidden="true">
+    <svg
+      className={styles.signal}
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden="true"
+    >
       {[0, 1, 2, 3].map((i) => (
         <rect
           key={i}
@@ -92,7 +105,7 @@ function SignalIcon() {
   );
 }
 
-function Diamond({ size = 20 }: { size?: number }) {
+function Diamond({ size = 24 }: { size?: number }) {
   return (
     <span className={styles.diamond} style={{ '--size': `${size}px` } as CSSProperties}>
       <span />
@@ -113,7 +126,7 @@ function LoopIcons() {
       </li>
       <li>
         <span className={`${styles.swing} ${styles.loop}`}>
-          <Icon icon={IconBell} size={22} />
+          <Icon icon={IconBell} size={24} />
         </span>
         Chuông
       </li>
@@ -125,7 +138,7 @@ function LoopIcons() {
       </li>
       <li>
         <span className={`${styles.glint} ${styles.loopAfter}`}>
-          <CoinIcon size={22} />
+          <CoinIcon size={24} />
         </span>
         Xu
       </li>
@@ -135,7 +148,7 @@ function LoopIcons() {
       </li>
       <li>
         <span className={`${styles.bob} ${styles.loop}`}>
-          <Icon icon={IconMail} size={22} />
+          <Icon icon={IconMail} size={24} />
           <i className={styles.pip} />
         </span>
         Thư mời
@@ -198,7 +211,7 @@ function Loading({ kind, onDone }: { kind: 'match' | 'harbour'; onDone(): void }
       aria-live="polite"
     >
       <span className={`${styles.stripes} ${styles.loop}`} aria-hidden="true" />
-      <Emblem>{kind === 'match' ? <CaroEmblem /> : <Icon icon={IconAnchor} size={56} />}</Emblem>
+      <Emblem>{kind === 'match' ? <CaroEmblem /> : <Icon icon={IconAnchor} size={64} />}</Emblem>
       <div className={styles.loadInfo}>
         <span className={styles.kicker}>{kind === 'match' ? 'Đang tải ván' : 'Đang về'}</span>
         <h2 className={styles.title}>{kind === 'match' ? 'Caro' : 'Bến'}</h2>
@@ -222,6 +235,35 @@ function Loading({ kind, onDone }: { kind: 'match' | 'harbour'; onDone(): void }
   );
 }
 
+/** On touch, a press plays the sheen and underline a mouse gets on hover. */
+function pressFlash(e: PointerEvent<HTMLElement>) {
+  if (e.pointerType === 'mouse') return;
+  const button = (e.target as Element).closest<HTMLElement>(`.${styles.alive}`);
+  if (!button || button.matches(':disabled')) return;
+  const lab = e.currentTarget;
+  const still =
+    lab.hasAttribute('data-reduce') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  button.animate(
+    [
+      { scale: '0 1' },
+      { scale: '1 1', offset: 0.3 },
+      { scale: '1 1', offset: 0.7 },
+      { scale: '0 1' },
+    ],
+    {
+      duration: 600,
+      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+      pseudoElement: '::after',
+    },
+  );
+  if (still || button.classList.contains(styles.go ?? '')) return;
+  button.animate([{ translate: '-150% 0' }, { translate: '350% 0' }], {
+    duration: 520,
+    easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+    pseudoElement: '::before',
+  });
+}
+
 /**
  * Prototype for issue #295: the kit's motion, glass, looping HUD icons and the three ways to wait,
  * over a Game's art. Not used outside `/dev/kit`.
@@ -230,7 +272,7 @@ export function MotionLab({ full }: { full?: boolean }) {
   const [level, setLevel] = useState('high');
   const [reduce, setReduce] = useState(false);
   const [dialog, setDialog] = useState<'box' | 'band' | null>(null);
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState<'friends' | 'settings' | null>(null);
   const [wait, setWait] = useState<{ blocking: boolean; shown: boolean } | null>(null);
   const [loading, setLoading] = useState<'match' | 'harbour' | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -254,6 +296,7 @@ export function MotionLab({ full }: { full?: boolean }) {
       data-graphics={level}
       data-reduce={reduce || undefined}
       aria-label="Chuyển động và kính mờ"
+      onPointerDown={pressFlash}
     >
       {art && <img className={styles.art} src={art} alt="" />}
 
@@ -266,23 +309,45 @@ export function MotionLab({ full }: { full?: boolean }) {
           </span>
         </span>
         <span className={styles.money}>
-          <span className={`${styles.glint} ${styles.loopAfter}`}>
-            <CoinIcon size={20} />
+          <span className={styles.amount}>
+            <span className={`${styles.glint} ${styles.loopAfter}`}>
+              <CoinIcon size={26} />
+            </span>
+            1 250
           </span>
-          1 250
-          <GemIcon size={20} />
-          40
+          <span className={styles.amount}>
+            <GemIcon size={26} />
+            40
+          </span>
         </span>
         <span className={styles.tools}>
-          <SignalIcon />
-          <span className={`${styles.swing} ${styles.loop}`}>
-            <Icon icon={IconBell} label="Thông báo" />
+          <span className={styles.tool}>
+            <SignalIcon size={28} />
           </span>
-          <span className={`${styles.bob} ${styles.loop}`}>
-            <Icon icon={IconMail} label="Thư mời" />
-            <i className={styles.pip} />
-          </span>
-          <Icon icon={IconSettings} label="Cài đặt" />
+          <button type="button" className={styles.tool} aria-label="Thông báo">
+            <span className={`${styles.swing} ${styles.loop}`}>
+              <Icon icon={IconBell} size={28} />
+            </span>
+          </button>
+          <button
+            type="button"
+            className={styles.tool}
+            aria-label="Thư mời"
+            onClick={() => setSheet('friends')}
+          >
+            <span className={`${styles.bob} ${styles.loop}`}>
+              <Icon icon={IconMail} size={28} />
+              <i className={styles.pip} />
+            </span>
+          </button>
+          <button
+            type="button"
+            className={styles.tool}
+            aria-label="Đồ hoạ"
+            onClick={() => setSheet('settings')}
+          >
+            <Icon icon={IconSettings} size={28} />
+          </button>
         </span>
       </header>
 
@@ -292,12 +357,12 @@ export function MotionLab({ full }: { full?: boolean }) {
           <Button variant="primary" className={`${styles.alive} ${styles.go}`}>
             Ra khơi
             <span className={styles.chevrons} aria-hidden="true">
-              <IconChevronRight size={20} stroke={3} />
-              <IconChevronRight size={20} stroke={3} />
-              <IconChevronRight size={20} stroke={3} />
+              <IconChevronRight size={24} stroke={3} />
+              <IconChevronRight size={24} stroke={3} />
+              <IconChevronRight size={24} stroke={3} />
             </span>
           </Button>
-          <div className={styles.row}>
+          <div className={`${styles.row} ${styles.even}`}>
             <Button className={styles.alive}>Hàng xóm</Button>
             <Button variant="ghost" className={styles.alive}>
               Rời
@@ -310,52 +375,52 @@ export function MotionLab({ full }: { full?: boolean }) {
         </div>
 
         <div className={`${styles.panel} ${styles.glass} cut-br`}>
-          <span className={styles.label}>Hộp thoại</span>
-          <div className={styles.row}>
-            <Button className={styles.alive} onClick={() => setDialog('box')}>
-              Hộp
-            </Button>
-            <Button className={styles.alive} onClick={() => setDialog('band')}>
-              Dải ngang
-            </Button>
-            <Button className={styles.alive} onClick={() => setSheet(true)}>
-              Sheet
-            </Button>
+          <div className={styles.group}>
+            <span className={styles.label}>Hộp thoại</span>
+            <div className={styles.row}>
+              <Button className={styles.alive} onClick={() => setDialog('box')}>
+                Hộp
+              </Button>
+              <Button className={styles.alive} onClick={() => setDialog('band')}>
+                Dải ngang
+              </Button>
+              <Button className={styles.alive} onClick={() => setSheet('friends')}>
+                Sheet
+              </Button>
+            </div>
           </div>
-          <span className={styles.label}>Chờ</span>
-          <div className={styles.row}>
-            <Button className={styles.alive} onClick={() => request(200, false)}>
-              0,2 giây
-            </Button>
-            <Button className={styles.alive} onClick={() => request(2500, false)}>
-              Tải nền
-            </Button>
-            <Button className={styles.alive} onClick={() => request(2500, true)}>
-              Vào phòng
-            </Button>
+          <div className={styles.group}>
+            <span className={styles.label}>Chờ</span>
+            <div className={styles.row}>
+              <Button className={styles.alive} onClick={() => request(200, false)}>
+                0,2 giây
+              </Button>
+              <Button className={styles.alive} onClick={() => request(2500, false)}>
+                Tải nền
+              </Button>
+              <Button className={styles.alive} onClick={() => request(2500, true)}>
+                Vào phòng
+              </Button>
+            </div>
           </div>
-          <span className={styles.label}>Màn tải</span>
-          <div className={styles.row}>
-            <Button className={styles.alive} onClick={() => setLoading('match')}>
-              Tải ván
-            </Button>
-            <Button className={styles.alive} onClick={() => setLoading('harbour')}>
-              Về Bến
-            </Button>
+          <div className={styles.group}>
+            <span className={styles.label}>Màn tải</span>
+            <div className={styles.row}>
+              <Button className={styles.alive} onClick={() => setLoading('match')}>
+                Tải ván
+              </Button>
+              <Button className={styles.alive} onClick={() => setLoading('harbour')}>
+                Về Bến
+              </Button>
+            </div>
           </div>
-        </div>
-
-        <div className={`${styles.panel} ${styles.glass} cut-br`}>
-          <span className={styles.label}>Đồ hoạ</span>
-          <Choice label="Mức" options={LEVELS} value={level} onChange={setLevel} />
-          <Toggle label="Giảm chuyển động" checked={reduce} onChange={setReduce} />
         </div>
       </div>
 
       {wait?.blocking && <div className={styles.scrim} />}
       {wait?.shown && (
         <div className={`${styles.badge} ${styles.glass} cut-br`} role="status">
-          <Diamond size={16} />
+          <Diamond size={22} />
           Đang tải
         </div>
       )}
@@ -400,8 +465,8 @@ export function MotionLab({ full }: { full?: boolean }) {
       </LabDialog>
 
       <LabDialog
-        open={sheet}
-        onClose={() => setSheet(false)}
+        open={sheet === 'friends'}
+        onClose={() => setSheet(null)}
         className={`${styles.sheet} ${styles.glass}`}
       >
         <header className={styles.sheetTop}>
@@ -410,9 +475,9 @@ export function MotionLab({ full }: { full?: boolean }) {
             type="button"
             className={styles.close}
             aria-label="Đóng"
-            onClick={() => setSheet(false)}
+            onClick={() => setSheet(null)}
           >
-            <Icon icon={IconX} />
+            <Icon icon={IconX} size={28} />
           </button>
         </header>
         <ul className={styles.friends}>
@@ -428,6 +493,28 @@ export function MotionLab({ full }: { full?: boolean }) {
             </li>
           ))}
         </ul>
+      </LabDialog>
+
+      <LabDialog
+        open={sheet === 'settings'}
+        onClose={() => setSheet(null)}
+        className={`${styles.sheet} ${styles.glass}`}
+      >
+        <header className={styles.sheetTop}>
+          <h2>Đồ hoạ</h2>
+          <button
+            type="button"
+            className={styles.close}
+            aria-label="Đóng"
+            onClick={() => setSheet(null)}
+          >
+            <Icon icon={IconX} size={28} />
+          </button>
+        </header>
+        <div className={styles.settings}>
+          <Choice label="Mức" options={LEVELS} value={level} onChange={setLevel} />
+          <Toggle label="Giảm chuyển động" checked={reduce} onChange={setReduce} />
+        </div>
       </LabDialog>
     </section>
   );
