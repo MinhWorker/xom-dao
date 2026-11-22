@@ -116,6 +116,7 @@ export function Harbour() {
         <button
           type="button"
           className={styles.home}
+          aria-label={`Nhà: ${HOME.name}, cấp ${HOME.level}`}
           onPointerEnter={(e) => hoverSound(e)}
           onClick={() => playSound('pick')}
         >

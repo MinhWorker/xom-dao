@@ -125,15 +125,18 @@
   container-type: inline-size;
 }
 
-/* Nhà: one shape holding the avatar (breaking out of it), the name, and the level with its EXP bar. */
+/* Nhà: one shape holding the avatar (breaking out of it), the name, and the level with its EXP bar.
+   Sizes follow ratios of the column it sits in (`.top` is the container): the avatar about 31% of it, the
+   name 9%, the level block 28%, each held between a floor and its full size. */
 .home {
-  --portrait: 88px;
+  --portrait: clamp(52px, 31cqw, 88px);
+  --pad: clamp(8px, 4cqw, 16px);
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--pad);
   min-height: var(--tap-main);
-  padding: var(--space-2) var(--space-4) var(--space-2) calc(var(--portrait) + var(--space-2));
+  padding: var(--space-2) var(--pad) var(--space-2) calc(var(--portrait) + 8px);
   border: 0;
   background: none;
   color: var(--text);
@@ -170,8 +173,8 @@
   position: relative;
   display: grid;
   gap: 4px;
-  min-width: 100px;
-  padding-left: var(--space-4);
+  min-width: clamp(44px, 28cqw, 100px);
+  padding-left: var(--pad);
   border-left: 1px solid var(--line-strong);
 }
 
@@ -183,7 +186,7 @@
 
 .levelNumber {
   font-family: var(--font-display);
-  font-size: var(--text-xl);
+  font-size: clamp(22px, 9cqw, var(--text-xl));
   font-weight: 700;
   line-height: 1;
   color: var(--accent);
@@ -199,43 +202,6 @@
   display: block;
   height: 100%;
   background: linear-gradient(90deg, var(--accent), var(--accent-hi));
-}
-
-.exp {
-  min-width: 56px;
-}
-
-/* A narrower column shrinks the card, and a narrow one keeps only the avatar, name, level number and bar. */
-@container (max-width: 290px) {
-  .home {
-    --portrait: 72px;
-    gap: var(--space-3);
-    padding-right: var(--space-3);
-  }
-
-  .homeLevel {
-    min-width: 88px;
-    padding-left: var(--space-3);
-  }
-}
-
-@container (max-width: 240px) {
-  .home {
-    --portrait: 64px;
-  }
-
-  .homeName {
-    font-size: var(--text-lg);
-  }
-
-  .homeLevel {
-    min-width: 0;
-  }
-
-  .levelHead .code,
-  .expText {
-    display: none;
-  }
 }
 
 .expText {
@@ -268,9 +234,24 @@
 
 .homeName {
   font-family: var(--font-display);
-  font-size: var(--text-xl);
+  font-size: clamp(20px, 9cqw, var(--text-xl));
   font-weight: 700;
   text-transform: uppercase;
+}
+
+/* Only content is decided by steps: a narrow column drops the "Cấp" label and the EXP value, a very
+   narrow one drops the name too, so the card never reaches the board. */
+@container (max-width: 240px) {
+  .levelHead .code,
+  .expText {
+    display: none;
+  }
+}
+
+@container (max-width: 180px) {
+  .home .homeText {
+    display: none;
+  }
 }
 
 .title {
