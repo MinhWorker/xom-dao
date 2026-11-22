@@ -22,7 +22,7 @@ Lighting: warm low golden-hour key light from the upper right, a warm rim light 
 
 Composition: the subject's centre sits at {x}% of the width and {y}% of the height, and the subject stays inside the right 60% of the frame. The left 40% falls off smoothly into a dark, calm, low-detail area of near-black navy (about #0b1018 to #18202b) with no objects or bright spots, so a list of names can sit over it. Slightly high three-quarter camera, shallow depth of field, the background softly out of focus.
 
-Never: text, letters, numbers, logos, interface, frames, borders, watermark, signatures, close-up human faces.
+Never: text, letters, numbers, logos, interface, frames, borders, watermark, signatures, human.
 
 Subject: {subject}
 ```
