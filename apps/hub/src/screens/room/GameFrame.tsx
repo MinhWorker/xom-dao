@@ -10,7 +10,10 @@ import { Button } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { HubError } from '../../net/store.js';
 import { sounds, useSoundState } from '../../sound/index.js';
+import { loadingSeats, MatchLoading } from './MatchLoading.js';
 import styles from './Room.module.css';
+
+const LOADING_EXIT_MS = 260;
 
 /** The Game follows the Hub's volume, mute, music and effects levels. */
 const settings = () => {
@@ -82,6 +85,8 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
   const [refused, setRefused] = useState(false);
   const match = useHub((s) => s.match);
   const connection = useHub((s) => s.connection);
+  const room = useHub((s) => s.room);
+  const meId = useHub((s) => s.user?.id ?? '');
   const soundState = useSoundState();
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
@@ -147,6 +152,25 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
     if (ready && match) host.current?.message('match:state', match);
   }, [ready, match]);
 
+  const loading = refused || !ready || match?.status === 'loading';
+  const [loadingShown, setLoadingShown] = useState(loading);
+  useEffect(() => {
+    if (loading) {
+      setLoadingShown(true);
+      return;
+    }
+    const timer = setTimeout(() => setLoadingShown(false), LOADING_EXIT_MS);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  const seats = loadingSeats(
+    room?.seats ?? [],
+    meId,
+    ready ? 1 : progress,
+    match?.readyPlayerIds ?? [],
+    match?.disconnectedPlayerIds ?? [],
+  );
+
   return (
     <div className={styles.stage}>
       <iframe
@@ -156,9 +180,8 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
         title={gameName}
         allow="autoplay; fullscreen"
       />
-      {!ready && (
-        <div className={styles.loading}>
-          <h2>{gameName}</h2>
+      {loadingShown && (
+        <MatchLoading gameName={gameName} seats={seats} meId={meId} leaving={!loading}>
           {refused ? (
             <>
               <p>Cần bản Hub mới</p>
@@ -166,10 +189,8 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
                 Tải lại
               </Button>
             </>
-          ) : (
-            <progress max={1} value={progress || undefined} aria-label="Đang tải" />
-          )}
-        </div>
+          ) : null}
+        </MatchLoading>
       )}
     </div>
   );

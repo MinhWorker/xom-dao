@@ -1,6 +1,7 @@
 // End-to-end test of the Hub: a real server (no database), the Hub in dev mode and two headless
 // Chromium pages on a phone-sized screen. Alice signs up, Bob logs in, Alice opens a Room for a
-// Game, Bob joins by its code and gets ready, Alice starts, and they play the Game inside its
+// Game, Bob joins by its code and gets ready, Alice starts and sees the loading screen wait for
+// Bob's Game (held back for the screenshot), and they play the Game inside its
 // iframe until the Match ends. Both pages must receive `match:result` and show the Results, and
 // holding the eye button must hide the HUD.
 // Caro then goes on in the same Room: Alice plays again, Bob reloads mid-Match and carries on from
@@ -146,7 +147,26 @@ async function seat(browser, { server, hub }, game) {
   await aliceSlots.getByText('Bob', { exact: true }).waitFor();
   await aliceSlots.getByText('Sẵn sàng').waitFor();
   await a.screenshot({ path: resolve(shots, `${game.id}-2-room.png`) });
+
+  let held = false;
+  let release;
+  const holding = new Promise((done) => {
+    release = done;
+  });
+  await b.route(`**/games/${game.id}/**`, async (route) => {
+    if (!held) {
+      held = true;
+      await holding;
+    }
+    await route.continue();
+  });
   await a.getByRole('button', { name: /^Bắt đầu/ }).click();
+  const loading = a.getByRole('status').filter({ hasText: 'Đang tải ván' });
+  await loading.getByText('Xong').waitFor();
+  await loading.getByText('Đang tải', { exact: true }).waitFor();
+  await a.screenshot({ path: resolve(shots, `${game.id}-2-loading.png`) });
+  release();
+  await loading.waitFor({ state: 'detached' });
   return { alice, bob, a, b, code };
 }
 

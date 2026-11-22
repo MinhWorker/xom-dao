@@ -135,21 +135,6 @@
   border: 0;
 }
 
-.loading {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: var(--space-4);
-  background: var(--bg);
-}
-
-.loading progress {
-  width: min(320px, calc(70 * var(--vw)));
-  accent-color: var(--accent);
-}
-
 .corner {
   display: flex;
   gap: var(--space-1);

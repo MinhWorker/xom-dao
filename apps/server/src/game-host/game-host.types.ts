@@ -20,6 +20,8 @@ export interface MatchState {
   status: MatchStatus;
   outcome?: MatchOutcome;
   disconnectedPlayerIds: string[];
+  /** The seats whose Game has loaded this Match (bots from the start). */
+  readyPlayerIds: string[];
   timer: MatchTimer | null;
   /** A Realtime Match's last snapshot: the tick it is from. */
   tick?: number;
