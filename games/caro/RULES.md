@@ -21,4 +21,4 @@ Ván hoà khi bàn đã đạt 15×15 và mọi đoạn 5 ô theo các hướng 
 nghĩa là không bên nào còn có thể hoàn thành hàng thắng. Không cần chờ lấp kín bàn.
 Ván hoà thì hai người cùng hạng nhất.
 
-Không có đồng hồ lượt. Một người rời giữa ván thì ván dừng.
+Không có đồng hồ lượt. Một người rời giữa ván thì ván dừng và người ở lại thắng.

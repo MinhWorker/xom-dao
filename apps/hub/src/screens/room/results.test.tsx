@@ -109,7 +109,14 @@ describe('outcomeFor', () => {
 });
 
 describe('Results', () => {
-  function renderResults(me: string, places: [number, number] | null) {
+  function renderResults(
+    me: string,
+    places: [number, number] | null,
+    {
+      seats = room.seats,
+      canReplay = true,
+    }: { seats?: RoomState['seats']; canReplay?: boolean } = {},
+  ) {
     const result = places && [
       { player: 'a', place: places[0] },
       { player: 'b', place: places[1] },
@@ -119,10 +126,17 @@ describe('Results', () => {
     act(() =>
       root.render(
         <Results
-          room={room}
+          room={{ ...room, seats }}
+          names={
+            new Map([
+              ['a', 'An'],
+              ['b', 'Bình'],
+            ])
+          }
           result={result}
           me={me}
           busy={false}
+          canReplay={canReplay}
           onReplay={onReplay}
           onBack={onBack}
         />,
@@ -161,6 +175,20 @@ describe('Results', () => {
     expect(text('h2')).toBe('Hoà');
     expect(host.textContent).not.toContain('Thắng');
     expect(played).toEqual([]);
+  });
+
+  it('names a player who left and marks them gone', () => {
+    const { text } = renderResults('a', [1, 2], { seats: [room.seats[0] ?? null, null] });
+    expect(text('h2')).toBe('Thắng');
+    expect([...host.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      '1AnThắng',
+      '2BìnhĐã rời',
+    ]);
+  });
+
+  it('keeps the host from playing again without enough players', () => {
+    const { button } = renderResults('a', [1, 2], { canReplay: false });
+    expect(button('Chơi lại')?.disabled).toBe(true);
   });
 
   it('says an aborted Match has no result', () => {

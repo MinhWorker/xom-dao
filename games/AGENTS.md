@@ -275,7 +275,8 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
 ## Mechanics worth knowing
 
 - **Seats never change during a game.** A leaver stays in `ctx.players` with `left: true`. Without
-  `onLeave`, one player leaving stops the game for everyone.
+  `onLeave`, one player leaving stops the game for everyone, unless `bot` plays their seat;
+  `onLeave` comes first when a game has both (Caro ends the Match there).
 - **Rewards**: `ctx.reward(playerId, 'core:coin', amount)` when the game ends (Caro, Tiến Lên
   pay `WIN_COINS` from `model.ts`). Declare the most one player can win in `meta.rewardCap`; the
   server refuses more, pays once per game and skips bots. `testGame` shows them in

@@ -106,6 +106,17 @@ describe('caro', () => {
     expect(game.state.line).toBeNull();
   });
 
+  it('stops when a player leaves, the one who stays placing first', () => {
+    const game = play(rows(2)).leave('a');
+    expect(game.result).toEqual({
+      seats: [
+        { player: 'a', place: 2 },
+        { player: 'b', place: 1 },
+      ],
+    });
+    expect(game.error('b', 'place', { x: 7, y: 7 })).toBe('Ván đã kết thúc');
+  });
+
   it('lets the second seat play X with "Đổi bên"', () => {
     expect(play([], { swap: true }).state).toMatchObject({ players: ['b', 'a'], turn: 'b' });
     expect(play([...rows(4), [6, 4]], { swap: true }).result?.seats).toEqual([

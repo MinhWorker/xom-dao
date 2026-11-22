@@ -128,7 +128,7 @@ export interface BotContext<State, Options = undefined> extends GameContext<Stat
  * Optional hooks, written in the subclass (not declared here, so no `override`):
  *   on<Timer>(ctx: TimerContext)   a timer set with ctx.setTimer(ms, '<timer>') went off
  *   onLeave(ctx: LeaveContext)     a player left; the Match goes on without them
- *                                  (without it, a player leaving aborts the Match)
+ *                                  (without it, `bot` plays their seat, else the Match is aborted)
  *   bot(ctx: BotContext)           the computer's event for seat ctx.player, or null
  *   botDelay(ctx: BotContext)      ms the computer thinks before that event (default 0)
  *   view(ctx, viewer: Seat | null) what a seat (null = spectator) sees. Default: the state.

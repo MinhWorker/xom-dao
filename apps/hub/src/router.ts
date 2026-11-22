@@ -32,8 +32,11 @@ export interface Router {
   route(): Route;
   subscribe(listener: () => void): () => void;
   navigate(path: string, options?: NavigateOptions): void;
-  /** Holds the current screen (a Game is running) until the returned function is called. */
-  block(): () => void;
+  /**
+   * Holds the current screen (a Game is running) until the returned function is called.
+   * `onBack` runs when the back button is pressed meanwhile.
+   */
+  block(onBack?: () => void): () => void;
   dispose(): void;
 }
 
@@ -43,6 +46,7 @@ export function createRouter(): Router {
   let path = location.pathname;
   let current = parseRoute(path);
   let blocks = 0;
+  const backHandlers: (() => void)[] = [];
 
   const update = () => {
     const next = location.pathname;
@@ -60,6 +64,7 @@ export function createRouter(): Router {
   const onPopState = () => {
     if (blocks > 0) {
       history.pushState(null, '', path);
+      backHandlers.at(-1)?.();
       return;
     }
     update();
@@ -74,19 +79,25 @@ export function createRouter(): Router {
     },
     navigate(to, { replace = false, force = false } = {}) {
       if (blocks > 0 && !force) return;
-      if (force) blocks = 0;
+      if (force) {
+        blocks = 0;
+        backHandlers.length = 0;
+      }
       if (to === path) return;
       if (replace) history.replaceState(null, '', to);
       else history.pushState(null, '', to);
       update();
     },
-    block() {
+    block(onBack) {
       blocks += 1;
+      if (onBack) backHandlers.push(onBack);
       let released = false;
       return () => {
         if (released) return;
         released = true;
         blocks = Math.max(0, blocks - 1);
+        const at = onBack ? backHandlers.indexOf(onBack) : -1;
+        if (at >= 0) backHandlers.splice(at, 1);
       };
     },
     dispose() {

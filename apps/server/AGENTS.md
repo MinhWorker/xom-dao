@@ -63,9 +63,9 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
   inputs and before `tick`, the host asks `bot` for every computer seat and for each person who
   left, so the computer takes their seat instead of `onLeave`.
 - A player who drops mid-Match keeps the seat for 60 s (`disconnect` / `reconnect`, from the
-  gateway). After that, or on `room:leave`, they have left: placed last, the computer plays
-  their seat if the Game has `bot`, otherwise the Game's leave hook runs, otherwise the Match is
-  aborted. With no person left it is aborted.
+  gateway). After that, or on `room:leave`, they have left: placed last, the Game's leave hook
+  runs if it has one, otherwise the computer plays their seat if the Game has `bot`, otherwise
+  the Match is aborted. With no person left it is aborted.
 - A settled Match goes to `ResultsService.settle` (`GameHostService` is its only caller). It
   writes `matches` and `stats` in one transaction that starts by inserting the `matches` row
   keyed by `matchId`: a second settle of the same Match writes nothing. Once it is recorded the
