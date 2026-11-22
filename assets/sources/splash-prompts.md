@@ -30,7 +30,7 @@ Subject: {subject}
 ## Subjects
 
 - **Caro** (`caro`, focus 70, 50): A game of Caro (Vietnamese gomoku) on a large sheet of squared
-  school notebook paper lying on an old dark wooden table, seen at the winning moment: five red
-  cross-shaped marks drawn in ink form one unbroken diagonal line that glows faintly, with blue
-  ring-shaped marks scattered around them. A worn pencil and a cup of iced tea in a glass rest at
+  school notebook paper lying on an old dark wooden table, seen at the winning moment: exactly five red
+  cross-shaped marks drawn in ink form one unbroken diagonal line that glows faintly, and no other
+  red marks on the paper; blue ring-shaped marks are scattered around them. A worn pencil and a cup of iced tea in a glass rest at
   the edge of the paper; behind, the out-of-focus tiled courtyard of a Vietnamese house at dusk.
