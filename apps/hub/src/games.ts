@@ -21,9 +21,11 @@ export interface RulesPage {
   blocks: RulesBlock[];
 }
 
-/** A Game the Hub ships: its manifest, its art, its rules and the version of its bundle (`dist/version.json`). */
+/** A Game the Hub ships: its manifest, its Emblem, its art, its rules and the version of its bundle (`dist/version.json`). */
 export interface HubGame {
   manifest: GameManifest;
+  /** `hub/emblem.svg`: one-colour SVG markup painted with `currentColor`. */
+  emblem: string;
   art: GameArt;
   rules: RulesPage[];
   version: string;
@@ -38,6 +40,12 @@ const versions = import.meta.glob<string>('../../../games/*/dist/version.json', 
   import: 'version',
 });
 
+const emblems = import.meta.glob<string>('../../../games/*/hub/emblem.svg', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+});
+
 const arts = import.meta.glob<{
   art: Pick<GameArt, 'lobby' | 'card' | 'thumb'>;
   loop?: string;
@@ -49,19 +57,22 @@ const folder = (path: string) => path.split('/')[4] ?? '';
 const sibling = <T>(files: Record<string, T>, path: string) =>
   Object.entries(files).find(([file]) => folder(file) === folder(path))?.[1];
 
-/** Every Game with a manifest, art and a built bundle (never `soon`); `wip` ones only outside production. */
+/** Every Game with a manifest, Emblem, art and a built bundle (never `soon`); `wip` ones only outside production. */
 export const GAMES: HubGame[] = Object.entries(manifests)
   .map(([path, manifest]) => {
     const hubJson = sibling(arts, path);
     return {
       manifest,
+      emblem: sibling(emblems, path) ?? '',
       art: hubJson && { ...hubJson.art, loop: hubJson.loop },
       rules: hubJson?.rules ?? [],
       version: sibling(versions, path) ?? '',
     };
   })
-  .flatMap(({ manifest, art, rules, version }) =>
-    manifest.status !== 'soon' && art && version ? [{ manifest, art, rules, version }] : [],
+  .flatMap(({ manifest, emblem, art, rules, version }) =>
+    manifest.status !== 'soon' && emblem && art && version
+      ? [{ manifest, emblem, art, rules, version }]
+      : [],
   )
   .filter(({ manifest }) => __SHOW_WIP__ || manifest.status === 'ready')
   .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name, 'vi'));

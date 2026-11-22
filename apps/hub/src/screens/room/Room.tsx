@@ -273,7 +273,12 @@ export function Room({ code }: { code: string }) {
 
       {frameOpen && game && (
         <div className={styles.play} data-peek={(showResults && peeking) || undefined}>
-          <GameFrame gameId={game.manifest.id} gameName={name} onDone={setDoneFor} />
+          <GameFrame
+            gameId={game.manifest.id}
+            gameName={name}
+            emblem={game.emblem}
+            onDone={setDoneFor}
+          />
           <div className={styles.corner}>
             {showResults && <Peek onPeek={setPeeking} />}
             <div className={styles.tools} data-hud>

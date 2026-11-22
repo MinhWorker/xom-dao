@@ -1,5 +1,6 @@
 import type { RoomMember } from '@xomdao/shared/client';
 import type { ReactNode } from 'react';
+import { Emblem } from '../../kit/Emblem.js';
 import styles from './MatchLoading.module.css';
 
 export interface LoadingSeat {
@@ -33,13 +34,13 @@ function statusOf(seat: LoadingSeat, isMe: boolean) {
   return isMe ? `${Math.round(seat.load * 100)}%` : 'Đang tải';
 }
 
-/** The diamond plate in its turning ring that holds an Emblem on a loading screen. */
+/** The diamond plate in its turning ring that holds an Emblem (an `<Emblem />`) on a loading screen. */
 export function LoadingEmblem({ children }: { children: ReactNode }) {
   return (
     <div className={styles.emblem} aria-hidden="true">
       <span className={styles.ring} data-loop />
       <span className={styles.plate}>
-        <span className={styles.initial}>{children}</span>
+        <span className={styles.mark}>{children}</span>
       </span>
     </div>
   );
@@ -47,6 +48,8 @@ export function LoadingEmblem({ children }: { children: ReactNode }) {
 
 export interface MatchLoadingProps {
   gameName: string;
+  /** The Game's `hub/emblem.svg`. */
+  emblem: string;
   seats: LoadingSeat[];
   meId: string;
   /** Fading out: the Match has started. */
@@ -56,13 +59,22 @@ export interface MatchLoadingProps {
 }
 
 /** The screen over the Game until the Match starts: the Game's Emblem, a bar and each player's load. */
-export function MatchLoading({ gameName, seats, meId, leaving, children }: MatchLoadingProps) {
+export function MatchLoading({
+  gameName,
+  emblem,
+  seats,
+  meId,
+  leaving,
+  children,
+}: MatchLoadingProps) {
   const total = seats.length ? seats.reduce((sum, s) => sum + s.load, 0) / seats.length : 0;
   const percent = Math.floor(total * 100);
   return (
     <div className={styles.loading} data-leaving={leaving || undefined} role="status">
       <span className={styles.stripes} data-loop aria-hidden="true" />
-      <LoadingEmblem>{gameName.charAt(0)}</LoadingEmblem>
+      <LoadingEmblem>
+        <Emblem markup={emblem} />
+      </LoadingEmblem>
       <div className={styles.info}>
         <span className={styles.kicker}>Đang tải ván</span>
         <h2 className={styles.title}>{gameName}</h2>

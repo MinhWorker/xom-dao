@@ -2,9 +2,3 @@
   position: fixed;
   z-index: 100;
 }
-
-.anchor {
-  display: block;
-  width: calc(var(--emblem) * 0.34);
-  height: calc(var(--emblem) * 0.34);
-}

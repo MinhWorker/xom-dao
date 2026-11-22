@@ -75,3 +75,25 @@ describe("the Games' manifests and Emblems", () => {
     expect(files.sort()).toEqual(['hub/emblem.svg', 'manifest.ts']);
   });
 });
+
+describe('every Emblem, as the Hub inlines them on one page', () => {
+  const root = join(import.meta.dirname, '../../..');
+  const games = join(root, 'games');
+  const files = [
+    ...['hub', ...ISLANDS].map((name) => join(root, 'apps/hub/src/emblems', `${name}.svg`)),
+    ...readdirSync(games)
+      .map((id) => join(games, id, 'hub/emblem.svg'))
+      .filter((file) => existsSync(file)),
+  ];
+
+  it.each(files)('%s is drawn on the 64-unit grid', (file) => {
+    expect(readFileSync(file, 'utf8')).toMatch(/<svg[^>]*\sviewBox="0 0 64 64"/);
+  });
+
+  it('share no id, so one clip path never cuts another Emblem', () => {
+    const ids = files.flatMap((file) =>
+      [...readFileSync(file, 'utf8').matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]),
+    );
+    expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
+  });
+});
