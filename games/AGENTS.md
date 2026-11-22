@@ -212,8 +212,8 @@ paragraphs, `-` lists and tables, with `**bold**`, `*italic*` and `` `code` ``; 
 over the same limits, a missing or misnamed image, and writes the pages into `hub.json` (`rules`).
 `tools/hub-assets/src/rules.ts` is the parser.
 
-The art is a render from the Game's scene (code or Blender, no AI-made images) with the subject
-in the right 60%: the Hub darkens the left for the Game's name. It checks nothing about looks.
+The art is splash art made with `agy` from the frame prompt in `assets/sources/splash-prompts.md`
+(`assets/AGENTS.md`; today's files are still code renders), with the subject in the right 60%: the Hub darkens the left for the Game's name. It checks nothing about looks.
 
 A Realtime client sends each input as `send('input', { seq, input })` (`seq` counts up per
 player, also across reconnects: continue from the snapshot's `ack`), reads `tick`, `view` and
