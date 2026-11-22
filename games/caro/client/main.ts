@@ -8,12 +8,15 @@ import {
 } from '@xomdao/bridge';
 import { at, keyOf, markOf, points } from '../server/game/board.js';
 import type { Point, State } from '../server/game/model.js';
-import { BoardView, LINE_MS, type Scene } from './render.js';
+import { BoardView, LINE_MS, MARK_MS, type Scene } from './render.js';
+import { Sounds } from './sound.js';
 
 /** How long the finished board stays after the winning line is drawn. */
 const LINGER_MS = 900;
 /** How long a refusal stays on screen. */
 const TOAST_MS = 2200;
+/** The turn cue waits for the other side's mark to land first. */
+const TURN_CUE_MS = MARK_MS + 160;
 
 /** The part of a `match:state` push the client reads. */
 interface MatchPush {
@@ -28,6 +31,7 @@ const seatX = document.getElementById('seat-x') as HTMLElement;
 const seatO = document.getElementById('seat-o') as HTMLElement;
 const toast = document.getElementById('toast') as HTMLElement;
 const view = new BoardView(canvas);
+const sounds = new Sounds();
 
 let me = '';
 let seats: BridgeSeat[] = [];
@@ -47,6 +51,7 @@ const scene: Scene = {
 
 const bridge = createGameBridge({
   onInit(init) {
+    sounds.apply(init.settings);
     me = init.player.id;
     seats = init.room.seats;
     matchId = null;
@@ -68,8 +73,13 @@ const bridge = createGameBridge({
     matchId = push.matchId;
     status = push.status;
     show(push.view ?? null, !fresh);
+    if (fresh && status === 'playing' && scene.state && !scene.state.last && myTurn()) {
+      sounds.play('turn');
+    }
     if (status === 'over') finish(push.matchId);
   },
+  onSettings: (settings) => sounds.apply(settings),
+  onVisibility: (hidden) => sounds.setHidden(hidden),
 });
 
 /** Shows a state; `animate` draws what changed since the last one. */
@@ -77,8 +87,17 @@ function show(state: State | null, animate: boolean) {
   const now = performance.now();
   const before = scene.state;
   if (state && animate && before) {
+    let theirs = false;
     for (const p of points(state.board)) {
-      if (at(state.board, p) && !at(before.board, p)) scene.placedAt.set(keyOf(p), now);
+      const mark = at(state.board, p);
+      if (!mark || at(before.board, p)) continue;
+      scene.placedAt.set(keyOf(p), now);
+      if (mark !== markOf(state, me)) theirs = true;
+      else if (!placedByHand(p)) sounds.play('place');
+    }
+    if (theirs) {
+      sounds.play('other');
+      if (status === 'playing' && state.turn === me) sounds.play('turn', TURN_CUE_MS);
     }
   }
   if (state && (state.line || status === 'over') && scene.overAt === null) {
@@ -104,6 +123,11 @@ function finish(id: string) {
   }, LINE_MS + LINGER_MS);
 }
 
+/** Whether the player's own tap already played the sound of the mark on `p`. */
+function placedByHand(p: Point) {
+  return scene.pending?.x === p.x && scene.pending?.y === p.y;
+}
+
 const myTurn = () =>
   status === 'playing' && !!scene.state && !scene.pending && scene.state.turn === me;
 
@@ -120,6 +144,7 @@ function updateSeats() {
       seats.find((s) => s.id === id)?.name ?? '';
     el.classList.toggle('active', status === 'playing' && state.turn === id);
     el.classList.toggle('me', id === me);
+    (el.querySelector('.who') as HTMLElement).textContent = id === me ? 'Bạn' : '';
   }
 }
 
@@ -163,12 +188,16 @@ canvas.addEventListener('pointerdown', (event) => {
   if (!cell || at(scene.state.board, cell) !== null) return;
   scene.pending = cell;
   scene.hover = null;
+  sounds.play('place');
   frame();
   bridge.send('place', cell).catch((error: unknown) => {
     if (scene.pending?.x === cell.x && scene.pending?.y === cell.y) scene.pending = null;
     frame();
     const refusal = error instanceof BridgeError ? error.code : '';
-    if (refusal && refusal !== BRIDGE_RESET && refusal !== BRIDGE_UNAVAILABLE) say(refusal);
+    if (refusal && refusal !== BRIDGE_RESET && refusal !== BRIDGE_UNAVAILABLE) {
+      sounds.play('refused');
+      say(refusal);
+    }
   });
 });
 
