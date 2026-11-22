@@ -2,10 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   type AudioContextLike,
   createSounds,
+  EFFECTS_KEY,
+  MUSIC_KEY,
   MUTED_KEY,
   type SoundDeps,
   type SoundName,
   STALE_MS,
+  VOLUME_KEY,
 } from './sounds.js';
 
 const NAMES: SoundName[] = ['click', 'hover', 'pick', 'cardHover', 'locked', 'win', 'lose'];
@@ -169,5 +172,87 @@ describe('sounds', () => {
     expect(sounds.getState().muted).toBe(false);
     expect(() => sounds.setMuted(true)).not.toThrow();
     expect(sounds.getState().muted).toBe(true);
+  });
+
+  it('sets the master volume, keeps it, announces it and clamps it', () => {
+    const store = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+    };
+    const { sounds, master } = setup({ storage });
+    const listener = vi.fn();
+    sounds.subscribe(listener);
+    sounds.unlock();
+    sounds.setVolume(0.4);
+    expect(master.gain.value).toBe(0.4);
+    expect(store.get(VOLUME_KEY)).toBe('0.4');
+    expect(listener).toHaveBeenCalledTimes(1);
+    sounds.setVolume(0.4);
+    expect(listener).toHaveBeenCalledTimes(1);
+    sounds.setVolume(7);
+    expect(sounds.getState().volume).toBe(1);
+    sounds.setVolume(-1);
+    expect(sounds.getState().volume).toBe(0);
+  });
+
+  it('keeps the master gain at zero while muted, then restores the volume', () => {
+    const { sounds, master } = setup();
+    sounds.unlock();
+    sounds.setVolume(0.5);
+    sounds.setMuted(true);
+    sounds.setVolume(0.8);
+    expect(master.gain.value).toBe(0);
+    sounds.setMuted(false);
+    expect(master.gain.value).toBe(0.8);
+  });
+
+  it('starts at the volume stored last time, and at full volume when it is unreadable', () => {
+    const stored = setup({
+      storage: { getItem: (k) => (k === VOLUME_KEY ? '0.3' : null), setItem: () => {} },
+    });
+    expect(stored.sounds.getState().volume).toBe(0.3);
+    stored.sounds.unlock();
+    expect(stored.master.gain.value).toBe(0.3);
+    const junk = setup({
+      storage: { getItem: (k) => (k === VOLUME_KEY ? 'loud' : null), setItem: () => {} },
+    });
+    expect(junk.sounds.getState().volume).toBe(1);
+  });
+
+  it('keeps music and effects apart: effects scale the Hub sounds, music does not', () => {
+    const store = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+    };
+    const { sounds, master } = setup({ storage });
+    const listener = vi.fn();
+    sounds.subscribe(listener);
+    sounds.unlock();
+    sounds.setVolume(0.5);
+    sounds.setEffects(0.5);
+    expect(master.gain.value).toBe(0.25);
+    sounds.setMusic(0.2);
+    expect(master.gain.value).toBe(0.25);
+    expect(sounds.getState()).toMatchObject({ volume: 0.5, effects: 0.5, music: 0.2 });
+    expect(store.get(EFFECTS_KEY)).toBe('0.5');
+    expect(store.get(MUSIC_KEY)).toBe('0.2');
+    expect(listener).toHaveBeenCalledTimes(3);
+    sounds.setMusic(0.2);
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
+
+  it('starts with music and effects at full, or as stored', () => {
+    expect(setup().sounds.getState()).toMatchObject({ music: 1, effects: 1 });
+    const stored = setup({
+      storage: {
+        getItem: (k) => (k === MUSIC_KEY ? '0.1' : k === EFFECTS_KEY ? '0.6' : null),
+        setItem: () => {},
+      },
+    });
+    expect(stored.sounds.getState()).toMatchObject({ music: 0.1, effects: 0.6 });
+    stored.sounds.unlock();
+    expect(stored.master.gain.value).toBe(0.6);
   });
 });

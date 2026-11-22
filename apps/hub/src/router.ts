@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { transitionsAllowed } from './settings/graphics.js';
 
 export type Route =
   | { name: 'lobby' }
@@ -51,7 +52,7 @@ export function createRouter(): Router {
       current = parseRoute(path);
       for (const listener of listeners) listener();
     };
-    if (document.startViewTransition && !matchMedia?.('(prefers-reduced-motion)').matches) {
+    if (document.startViewTransition && transitionsAllowed()) {
       document.startViewTransition(show).ready.catch(() => {});
     } else show();
   };

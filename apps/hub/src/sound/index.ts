@@ -42,3 +42,20 @@ export const hoverSound = (event: { pointerType: string }, name: SoundName = 'ho
 export function useMuted() {
   return useSyncExternalStore(sounds.subscribe, () => sounds.getState().muted);
 }
+
+export function useVolume() {
+  return useSyncExternalStore(sounds.subscribe, () => sounds.getState().volume);
+}
+
+export function useMusic() {
+  return useSyncExternalStore(sounds.subscribe, () => sounds.getState().music);
+}
+
+export function useEffects() {
+  return useSyncExternalStore(sounds.subscribe, () => sounds.getState().effects);
+}
+
+/** Every sound choice at once; the object changes whenever one of them does. */
+export function useSoundState() {
+  return useSyncExternalStore(sounds.subscribe, sounds.getState);
+}

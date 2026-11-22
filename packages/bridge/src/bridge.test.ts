@@ -174,6 +174,23 @@ describe('Bridge round-trip', () => {
     expect(gameSide.onVisibility).toHaveBeenCalledWith(true);
   });
 
+  it('passes on the music and effects levels, and still takes settings without them', async () => {
+    const { host, bridge, gameSide } = connect();
+    host.init(makeInit(null));
+    bridge.ready();
+    host.settings({ volume: 1, muted: false, music: 0.25, effects: 0.5 });
+    host.settings({ volume: 1, muted: false });
+    await flush();
+
+    expect(gameSide.onSettings).toHaveBeenNthCalledWith(1, {
+      volume: 1,
+      muted: false,
+      music: 0.25,
+      effects: 0.5,
+    });
+    expect(gameSide.onSettings).toHaveBeenNthCalledWith(2, { volume: 1, muted: false });
+  });
+
   it('keeps what the Hub sent before the Game was ready, in order', async () => {
     const order: string[] = [];
     const { host, bridge } = connect(

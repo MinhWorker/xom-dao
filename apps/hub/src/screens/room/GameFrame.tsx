@@ -9,11 +9,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { HubError } from '../../net/store.js';
-import { sounds, useMuted } from '../../sound/index.js';
+import { sounds, useSoundState } from '../../sound/index.js';
 import styles from './Room.module.css';
 
-/** The Game follows the Hub's mute; there is no volume control yet. */
-const settings = () => ({ volume: 1, muted: sounds.getState().muted });
+/** The Game follows the Hub's volume, mute, music and effects levels. */
+const settings = () => {
+  const { volume, muted, music, effects } = sounds.getState();
+  return { volume, muted, music, effects };
+};
 
 /** What `init` tells the Game, from the store as it is now. */
 function currentInit(): BridgeInit | null {
@@ -67,7 +70,7 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
   const [refused, setRefused] = useState(false);
   const match = useHub((s) => s.match);
   const connection = useHub((s) => s.connection);
-  const muted = useMuted();
+  const soundState = useSoundState();
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
@@ -119,10 +122,10 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
     reportReady(reported);
   }, [ready, matchId, connection]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `muted` only says when to resend
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `soundState` only says when to resend
   useEffect(() => {
     if (ready) host.current?.settings(settings());
-  }, [ready, muted]);
+  }, [ready, soundState]);
 
   useEffect(() => {
     if (ready && match) host.current?.message('match:state', match);

@@ -1,5 +1,5 @@
 .strip {
-  --card-h: clamp(64px, 22vmin, 132px);
+  --card-h: clamp(64px, calc(22 * var(--vmin)), 132px);
   --slant: calc(var(--card-h) * 0.22);
   display: flex;
   align-items: end;

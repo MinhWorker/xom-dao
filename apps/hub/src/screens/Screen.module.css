@@ -1,13 +1,13 @@
 .screen {
-  min-height: 100dvh;
-  padding: var(--space-4) max(var(--space-4), 3vw);
+  min-height: var(--view-h);
+  padding: var(--space-4) max(var(--space-4), calc(3 * var(--vw)));
   display: grid;
   align-content: start;
   gap: var(--space-4);
 }
 
 .center {
-  min-height: 100dvh;
+  min-height: var(--view-h);
   display: grid;
   place-content: center;
   justify-items: center;

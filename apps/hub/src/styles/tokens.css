@@ -17,11 +17,11 @@
   --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  --text-sm: clamp(14px, 1.6vmin + 8px, 15px);
-  --text-md: clamp(15px, 2vmin + 8px, 17px);
-  --text-lg: clamp(20px, 3vmin + 10px, 28px);
-  --text-xl: clamp(28px, 6vmin + 8px, 48px);
-  --label: clamp(11px, 1vmin + 8px, 12px);
+  --text-sm: clamp(14px, calc(1.6 * var(--vmin)) + 8px, 15px);
+  --text-md: clamp(15px, calc(2 * var(--vmin)) + 8px, 17px);
+  --text-lg: clamp(20px, calc(3 * var(--vmin)) + 10px, 28px);
+  --text-xl: clamp(28px, calc(6 * var(--vmin)) + 8px, 48px);
+  --label: clamp(11px, calc(1 * var(--vmin)) + 8px, 12px);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -34,10 +34,22 @@
   --tap: 40px;
   --tap-main: 48px;
 
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
+  /* Set by `applyGraphics`: the HUD scale (1 = 100%) and the extra margin around the screen. */
+  --hud-scale: 1;
+  --margin: 0px;
+
+  /* `zoom` scales viewport units too, so the screen's size is divided by the scale. */
+  --vw: calc(1vw / var(--hud-scale));
+  --dvh: calc(1dvh / var(--hud-scale));
+  --vmin: calc(1vmin / var(--hud-scale));
+
+  /* The notch and the player's margin, in the scaled units of the page. */
+  --safe-top: calc((env(safe-area-inset-top, 0px) + var(--margin)) / var(--hud-scale));
+  --safe-right: calc((env(safe-area-inset-right, 0px) + var(--margin)) / var(--hud-scale));
+  --safe-bottom: calc((env(safe-area-inset-bottom, 0px) + var(--margin)) / var(--hud-scale));
+  --safe-left: calc((env(safe-area-inset-left, 0px) + var(--margin)) / var(--hud-scale));
+  /* What is left of the screen's height inside those margins. */
+  --view-h: calc(100 * var(--dvh) - var(--safe-top) - var(--safe-bottom));
 }
 
 @media (pointer: coarse) {

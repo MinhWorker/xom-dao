@@ -1,12 +1,14 @@
 .pager {
   --slant: 28px;
-  width: 100vw;
+  width: calc(100 * var(--vw));
   max-width: none;
-  height: 100dvh;
+  height: calc(100 * var(--dvh));
   max-height: none;
   margin: 0;
-  padding: calc(var(--safe-top) + var(--space-2)) calc(var(--safe-right) + max(var(--space-4), 2vw))
-    calc(var(--safe-bottom) + var(--space-2)) calc(var(--safe-left) + max(var(--space-4), 2vw));
+  padding: calc(var(--safe-top) + var(--space-2))
+    calc(var(--safe-right) + max(var(--space-4), calc(2 * var(--vw))))
+    calc(var(--safe-bottom) + var(--space-2))
+    calc(var(--safe-left) + max(var(--space-4), calc(2 * var(--vw))));
   border: 0;
   background: var(--bg);
   color: var(--text);
@@ -126,7 +128,7 @@
   position: absolute;
   inset: auto auto var(--space-1) var(--space-4);
   font-family: var(--font-display);
-  font-size: clamp(64px, 22vmin, 160px);
+  font-size: clamp(64px, calc(22 * var(--vmin)), 160px);
   font-weight: 700;
   line-height: 1;
   color: var(--accent);
@@ -302,7 +304,7 @@
 
   .media {
     align-self: start;
-    max-height: 30dvh;
+    max-height: calc(30 * var(--dvh));
     justify-self: start;
     width: 100%;
   }

@@ -1,10 +1,13 @@
-import { cpSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { cpSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
 const games = resolve(dirname(fileURLToPath(import.meta.url)), '../../games');
+const version = (
+  JSON.parse(readFileSync(resolve(games, '../package.json'), 'utf8')) as { version: string }
+).version;
 const server = process.env.XOMDAO_SERVER_URL ?? '';
 const devServer = process.env.XOMDAO_DEV_SERVER ?? 'http://localhost:8033';
 
@@ -76,6 +79,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), gameBundles()],
   resolve: { conditions: ['xomdao-source'] },
   define: {
+    /** The repo's version, which release-please keeps. */
+    __APP_VERSION__: JSON.stringify(version),
     __SERVER_URL__: JSON.stringify(server.replace(/\/$/, '')),
     /** `wip` Games show in dev and PR previews, never in production. */
     __SHOW_WIP__: JSON.stringify(mode !== 'production' || process.env.VERCEL_ENV !== 'production'),
