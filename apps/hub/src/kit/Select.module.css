@@ -1,6 +1,7 @@
 .field {
   display: grid;
   gap: var(--space-1);
+  min-width: 0;
 }
 
 .label {
@@ -11,26 +12,58 @@
   color: var(--text-dim);
 }
 
+/* The same cut corner and display type as the kit's Choice. */
 .box {
+  --cut: 8px;
   position: relative;
   display: grid;
+  border-left: 3px solid var(--accent);
 }
 
 .select {
-  min-height: var(--tap);
-  padding: 0 calc(var(--space-3) + 28px) 0 var(--space-3);
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: var(--tap);
+  padding: 0 calc(var(--space-3) + 24px) 0 var(--space-3);
   border: 1px solid var(--line-strong);
+  border-left: 0;
   border-radius: 0;
   background: var(--bg-sunken);
   color: var(--text);
-  font-size: max(16px, var(--text-md));
+  color-scheme: dark;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
   appearance: none;
   cursor: pointer;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%
+  );
 }
 
-.select:focus {
-  border-color: var(--accent);
-  outline: none;
+.select option {
+  background: var(--bg-raised);
+  color: var(--text);
+  font-family: var(--font-body);
+  text-transform: none;
+}
+
+@media (hover: hover) {
+  .select:hover:not(:disabled) {
+    background: var(--bg-raised);
+  }
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .select:disabled {
@@ -43,6 +76,6 @@
   inset: 0 var(--space-3) 0 auto;
   display: grid;
   place-items: center;
-  color: var(--text-dim);
+  color: var(--accent);
   pointer-events: none;
 }
