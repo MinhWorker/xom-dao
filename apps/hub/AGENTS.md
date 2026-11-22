@@ -17,7 +17,7 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.js
 src/islands.ts     The Islands' names, order and Emblems, and `HUB_EMBLEM` (ids are `ISLANDS` in `@xomdao/sdk`)
 src/emblems/       The Hub's (`hub.svg`) and each Island's (`<island>.svg`) Emblem, same contract as a Game's;
                    `tools/hub-assets` tests them
-src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
+src/kit/           Button, CutPanel, Chip, TextField, Dialog, Emblem (inlines an Emblem's SVG), Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
                    Loops (looping HUD icons): no server knowledge. `toast()` needs `<ToastRegion />` (mounted in
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
                    `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;
@@ -47,7 +47,7 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   lobby, Room, GameFrame or Results.
 - Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes, at both
   graphics levels and with less motion; `/dev/kit#motion` is the approved motion prototype (#295), still the
-  reference for the loading screens. `/dev/kit#emblems` shows the Hub's and the Islands' Emblems (#302, in review). `/dev/kit#sea` is the Sea chart prototype (#306,
+  reference for the loading screens. `/dev/kit#emblems` shows every Emblem: the Hub's, the Islands' (#302) and the Games' (#303). `/dev/kit#sea` is the Sea chart prototype (#306,
   in review), with stand-in splash art. `/dev/kit#harbour` is the Bến prototype (#308, in review), with stand-in art.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
@@ -87,7 +87,7 @@ goes back to the waiting room, so playing again reuses it.
 - `ready` → `init` (player, Room seats, `vi`, settings, `match` = the latest `view` or `null`),
   then `match:ready` once per Match.
 - `MatchLoading` covers the iframe until the Game is `ready` and the Match leaves `loading`: the Game's
-  Emblem (for now a stand-in, its initial on the diamond plate), a bar and each seat's load (yours from
+  Emblem (`HubGame.emblem`, on the diamond plate), a bar and each seat's load (yours from
   the Bridge's `progress`, the others' from `match:state`'s `readyPlayerIds`).
 - A new Match or a reconnect → a fresh `init`.
 - Every `match:state` push → `message('match:state', data)`: the whole push, `view` included.
@@ -99,7 +99,7 @@ goes back to the waiting room, so playing again reuses it.
   so the Game's last state shows. The Game does nothing for it.
 - Leaving a running Match (the corner menu's "Rời ván", or the back button, which `router.block`
   turns into the same) asks first. Saying yes covers the screen with the Hub's loading screen
-  (`screens/homeward/`, the anchor as a stand-in Emblem) until the Bến is up. While the Match
+  (`screens/homeward/`, with the Hub's Emblem) until the Bến is up. While the Match
   view is open, the others hear who left, lost their connection or came back as toasts (`screens/room/notices.ts`). Results keep the
   names of those who left, marked "Đã rời", and "Chơi lại" waits for enough players.
 - A reload or a dropped connection mid-Match comes back through `session:resume`; the Game

@@ -1,5 +1,6 @@
-import { IconAnchor } from '@tabler/icons-react';
 import { useSyncExternalStore } from 'react';
+import { HUB_EMBLEM } from '../../islands.js';
+import { Emblem } from '../../kit/index.js';
 import { LoadingEmblem } from '../room/MatchLoading.js';
 import loading from '../room/MatchLoading.module.css';
 import styles from './Homeward.module.css';
@@ -19,7 +20,7 @@ export function Homeward() {
     >
       <span className={loading.stripes} data-loop aria-hidden="true" />
       <LoadingEmblem>
-        <IconAnchor className={styles.anchor} stroke={2} aria-hidden />
+        <Emblem markup={HUB_EMBLEM} />
       </LoadingEmblem>
       <div className={loading.info}>
         <span className={loading.kicker}>Đang về</span>

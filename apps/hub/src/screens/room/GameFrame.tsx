@@ -66,6 +66,8 @@ function reportReady(reported: { current: string | null }) {
 export interface GameFrameProps {
   gameId: string;
   gameName: string;
+  /** The Game's `hub/emblem.svg`, shown while the Match loads. */
+  emblem: string;
   /** The Game's end-of-match animation is over for this Match. */
   onDone(matchId: string): void;
 }
@@ -75,7 +77,7 @@ export interface GameFrameProps {
  * reports `match:ready` once per Match, passes every `match:state` on as a `message`, and sends
  * a fresh `init` after a reconnect or when the next Match starts in the same iframe.
  */
-export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
+export function GameFrame({ gameId, gameName, emblem, onDone }: GameFrameProps) {
   const frame = useRef<HTMLIFrameElement>(null);
   const host = useRef<GameHost | null>(null);
   const reported = useRef<string | null>(null);
@@ -181,7 +183,13 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
         allow="autoplay; fullscreen"
       />
       {loadingShown && (
-        <MatchLoading gameName={gameName} seats={seats} meId={meId} leaving={!loading}>
+        <MatchLoading
+          gameName={gameName}
+          emblem={emblem}
+          seats={seats}
+          meId={meId}
+          leaving={!loading}
+        >
           {refused ? (
             <>
               <p>Cần bản Hub mới</p>

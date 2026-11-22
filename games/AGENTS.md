@@ -196,7 +196,11 @@ naming the Game, when the manifest breaks the schema or its `id` is not the fold
 **Island and Emblem.** The manifest's `island` is the Game's Island, one of `ISLANDS` in
 `packages/sdk/src/manifest.ts` (`co`, `bai`, `xuc-xac`, `nao-nhiet`); the Hub's names and order
 for them are in `apps/hub/src/islands.ts`. `hub/emblem.svg` is a hand-written SVG with a `viewBox`
-that paints only with `currentColor` (or `none`): the Hub inlines and tints it. `hub-assets` fails
+that paints only with `currentColor` (or `none`): the Hub inlines and tints it. Draw it like the
+Islands' (`apps/hub/src/emblems/`, `/dev/kit#emblems`): a 64-unit grid, a hexagon frame of radius 29
+and stroke 2, solid shapes with cut-outs, and any shape that overlaps the frame breaks it, the
+break following the shape's edge at a 2-unit gap. Prefix every id with the Game's folder name, as
+the Hub inlines all Emblems on one page. `hub-assets` fails
 the build when it is missing, over 16 KB, has another colour or a `<script>`, `<style>`, `<image>`
 or `<foreignObject>`; `tools/hub-assets/src/emblem.ts` is the check.
 **Soon Games.** A Game not made yet has only `manifest.ts`, with `status: 'soon'`, `id`, `name`,
