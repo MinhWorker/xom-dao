@@ -27,7 +27,16 @@ export interface SoundDeps {
 
 export interface SoundState {
   muted: boolean;
+  /** The master level from 0 to 1; it only counts while not muted. */
+  volume: number;
+  /** The level of music from 0 to 1, on top of `volume`. The Hub plays none; Games read it. */
+  music: number;
+  /** The level of sound effects from 0 to 1, on top of `volume`. Scales the Hub's own sounds. */
+  effects: number;
 }
+
+/** The levels a player sets. */
+export type SoundLevel = 'volume' | 'music' | 'effects';
 
 export interface Sounds {
   /** Starts audio. Must run inside a tap; before it, `play` makes no sound. */
@@ -36,11 +45,23 @@ export interface Sounds {
   listen(target: EventTarget): () => void;
   play(name: SoundName): Promise<void>;
   setMuted(muted: boolean): void;
+  setVolume(volume: number): void;
+  setMusic(music: number): void;
+  setEffects(effects: number): void;
   getState(): SoundState;
   subscribe(listener: () => void): () => void;
 }
 
 export const MUTED_KEY = 'xomdao.muted';
+export const VOLUME_KEY = 'xomdao.volume';
+export const MUSIC_KEY = 'xomdao.music';
+export const EFFECTS_KEY = 'xomdao.effects';
+
+const LEVEL_KEYS: Record<SoundLevel, string> = {
+  volume: VOLUME_KEY,
+  music: MUSIC_KEY,
+  effects: EFFECTS_KEY,
+};
 
 /** A sound that is not ready this long after the tap that asked for it is dropped. */
 export const STALE_MS = 300;
@@ -56,6 +77,24 @@ function readMuted(storage: SoundDeps['storage']) {
   }
 }
 
+function readLevel(storage: SoundDeps['storage'], key: string) {
+  try {
+    const stored = storage?.getItem(key);
+    return stored == null ? 1 : clampVolume(Number(stored));
+  } catch {
+    return 1;
+  }
+}
+
+/** A level between 0 and 1 in steps of 0.01; anything that is not a number is full volume. */
+export function clampVolume(volume: number) {
+  if (!Number.isFinite(volume)) return 1;
+  return Math.round(Math.min(1, Math.max(0, volume)) * 100) / 100;
+}
+
+/** What the Hub's own sounds play at: they are effects. */
+const level = ({ muted, volume, effects }: SoundState) => (muted ? 0 : volume * effects);
+
 /**
  * The Hub's interface sounds on Web Audio. Nothing is created until `unlock` runs inside a tap,
  * which is what iOS requires; mute is kept in storage and applied to one master gain.
@@ -63,7 +102,12 @@ function readMuted(storage: SoundDeps['storage']) {
 export function createSounds(deps: SoundDeps): Sounds {
   const now = deps.now ?? (() => Date.now());
   const listeners = new Set<() => void>();
-  let state: SoundState = { muted: readMuted(deps.storage) };
+  let state: SoundState = {
+    muted: readMuted(deps.storage),
+    volume: readLevel(deps.storage, VOLUME_KEY),
+    music: readLevel(deps.storage, MUSIC_KEY),
+    effects: readLevel(deps.storage, EFFECTS_KEY),
+  };
   let context: AudioContextLike | null = null;
   let master: ReturnType<AudioContextLike['createGain']> | null = null;
   let running: Promise<boolean> = Promise.resolve(false);
@@ -97,7 +141,7 @@ export function createSounds(deps: SoundDeps): Sounds {
       deps.prepareSession?.();
       const ctx = deps.createContext();
       const gain = ctx.createGain();
-      gain.gain.value = state.muted ? 0 : 1;
+      gain.gain.value = level(state);
       gain.connect(ctx.destination);
       const silence = ctx.createBufferSource();
       silence.buffer = ctx.createBuffer(1, 1, 22050);
@@ -126,6 +170,23 @@ export function createSounds(deps: SoundDeps): Sounds {
     source.start(0);
   }
 
+  function save(key: string, value: string) {
+    try {
+      deps.storage?.setItem(key, value);
+    } catch {
+      // Storage can be blocked; the choice then lasts until the page closes.
+    }
+  }
+
+  function setLevel(which: SoundLevel, next: number) {
+    const value = clampVolume(next);
+    if (value === state[which]) return;
+    state = { ...state, [which]: value };
+    if (master) master.gain.value = level(state);
+    save(LEVEL_KEYS[which], String(value));
+    emit();
+  }
+
   function emit() {
     for (const listener of listeners) listener();
   }
@@ -142,15 +203,14 @@ export function createSounds(deps: SoundDeps): Sounds {
     play,
     setMuted(muted) {
       if (muted === state.muted) return;
-      state = { muted };
-      if (master) master.gain.value = muted ? 0 : 1;
-      try {
-        deps.storage?.setItem(MUTED_KEY, muted ? '1' : '0');
-      } catch {
-        // Storage can be blocked; the choice then lasts until the page closes.
-      }
+      state = { ...state, muted };
+      if (master) master.gain.value = level(state);
+      save(MUTED_KEY, muted ? '1' : '0');
       emit();
     },
+    setVolume: (next) => setLevel('volume', next),
+    setMusic: (next) => setLevel('music', next),
+    setEffects: (next) => setLevel('effects', next),
     getState: () => state,
     subscribe(listener) {
       listeners.add(listener);

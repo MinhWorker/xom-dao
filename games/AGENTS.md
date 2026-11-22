@@ -128,7 +128,8 @@ Make a Godot Game:
    `var result: Dictionary = await XomdaoBridge.send("place", {...})` gives `{ok, error}`; call
    `XomdaoBridge.done()` after the end-of-match animation. JSON numbers are floats: `int()` them.
    Leave the top-right 48×48 px to the Hub. Volume and mute from `settings` are already applied
-   to the Master bus. A `match:state` push whose `status` is `over` carries the `result`
+   to the Master bus; `music` and `effects` (0 to 1, may be missing) are not applied, for a Game
+   with a channel of each. A `match:state` push whose `status` is `over` carries the `result`
    (`seats[].player`, `place`, `score`) and no `view`: the last move never arrives as a view, so
    show the end from the result (Tiến Lên shows its standings from it). The server applies the
    computer's moves with no pause: queue the pushes and pace them on screen (`main.gd`).

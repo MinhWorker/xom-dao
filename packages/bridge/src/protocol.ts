@@ -13,7 +13,7 @@ import { z } from 'zod';
  *                           screen from any `init`
  *               `ack`       the server's answer to a `send`
  *               `message`   what the server pushed (`{ event, data }`)
- *               `settings`  volume and mute changed in the Hub's menu
+ *               `settings`  volume, mute, music and effects changed in the Hub's menu
  *               `visibility` the tab was hidden or shown
  *
  * In-match payloads (`data`, `match`) are opaque: the Hub passes them on as they are.
@@ -55,9 +55,15 @@ export const BridgeRoom = z.object({
 });
 export type BridgeRoom = z.infer<typeof BridgeRoom>;
 
+/**
+ * `volume` and `muted` are the master level. `music` and `effects` (0–1) are the player's split of
+ * it for a Game with a channel of each; a Hub or Harness may leave them out, meaning 1.
+ */
 export const BridgeSettings = z.object({
   volume: z.number().min(0).max(1),
   muted: z.boolean(),
+  music: z.number().min(0).max(1).optional(),
+  effects: z.number().min(0).max(1).optional(),
 });
 export type BridgeSettings = z.infer<typeof BridgeSettings>;
 

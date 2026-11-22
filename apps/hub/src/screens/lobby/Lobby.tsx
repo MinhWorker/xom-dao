@@ -1,12 +1,14 @@
-import { IconDots, IconUsers } from '@tabler/icons-react';
+import { IconDots, IconSettings, IconUsers } from '@tabler/icons-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { GAMES, type HubGame } from '../../games.js';
 import { Button, Chip, Dialog, Icon, Menu, TextField } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
+import { prefersReducedMotion, transitionsAllowed, useGraphics } from '../../settings/graphics.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
 import { FriendsSheet } from '../friends/FriendsSheet.js';
+import { SettingsOverlay } from '../settings/SettingsOverlay.js';
 import { GameStrip } from './GameStrip.js';
 import styles from './Lobby.module.css';
 import { durationLabel, focusPosition, playersLabel } from './summary.js';
@@ -14,22 +16,21 @@ import { durationLabel, focusPosition, playersLabel } from './summary.js';
 /** The Game picked last, so coming back from a Room shows it again. */
 let lastPicked = '';
 
-const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/** The loop plays only when the player has not asked for less motion or less data. */
-function canPlayLoop() {
+/** The loop plays only when the player allows it and has not asked for less motion or less data. */
+function canPlayLoop(allowed: boolean) {
   const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-  return !reducedMotion() && !connection?.saveData;
+  return allowed && !prefersReducedMotion() && !connection?.saveData;
 }
 
 /** The selected Game's art fills the screen; its loop, if any, fades in over it once playing. */
 function Backdrop({ game }: { game: HubGame }) {
   const [playing, setPlaying] = useState(false);
   const position = focusPosition(game.manifest);
+  const { loopVideo } = useGraphics();
   return (
     <div className={styles.backdrop} aria-hidden="true">
       <img src={game.art.lobby} alt="" style={{ objectPosition: position }} />
-      {game.art.loop && canPlayLoop() && (
+      {game.art.loop && canPlayLoop(loopVideo) && (
         <video
           key={game.manifest.id}
           className={playing ? styles.playing : undefined}
@@ -56,6 +57,7 @@ export function Lobby() {
   const [busy, setBusy] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickedId, setPickedId] = useState(lastPicked);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function Lobby() {
     lastPicked = id;
     setError('');
     const apply = () => flushSync(() => setPickedId(id));
-    if (document.startViewTransition && !reducedMotion()) {
+    if (document.startViewTransition && transitionsAllowed()) {
       document.startViewTransition(apply).ready.catch(() => {});
     } else apply();
   }
@@ -123,7 +125,7 @@ export function Lobby() {
         <span className={styles.tools}>
           <button
             type="button"
-            className={styles.friends}
+            className={`${styles.tool} ${styles.friends}`}
             aria-label={requests > 0 ? `Bạn bè, ${requests} lời mời` : 'Bạn bè'}
             onClick={() => setFriendsOpen(true)}
           >
@@ -131,6 +133,14 @@ export function Lobby() {
             {requests > 0 && <span className={styles.badge}>{requests}</span>}
           </button>
           <SoundToggle />
+          <button
+            type="button"
+            className={styles.tool}
+            aria-label="Cài đặt"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Icon icon={IconSettings} />
+          </button>
           <Menu
             label="Menu"
             trigger={<Icon icon={IconDots} />}
@@ -183,6 +193,7 @@ export function Lobby() {
       )}
 
       <FriendsSheet open={friendsOpen} onClose={() => setFriendsOpen(false)} />
+      <SettingsOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <Dialog
         open={joinOpen}

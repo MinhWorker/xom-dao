@@ -1,0 +1,128 @@
+.overlay {
+  inline-size: calc(100 * var(--vw));
+  block-size: calc(100 * var(--dvh));
+  max-inline-size: none;
+  max-block-size: none;
+  margin: 0;
+  padding: calc(var(--safe-top) + var(--space-3))
+    calc(var(--safe-right) + max(var(--space-4), calc(2 * var(--vw))))
+    calc(var(--safe-bottom) + var(--space-3))
+    calc(var(--safe-left) + max(var(--space-4), calc(2 * var(--vw))));
+  border: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  background: rgb(11 13 16 / 0.92);
+  color: var(--text);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .overlay {
+    background: rgb(11 13 16 / 0.55);
+    backdrop-filter: blur(24px) saturate(1.3);
+  }
+}
+
+.overlay::-webkit-scrollbar {
+  display: none;
+}
+
+.overlay::backdrop {
+  background: transparent;
+}
+
+.frame {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  inline-size: min(100%, 640px);
+  margin-inline: auto;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.top h2 {
+  font-size: var(--text-lg);
+}
+
+.close {
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--tap);
+  block-size: var(--tap);
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.close:hover {
+  background: var(--line);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .overlay {
+    transition:
+      opacity 160ms ease-out,
+      display 160ms allow-discrete,
+      overlay 160ms allow-discrete;
+    opacity: 0;
+  }
+
+  .overlay[open] {
+    opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}
+
+.tab,
+.about {
+  display: grid;
+  gap: var(--space-3) var(--space-4);
+  padding-top: var(--space-2);
+}
+
+.tab {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: center;
+}
+
+.title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.version {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+.games {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

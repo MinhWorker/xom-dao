@@ -13,12 +13,13 @@ src/net/store.ts   The one socket (`/ws`) and the Session state; every push and 
                    `@xomdao/shared/client` first. `net/hub.ts` makes the page's store + `useHub`
 src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.json` + the art and
                    rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production
-src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Menu, Toast, Icon:
+src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon:
                    no server knowledge. `toast()` needs `<ToastRegion />` (mounted in main.tsx)
-src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), kit/
+src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
+src/settings/      Graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, HUD scale, margin), kept in localStorage
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
 public/            `manifest.webmanifest` and `icons/` (PWA), copied to the build root
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
@@ -50,6 +51,11 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   (display), Be Vietnam Pro (body), Roboto Mono (labels), only the weights `styles/fonts.ts` loads.
 - Import the protocol from `@xomdao/shared/client`. The package root also loads every Game's
   rules, which the browser never needs.
+- HUD scale and margin (settings, Đồ họa): `watchGraphics` (`main.tsx`) sets `--hud-scale` and
+  `--margin` on `<html>`; `body` has `zoom: var(--hud-scale)`, and `--safe-*` add the margin. `zoom`
+  also scales viewport units, so in CSS never write `vw`, `dvh` or `vmin`: use `calc(N * var(--vw))`,
+  `var(--view-h)` (the screen's height inside the safe area and margin), `calc(N * var(--dvh))` or
+  `calc(N * var(--vmin))`. The Game's iframe is not scaled inside; only its box is.
 - Touch targets ≥ 44 px and main buttons ≥ 56 px on `pointer: coarse`, text ≥ 14 px, inputs
   ≥ 16 px (iOS zooms on smaller), `safe-area-inset` respected.
 - Browsers: Safari iOS 18+ and Chrome Android of the last two years. Baseline "Newly available"
@@ -72,8 +78,8 @@ goes back to the waiting room, so playing again reuses it.
   waiting room's "Luật chơi" button and from the corner menu during a Match (the Match keeps
   running under it). It is a scroll-snap track, one slide per page of `HubGame.rules`; mount it to
   open it. It never opens by itself.
-- `settings` follows the Hub's mute (`volume` is always 1) and is resent when it changes.
-- Not built yet: a volume control and emotes in the corner.
+- `settings` carries the Hub's volume, mute, `music` and `effects` levels and is resent when any changes.
+- Not built yet: emotes in the corner.
 
 ## Phone screen
 
@@ -96,7 +102,7 @@ goes back to the waiting room, so playing again reuses it.
 - Play with `playSound(name)` (`hoverSound(event)` for a real mouse only). The kit's Button, Toggle,
   Choice, Tabs and Menu already click; the lobby strip and Results add theirs. A sound still not
   ready 300 ms after its tap is dropped.
-- Mute is `xomdao.muted` in localStorage, on one master gain, and goes to the Game as `settings`.
+- Mute (`xomdao.muted`) and the levels `xomdao.volume` (master), `xomdao.music` and `xomdao.effects` (0 to 1) are in localStorage and go to the Game as `settings`; the settings overlay sets them. The Hub's own sounds are effects: the master gain is volume × effects. The Hub plays no music; `music` is for Games.
   The Game unlocks its own audio on its first tap (issue #202); the Hub's unlock does not cover it.
 
 ## Deploy

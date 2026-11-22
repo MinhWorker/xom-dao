@@ -1,10 +1,10 @@
 .lobby {
   position: relative;
-  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+  min-height: var(--view-h);
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: var(--space-2);
-  padding: var(--space-3) max(var(--space-4), 2vw);
+  padding: var(--space-3) max(var(--space-4), calc(2 * var(--vw)));
   isolation: isolate;
 }
 
@@ -74,8 +74,7 @@
   text-transform: uppercase;
 }
 
-.friends {
-  position: relative;
+.tool {
   display: inline-grid;
   place-items: center;
   min-width: var(--tap);
@@ -85,6 +84,10 @@
   background: var(--bg-raised);
   color: var(--text);
   cursor: pointer;
+}
+
+.friends {
+  position: relative;
 }
 
 .badge {
@@ -168,7 +171,7 @@
 
 .dock {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(150px, 24vw, 240px);
+  grid-template-columns: minmax(0, 1fr) clamp(150px, calc(24 * var(--vw)), 240px);
   align-items: end;
   gap: var(--space-4);
 }

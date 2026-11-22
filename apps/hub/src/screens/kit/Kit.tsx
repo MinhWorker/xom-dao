@@ -10,12 +10,14 @@ import {
   GemIcon,
   Icon,
   Menu,
+  Slider,
   Tabs,
   TextField,
   Toggle,
   toast,
 } from '../../kit/index.js';
 import screen from '../Screen.module.css';
+import { SettingsOverlay } from '../settings/SettingsOverlay.js';
 import styles from './Kit.module.css';
 
 /** Phone landscape frames the kit is checked at. */
@@ -34,6 +36,8 @@ function Samples() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState('normal');
   const [bots, setBots] = useState(true);
+  const [settings, setSettings] = useState(false);
+  const [volume, setVolume] = useState(70);
 
   return (
     <div className={styles.samples}>
@@ -79,6 +83,13 @@ function Samples() {
           <div className={styles.stack}>
             <Choice label="Tốc độ" options={MODES} value={mode} onChange={setMode} />
             <Toggle label="Thêm máy" checked={bots} onChange={setBots} />
+            <Slider
+              label="Âm lượng"
+              value={volume}
+              step={5}
+              format={(v) => `${v}%`}
+              onChange={setVolume}
+            />
           </div>
         </CutPanel>
         <TextField label="Mã phòng" placeholder="ABCD" />
@@ -94,8 +105,10 @@ function Samples() {
           <Button onClick={() => toast('Đã sao chép mã phòng')}>Thông báo</Button>
           <Button onClick={() => toast('Mất kết nối', 'danger')}>Báo lỗi</Button>
           <Button onClick={() => setOpen(true)}>Hộp thoại</Button>
+          <Button onClick={() => setSettings(true)}>Cài đặt</Button>
         </div>
       </div>
+      <SettingsOverlay open={settings} onClose={() => setSettings(false)} />
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
