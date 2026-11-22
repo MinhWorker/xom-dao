@@ -208,14 +208,15 @@ describe('GameHostService', () => {
     expect(start).not.toHaveBeenCalled();
 
     host.ready('match-1', 'lan');
-    expect(host.match('match-1')).toMatchObject({ status: 'loading' });
+    host.ready('match-1', 'lan');
+    expect(host.match('match-1')).toMatchObject({ status: 'loading', readyPlayerIds: ['lan'] });
     expect(start).not.toHaveBeenCalled();
 
     host.ready('match-1', 'minh');
     expect(host.match('match-1')).toMatchObject({ status: 'playing' });
     expect(host.view('match-1', 'lan')).toEqual({ started: true });
     expect(start).toHaveBeenCalledOnce();
-    expect(updates).toEqual(['loading', 'playing']);
+    expect(updates).toEqual(['loading', 'loading', 'playing']);
   });
 
   it('starts after 30 seconds and identifies players who did not load', () => {
@@ -369,7 +370,13 @@ describe('GameHostService', () => {
     host.ready('match-1', 'minh');
     vi.advanceTimersByTime(100);
 
-    expect(updates.map(({ status }) => status)).toEqual(['loading', 'playing', 'playing', 'over']);
+    expect(updates.map(({ status }) => status)).toEqual([
+      'loading',
+      'loading',
+      'playing',
+      'playing',
+      'over',
+    ]);
     expect(views).toEqual([{ done: false }, { done: true }]);
   });
 
@@ -465,7 +472,7 @@ describe('GameHostService', () => {
     host.stop('match-1');
     vi.advanceTimersByTime(100);
 
-    expect(updates.map(({ status }) => status)).toEqual(['loading', 'playing', 'over']);
+    expect(updates.map(({ status }) => status)).toEqual(['loading', 'loading', 'playing', 'over']);
     expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
     expect(host.match('match-1')).toBeUndefined();
   });

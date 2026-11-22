@@ -18,7 +18,7 @@ src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choic
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
                    `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;
                    `net/hub.ts` wraps every request in it, and Room create/join and Match start block
-src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
+src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, MatchLoading over it until the Match starts, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
@@ -81,6 +81,9 @@ goes back to the waiting room, so playing again reuses it.
 
 - `ready` → `init` (player, Room seats, `vi`, settings, `match` = the latest `view` or `null`),
   then `match:ready` once per Match.
+- `MatchLoading` covers the iframe until the Game is `ready` and the Match leaves `loading`: the Game's
+  Emblem (for now a stand-in, its initial on the diamond plate), a bar and each seat's load (yours from
+  the Bridge's `progress`, the others' from `match:state`'s `readyPlayerIds`).
 - A new Match or a reconnect → a fresh `init`.
 - Every `match:state` push → `message('match:state', data)`: the whole push, `view` included.
 - `send` → `match:move { matchId, event, payload }`; the server's refusal goes back in `ack`.

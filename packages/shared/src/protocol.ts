@@ -418,6 +418,8 @@ export const events = {
     status: z.enum(['loading', 'playing', 'over']),
     outcome: z.enum(['settled', 'aborted']).optional(),
     disconnectedPlayerIds: z.array(z.string()),
+    /** The seats whose Game has loaded this Match; older servers send none. */
+    readyPlayerIds: z.array(z.string()).optional(),
     timer: MatchTimer.nullable(),
     result: MatchResult.optional(),
     view: z.unknown().optional(),

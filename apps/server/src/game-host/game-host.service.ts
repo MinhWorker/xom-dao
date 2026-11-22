@@ -244,8 +244,10 @@ export class GameHostService implements OnModuleDestroy {
       return this.snapshot(match);
     }
 
+    if (match.readyPlayerIds.has(playerId)) return this.snapshot(match);
     match.readyPlayerIds.add(playerId);
-    if (this.allReady(match)) {
+    if (!this.allReady(match)) this.publish(match);
+    else {
       const server = this.server(match.start.gameId);
       if (!server) throw new Error(`Game server unloaded during Match: ${match.start.gameId}`);
       this.startPlaying(match, server);
@@ -782,6 +784,7 @@ export class GameHostService implements OnModuleDestroy {
       gameId: match.start.gameId,
       status: match.status,
       disconnectedPlayerIds: [...match.disconnectedPlayerIds],
+      readyPlayerIds: [...match.readyPlayerIds],
       timer: this.timerSnapshot(match),
       ...(match.sync && { tick: match.sync.tick }),
     };

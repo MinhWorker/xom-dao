@@ -166,7 +166,7 @@ describe('WebSocket transport', () => {
       minh.pushed
         .filter((message) => message.event === 'match:state')
         .map((message) => (message.data as { status: string }).status),
-    ).toEqual(['loading', 'playing']);
+    ).toEqual(['loading', 'loading', 'playing']);
     expect(
       (
         minh.pushed.filter((message) => message.event === 'match:state').at(-1)?.data as {
@@ -182,7 +182,7 @@ describe('WebSocket transport', () => {
       minh.pushed
         .filter((message) => message.event === 'match:state')
         .map((message) => (message.data as { status: string }).status),
-    ).toEqual(['loading', 'playing', 'playing', 'over']);
+    ).toEqual(['loading', 'loading', 'playing', 'playing', 'over']);
     expect(
       (
         minh.pushed.filter((message) => message.event === 'match:state').at(-2)?.data as {
@@ -284,7 +284,8 @@ describe('WebSocket transport', () => {
     const states = minh.pushed
       .filter((message) => message.event === 'match:state')
       .map((message) => message.data as { status: string; outcome?: string });
-    expect(states.map(({ status }) => status)).toEqual(['loading', 'playing', 'over']);
+    expect(states.map(({ status }) => status)).toEqual(['loading', 'loading', 'playing', 'over']);
+    expect(states[1]).toMatchObject({ readyPlayerIds: [expect.any(String)] });
     expect(states.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
     expect(minh.states().at(-1)).toMatchObject({ code, status: 'waiting', matchId: null });
 
