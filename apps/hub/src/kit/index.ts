@@ -7,6 +7,7 @@ export { Emblem } from './Emblem.js';
 export { CoinIcon, GemIcon, Icon } from './Icon.js';
 export { Loop, OnlineDot, SignalIcon, SyncIcon } from './Loops.js';
 export { Menu } from './Menu.js';
+export { Select } from './Select.js';
 export { Sheet } from './Sheet.js';
 export { Slider } from './Slider.js';
 export { Tabs } from './Tabs.js';

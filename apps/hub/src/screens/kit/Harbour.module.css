@@ -9,7 +9,7 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
     "top     cluster"
-    ".       cluster"
+    "side    cluster"
     "title   cluster";
   gap: var(--space-2) var(--space-4);
   padding: var(--space-3) var(--pad-x) var(--space-3) max(var(--pad-x), var(--safe-left));
@@ -36,20 +36,22 @@
   color: var(--text-dim);
 }
 
-/* Stand-in harbour art: dusk sky, the sea below a horizon, the Hub's Emblem where the art will stand. */
+/* The night harbour (generated), cropped to the screen with the quay at the bottom left. */
 .backdrop {
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  background: linear-gradient(
-    180deg,
-    #10202e 0,
-    #1d3a4c 44%,
-    #2c5466 58%,
-    #0a1b26 58.4%,
-    #06121a 100%
-  );
+  background: #06121a;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 78%;
 }
 
 .backdrop::after {
@@ -57,69 +59,157 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(270deg, rgb(11 13 16 / 0.85) 0, rgb(11 13 16 / 0.4) 40%, transparent 62%),
-    linear-gradient(0deg, rgb(11 13 16 / 0.7) 0, transparent 30%);
+    linear-gradient(270deg, rgb(11 13 16 / 0.8) 0, rgb(11 13 16 / 0.35) 40%, transparent 62%),
+    linear-gradient(0deg, rgb(11 13 16 / 0.65) 0, rgb(11 13 16 / 0.3) 25%, transparent 45%);
 }
 
-.sun {
+/* The character stands centred in the free column left of the panels. */
+.character {
   position: absolute;
-  left: 22%;
-  top: 58%;
-  width: calc(40 * var(--dvh));
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgb(255 194 52 / 0.55),
-    rgb(255 194 52 / 0.08) 45%,
-    transparent 70%
-  );
+  bottom: 0;
+  left: calc((100% - var(--cluster-w)) / 2);
+  translate: -50% 0;
+  height: 80%;
+  width: auto;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 0 18px rgb(255 194 52 / 0.22)) drop-shadow(0 6px 14px rgb(0 0 0 / 0.5));
 }
 
-.sea {
-  position: absolute;
-  inset: 58.4% 0 0;
-  background: repeating-linear-gradient(180deg, rgb(46 200 230 / 0.1) 0 1px, transparent 1px 14px);
-  background-size: 100% 28px;
-  animation: swell 6s linear infinite;
+.top,
+.side,
+.title,
+.cluster {
+  z-index: 1;
 }
 
-@keyframes swell {
-  to {
-    background-position: 0 28px;
+/* The customise button, on the left edge halfway down. */
+.side {
+  grid-area: side;
+  display: flex;
+  align-items: center;
+}
+
+.look {
+  --cut: 10px;
+  display: grid;
+  place-items: center;
+  inline-size: var(--tap-main);
+  block-size: var(--tap-main);
+  padding: 0;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+  touch-action: manipulation;
+  transition:
+    translate 200ms var(--ease-out),
+    color 120ms;
+}
+
+@media (hover: hover) {
+  .look:hover {
+    translate: 3px 0;
+    color: var(--accent);
   }
 }
 
-.watermark {
-  position: absolute;
-  left: 22%;
-  top: 48%;
-  width: calc(62 * var(--dvh));
-  height: calc(62 * var(--dvh));
-  translate: -50% -50%;
-  color: rgb(232 236 241 / 0.1);
+.look:active {
+  translate: 0 0;
 }
 
 /* Nhà: who is at the Bến, top left. */
 .top {
   grid-area: top;
   display: flex;
+  container-type: inline-size;
 }
 
+/* Nhà: one shape holding the avatar (breaking out of it), the name, and the level with its EXP bar.
+   Sizes follow ratios of the column it sits in (`.top` is the container): the avatar about 31% of it, the
+   name 9%, the level block 28%, each held between a floor and its full size. */
 .home {
-  --cut: 12px;
+  --portrait: clamp(52px, 31cqw, 88px);
+  --pad: clamp(8px, 4cqw, 16px);
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--pad);
   min-height: var(--tap-main);
-  padding: var(--space-1) var(--space-5) var(--space-1) var(--space-1);
+  padding: var(--space-2) var(--pad) var(--space-2) calc(var(--portrait) + 8px);
   border: 0;
-  border-left: 3px solid var(--accent);
+  background: none;
   color: var(--text);
   font: inherit;
   text-align: left;
   transition: translate 200ms var(--ease-out);
+}
+
+.homeShape {
+  --cut: 14px;
+  position: absolute;
+  inset: 0;
+  border-left: 3px solid var(--accent);
+}
+
+.portrait {
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  display: grid;
+  width: var(--portrait);
+  height: var(--portrait);
+  translate: 0 -50%;
+}
+
+.portrait img {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.5));
+}
+
+.homeLevel {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-width: clamp(44px, 28cqw, 100px);
+  padding-left: var(--pad);
+  border-left: 1px solid var(--line-strong);
+}
+
+.levelHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.levelNumber {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 9cqw, var(--text-xl));
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.exp {
+  display: block;
+  height: 6px;
+  background: rgb(255 255 255 / 0.14);
+}
+
+.expFill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hi));
+}
+
+.expText {
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
 }
 
 .avatar {
@@ -136,6 +226,7 @@
 }
 
 .homeText {
+  position: relative;
   display: grid;
   white-space: nowrap;
   line-height: 1.15;
@@ -143,14 +234,30 @@
 
 .homeName {
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-size: clamp(20px, 9cqw, var(--text-xl));
   font-weight: 700;
   text-transform: uppercase;
+}
+
+/* Only content is decided by steps: a narrow column drops the "Cấp" label and the EXP value, a very
+   narrow one drops the name too, so the card never reaches the board. */
+@container (max-width: 240px) {
+  .levelHead .code,
+  .expText {
+    display: none;
+  }
+}
+
+@container (max-width: 180px) {
+  .home .homeText {
+    display: none;
+  }
 }
 
 .title {
   grid-area: title;
   display: grid;
+  gap: var(--space-2);
   line-height: 1;
 }
 
@@ -419,9 +526,14 @@ a.panel:active,
 .people {
   display: grid;
   gap: var(--space-2);
-  margin: 0;
+  margin: var(--space-3) 0 0;
   padding: 0;
   list-style: none;
+}
+
+.noMatch {
+  margin: var(--space-4) 0 0;
+  color: var(--text-dim);
 }
 
 .person {

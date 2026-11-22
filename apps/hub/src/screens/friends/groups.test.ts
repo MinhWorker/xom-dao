@@ -1,6 +1,6 @@
 import type { Friend } from '@xomdao/shared/client';
 import { describe, expect, it } from 'vitest';
-import { canInvite, groupFriends, presenceLabel } from './groups.js';
+import { canInvite, filterFriends, groupFriends, presenceLabel } from './groups.js';
 
 const friend = (patch: Partial<Friend>): Friend => ({
   id: 'u1',
@@ -45,5 +45,30 @@ describe('canInvite', () => {
     expect(canInvite(friend({ roomCode: 'ABCD' }), 'ABCD')).toBe(false);
     expect(canInvite(friend({ online: false }), 'ABCD')).toBe(false);
     expect(canInvite(friend({ state: 'incoming' }), 'ABCD')).toBe(false);
+  });
+});
+
+describe('filterFriends', () => {
+  const list = [
+    friend({ id: 'a', name: 'Hải', username: 'hai99' }),
+    friend({ id: 'b', name: 'Đức Minh', username: 'minhduc' }),
+    friend({ id: 'c', name: 'Lan', username: 'lan', state: 'incoming' }),
+  ];
+
+  it('keeps everyone for an empty or blank query', () => {
+    expect(filterFriends(list, '')).toBe(list);
+    expect(filterFriends(list, '   ')).toBe(list);
+  });
+
+  it('matches the name or the username, ignoring case and Vietnamese marks', () => {
+    expect(filterFriends(list, 'hai').map((f) => f.id)).toEqual(['a']);
+    expect(filterFriends(list, 'HẢI').map((f) => f.id)).toEqual(['a']);
+    expect(filterFriends(list, 'duc').map((f) => f.id)).toEqual(['b']);
+    expect(filterFriends(list, 'minhd').map((f) => f.id)).toEqual(['b']);
+  });
+
+  it('keeps the order and returns nothing when nobody matches', () => {
+    expect(filterFriends(list, 'n').map((f) => f.id)).toEqual(['b', 'c']);
+    expect(filterFriends(list, 'zzz')).toEqual([]);
   });
 });

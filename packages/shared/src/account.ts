@@ -35,12 +35,18 @@ export const AVATARS = [
   'octopus',
   'alien',
   'ghost',
+  'harbour',
 ] as const;
 export type Avatar = (typeof AVATARS)[number];
 
 /** Avatar choices a new account picks from. */
-export const STARTER_AVATARS = ['boy', 'girl', 'cat'] as const satisfies readonly Avatar[];
-export const DEFAULT_AVATAR: Avatar = 'boy';
+export const STARTER_AVATARS = [
+  'harbour',
+  'boy',
+  'girl',
+  'cat',
+] as const satisfies readonly Avatar[];
+export const DEFAULT_AVATAR: Avatar = 'harbour';
 const STARTER_AVATAR_SET: ReadonlySet<string> = new Set(STARTER_AVATARS);
 
 /** Rings drawn around any avatar (`frame-<id>.webp`), picked separately from it. */

@@ -27,6 +27,7 @@ describe('graphics', () => {
       transitions: true,
       hudScale: 100,
       margin: 0,
+      frame: 'auto',
     });
   });
 
@@ -51,6 +52,15 @@ describe('graphics', () => {
     expect(createGraphics(memory('null')).getState().transitions).toBe(true);
     expect(createGraphics(memory('{"level":"low"}')).getState().level).toBe('low');
     expect(createGraphics(memory('{"level":"ultra"}')).getState().level).toBe('high');
+  });
+
+  it('keeps the frame to the ones offered', () => {
+    const graphics = createGraphics(memory());
+    graphics.set({ frame: '16:9' });
+    expect(graphics.getState().frame).toBe('16:9');
+    expect(createGraphics(memory('{"frame":"20:9"}')).getState().frame).toBe('20:9');
+    expect(createGraphics(memory('{"frame":"7:3"}')).getState().frame).toBe('auto');
+    expect(createGraphics(memory('{"frame":4}')).getState().frame).toBe('auto');
   });
 
   it('survives storage that throws', () => {
@@ -97,6 +107,10 @@ describe('graphics', () => {
     graphics.set({ hudScale: 120, margin: 16 });
     expect(root.style.getPropertyValue('--hud-scale')).toBe('1.2');
     expect(root.style.getPropertyValue('--margin')).toBe('16px');
+    graphics.set({ frame: '16:9' });
+    expect(root.dataset.frame).toBeDefined();
+    graphics.set({ frame: 'auto' });
+    expect(root.dataset.frame).toBeUndefined();
     stop();
     graphics.set({ margin: 32 });
     expect(root.style.getPropertyValue('--margin')).toBe('16px');

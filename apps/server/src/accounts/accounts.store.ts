@@ -2,6 +2,7 @@ import {
   AVATARS,
   type Avatar,
   CARD_BACKS,
+  DEFAULT_AVATAR,
   DEFAULT_CARD_BACK,
   DEFAULT_FRAME,
   FRAMES,
@@ -45,7 +46,9 @@ const toUser = (row: UserRow): User => ({
   id: row.id,
   username: row.username,
   name: row.name,
-  avatar: (AVATARS as readonly string[]).includes(row.avatar) ? (row.avatar as Avatar) : 'boy',
+  avatar: (AVATARS as readonly string[]).includes(row.avatar)
+    ? (row.avatar as Avatar)
+    : DEFAULT_AVATAR,
   frame: (FRAMES as readonly string[]).includes(row.frame) ? (row.frame as Frame) : DEFAULT_FRAME,
   cardBack: (CARD_BACKS as readonly string[]).includes(row.cardBack)
     ? row.cardBack

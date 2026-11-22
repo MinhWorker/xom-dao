@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   type AuthResponse,
+  DEFAULT_AVATAR,
   DEFAULT_FRAME,
   displayNameSchema,
   firstIssue,
@@ -71,7 +72,7 @@ export class AccountsService {
         username,
         passwordHash,
         name: name.data,
-        avatar: STARTER_AVATARS[randomInt(STARTER_AVATARS.length)] ?? 'boy',
+        avatar: STARTER_AVATARS[randomInt(STARTER_AVATARS.length)] ?? DEFAULT_AVATAR,
         frame: DEFAULT_FRAME,
       });
       if (user) return this.startSession(user);

@@ -26,6 +26,25 @@ body {
   -webkit-touch-callout: none;
 }
 
+/* A frame (the settings' Khung hình) keeps the page to one screen shape in the middle, dark around it.
+   `contain: paint` makes the body the box that fixed elements fill and that clips them; a modal
+   `<dialog>` sits in the top layer, so it is placed on the frame by hand. */
+html[data-frame] {
+  overflow: hidden;
+  background: #040507;
+}
+
+html[data-frame] body {
+  width: calc(var(--frame-w) / var(--hud-scale));
+  height: calc(var(--frame-h) / var(--hud-scale));
+  margin: calc(var(--frame-y) / var(--hud-scale)) calc(var(--frame-x) / var(--hud-scale));
+  contain: paint;
+}
+
+html[data-frame] dialog:modal {
+  inset: calc(var(--frame-y) / var(--hud-scale)) calc(var(--frame-x) / var(--hud-scale));
+}
+
 #root {
   min-height: calc(100 * var(--dvh));
   padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);

@@ -18,6 +18,18 @@
     `caro()` in `scripts/splash.mjs` projects every point through `project`; tune the view with
     `away` (camera distance: smaller is stronger perspective), `pitch` (look-down angle) and `yaw`,
     then run `npm run splash -- caro` and check the sheet stays inside the frame, right of 40%.
+- **Harbour art** (`apps/hub/src/harbour-art/`: `harbour-master.webp`, the Bến's standing character,
+  and `harbour-night.webp`, its night backdrop) is the one place AI image generation is allowed. The
+  character is the owner's friend Long drawn as an Arknights-style operator.
+  - Describe the person in words and never send their photo to the generator. Run `agy --print`
+    with the prompt (it saves the PNG to the path the prompt names); for a later change, give it the
+    previous generated image as the reference so the face and costume stay the same.
+  - The character is generated on flat `#00FF00` with no green on him. His ID badge is generated
+    with a flat `#FF00FF` square where the photo goes and a blank white strip below it. Measure the
+    square's corners, warp Long's real photo (`assets/shared/images/Long-look-at-u.jpg`) into it,
+    write his name in the strip, then key the green out into transparency and trim.
+  - Originals are in `assets/shared/images/`: `harbour-master-raw.png` (generated),
+    `harbour-master.png` (cut-out with the photo), `harbour-night-raw.png` (the backdrop).
 - Pick what looks and sounds best for a card/board game in the app's style.
 - Keep a third-party license file next to assets whose license requires one.
 - Use only free, clearly allowed assets, and never sell anything.
@@ -40,9 +52,12 @@
   round, frameless picture (a disc of radius 100), `frame-<id>.webp` the ring drawn over it. The ids
   are `AVATARS` and `FRAMES` in `packages/shared/src/account.ts`; `avatar-bot` keeps its own frame.
   - `avatar-boy`, `avatar-girl` and `avatar-long` had the gold frame cut off (`frame-gold` is the
-    generated ring). `avatar-long` is a real photo (`assets/shared/images/Long-look-at-u.jpg`), not
+    generated ring). `avatar-harbour`, the default avatar, is the Bến character's face looking straight
+    at the viewer (generated with `agy` like the Harbour art above, keyed from green, on the same blue disc
+    as `avatar-boy`; original in `assets/shared/images/avatar-harbour-raw.png`). `avatar-long` is a real photo (`assets/shared/images/Long-look-at-u.jpg`), not
     generated art.
-  - `node scripts/avatars.mjs frames` recolors `frame-gold` into the other frames;
+  - `node scripts/avatars.mjs gold` draws `frame-gold` (a flat octagonal ring in the Hub's style: accent
+    yellow, dark outline, a pointer on each side); then `node scripts/avatars.mjs frames` recolors it into the other frames;
     `node scripts/avatars.mjs emoji <dir>` makes the animal avatars from Microsoft's Fluent Emoji 3D
     (MIT, notice in `assets/app/images/LICENSE-FluentEmoji.txt`). Add avatar ids to `AVATARS` and the generation script;
     add frame ids to `FRAMES` in `account.ts` and the script's `FRAMES` map.

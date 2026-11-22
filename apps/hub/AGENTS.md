@@ -16,9 +16,10 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.js
                    `soon` ones are left out
 src/islands.ts     The Islands' names, order and Emblems, and `HUB_EMBLEM` (ids are `ISLANDS` in `@xomdao/sdk`)
 src/island-art/    Each Island's splash art (`<island>.png`, 20:9), drawn by `scripts/splash.mjs`
+src/harbour-art/   The Bến's characters (transparent) and backdrops, listed in `arts.ts`: to add art, drop the image here and add a line to `CHARACTERS` or `BACKGROUNDS`; see "Harbour art" in `assets/AGENTS.md`
 src/emblems/       The Hub's (`hub.svg`) and each Island's (`<island>.svg`) Emblem, same contract as a Game's;
                    `tools/hub-assets` tests them
-src/kit/           Button, CutPanel, Chip, TextField, Dialog, Emblem (inlines an Emblem's SVG), Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
+src/kit/           Button, CutPanel, Chip, TextField, Select (popover dropdown, placed by hand: `select.ts`), Dialog, Emblem (inlines an Emblem's SVG), Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
                    Loops (looping HUD icons): no server knowledge. `toast()` needs `<ToastRegion />` (mounted in
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
                    `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;
@@ -27,7 +28,7 @@ src/screens/       offline/ (OfflineOverlay, after 1 s without the server), logi
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
-src/settings/      Graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, level, HUD scale, margin), kept in localStorage
+src/settings/      Graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, level, HUD scale, margin, frame: `frame.ts` has the screen shapes and `fitFrame`) and the Bến's character and backdrop (`harbour`, `useHarbourLook`), kept in localStorage
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`, `.glass`, `data-loop`), base.css (hand cursor), fonts.ts (@fontsource)
 public/            `manifest.webmanifest` and `icons/` (PWA), copied to the build root
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
@@ -46,10 +47,10 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
 - `npm run e2e` (root) plays a whole Caro Match between two pages, from sign-up to Results, against a
   real server and the dev Hub; it saves screenshots to `e2e/`. Run it when you change the login,
   lobby, Room, GameFrame or Results.
-- Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes, at both
+- Check screens at 640×360, 667×375, 844×390, 932×430, 1024×768 and 1280×720 (landscape, 4:3 to about 21:9; under 360 px high is not supported). `/dev/kit` shows the kit at the phone sizes, at both
   graphics levels and with less motion; `/dev/kit#motion` is the approved motion prototype (#295), still the
   reference for the loading screens. `/dev/kit#emblems` shows every Emblem: the Hub's, the Islands' (#302) and the Games' (#303). `/dev/kit#sea` is the approved Sea chart prototype (#306), with stand-in splash art,
-  glass three-layer cards (`GameTiles`) and a rules button that opens `RulesPager`. `/dev/kit#harbour` is the Bến prototype (#308, in review), with stand-in art.
+  glass three-layer cards (`GameTiles`) and a rules button that opens `RulesPager`. `/dev/kit#harbour` is the Bến prototype (#308, in review), with a generated character and backdrop.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
 ## Conventions
@@ -67,6 +68,12 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   also scales viewport units, so in CSS never write `vw`, `dvh` or `vmin`: use `calc(N * var(--vw))`,
   `var(--view-h)` (the screen's height inside the safe area and margin), `calc(N * var(--dvh))` or
   `calc(N * var(--vmin))`. The Game's iframe is not scaled inside; only its box is.
+- Frame (settings, Khung hình): `applyGraphics` fits a box of the chosen shape (`FRAMES` in `settings/frame.ts`)
+  inside the screen and sets `data-frame` and `--frame-*` on `<html>`. `tokens.css` then makes `--vw`, `--dvh`
+  and `--vmin` one percent of the frame, so every layout built on them fits it. `base.css` makes `body` the
+  frame (`contain: paint`: `position: fixed` elements fill it and are clipped to it) with dark space around, and
+  places a modal `<dialog>` on it. Build a screen from those units and `--view-h`, anchor it to the edges of its
+  area, and size parts by ratios of their container (`cqw`) rather than in px: it then fits any frame. Portrait and `auto` have no frame.
 - Touch targets ≥ 48 px (`--tap`) and main buttons ≥ 56 px (`--tap-main`), text ≥ 16 px (labels ≥ 14 px),
   `safe-area-inset` respected.
 - Motion and glass: the graphics level (`Cao`/`Thấp`) is `data-graphics` on `<html>`. Put the global `glass`
