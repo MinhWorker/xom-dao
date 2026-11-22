@@ -9,6 +9,7 @@ export default defineManifest({
   duration: { min: 5, max: 15 },
   status: 'ready',
   bots: true,
+  island: 'co',
   focus: { x: 70, y: 50 },
   options: {
     level: {

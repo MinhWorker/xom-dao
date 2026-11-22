@@ -1,4 +1,4 @@
-import type { GameManifest } from '@xomdao/sdk';
+import type { AnyManifest, GameManifest } from '@xomdao/sdk';
 
 /** The art `tools/hub-assets` wrote for a Game (`dist/hub/hub.json`); URLs under `/games/<id>/hub/`. */
 export interface GameArt {
@@ -29,7 +29,7 @@ export interface HubGame {
   version: string;
 }
 
-const manifests = import.meta.glob<GameManifest>('../../../games/*/manifest.ts', {
+const manifests = import.meta.glob<AnyManifest>('../../../games/*/manifest.ts', {
   eager: true,
   import: 'default',
 });
@@ -49,7 +49,7 @@ const folder = (path: string) => path.split('/')[4] ?? '';
 const sibling = <T>(files: Record<string, T>, path: string) =>
   Object.entries(files).find(([file]) => folder(file) === folder(path))?.[1];
 
-/** Every Game with a manifest, art and a built bundle; `wip` ones only outside production. */
+/** Every Game with a manifest, art and a built bundle (never `soon`); `wip` ones only outside production. */
 export const GAMES: HubGame[] = Object.entries(manifests)
   .map(([path, manifest]) => {
     const hubJson = sibling(arts, path);
@@ -61,7 +61,7 @@ export const GAMES: HubGame[] = Object.entries(manifests)
     };
   })
   .flatMap(({ manifest, art, rules, version }) =>
-    art && version ? [{ manifest, art, rules, version }] : [],
+    manifest.status !== 'soon' && art && version ? [{ manifest, art, rules, version }] : [],
   )
   .filter(({ manifest }) => __SHOW_WIP__ || manifest.status === 'ready')
   .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name, 'vi'));

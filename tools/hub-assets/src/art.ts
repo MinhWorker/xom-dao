@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { basename, join } from 'node:path';
 import { GameManifestSchema } from '@xomdao/sdk';
 import sharp, { type Metadata } from 'sharp';
+import { checkEmblem } from './emblem.js';
 import { mp4Duration } from './mp4.js';
 import { parseRules, RULES_IMAGE, type RulesDraft, type RulesPage } from './rules.js';
 
@@ -59,6 +60,7 @@ export async function buildHubAssets(gameDir: string, manifest: unknown): Promis
   if (rules) problems.push(...rules.problems);
   else problems.push('RULES.md is missing');
   const pictures = rules ? await readRulesImages(gameDir, rules.pages, problems) : new Map();
+  problems.push(...checkEmblem(gameDir));
 
   const artPath = join(gameDir, 'hub/key-art.png');
   const art = existsSync(artPath) ? await readKeyArt(artPath, problems) : missingArt(problems);

@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { defineManifest, type ManifestOptions, optionsSchema } from './manifest.js';
+import { defineManifest, type ManifestOptions, optionsSchema, parseManifest } from './manifest.js';
 
 const base = {
   id: 'tien-len',
@@ -10,6 +10,7 @@ const base = {
   duration: { min: 5, max: 15 },
   status: 'wip',
   bots: true,
+  island: 'co',
   focus: { x: 70, y: 45 },
 } as const;
 
@@ -57,6 +58,7 @@ describe('a Game manifest', () => {
     // @ts-expect-error the focus is needed to crop the key art
     expect(() => defineManifest({ ...base, focus: undefined })).toThrow('focus');
     expect(() =>
+      // @ts-expect-error the default is one of the choices
       defineManifest({
         ...base,
         options: {
@@ -67,16 +69,15 @@ describe('a Game manifest', () => {
               { value: 1, label: '1 vòng' },
               { value: 3, label: '3 vòng' },
             ],
-            // @ts-expect-error the default is one of the choices
             default: 7,
           },
         },
       }),
     ).toThrow('default');
     expect(() =>
+      // @ts-expect-error a toggle's default is a boolean
       defineManifest({
         ...base,
-        // @ts-expect-error a toggle's default is a boolean
         options: { fast: { type: 'toggle', label: 'Nhanh', default: 1 } },
       }),
     ).toThrow('options.fast');
@@ -88,6 +89,8 @@ describe('a Game manifest', () => {
     expect(() => defineManifest({ ...base, duration: { min: 20, max: 15 } })).toThrow('duration');
     expect(() => defineManifest({ ...base, focus: { x: 120, y: 50 } })).toThrow('focus');
     expect(() => defineManifest({ ...base, tagline: ' ' })).toThrow('tagline');
+    // @ts-expect-error an Island is one of ISLANDS
+    expect(() => defineManifest({ ...base, island: 'dao' })).toThrow('island');
     expect(() =>
       defineManifest({
         ...base,
@@ -110,5 +113,28 @@ describe('a Game manifest', () => {
         options: { 'so-vong': { type: 'toggle', label: 'x', default: true } },
       }),
     ).toThrow('options');
+  });
+});
+
+describe('a soon manifest', () => {
+  const soon = {
+    id: 'co-vua',
+    name: 'Cờ Vua',
+    tagline: 'Chiếu hết vua của đối phương.',
+    island: 'co',
+    status: 'soon',
+  } as const;
+
+  it('needs only what its locked card shows', () => {
+    expect(defineManifest(soon)).toEqual(soon);
+    expect(parseManifest(soon).success).toBe(true);
+  });
+
+  it('refuses what only a playable Game declares, and a missing Island', () => {
+    // @ts-expect-error a soon Game has no players yet
+    expect(() => defineManifest({ ...soon, minPlayers: 2 })).toThrow('minPlayers');
+    // @ts-expect-error the Island is needed
+    expect(() => defineManifest({ ...soon, island: undefined })).toThrow('island');
+    expect(parseManifest({ ...base, island: undefined }).success).toBe(false);
   });
 });

@@ -38,6 +38,7 @@ const manifest = defineManifest({
   duration: { min: 1, max: 1 },
   status: 'wip',
   bots: false,
+  island: 'co',
   focus: { x: 50, y: 50 },
 });
 

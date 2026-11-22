@@ -12,7 +12,9 @@ src/router.ts      History routing (`/`, `/room/<code>`, `/dev/kit` in dev), Vie
 src/net/store.ts   The one socket (`/ws`) and the Session state; every push and reply is parsed with
                    `@xomdao/shared/client` first. `net/hub.ts` makes the page's store + `useHub`
 src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.json` + the art and
-                   rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production
+                   rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production,
+                   `soon` ones are left out
+src/islands.ts     The Islands' names and order (their ids are `ISLANDS` in `@xomdao/sdk`)
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
                    Loops (looping HUD icons): no server knowledge. `toast()` needs `<ToastRegion />` (mounted in
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
