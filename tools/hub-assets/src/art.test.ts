@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildHubAssets, cropRegion } from './art.js';
+import { buildHubAssets, checkIslandArt, cropRegion } from './art.js';
 
 const manifest = {
   id: 'demo',
@@ -82,8 +82,14 @@ describe('buildHubAssets', () => {
       const { channels } = await sharp(file).stats();
       return { width, height, brightness: channels[0]?.mean };
     };
-    expect(await size(hub?.art.lobby)).toMatchObject({ width: 2560, height: 1280 });
-    expect(await size(hub?.art.card)).toMatchObject({ width: 480, height: 270 });
+    expect(await size(hub?.art.lobby)).toMatchObject({
+      width: 2560,
+      height: 1280,
+    });
+    expect(await size(hub?.art.card)).toMatchObject({
+      width: 480,
+      height: 270,
+    });
     const thumb = await size(hub?.art.thumb);
     expect(thumb).toMatchObject({ width: 256, height: 256 });
     expect(thumb.brightness).toBeGreaterThan(250);
@@ -118,7 +124,9 @@ describe('buildHubAssets', () => {
     ]);
     writeFileSync(
       join(game, 'hub/key-art.png'),
-      await sharp({ create: { width: 2560, height: 1152, channels: 3, background: '#000' } })
+      await sharp({
+        create: { width: 2560, height: 1152, channels: 3, background: '#000' },
+      })
         .jpeg()
         .toBuffer(),
     );
@@ -200,7 +208,9 @@ describe('buildHubAssets', () => {
 
     mkdirSync(join(game, 'hub/rules'), { recursive: true });
     const write = async (name: string, width: number, height: number, png = false) => {
-      const base = sharp({ create: { width, height, channels: 3, background: '#000' } });
+      const base = sharp({
+        create: { width, height, channels: 3, background: '#000' },
+      });
       writeFileSync(
         join(game, 'hub/rules', name),
         await (png ? base.png() : base.webp()).toBuffer(),
@@ -274,5 +284,24 @@ describe('cropRegion', () => {
       width: 1000,
       height: 500,
     });
+  });
+});
+
+describe('checkIslandArt', () => {
+  it("accepts the Islands' art in the Hub", async () => {
+    const dir = join(import.meta.dirname, '../../../apps/hub/src/island-art');
+    expect(await checkIslandArt(dir)).toEqual([]);
+  });
+
+  it('names a missing file and a wrongly sized one', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'islands-'));
+    try {
+      writeFileSync(join(dir, 'co.png'), await halves(1000, 1000));
+      const problems = await checkIslandArt(dir);
+      expect(problems).toContain('co.png is 1000×1000: the ratio must be 20:9');
+      expect(problems).toContain('bai.png is missing');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

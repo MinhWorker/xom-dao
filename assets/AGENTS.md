@@ -2,11 +2,14 @@
 
 - Make art and sound by hand, in Blender, drawn or synthesized in code, or from free resources on
   the web.
-- **AI image generation is for splash art only**: the 20:9 Sea chart backgrounds (each Game's
-  `hub/key-art.png` and each Island's `apps/hub/src/island-art/<island>.png`). The owner makes them on an external AI image platform by
-  pasting the frame from `assets/sources/splash-prompts.md`, changing only the subject and `focus`.
-  Agents do not generate splash art. Emblems stay hand-written SVG; in-Game art stays code or
-  Blender. Older AI-made files are legacy.
+- **Splash art is drawn in code**: the 20:9 Sea chart backgrounds (each Game's `hub/key-art.png`
+  and each Island's `apps/hub/src/island-art/<island>.png`, 2560×1152) come from
+  `node scripts/splash.mjs [caro|tien-len|islands]`. A Game's splash uses its client's own colours
+  and shapes, so it matches the game (Caro: ink marks on squared paper; Tiến Lên: ivory cards on
+  felt). A Game whose look is not settled gets a placeholder: the Island's Emblem on a tinted
+  backdrop, as every Island has now. Đặt Bom's `key-art.png` is an older render that already matches
+  its scene. Keep the subject in the right 60% and the left 40% dark and empty. Do not use AI image
+  generation for splash art; it did not hold a look across the set.
 - Pick what looks and sounds best for a card/board game in the app's style.
 - Keep a third-party license file next to assets whose license requires one.
 - Use only free, clearly allowed assets, and never sell anything.
