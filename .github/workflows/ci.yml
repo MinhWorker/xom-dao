@@ -60,10 +60,26 @@ jobs:
           name: smoke-hub
           path: smoke-hub/
           if-no-files-found: ignore
+      # The e2e plays the real Games, so a PR runs it only when a Game or what Games are built from
+      # changed (the list below); every push to main runs it.
+      - id: games
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: origin/${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE...HEAD" | grep -qE '^(games|packages|tools/godot|e2e)/|^scripts/(e2e|libs|game-version)\.mjs$|^(package-lock\.json|turbo\.json|\.github/workflows/ci\.yml)$'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No Game changes: skipping the e2e."
+          fi
       # Two browsers finish a Caro and a Tiến Lên match through the Hub, against the server and the dev Hub.
       - run: npm run e2e
+        if: steps.games.outputs.run == 'true'
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: always() && steps.games.outputs.run == 'true'
         with:
           name: e2e
           path: e2e/
