@@ -60,6 +60,8 @@ interface ActiveMatch {
   gameTimerId?: number;
   gameTimerDeadline?: number;
   botTurn?: NodeJS.Immediate;
+  /** The computer's move waiting out the Game's `botDelay`. */
+  botWait?: NodeJS.Timeout;
   rules?: GameRuntime;
   stored?: Stored<unknown, unknown>;
   /** A Realtime Match runs these instead of `rules` and `stored`. */
@@ -97,6 +99,7 @@ interface GameRuntime {
   fireTimer(stored: Stored<unknown, unknown>, rng: Rng): Stored<unknown, unknown>;
   leave?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): Stored<unknown, unknown>;
   bot?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): GameEvent | null;
+  botDelay?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): number;
   view(stored: Stored<unknown, unknown>, playerId: string): unknown;
   result(stored: Stored<unknown, unknown>): MatchResult | null;
 }
@@ -558,6 +561,8 @@ export class GameHostService implements OnModuleDestroy {
     this.refreshViews(match);
     this.scheduleGameTimer(match);
     this.publish(match);
+    clearTimeout(match.botWait);
+    match.botWait = undefined;
     this.scheduleBotTurn(match);
   }
 
@@ -684,18 +689,32 @@ export class GameHostService implements OnModuleDestroy {
   }
 
   private scheduleBotTurn(match: ActiveMatch) {
-    if (match.botTurn || match.status !== 'playing' || !match.rules?.bot) return;
+    if (match.botTurn || match.botWait || match.status !== 'playing' || !match.rules?.bot) return;
     match.botTurn = setImmediate(() => {
       match.botTurn = undefined;
-      if (match.status !== 'playing' || !match.rules?.bot || !match.stored || !match.rng) return;
+      const { rules, stored, rng } = match;
+      if (match.status !== 'playing' || !rules?.bot || !stored || !rng) return;
       try {
         for (const player of match.start.players) {
           if (!player.bot && !match.forfeited.has(player.id)) continue;
-          const move = match.rules.bot(match.stored, player.id, match.rng);
-          if (move) {
+          const move = rules.bot(stored, player.id, rng);
+          if (!move) continue;
+          const ms = rules.botDelay?.(stored, player.id, rng) ?? 0;
+          if (ms <= 0) {
             this.applyMove(match, player.id, move, true);
             return;
           }
+          match.botWait = setTimeout(() => {
+            match.botWait = undefined;
+            if (match.status !== 'playing' || match.stored !== stored) return;
+            try {
+              this.applyMove(match, player.id, move, true);
+            } catch (error) {
+              this.abort(match, error);
+            }
+          }, ms);
+          match.botWait.unref();
+          return;
         }
       } catch (error) {
         this.abort(match, error);
@@ -716,6 +735,7 @@ export class GameHostService implements OnModuleDestroy {
     clearTimeout(match.gameTimer);
     clearTimeout(match.tickTimer);
     clearImmediate(match.botTurn);
+    clearTimeout(match.botWait);
     for (const hold of match.holds.values()) clearTimeout(hold);
     match.holds.clear();
     match.timer = undefined;
@@ -726,6 +746,7 @@ export class GameHostService implements OnModuleDestroy {
     match.gameTimerDeadline = undefined;
     match.tickTimer = undefined;
     match.botTurn = undefined;
+    match.botWait = undefined;
   }
 
   private refreshViews(match: ActiveMatch) {
@@ -821,7 +842,7 @@ function timed<T>(gameId: string, hook: string, fn: () => T): T {
 function createRuntime(server: AnyGameServer, gameId: string): GameRuntime {
   const game = server.game as unknown as Game<unknown, unknown, unknown>;
   const rules = turnRules(game);
-  const { leave, bot } = rules;
+  const { leave, bot, botDelay } = rules;
   return {
     setup: (start, rng) => timed(gameId, 'setup', () => rules.setup(start, rng)),
     validateMove: (stored, move, playerId) =>
@@ -837,6 +858,9 @@ function createRuntime(server: AnyGameServer, gameId: string): GameRuntime {
       leave &&
       ((stored, playerId, rng) => timed(gameId, 'leave', () => leave(stored, playerId, rng))),
     bot: bot && ((stored, playerId, rng) => timed(gameId, 'bot', () => bot(stored, playerId, rng))),
+    botDelay:
+      botDelay &&
+      ((stored, playerId, rng) => timed(gameId, 'botDelay', () => botDelay(stored, playerId, rng))),
     view: (stored, playerId) => timed(gameId, 'view', () => rules.view(stored, playerId)),
     result: (stored) => timed(gameId, 'result', () => rules.result(stored)),
   };
