@@ -6,6 +6,7 @@ export type Route =
   | { name: 'room'; code: string }
   /** `/profile` is yours; `/profile/<id>` is someone else's. */
   | { name: 'profile'; userId?: string }
+  | { name: 'sea' }
   | { name: 'kit' };
 
 /** The screen a path shows; unknown paths show the lobby. */
@@ -14,6 +15,7 @@ export function parseRoute(path: string): Route {
   if (parts[0] === 'room' && parts[1] && parts.length === 2) {
     return { name: 'room', code: parts[1].toUpperCase() };
   }
+  if (parts[0] === 'sea' && parts.length === 1) return { name: 'sea' };
   if (parts[0] === 'profile' && parts.length === 1) return { name: 'profile' };
   if (parts[0] === 'profile' && parts[1] && parts.length === 2) {
     return { name: 'profile', userId: decodeURIComponent(parts[1]) };

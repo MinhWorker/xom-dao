@@ -192,7 +192,7 @@ export function Harbour() {
           <a
             className={`${styles.panel} ${styles.go} cut-br`}
             style={{ gridArea: 'go' }}
-            href="/dev/kit#sea"
+            href="/sea"
             onPointerEnter={(e) => hoverSound(e, 'cardHover')}
           >
             <Svg markup={HUB_EMBLEM} className={styles.goMark} />

@@ -1,4 +1,4 @@
-import type { AnyManifest, GameManifest } from '@xomdao/sdk';
+import type { AnyManifest, GameManifest, SoonManifest } from '@xomdao/sdk';
 
 /** The art `tools/hub-assets` wrote for a Game (`dist/hub/hub.json`); URLs under `/games/<id>/hub/`. */
 export interface GameArt {
@@ -29,6 +29,12 @@ export interface HubGame {
   art: GameArt;
   rules: RulesPage[];
   version: string;
+}
+
+/** A Game the Hub will have: its `soon` manifest and its Emblem. */
+export interface SoonGame {
+  manifest: SoonManifest;
+  emblem: string;
 }
 
 const manifests = import.meta.glob<AnyManifest>('../../../games/*/manifest.ts', {
@@ -78,3 +84,8 @@ export const GAMES: HubGame[] = Object.entries(manifests)
   .sort((a, b) => a.manifest.name.localeCompare(b.manifest.name, 'vi'));
 
 export const gameById = (id: string) => GAMES.find((g) => g.manifest.id === id);
+
+/** Every `soon` Game, shown locked on the Sea chart. */
+export const SOON_GAMES: SoonGame[] = Object.entries(manifests).flatMap(([path, manifest]) =>
+  manifest.status === 'soon' ? [{ manifest, emblem: sibling(emblems, path) ?? '' }] : [],
+);

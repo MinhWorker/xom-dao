@@ -10,6 +10,7 @@ import { OfflineOverlay } from './screens/offline/OfflineOverlay.js';
 import { Profile } from './screens/profile/Profile.js';
 import { Room } from './screens/room/Room.js';
 import screen from './screens/Screen.module.css';
+import { SeaChart } from './screens/sea/SeaChart.js';
 
 /** How long the connection may be down before the offline overlay covers the screen. */
 const OFFLINE_GRACE_MS = 1000;
@@ -91,6 +92,7 @@ export function App() {
     <>
       <Offline down={phase === 'offline'} />
       {route.name === 'room' && <Room key={route.code} code={route.code} />}
+      {route.name === 'sea' && <SeaChart />}
       {route.name === 'profile' && <Profile key={route.userId ?? 'me'} userId={route.userId} />}
       {(route.name === 'lobby' || route.name === 'kit') && <Lobby />}
       <InviteNotice />

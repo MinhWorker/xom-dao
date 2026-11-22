@@ -131,9 +131,13 @@ async function seat(browser, { server, hub }, game) {
   await a.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
   await b.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
 
-  await a.getByRole('radio', { name: game.pick }).click();
+  await a.getByRole('button', { name: 'Ra khơi' }).click();
+  await a.waitForURL(/\/sea$/);
+  await a.getByRole('button', { name: `Đảo ${game.island}` }).click();
+  await a.getByRole('toolbar').getByRole('button', { name: game.name, exact: true }).click();
   await a.getByRole('heading', { name: game.name }).waitFor();
-  await a.getByRole('button', { name: 'Tạo phòng' }).click();
+  await a.screenshot({ path: resolve(shots, `${game.id}-1-sea-chart.png`) });
+  await a.getByRole('button', { name: 'Ra khơi' }).click();
   await a.waitForURL(/\/room\/[A-Z0-9]{4}$/);
   const code = new URL(a.url()).pathname.split('/').pop();
   if (game.rounds) await a.getByRole('radio', { name: game.rounds }).click();
@@ -337,7 +341,7 @@ const GAMES = {
   caro: {
     id: 'caro',
     name: 'Caro',
-    pick: /Caro/,
+    island: 'Cờ',
     play: playCaro,
     after: caroAfterMatch,
     summary: 'Alice beat Bob at Caro, played again, came back after a reload and saw Bob leave',
@@ -345,7 +349,7 @@ const GAMES = {
   'tien-len': {
     id: 'tien-len',
     name: 'Tiến Lên',
-    pick: /Tiến Lên/,
+    island: 'Bài',
     rounds: '1 vòng',
     play: playTienLen,
     summary: 'The leader won a one-round Tiến Lên Match',

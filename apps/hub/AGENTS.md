@@ -7,14 +7,14 @@ Vocabulary is in `GLOSSARY.md`.
 ## Layout
 
 ```
-src/router.ts      History routing (`/`, `/room/<code>`, `/dev/kit` in dev), View Transitions,
+src/router.ts      History routing (`/`, `/sea`, `/room/<code>`, `/profile`, `/dev/kit` in dev), View Transitions,
                    `block()` holds the screen while a Match runs
 src/net/store.ts   The one socket (`/ws`) and the Session state; every push and reply is parsed with
                    `@xomdao/shared/client` first. `net/hub.ts` makes the page's store + `useHub`
 src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.json` + the art and
-                   rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production,
-                   `soon` ones are left out
-src/islands.ts     The Islands' names, order and Emblems, and `HUB_EMBLEM` (ids are `ISLANDS` in `@xomdao/sdk`)
+                   rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production;
+                   `soon` ones are only in `SOON_GAMES` (manifest + Emblem), for the Sea chart's locked cards
+src/islands.ts     The Islands' names, order, Emblems and splash art, and `HUB_EMBLEM` (ids are `ISLANDS` in `@xomdao/sdk`)
 src/island-art/    Each Island's splash art (`<island>.png`, 20:9), drawn by `scripts/splash.mjs`
 src/harbour-art/   The Bến's characters (transparent) and backdrops, listed in `arts.ts`: to add art, drop the image here and add a line to `CHARACTERS` or `BACKGROUNDS`; see "Harbour art" in `assets/AGENTS.md`
 src/emblems/       The Hub's (`hub.svg`) and each Island's (`<island>.svg`) Emblem, same contract as a Game's;
@@ -24,7 +24,7 @@ src/kit/           Button, CutPanel, Chip, TextField, Select (popover dropdown, 
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
                    `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;
                    `net/hub.ts` wraps every request in it, and Room create/join and Match start block
-src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, MatchLoading over it until the Match starts, Results), rules/ (RulesPager), homeward/ (the Hub's loading screen on the way back to the Bến), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
+src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the Bến for now: "Ra khơi" opens the Sea chart, "Vào phòng" joins by code), sea/ (the Sea chart at `/sea`: Islands in a column, the Island's Games on a track that snaps one card at a time; "Ra khơi" makes the Room, Escape goes back; `chart.ts` builds the cards), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, MatchLoading over it until the Match starts, Results), rules/ (RulesPager), homeward/ (the Hub's loading screen on the way back to the Bến), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
@@ -44,13 +44,13 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   a fake socket, `fetch` and storage (`StoreDeps`). Add to them when you change either.
 - `npm run smoke:hub` (root) drives two headless pages through friends and invites against a real
   server and the dev Hub; it saves screenshots to `smoke-hub/`. Run it when you change `screens/friends/`.
-- `npm run e2e` (root) plays a whole Caro Match between two pages, from sign-up to Results, against a
+- `npm run e2e` (root) plays a whole Caro Match between two pages, from sign-up through the Sea chart to Results, against a
   real server and the dev Hub; it saves screenshots to `e2e/`. Run it when you change the login,
-  lobby, Room, GameFrame or Results.
+  lobby, Sea chart, Room, GameFrame or Results.
 - Check screens at 640×360, 667×375, 844×390, 932×430, 1024×768 and 1280×720 (landscape, 4:3 to about 21:9; under 360 px high is not supported). `/dev/kit` shows the kit at the phone sizes, at both
   graphics levels and with less motion; `/dev/kit#motion` is the approved motion prototype (#295), still the
-  reference for the loading screens. `/dev/kit#emblems` shows every Emblem: the Hub's, the Islands' (#302) and the Games' (#303). `/dev/kit#sea` is the approved Sea chart prototype (#306), with stand-in splash art,
-  glass three-layer cards (`GameTiles`) and a rules button that opens `RulesPager`. `/dev/kit#harbour` is the Bến prototype (#308, in review), with a generated character and backdrop.
+  reference for the loading screens. `/dev/kit#emblems` shows every Emblem: the Hub's, the Islands' (#302) and the Games' (#303). The Sea chart is the real screen at `/sea` (approved in #306), with glass three-layer cards
+  (`GameTiles`) and a rules button that opens `RulesPager`. `/dev/kit#harbour` is the Bến prototype (#308, in review), with a generated character and backdrop.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
 ## Conventions

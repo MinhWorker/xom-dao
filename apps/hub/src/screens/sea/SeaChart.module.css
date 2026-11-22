@@ -75,16 +75,6 @@
   object-fit: cover;
 }
 
-.watermark {
-  position: absolute;
-  top: 50%;
-  right: 10%;
-  width: calc(64 * var(--dvh));
-  height: calc(64 * var(--dvh));
-  translate: 0 -50%;
-  color: hsl(var(--hue) 70% 72% / 0.16);
-}
-
 .top {
   grid-column: 1 / -1;
   display: flex;
@@ -97,6 +87,8 @@
   place-items: center;
   width: var(--tap);
   height: var(--tap);
+  padding: 0;
+  border: 0;
   color: var(--text);
   background: rgb(20 23 28 / 0.6);
   box-shadow: inset 0 0 0 1px var(--glass-edge);
@@ -257,6 +249,20 @@
   margin-left: var(--space-2);
 }
 
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.9);
+}
+
+.empty {
+  grid-row: 1;
+  align-self: end;
+  margin: 0;
+  color: var(--text-dim);
+}
+
 .rules {
   min-width: var(--tap);
   min-height: var(--tap);
@@ -345,7 +351,7 @@
 }
 
 /* The card is glass in three layers apart in depth, like the kit's card tile: a pane behind, the art, a pane in front. */
-.stage {
+.depth {
   position: relative;
   display: block;
   width: 100%;
@@ -487,7 +493,7 @@
 }
 
 /* A Game not made yet: dimmed and locked, its name still readable. */
-.card[data-soon] .stage {
+.card[data-soon] .depth {
   filter: grayscale(0.9) brightness(0.65);
 }
 

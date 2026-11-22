@@ -1,61 +1,32 @@
 import { IconBook2, IconChevronLeft, IconLock } from '@tabler/icons-react';
-import type { AnyManifest, Island } from '@xomdao/sdk';
+import type { Island } from '@xomdao/sdk';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { gameById } from '../../games.js';
+import { GAMES, type HubGame, SOON_GAMES } from '../../games.js';
 import { type HubIsland, ISLANDS } from '../../islands.js';
 import { Button, Chip, Icon } from '../../kit/index.js';
 import { rovingKeyDown } from '../../kit/roving.js';
+import { hub, useHub } from '../../net/hub.js';
+import { navigate } from '../../router.js';
 import { prefersReducedMotion } from '../../settings/graphics.js';
 import { hoverSound, playSound } from '../../sound/index.js';
-import { durationLabel, playersLabel } from '../lobby/summary.js';
+import { tilt, untilt } from '../kit/GameTiles.js';
+import { durationLabel, focusPosition, playersLabel } from '../lobby/summary.js';
 import { RulesPager } from '../rules/RulesPager.js';
-import { tilt, untilt } from './GameTiles.js';
+import { type ChartCard, islandCards } from './chart.js';
 import styles from './SeaChart.module.css';
-
-const manifests = import.meta.glob<AnyManifest>('../../../../../games/*/manifest.ts', {
-  eager: true,
-  import: 'default',
-});
-const emblems = import.meta.glob<string>('../../../../../games/*/hub/emblem.svg', {
-  eager: true,
-  query: '?raw',
-  import: 'default',
-});
-const keyArts = import.meta.glob<string>('../../../../../games/*/hub/key-art.png', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
-
-const fileOf = (files: Record<string, string>, id: string) =>
-  Object.entries(files).find(([path]) => path.split('/')[6] === id)?.[1];
-
-interface ChartCard {
-  manifest: AnyManifest;
-  emblem: string;
-  /** Stand-in splash art until the real ones are made: a Game's key art, or none (the Island's placeholder). */
-  art?: string;
-}
-
-/** Every Game on an Island, made ones first, then by name. */
-const cardsOf = (island: Island): ChartCard[] =>
-  Object.values(manifests)
-    .filter((m) => m.island === island)
-    .sort(
-      (a, b) =>
-        Number(a.status === 'soon') - Number(b.status === 'soon') ||
-        a.name.localeCompare(b.name, 'vi'),
-    )
-    .map((manifest) => ({
-      manifest,
-      emblem: fileOf(emblems, manifest.id) ?? '',
-      art: manifest.status === 'soon' ? undefined : fileOf(keyArts, manifest.id),
-    }));
 
 const CODES: Record<Island, string> = { co: 'CO', bai: 'BA', 'xuc-xac': 'XX', 'nao-nhiet': 'NN' };
 
-/** Each Island's hue for its stand-in art and accents. */
+/** Each Island's hue for its accents. */
 const HUES: Record<Island, number> = { co: 196, bai: 352, 'xuc-xac': 150, 'nao-nhiet': 24 };
+
+const cardsOf = (island: HubIsland) => islandCards(island.id, GAMES, SOON_GAMES, island.art);
+
+/** Where the player was on the chart, so coming back from a Room shows the same card. */
+const last = { island: ISLANDS[0]?.id ?? ('co' as Island), card: '' };
+
+/** The id of the card focused last on the chart, `''` before the chart was opened. */
+export const lastCardId = () => last.card;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -99,11 +70,11 @@ function tailStart(track: HTMLElement): number {
   return Math.max(0, track.children.length - 1);
 }
 
-function scrollToCard(track: HTMLElement | null, index: number) {
+function scrollToCard(track: HTMLElement | null, index: number, instant = false) {
   if (!track) return;
   track.scrollTo({
     left: offsetOf(track, index),
-    behavior: prefersReducedMotion() ? 'instant' : 'smooth',
+    behavior: instant || prefersReducedMotion() ? 'instant' : 'smooth',
   });
 }
 
@@ -111,10 +82,15 @@ function scrollToCard(track: HTMLElement | null, index: number) {
  * The track of Game cards: scroll-snaps one card at a time and reports the focused card. Cards in
  * the tail cannot reach the snap line, so there the focus is the last one picked, not read from the scroll.
  */
-function useSnapTrack(scope: string, count: number, onFocus: (index: number) => void) {
+function useSnapTrack(
+  scope: string,
+  count: number,
+  start: number,
+  onFocus: (index: number) => void,
+) {
   const ref = useRef<HTMLDivElement>(null);
-  const focusRef = useRef(0);
-  const lockRef = useRef({ index: 0, until: 0 });
+  const focusRef = useRef(start);
+  const lockRef = useRef({ index: start, until: 0 });
 
   const focusOn = useCallback(
     (index: number) => {
@@ -127,11 +103,11 @@ function useSnapTrack(scope: string, count: number, onFocus: (index: number) => 
 
   /** Focuses a card and scrolls to it; scroll events are ignored until the scroll has settled. */
   const select = useCallback(
-    (index: number) => {
+    (index: number, instant = false) => {
       const target = Math.max(0, Math.min(count - 1, index));
       lockRef.current = { index: target, until: performance.now() + 500 };
       focusOn(target);
-      scrollToCard(ref.current, target);
+      scrollToCard(ref.current, target, instant);
     },
     [count, focusOn],
   );
@@ -140,6 +116,7 @@ function useSnapTrack(scope: string, count: number, onFocus: (index: number) => 
   useEffect(() => {
     const track = ref.current;
     if (!track) return;
+    if (focusRef.current > 0) scrollToCard(track, focusRef.current, true);
     let frame = 0;
     const sync = () => {
       frame = 0;
@@ -179,74 +156,127 @@ function useSnapTrack(scope: string, count: number, onFocus: (index: number) => 
   return { ref, focusRef, lockRef, select };
 }
 
-function Splash({ card, island, on }: { card: ChartCard; island: HubIsland; on: boolean }) {
-  const soon = card.manifest.status === 'soon';
+function Splash({ card, on }: { card: ChartCard; on: boolean }) {
   return (
-    <div className={styles.splash} data-on={on || undefined} data-soon={soon || undefined}>
-      {card.art ? (
-        <img
-          src={card.art}
-          alt=""
-          decoding="async"
-          style={
-            'focus' in card.manifest
-              ? { objectPosition: `${card.manifest.focus.x}% ${card.manifest.focus.y}%` }
-              : undefined
-          }
-        />
-      ) : (
-        <Svg markup={island.emblem} className={styles.watermark} />
-      )}
+    <div className={styles.splash} data-on={on || undefined} data-soon={!card.game || undefined}>
+      <img
+        src={card.splash}
+        alt=""
+        decoding="async"
+        style={card.game ? { objectPosition: focusPosition(card.game.manifest) } : undefined}
+      />
     </div>
   );
 }
 
 /**
- * `/dev/kit#sea`, dev only: the approved prototype of the Sea chart (#306), after Arknights' stage
- * select. Islands in a column, the Island's Games as glass cards on a track that snaps one card at a
- * time; the focused card grows and the screen's art follows it. A button opens the Game's rules in
- * `RulesPager`. Splash art is a stand-in.
+ * `/sea`: the Sea chart, after Arknights' stage select. Islands in a column, the Island's Games as
+ * glass cards on a track that snaps one card at a time; the focused card grows and the screen's art
+ * follows it. "Ra khơi" makes a Room of that Game; Escape goes back to the Bến.
  */
 export function SeaChart() {
-  const [islandId, setIslandId] = useState<Island>(ISLANDS[0]?.id ?? 'co');
-  const [focus, setFocus] = useState(0);
-  const [rulesOpen, setRulesOpen] = useState(false);
+  const closedReason = useHub((s) => s.closed);
+  const [islandId, setIslandId] = useState<Island>(last.island);
   const island = ISLANDS.find((i) => i.id === islandId) ?? (ISLANDS[0] as HubIsland);
-  const cards = cardsOf(island.id);
+  const cards = cardsOf(island);
+  const [focus, setFocus] = useState(() =>
+    Math.max(
+      0,
+      cards.findIndex((c) => c.id === last.card),
+    ),
+  );
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [running, setRunning] = useState<string[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const current = cards[focus] ?? cards[0];
+
+  useEffect(() => {
+    void hub.gameIds().then(setRunning);
+  }, []);
+
+  useEffect(() => {
+    last.island = island.id;
+    last.card = current?.id ?? '';
+  }, [island.id, current?.id]);
 
   const onFocus = useCallback((index: number) => {
     setFocus(index);
+    setError('');
     playSound('cardHover');
   }, []);
-  const { ref: track, focusRef, lockRef, select } = useSnapTrack(island.id, cards.length, onFocus);
+  const {
+    ref: track,
+    focusRef,
+    lockRef,
+    select,
+  } = useSnapTrack(island.id, cards.length, focus, onFocus);
 
   const pickIsland = (id: Island) => {
     if (id === islandId) return;
     playSound('pick');
     setIslandId(id);
     setFocus(0);
+    setError('');
     focusRef.current = 0;
     lockRef.current = { index: 0, until: 0 };
     track.current?.scrollTo({ left: 0, behavior: 'instant' });
   };
 
-  const soon = current?.manifest.status === 'soon';
-  const rulesOf = current && !soon ? gameById(current.manifest.id) : undefined;
-  const hasRules = !!rulesOf && rulesOf.rules.length > 0;
+  const game = current?.game;
+  const off = !!game && !!running && !running.includes(game.manifest.id);
+  const canSail = !!game && !off && !busy;
+  const hasRules = !!game && game.rules.length > 0;
+
+  async function sail(target: HubGame) {
+    playSound('pick');
+    setBusy(true);
+    setError('');
+    try {
+      const { roomCode } = await hub.request('room:create', {
+        gameId: target.manifest.id,
+        version: target.version,
+      });
+      navigate(`/room/${roomCode}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Máy chủ gặp lỗi');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const message = error || closedReason;
+
+  useEffect(() => {
+    if (rulesOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !document.querySelector('dialog[open]')) navigate('/');
+    };
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [rulesOpen]);
 
   return (
     <main className={styles.chart} style={{ '--hue': HUES[island.id] } as CSSProperties}>
       <div className={styles.backdrop} aria-hidden="true" key={island.id}>
         {cards.map((card, index) => (
-          <Splash key={card.manifest.id} card={card} island={island} on={index === focus} />
+          <Splash key={card.id} card={card} on={index === focus} />
         ))}
       </div>
 
       <header className={styles.top}>
-        <a className={styles.back} href="/dev/kit#harbour" aria-label="Về Bến">
+        <button
+          type="button"
+          className={styles.back}
+          aria-label="Về Bến"
+          onPointerEnter={(e) => hoverSound(e)}
+          onClick={() => {
+            playSound('click');
+            navigate('/');
+          }}
+        >
           <Icon icon={IconChevronLeft} />
-        </a>
+        </button>
         <h1 className={styles.title}>
           <span className={styles.kicker}>Bến</span>
           Hải đồ
@@ -257,13 +287,15 @@ export function SeaChart() {
         <ul onKeyDown={(e) => rovingKeyDown(e, 'button')}>
           {ISLANDS.map((item, index) => {
             const on = item.id === island.id;
-            const made = cardsOf(item.id).filter((c) => c.manifest.status !== 'soon').length;
+            const islandList = cardsOf(item);
+            const made = islandList.filter((c) => c.game).length;
             return (
               <li key={item.id}>
                 <button
                   type="button"
                   className={styles.island}
                   aria-current={on || undefined}
+                  aria-label={`Đảo ${item.name}`}
                   tabIndex={on ? 0 : -1}
                   onPointerEnter={(e) => hoverSound(e)}
                   onClick={() => pickIsland(item.id)}
@@ -272,7 +304,7 @@ export function SeaChart() {
                   <Svg markup={item.emblem} className={styles.islandEmblem} />
                   <span className={styles.islandName}>{item.name}</span>
                   <span className={styles.islandCount}>
-                    {made}/{cardsOf(item.id).length}
+                    {made}/{islandList.length}
                   </span>
                 </button>
               </li>
@@ -282,39 +314,55 @@ export function SeaChart() {
       </nav>
 
       <section className={styles.stage} aria-label={`Đảo ${island.name}`}>
-        {current && (
-          <div className={styles.info} key={current.manifest.id}>
+        {current ? (
+          <div className={styles.info} key={current.id}>
             <p className={styles.code}>
               {CODES[island.id]}-{pad(focus + 1)}
               <span className={styles.count}>
                 {pad(focus + 1)} / {pad(cards.length)}
               </span>
             </p>
-            <h2 className={styles.name}>{current.manifest.name}</h2>
+            <h2 className={styles.name}>{current.name}</h2>
             <div className={styles.facts}>
-              {current.manifest.status === 'soon' ? (
-                <Chip>Sắp có</Chip>
-              ) : (
+              {game ? (
                 <>
-                  <Chip>{playersLabel(current.manifest)}</Chip>
-                  <Chip>{durationLabel(current.manifest)}</Chip>
+                  <Chip>{playersLabel(game.manifest)}</Chip>
+                  <Chip>{durationLabel(game.manifest)}</Chip>
+                  {game.manifest.bots && <Chip>Có máy</Chip>}
+                  {game.manifest.status === 'wip' && <Chip tone="accent">Đang làm</Chip>}
+                  {off && <Chip tone="danger">Tạm đóng</Chip>}
                 </>
+              ) : (
+                <Chip>Sắp có</Chip>
               )}
-              <Button variant="primary" forward={!soon} disabled={soon} className={styles.go}>
-                {soon ? 'Chưa mở' : 'Ra khơi'}
+              <Button
+                variant="primary"
+                forward={!!game}
+                disabled={!canSail}
+                className={styles.go}
+                onClick={() => game && void sail(game)}
+              >
+                {game ? 'Ra khơi' : 'Chưa mở'}
               </Button>
               {hasRules && (
                 <Button
                   variant="ghost"
                   className={styles.rules}
-                  aria-label={`Luật chơi ${current.manifest.name}`}
+                  aria-label={`Luật chơi ${current.name}`}
                   onClick={() => setRulesOpen(true)}
                 >
                   <IconBook2 stroke={2} aria-hidden />
                 </Button>
               )}
             </div>
+            {message && (
+              <p className={styles.error} role="alert">
+                {message}
+              </p>
+            )}
           </div>
+        ) : (
+          <p className={styles.empty}>Chưa có trò nào.</p>
         )}
 
         <div className={styles.route} aria-hidden="true" data-loop />
@@ -337,31 +385,32 @@ export function SeaChart() {
         >
           {cards.map((card, index) => {
             const on = index === focus;
-            const locked = card.manifest.status === 'soon';
+            const locked = !card.game;
             return (
               <button
-                key={card.manifest.id}
+                key={card.id}
                 type="button"
                 className={styles.card}
                 style={{ '--i': index } as CSSProperties}
                 data-on={on || undefined}
                 data-soon={locked || undefined}
                 aria-current={on || undefined}
+                aria-label={card.name}
                 tabIndex={on ? 0 : -1}
                 onPointerEnter={(e) => hoverSound(e, 'cardHover')}
                 onPointerMove={tilt}
                 onPointerLeave={untilt}
                 onClick={() => {
-                  if (on) playSound(locked ? 'locked' : 'pick');
-                  else select(index);
+                  if (!on) select(index);
+                  else playSound(card.game ? 'pick' : 'locked');
                 }}
               >
                 <span className={styles.face}>
-                  <span className={styles.stage}>
+                  <span className={styles.depth}>
                     <span className={styles.stack} data-loop={on || undefined}>
                       <span className={styles.glassBack} />
                       <span className={styles.glassMid}>
-                        {card.art && <img src={card.art} alt="" decoding="async" />}
+                        {card.picture && <img src={card.picture} alt="" decoding="async" />}
                         <Svg markup={card.emblem} className={styles.cardEmblem} />
                         <span className={styles.cardCode}>
                           {CODES[island.id]}-{pad(index + 1)}
@@ -375,14 +424,14 @@ export function SeaChart() {
                       </span>
                     )}
                   </span>
-                  <span className={styles.cardName}>{card.manifest.name}</span>
+                  <span className={styles.cardName}>{card.name}</span>
                 </span>
               </button>
             );
           })}
         </div>
       </section>
-      {rulesOpen && rulesOf && <RulesPager game={rulesOf} onClose={() => setRulesOpen(false)} />}
+      {rulesOpen && game && <RulesPager game={game} onClose={() => setRulesOpen(false)} />}
     </main>
   );
 }

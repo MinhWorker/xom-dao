@@ -34,7 +34,7 @@
   opacity: 1;
 }
 
-/* Darkens the left for the title and the bottom for the strip; the art's subject sits right. */
+/* Darkens the left and the bottom for the buttons; the art's subject sits right. */
 .backdrop::after {
   content: "";
   position: absolute;
@@ -130,37 +130,6 @@
   max-width: min(46ch, 52%);
 }
 
-.code {
-  font-family: var(--font-mono);
-  font-size: var(--label);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.title {
-  font-size: var(--text-xl);
-  line-height: 0.95;
-  text-shadow: 0 2px 18px rgb(0 0 0 / 0.7);
-}
-
-.tagline {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--text);
-  text-shadow: 0 1px 8px rgb(0 0 0 / 0.8);
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.chips > * {
-  background: rgb(11 13 16 / 0.72);
-}
-
 .error {
   margin: 0;
   color: var(--danger);
@@ -168,21 +137,14 @@
   text-shadow: 0 1px 6px rgb(0 0 0 / 0.9);
 }
 
-.empty {
-  align-self: center;
-  justify-self: center;
-  color: var(--text-dim);
-}
-
 .dock {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(150px, calc(24 * var(--vw)), 240px);
-  align-items: end;
-  gap: var(--space-4);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .actions {
   display: grid;
+  width: clamp(150px, calc(24 * var(--vw)), 240px);
   gap: var(--space-2);
   padding-bottom: var(--space-1);
 }
