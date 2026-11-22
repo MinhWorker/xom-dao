@@ -670,6 +670,8 @@ export function MotionLab({ full }: { full?: boolean }) {
   };
 
   /** A request that takes `ms`: the badge shows only once it has waited `BADGE_DELAY`. */
+  const waiting = wait?.shown === true;
+
   const request = (ms: number, blocking: boolean) => {
     timers.current.forEach(clearTimeout);
     setWait({ blocking, shown: false });
@@ -687,291 +689,299 @@ export function MotionLab({ full }: { full?: boolean }) {
       aria-label="Chuyển động và kính mờ"
       onPointerDown={pressFlash}
     >
-      {art && <img className={styles.art} src={art} alt="" />}
+      <div className={styles.contents} inert={waiting}>
+        {art && <img className={styles.art} src={art} alt="" />}
 
-      <header className={`${styles.hud} ${styles.glass} cut-br`}>
-        <span className={styles.who}>
-          <img src={avatarCat} alt="" />
-          Minh
-          <span className={styles.online}>
-            <span className={styles.loop} />
-          </span>
-        </span>
-        <span className={styles.money}>
-          <span className={styles.amount}>
-            <span className={`${styles.glint} ${styles.loopAfter}`}>
-              <CoinIcon size={26} />
+        <header className={`${styles.hud} ${styles.glass} cut-br`}>
+          <span className={styles.who}>
+            <img src={avatarCat} alt="" />
+            Minh
+            <span className={styles.online}>
+              <span className={styles.loop} />
             </span>
-            1 250
           </span>
-          <span className={styles.amount}>
-            <GemIcon size={26} />
-            40
-          </span>
-        </span>
-        <span className={styles.tools}>
-          <span className={styles.tool}>
-            <SignalIcon size={28} />
-          </span>
-          <button type="button" className={styles.tool} aria-label="Thông báo">
-            <span className={`${styles.swing} ${styles.loop}`}>
-              <Icon icon={IconBell} size={28} />
+          <span className={styles.money}>
+            <span className={styles.amount}>
+              <span className={`${styles.glint} ${styles.loopAfter}`}>
+                <CoinIcon size={26} />
+              </span>
+              1 250
             </span>
-          </button>
-          <button
-            type="button"
-            className={styles.tool}
-            aria-label="Thư mời"
-            onClick={() => setSheet('friends')}
-          >
-            <span className={`${styles.bob} ${styles.loop}`}>
-              <Icon icon={IconMail} size={28} />
-              <i className={styles.pip} />
+            <span className={styles.amount}>
+              <GemIcon size={26} />
+              40
             </span>
-          </button>
-          <button
-            type="button"
-            className={styles.tool}
-            aria-label="Đồ hoạ"
-            onClick={() => setSheet('settings')}
-          >
-            <Icon icon={IconSettings} size={28} />
-          </button>
-        </span>
-      </header>
+          </span>
+          <span className={styles.tools}>
+            <span className={styles.tool}>
+              <SignalIcon size={28} />
+            </span>
+            <button type="button" className={styles.tool} aria-label="Thông báo">
+              <span className={`${styles.swing} ${styles.loop}`}>
+                <Icon icon={IconBell} size={28} />
+              </span>
+            </button>
+            <button
+              type="button"
+              className={styles.tool}
+              aria-label="Thư mời"
+              onClick={() => setSheet('friends')}
+            >
+              <span className={`${styles.bob} ${styles.loop}`}>
+                <Icon icon={IconMail} size={28} />
+                <i className={styles.pip} />
+              </span>
+            </button>
+            <button
+              type="button"
+              className={styles.tool}
+              aria-label="Đồ hoạ"
+              onClick={() => setSheet('settings')}
+            >
+              <Icon icon={IconSettings} size={28} />
+            </button>
+          </span>
+        </header>
 
-      <div className={styles.panels}>
-        <div className={`${styles.panel} ${styles.glass} cut-br`}>
-          <div className={styles.group}>
-            <span className={styles.label}>Hộp thoại</span>
-            <div className={styles.row}>
-              <Button className={styles.alive} onClick={() => setDialog('notify')}>
-                Báo
-              </Button>
-              <Button className={styles.alive} onClick={() => setDialog('confirm')}>
-                Hỏi
-              </Button>
-              <Button className={styles.alive} onClick={() => setDialog('band')}>
-                Dải ngang
-              </Button>
+        <div className={styles.panels}>
+          <div className={`${styles.panel} ${styles.glass} cut-br`}>
+            <div className={styles.group}>
+              <span className={styles.label}>Hộp thoại</span>
+              <div className={styles.row}>
+                <Button className={styles.alive} onClick={() => setDialog('notify')}>
+                  Báo
+                </Button>
+                <Button className={styles.alive} onClick={() => setDialog('confirm')}>
+                  Hỏi
+                </Button>
+                <Button className={styles.alive} onClick={() => setDialog('band')}>
+                  Dải ngang
+                </Button>
+              </div>
+            </div>
+            <div className={styles.group}>
+              <span className={styles.label}>Lớp phủ</span>
+              <div className={styles.row}>
+                <Button className={styles.alive} onClick={() => setPager(true)}>
+                  Trang
+                </Button>
+                <Button
+                  className={`${styles.alive} ${styles.kind} ${styles.info}`}
+                  aria-label="Toast thông tin"
+                  onClick={() => toasts.push('info')}
+                >
+                  <Icon icon={IconInfoCircle} size={26} />
+                </Button>
+                <Button
+                  className={`${styles.alive} ${styles.kind} ${styles.success}`}
+                  aria-label="Toast thành công"
+                  onClick={() => toasts.push('success')}
+                >
+                  <Icon icon={IconCircleCheck} size={26} />
+                </Button>
+                <Button
+                  className={`${styles.alive} ${styles.kind} ${styles.warning}`}
+                  aria-label="Toast cảnh báo"
+                  onClick={() => toasts.push('warning')}
+                >
+                  <Icon icon={IconAlertTriangle} size={26} />
+                </Button>
+                <Button
+                  className={`${styles.alive} ${styles.kind}`}
+                  aria-label="Ba toast liền"
+                  onClick={burst}
+                >
+                  ×3
+                </Button>
+              </div>
+            </div>
+            <div className={styles.group}>
+              <span className={styles.label}>Chờ</span>
+              <div className={styles.row}>
+                <Button className={styles.alive} onClick={() => request(200, false)}>
+                  0,2 giây
+                </Button>
+                <Button className={styles.alive} onClick={() => request(2500, false)}>
+                  Tải nền
+                </Button>
+                <Button className={styles.alive} onClick={() => request(2500, true)}>
+                  Vào phòng
+                </Button>
+              </div>
             </div>
           </div>
-          <div className={styles.group}>
-            <span className={styles.label}>Lớp phủ</span>
-            <div className={styles.row}>
-              <Button className={styles.alive} onClick={() => setPager(true)}>
-                Trang
+          <div className={`${styles.panel} ${styles.glass} cut-br`}>
+            <span className={styles.label}>Nút</span>
+            <Button variant="primary" className={`${styles.alive} ${styles.go}`}>
+              Ra khơi
+              <span className={styles.chevrons} aria-hidden="true">
+                <IconChevronRight size={24} stroke={3} />
+                <IconChevronRight size={24} stroke={3} />
+                <IconChevronRight size={24} stroke={3} />
+              </span>
+            </Button>
+            <div className={`${styles.row} ${styles.even}`}>
+              <Button className={styles.alive} onClick={() => setLoading('match')}>
+                Tải ván
               </Button>
               <Button
-                className={`${styles.alive} ${styles.kind} ${styles.info}`}
-                aria-label="Toast thông tin"
-                onClick={() => toasts.push('info')}
+                variant="ghost"
+                className={styles.alive}
+                onClick={() => setLoading('harbour')}
               >
-                <Icon icon={IconInfoCircle} size={26} />
+                Về Bến
               </Button>
-              <Button
-                className={`${styles.alive} ${styles.kind} ${styles.success}`}
-                aria-label="Toast thành công"
-                onClick={() => toasts.push('success')}
-              >
-                <Icon icon={IconCircleCheck} size={26} />
-              </Button>
-              <Button
-                className={`${styles.alive} ${styles.kind} ${styles.warning}`}
-                aria-label="Toast cảnh báo"
-                onClick={() => toasts.push('warning')}
-              >
-                <Icon icon={IconAlertTriangle} size={26} />
-              </Button>
-              <Button
-                className={`${styles.alive} ${styles.kind}`}
-                aria-label="Ba toast liền"
-                onClick={burst}
-              >
-                ×3
+              <Button className={styles.alive} disabled>
+                Khoá
               </Button>
             </div>
-          </div>
-          <div className={styles.group}>
-            <span className={styles.label}>Chờ</span>
-            <div className={styles.row}>
-              <Button className={styles.alive} onClick={() => request(200, false)}>
-                0,2 giây
-              </Button>
-              <Button className={styles.alive} onClick={() => request(2500, false)}>
-                Tải nền
-              </Button>
-              <Button className={styles.alive} onClick={() => request(2500, true)}>
-                Vào phòng
-              </Button>
-            </div>
+            <LoopIcons />
           </div>
         </div>
-        <div className={`${styles.panel} ${styles.glass} cut-br`}>
-          <span className={styles.label}>Nút</span>
-          <Button variant="primary" className={`${styles.alive} ${styles.go}`}>
-            Ra khơi
-            <span className={styles.chevrons} aria-hidden="true">
-              <IconChevronRight size={24} stroke={3} />
-              <IconChevronRight size={24} stroke={3} />
-              <IconChevronRight size={24} stroke={3} />
-            </span>
-          </Button>
-          <div className={`${styles.row} ${styles.even}`}>
-            <Button className={styles.alive} onClick={() => setLoading('match')}>
-              Tải ván
-            </Button>
-            <Button variant="ghost" className={styles.alive} onClick={() => setLoading('harbour')}>
-              Về Bến
-            </Button>
-            <Button className={styles.alive} disabled>
-              Khoá
+
+        <section
+          ref={region}
+          popover="manual"
+          className={styles.toasts}
+          data-pager={pager || undefined}
+          aria-live="polite"
+          aria-label="Thông báo"
+        >
+          {toasts.items.map((t) => (
+            <ToastCard
+              key={t.id}
+              toast={t}
+              onDismiss={toasts.dismiss}
+              register={(el) => {
+                if (el) toasts.els.current.set(t.id, el);
+              }}
+            />
+          ))}
+        </section>
+
+        <Pager open={pager} onClose={() => setPager(false)} art={art} />
+
+        {loading && <Loading kind={loading} onDone={() => setLoading(null)} />}
+
+        <LabDialog
+          open={dialog === 'notify'}
+          onClose={() => setDialog(null)}
+          className={`${styles.box} ${styles.glass} cut-br`}
+        >
+          <h2>Đã gửi lời mời</h2>
+          <p>Lan sẽ thấy lời mời khi vào Bến.</p>
+          <div className={styles.actions}>
+            <Button variant="primary" className={styles.alive} onClick={() => setDialog(null)}>
+              Đã hiểu
             </Button>
           </div>
-          <LoopIcons />
-        </div>
-      </div>
+        </LabDialog>
 
-      {wait?.blocking && <div className={styles.scrim} />}
-      {wait?.shown && (
-        <div className={`${styles.badge} ${styles.glass}`} role="status">
-          <span className={styles.rule} aria-hidden="true" />
-          <Diamond size={22} />
-          <span className={styles.badgeText}>Đang tải</span>
-          <span className={styles.mirror}>
-            <Diamond size={22} />
-          </span>
-          <span className={styles.rule} aria-hidden="true" />
-        </div>
-      )}
-
-      <section
-        ref={region}
-        popover="manual"
-        className={styles.toasts}
-        data-pager={pager || undefined}
-        aria-live="polite"
-        aria-label="Thông báo"
-      >
-        {toasts.items.map((t) => (
-          <ToastCard
-            key={t.id}
-            toast={t}
-            onDismiss={toasts.dismiss}
-            register={(el) => {
-              if (el) toasts.els.current.set(t.id, el);
-            }}
-          />
-        ))}
-      </section>
-
-      <Pager open={pager} onClose={() => setPager(false)} art={art} />
-
-      {loading && <Loading kind={loading} onDone={() => setLoading(null)} />}
-
-      <LabDialog
-        open={dialog === 'notify'}
-        onClose={() => setDialog(null)}
-        className={`${styles.box} ${styles.glass} cut-br`}
-      >
-        <h2>Đã gửi lời mời</h2>
-        <p>Lan sẽ thấy lời mời khi vào Bến.</p>
-        <div className={styles.actions}>
-          <Button variant="primary" className={styles.alive} onClick={() => setDialog(null)}>
-            Đã hiểu
-          </Button>
-        </div>
-      </LabDialog>
-
-      <LabDialog
-        open={dialog === 'confirm'}
-        onClose={() => setDialog(null)}
-        className={`${styles.box} ${styles.glass} cut-br`}
-      >
-        <h2>Rời ván?</h2>
-        <p>Bạn sẽ bị tính hạng chót.</p>
-        <div className={styles.actions}>
-          <Button className={styles.alive} onClick={() => setDialog(null)}>
-            Ở lại
-          </Button>
-          <Button variant="primary" className={styles.alive} onClick={() => setDialog(null)}>
-            Rời
-          </Button>
-        </div>
-      </LabDialog>
-
-      <LabDialog
-        open={dialog === 'band'}
-        onClose={() => setDialog(null)}
-        className={`${styles.band} ${styles.glass}`}
-      >
-        <div className={styles.bandInner}>
-          <span className={styles.kicker}>Xác nhận</span>
+        <LabDialog
+          open={dialog === 'confirm'}
+          onClose={() => setDialog(null)}
+          className={`${styles.box} ${styles.glass} cut-br`}
+        >
           <h2>Rời ván?</h2>
           <p>Bạn sẽ bị tính hạng chót.</p>
           <div className={styles.actions}>
-            <Button variant="ghost" className={styles.alive} onClick={() => setDialog(null)}>
+            <Button className={styles.alive} onClick={() => setDialog(null)}>
               Ở lại
             </Button>
             <Button variant="primary" className={styles.alive} onClick={() => setDialog(null)}>
               Rời
             </Button>
           </div>
-        </div>
-      </LabDialog>
+        </LabDialog>
 
-      <LabDialog
-        open={sheet === 'friends'}
-        onClose={() => setSheet(null)}
-        className={`${styles.sheet} ${styles.glass}`}
-      >
-        <header className={styles.sheetTop}>
-          <h2>Hàng xóm</h2>
-          <button
-            type="button"
-            className={styles.close}
-            aria-label="Đóng"
-            onClick={() => setSheet(null)}
-          >
-            <Icon icon={IconX} size={28} />
-          </button>
-        </header>
-        <ul className={styles.friends}>
-          {PLAYERS.map((p, i) => (
-            <li key={p.name} style={{ '--i': i } as CSSProperties}>
-              <img src={p.avatar} alt="" />
-              {p.name}
-              {i === 0 && (
-                <span className={styles.online}>
-                  <span className={styles.loop} />
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </LabDialog>
+        <LabDialog
+          open={dialog === 'band'}
+          onClose={() => setDialog(null)}
+          className={`${styles.band} ${styles.glass}`}
+        >
+          <div className={styles.bandInner}>
+            <span className={styles.kicker}>Xác nhận</span>
+            <h2>Rời ván?</h2>
+            <p>Bạn sẽ bị tính hạng chót.</p>
+            <div className={styles.actions}>
+              <Button variant="ghost" className={styles.alive} onClick={() => setDialog(null)}>
+                Ở lại
+              </Button>
+              <Button variant="primary" className={styles.alive} onClick={() => setDialog(null)}>
+                Rời
+              </Button>
+            </div>
+          </div>
+        </LabDialog>
 
-      <LabDialog
-        open={sheet === 'settings'}
-        onClose={() => setSheet(null)}
-        className={`${styles.sheet} ${styles.glass}`}
-      >
-        <header className={styles.sheetTop}>
-          <h2>Đồ hoạ</h2>
-          <button
-            type="button"
-            className={styles.close}
-            aria-label="Đóng"
-            onClick={() => setSheet(null)}
-          >
-            <Icon icon={IconX} size={28} />
-          </button>
-        </header>
-        <div className={styles.settings}>
-          <Choice label="Mức" options={LEVELS} value={level} onChange={setLevel} />
-          <Toggle label="Giảm chuyển động" checked={reduce} onChange={setReduce} />
-        </div>
-      </LabDialog>
+        <LabDialog
+          open={sheet === 'friends'}
+          onClose={() => setSheet(null)}
+          className={`${styles.sheet} ${styles.glass}`}
+        >
+          <header className={styles.sheetTop}>
+            <h2>Hàng xóm</h2>
+            <button
+              type="button"
+              className={styles.close}
+              aria-label="Đóng"
+              onClick={() => setSheet(null)}
+            >
+              <Icon icon={IconX} size={28} />
+            </button>
+          </header>
+          <ul className={styles.friends}>
+            {PLAYERS.map((p, i) => (
+              <li key={p.name} style={{ '--i': i } as CSSProperties}>
+                <img src={p.avatar} alt="" />
+                {p.name}
+                {i === 0 && (
+                  <span className={styles.online}>
+                    <span className={styles.loop} />
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </LabDialog>
+
+        <LabDialog
+          open={sheet === 'settings'}
+          onClose={() => setSheet(null)}
+          className={`${styles.sheet} ${styles.glass}`}
+        >
+          <header className={styles.sheetTop}>
+            <h2>Đồ hoạ</h2>
+            <button
+              type="button"
+              className={styles.close}
+              aria-label="Đóng"
+              onClick={() => setSheet(null)}
+            >
+              <Icon icon={IconX} size={28} />
+            </button>
+          </header>
+          <div className={styles.settings}>
+            <Choice label="Mức" options={LEVELS} value={level} onChange={setLevel} />
+            <Toggle label="Giảm chuyển động" checked={reduce} onChange={setReduce} />
+          </div>
+        </LabDialog>
+      </div>
+
+      {wait?.shown && (
+        <>
+          <div className={`${styles.blocker} ${wait.blocking ? styles.scrim : ''}`} />
+          <div className={`${styles.badge} ${styles.glass}`} role="status">
+            <span className={styles.rule} aria-hidden="true" />
+            <Diamond size={22} />
+            <span className={styles.badgeText}>Đang tải</span>
+            <span className={styles.mirror}>
+              <Diamond size={22} />
+            </span>
+            <span className={styles.rule} aria-hidden="true" />
+          </div>
+        </>
+      )}
     </section>
   );
 }

@@ -560,11 +560,23 @@ button.tool:active {
   opacity: 1;
 }
 
-/* Waiting on the server: a badge after 300 ms; a scrim only when the player must wait. */
-.scrim {
+/* Waiting on the server: after 300 ms the strip shows and all else goes inert; only "Vào phòng" dims. */
+.contents {
+  display: contents;
+}
+
+/* Takes stray taps over the whole screen while the strip shows. */
+.blocker {
   position: absolute;
   inset: 0;
   z-index: 5;
+}
+
+.full .blocker {
+  position: fixed;
+}
+
+.scrim {
   background: rgb(0 0 0 / 0.55);
   transition: opacity 200ms;
 
