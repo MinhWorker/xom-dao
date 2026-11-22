@@ -44,10 +44,11 @@
   --hud-scale: 1;
   --margin: 0px;
 
-  /* `zoom` scales viewport units too, so the screen's size is divided by the scale. */
-  --vw: calc(1vw / var(--hud-scale));
-  --dvh: calc(1dvh / var(--hud-scale));
-  --vmin: calc(1vmin / var(--hud-scale));
+  /* `zoom` scales viewport units too, so the screen's size is divided by the scale. With a frame
+     (`data-frame`, set by `applyGraphics`) one percent is of the frame, not of the screen. */
+  --vw: calc(var(--frame-vw, 1vw) / var(--hud-scale));
+  --dvh: calc(var(--frame-vh, 1dvh) / var(--hud-scale));
+  --vmin: calc(var(--frame-vmin, 1vmin) / var(--hud-scale));
 
   /* The notch and the player's margin, in the scaled units of the page. */
   --safe-top: calc((env(safe-area-inset-top, 0px) + var(--margin)) / var(--hud-scale));

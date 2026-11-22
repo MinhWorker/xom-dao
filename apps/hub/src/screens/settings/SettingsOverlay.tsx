@@ -1,8 +1,9 @@
 import { IconX } from '@tabler/icons-react';
 import { useId } from 'react';
 import { GAMES } from '../../games.js';
-import { Chip, Choice, Icon, Slider, Tabs, Toggle } from '../../kit/index.js';
+import { Chip, Choice, Icon, Select, Slider, Tabs, Toggle } from '../../kit/index.js';
 import { useModal } from '../../kit/modal.js';
+import { FRAMES, isFrameId } from '../../settings/frame.js';
 import {
   canScaleHud,
   type GraphicsLevel,
@@ -26,7 +27,7 @@ const marginName = (value: number) =>
   MARGIN_NAMES[Math.round((value - MARGIN.min) / MARGIN.step)] ?? `${value}px`;
 
 function GraphicsTab() {
-  const { level, loopVideo, transitions, hudScale, margin } = useGraphics();
+  const { level, loopVideo, transitions, hudScale, margin, frame } = useGraphics();
   return (
     <div className={styles.tab}>
       <Choice
@@ -55,6 +56,12 @@ function GraphicsTab() {
           onChange={(value) => graphics.set({ hudScale: value })}
         />
       )}
+      <Select
+        label="Khung hình"
+        options={FRAMES.map(({ id, label }) => ({ value: id, label }))}
+        value={frame}
+        onChange={(value) => isFrameId(value) && graphics.set({ frame: value })}
+      />
       <Slider
         label="Lề màn hình"
         value={margin}

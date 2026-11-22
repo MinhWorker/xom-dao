@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { applyFrame, type FrameId, fitFrame, frameRatio, isFrameId } from './frame.js';
 
 export type GraphicsLevel = 'high' | 'low';
 
@@ -13,6 +14,8 @@ export interface Graphics {
   hudScale: number;
   /** Extra space around the screen in px: one of the three stops from `MARGIN.min` to `MARGIN.max`. */
   margin: number;
+  /** The screen shape the Hub keeps to, with dark space where the real screen is bigger. */
+  frame: FrameId;
 }
 
 export const HUD_SCALE = { min: 80, max: 130, step: 10 } as const;
@@ -26,6 +29,7 @@ const DEFAULTS: Graphics = {
   transitions: true,
   hudScale: 100,
   margin: 0,
+  frame: 'auto',
 };
 
 export interface GraphicsStore {
@@ -49,7 +53,7 @@ function read(storage: Pick<Storage, 'getItem'> | undefined): Graphics {
   try {
     const saved: unknown = JSON.parse(storage?.getItem(GRAPHICS_KEY) ?? '{}');
     if (typeof saved !== 'object' || saved === null) return DEFAULTS;
-    const { level, loopVideo, transitions, hudScale, margin } = saved as Partial<
+    const { level, loopVideo, transitions, hudScale, margin, frame } = saved as Partial<
       Record<keyof Graphics, unknown>
     >;
     return {
@@ -58,6 +62,7 @@ function read(storage: Pick<Storage, 'getItem'> | undefined): Graphics {
       transitions: typeof transitions === 'boolean' ? transitions : DEFAULTS.transitions,
       hudScale: inRange(hudScale, HUD_SCALE, DEFAULTS.hudScale),
       margin: inRange(margin, MARGIN, DEFAULTS.margin),
+      frame: isFrameId(frame) ? frame : DEFAULTS.frame,
     };
   } catch {
     return DEFAULTS;
@@ -76,6 +81,9 @@ export function createGraphics(storage?: Pick<Storage, 'getItem' | 'setItem'>): 
         ...patch,
         hudScale: inRange(patch.hudScale ?? state.hudScale, HUD_SCALE, DEFAULTS.hudScale),
         margin: inRange(patch.margin ?? state.margin, MARGIN, DEFAULTS.margin),
+        frame: isFrameId(patch.frame ?? state.frame)
+          ? (patch.frame ?? state.frame)
+          : DEFAULTS.frame,
       };
       if ((Object.keys(next) as (keyof Graphics)[]).every((key) => next[key] === state[key]))
         return;
@@ -105,17 +113,29 @@ function pageStorage() {
 /** The page's one set of graphics choices. */
 export const graphics = createGraphics(pageStorage());
 
-/** Puts the level, HUD scale and margin on the page: `data-graphics` and the CSS variables `tokens.css` reads. */
-export function applyGraphics(root: HTMLElement, { level, hudScale, margin }: Graphics) {
+/** Puts the level, HUD scale, margin and frame on the page: `data-graphics`, `data-frame` and the CSS variables `tokens.css` reads. */
+export function applyGraphics(root: HTMLElement, { level, hudScale, margin, frame }: Graphics) {
   root.dataset.graphics = level;
   root.style.setProperty('--hud-scale', String(hudScale / 100));
   root.style.setProperty('--margin', `${margin}px`);
+  applyFrame(
+    root,
+    typeof window === 'undefined'
+      ? null
+      : fitFrame({ width: window.innerWidth, height: window.innerHeight }, frameRatio(frame)),
+  );
 }
 
-/** Keeps the page in step with the choices, now and whenever they change. */
+/** Keeps the page in step with the choices and the screen's size, now and whenever either changes. */
 export function watchGraphics(root: HTMLElement, store: GraphicsStore = graphics) {
-  applyGraphics(root, store.getState());
-  return store.subscribe(() => applyGraphics(root, store.getState()));
+  const apply = () => applyGraphics(root, store.getState());
+  apply();
+  const stop = store.subscribe(apply);
+  window.addEventListener('resize', apply);
+  return () => {
+    stop();
+    window.removeEventListener('resize', apply);
+  };
 }
 
 /** Whether the browser has CSS `zoom`, which the HUD scale needs. */
