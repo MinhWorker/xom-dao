@@ -81,6 +81,24 @@ describe('createRouter', () => {
     router.dispose();
   });
 
+  it('tells the screen holding it that the back button was pressed', () => {
+    const router = createRouter();
+    router.navigate('/room/AAAA');
+    const onBack = vi.fn();
+    const unblock = router.block(onBack);
+
+    history.replaceState(null, '', '/');
+    dispatchEvent(new PopStateEvent('popstate'));
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(router.route()).toEqual({ name: 'room', code: 'AAAA' });
+
+    unblock();
+    history.replaceState(null, '', '/');
+    dispatchEvent(new PopStateEvent('popstate'));
+    expect(onBack).toHaveBeenCalledOnce();
+    router.dispose();
+  });
+
   it('force leaves even while blocked', () => {
     const router = createRouter();
     router.navigate('/room/AAAA');

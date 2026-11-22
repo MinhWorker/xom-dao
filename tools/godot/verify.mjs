@@ -15,7 +15,7 @@ import { createServer as createSocketServer } from 'node:net';
 import { extname, join, resolve } from 'node:path';
 import { godotBin, root } from './lib.mjs';
 
-const GAME = 'tic-tac-toe';
+const GAME = 'caro';
 const sample = join(import.meta.dirname, 'sample');
 const withWeb = process.argv.includes('--web');
 const children = [];

@@ -16,7 +16,7 @@ import { avatarSchema, frameSchema, profileSchema } from './account.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 16;
+export const PROTOCOL_VERSION = 17;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
@@ -418,6 +418,8 @@ export const events = {
     status: z.enum(['loading', 'playing', 'over']),
     outcome: z.enum(['settled', 'aborted']).optional(),
     disconnectedPlayerIds: z.array(z.string()),
+    /** The seats whose Game has loaded this Match; older servers send none. */
+    readyPlayerIds: z.array(z.string()).optional(),
     timer: MatchTimer.nullable(),
     result: MatchResult.optional(),
     view: z.unknown().optional(),

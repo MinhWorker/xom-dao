@@ -1,21 +1,22 @@
 # Games and the SDK
 
 Where to look:
-- **Examples**: `games/tic-tac-toe` (Caro) is the new platform's test Game: `manifest.ts`,
+- **Examples**: `games/caro` (Caro) is the new platform's test Game: `manifest.ts`,
   `server/` (rules with room options and a computer player) and `client/` (TypeScript + canvas,
-  no engine). Its `src/` is the legacy plugin, still loaded by the legacy registry.
+  no engine).
   `games/dat-bom` (Đặt Bom) is the Realtime example: a `RealtimeGame` with a `bot` hook, its
   arena physics in `server/game/arena.ts`, and a Three.js client in `client/` (low-poly scene
   built in code in `scene.ts`; `sync.ts` interpolates snapshots 150 ms behind the server and
-  `predict.ts` replays `walk` on the player's own character so keys answer at once). It has no
-  `src/`: a Game made for the new platform needs only `server/index.ts`, and the legacy registry
-  skips it.
+  `predict.ts` replays `walk` on the player's own character so keys answer at once). A Game made
+  for the new platform needs only `server/index.ts`; the legacy registry skips it.
   `games/tien-len` (Tiến Lên) is the Turn-based example with hidden hands: rounds, a turn clock,
   `bot` that also plays the seat of anyone who leaves (so it has no `onLeave`), and `finish`
   with places and scores. Its client is a Godot project in `godot/` (the reference Godot Game): the
   cards, plates and boards are drawn in code, `main.gd` presents each `match:state` push paced
   one after another and sounds come from `assets/`. `assets/*.webp` and `sources/` are the legacy
   AI-made art, which the client does not use.
+- **Soon Games**: every other folder (`co-vua`, `bai-cao`, `hai-chien`, ...) is a Game not made
+  yet (below).
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the
@@ -30,17 +31,19 @@ Where to look:
   `defineManifest`, `optionsSchema` and `GameServer` for Turn-based games; `RealtimeGame`,
   `realtimeRules`, `testRealtimeGame` and `RealtimeGameServer` for Realtime ones. New Game servers
   use it.
-- `@xomdao/sdk/legacy` is the old one (`definePlugin`, `meta`, `ctx.reward`, dev commands). The
-  two kept games and the legacy registry in `@xomdao/shared` still import it; the rest of this file
-  describes it. Delete it once those games and the legacy registry are gone.
+- `@xomdao/sdk/legacy` is the old one (`definePlugin`, `meta`, `ctx.reward`, dev commands). No
+  Game uses it any more; the legacy registry in `@xomdao/shared` still imports it, and the rest of
+  this file describes it. Delete both.
 
 ## The Bridge
 
 A Game's client talks to the Hub only through `@xomdao/bridge` (`packages/bridge`): it calls
 `createGameBridge({ onInit, onMessage, ... })`, then `ready()`, sends moves with `send` and
 calls `done()` after its end-of-match animation. Every `init` (reconnect, replay) must redraw
-the whole screen from its `match` snapshot. The message list and `BRIDGE_VERSION` are in the
-header of `packages/bridge/src/protocol.ts`; the Hub's side is `createGameHost`.
+the whole screen from its `match` snapshot; after the Match is over that is its last view, so
+draw how it ended at once (Caro: `games/caro/client/main.ts`). The message list and
+`BRIDGE_VERSION` are in the header of `packages/bridge/src/protocol.ts`; the Hub's side is
+`createGameHost`.
 
 ## The Harness: running a Game without the Hub
 
@@ -92,7 +95,7 @@ Caro without a client: `create --headless`, `join --headless`, `start`, then
   uses `postMessage`; from the editor, headless or a browser tab with `?harness=<ws url>` it uses a
   WebSocket to the Harness (`--harness=<url>` after `--`, or `XOMDAO_HARNESS`; default
   `ws://127.0.0.1:8040/bridge?player=0`). The Game code is the same in both.
-- **A sample scene** `tools/godot/sample`: a Godot client of Caro (the `tic-tac-toe` server), the
+- **A sample scene** `tools/godot/sample`: a Godot client of Caro (the `caro` server), the
   reference for how a Godot Game uses the addon.
 - **The web export**: `export.mjs`, with the single-threaded ("nothreads") template and no
   COOP/COEP, as the iframe research (#202) decided.
@@ -129,10 +132,11 @@ Make a Godot Game:
    `XomdaoBridge.done()` after the end-of-match animation. JSON numbers are floats: `int()` them.
    Leave the top-right 48×48 px to the Hub. Volume and mute from `settings` are already applied
    to the Master bus; `music` and `effects` (0 to 1, may be missing) are not applied, for a Game
-   with a channel of each. A `match:state` push whose `status` is `over` carries the `result`
-   (`seats[].player`, `place`, `score`) and no `view`: the last move never arrives as a view, so
-   show the end from the result (Tiến Lên shows its standings from it). The server applies the
-   computer's moves with no pause: queue the pushes and pace them on screen (`main.gd`).
+   with a channel of each. The move that ends a Match arrives as a last `playing` push with its
+   `view`; then a push whose `status` is `over` carries the `result` (`seats[].player`, `place`,
+   `score`) and no `view` (Tiến Lên shows its standings from it). Unless the Game declares
+   `botDelay`, the server applies the computer's moves with no pause: queue the pushes and pace
+   them on screen (`main.gd`).
 4. Run it against a Game server: start the server and the Harness as above and `create` a Room
    first (the Harness refuses a Game client until a Room exists; the addon retries every second),
    then run the scene from the editor or `godot --path games/<id>/godot -- --harness=ws://127.0.0.1:8040/bridge?player=0`.
@@ -142,7 +146,7 @@ Make a Godot Game:
 `ready`, `init` (also replayed mid-Match), moves, `done`, `settings`, `visibility`.
 `npm run godot:verify -- --web` also exports the sample, loads it in headless Chromium with
 `?harness=` and taps the board (saves `smoke-godot/sample.png`). Needs Godot, a built server,
-Harness and `tic-tac-toe` (`npm run build`). Neither runs in CI; `npm run check` only tests that
+Harness and `caro` (`npm run build`). Neither runs in CI; `npm run check` only tests that
 the addon's Bridge version and message types match `packages/bridge`. CI does install Godot
 (`npm run setup:godot`, cached) so that Tiến Lên's build exports its client, and `npm run e2e`
 plays it through the Hub: `npm run e2e -- tien-len` taps the Godot canvas (its layout is
@@ -165,6 +169,7 @@ games/<id>/          src/index.ts is required, unless server/index.ts exists (ne
   client/              New platform: the client bundle's source (Caro: Vite, index.html at its root)
   godot/               New platform, Godot client instead of client/: the Godot project (above)
   hub/key-art.png      New platform: the Hub's art for the Game (below); optional hub/loop.mp4
+  hub/emblem.svg       The Game's Emblem: one colour, currentColor (below)
   hub/rules/<name>.webp  Optional illustration of one rules page (below)
   assets/              Full-size images/sounds, atlases and normals
   sources/             Optional originals (Git LFS) + prompts.json (see assets/AGENTS.md)
@@ -188,6 +193,17 @@ hash, and `hub.json` with their `/games/<id>/hub/…` URLs for the Hub to import
 naming the Game, when the manifest breaks the schema or its `id` is not the folder name, when
 `RULES.md` or `hub/key-art.png` is missing, when the art is not a 20:9 PNG of at least
 2560×1152, or when the optional `hub/loop.mp4` (copied to `dist/hub/`) is over 2 MB or 8 s.
+**Island and Emblem.** The manifest's `island` is the Game's Island, one of `ISLANDS` in
+`packages/sdk/src/manifest.ts` (`co`, `bai`, `xuc-xac`, `nao-nhiet`); the Hub's names and order
+for them are in `apps/hub/src/islands.ts`. `hub/emblem.svg` is a hand-written SVG with a `viewBox`
+that paints only with `currentColor` (or `none`): the Hub inlines and tints it. `hub-assets` fails
+the build when it is missing, over 16 KB, has another colour or a `<script>`, `<style>`, `<image>`
+or `<foreignObject>`; `tools/hub-assets/src/emblem.ts` is the check.
+**Soon Games.** A Game not made yet has only `manifest.ts`, with `status: 'soon'`, `id`, `name`,
+`tagline` and `island` (a `SoonManifest`), and `hub/emblem.svg`: no `package.json`, so it is no
+workspace and the build, the server and the Hub's game list skip it. `npm run test -w
+@xomdao/hub-assets` checks every Game's manifest and Emblem, and that a soon Game has nothing
+else. Making it a real Game means adding the rest of this folder and dropping `soon`.
 **Rules pager.** The Hub draws `RULES.md` as pages: the text under `#` is the first page and each
 `##` another, named by its heading (a file with no `##` is one scrolling page). A page holds
 paragraphs, `-` lists and tables, with `**bold**`, `*italic*` and `` `code` ``; at most 8 pages and
@@ -196,8 +212,8 @@ paragraphs, `-` lists and tables, with `**bold**`, `*italic*` and `` `code` ``; 
 over the same limits, a missing or misnamed image, and writes the pages into `hub.json` (`rules`).
 `tools/hub-assets/src/rules.ts` is the parser.
 
-The art is a render from the Game's scene (code or Blender, no AI-made images) with the subject
-in the right 60%: the Hub darkens the left for the Game's name. It checks nothing about looks.
+The art is splash art made with `agy` from the frame prompt in `assets/sources/splash-prompts.md`
+(`assets/AGENTS.md`; today's files are still code renders), with the subject in the right 60%: the Hub darkens the left for the Game's name. It checks nothing about looks.
 
 A Realtime client sends each input as `send('input', { seq, input })` (`seq` counts up per
 player, also across reconnects: continue from the snapshot's `ack`), reads `tick`, `view` and
@@ -273,7 +289,8 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
 ## Mechanics worth knowing
 
 - **Seats never change during a game.** A leaver stays in `ctx.players` with `left: true`. Without
-  `onLeave`, one player leaving stops the game for everyone.
+  `onLeave`, one player leaving stops the game for everyone, unless `bot` plays their seat;
+  `onLeave` comes first when a game has both (Caro ends the Match there).
 - **Rewards**: `ctx.reward(playerId, 'core:coin', amount)` when the game ends (Caro, Tiến Lên
   pay `WIN_COINS` from `model.ts`). Declare the most one player can win in `meta.rewardCap`; the
   server refuses more, pays once per game and skips bots. `testGame` shows them in
@@ -291,6 +308,10 @@ Whatever engine a game uses, its folder is an npm workspace that Turborepo drive
   - `room.options` is a zod schema, and `optionsSchema.parse({})` must work.
   - The `Game` reads them as `ctx.options`; the table gets them in the snapshot's `options`.
   - `room.bots` seats computer players, whose moves come from `bot(ctx)`.
+  - New platform: the optional `botDelay(ctx)` (same context as `bot`) returns the ms the computer
+    thinks before each move, e.g. `600 + Math.floor(ctx.rng() * 600)`. The server waits that long,
+    then plays it, and drops the wait when the Match ends or its state changes. Without it the
+    move is played at once. `testGame(...).botDelay(player)` returns it.
   - `room.withBots(options, count)` gives the options with the computer in `count` empty seats:
     quick match (CHƠI) fills a room with it when nobody else comes (`QUICK_WAIT_MS`).
   - The host may replace them between games with `room:options` (the hub has no board for it

@@ -141,6 +141,7 @@ const manifest = defineManifest({
   duration: { min: 1, max: 5 },
   status: 'wip',
   bots: true,
+  island: 'co',
   focus: { x: 50, y: 50 },
   options: {
     rounds: {
@@ -267,6 +268,25 @@ describe('the rest of a Match', () => {
     expect(game.bot('bot:1')).toBeNull();
     game.send('a', 'guess', { n: -1 });
     expect(game.bot('bot:1')).toEqual({ event: 'guess', payload: { n: 0 } });
+  });
+
+  it('lets the computer play at once unless the game declares a think time', () => {
+    expect(guess(['a', 'bot:1'], undefined, ['bot:1']).botDelay('bot:1')).toBe(0);
+
+    class SlowGuess extends GuessGame {
+      botDelay(ctx: BotContext<Hidden, Options>) {
+        return ctx.state.turn === 0 ? 600 + Math.floor(ctx.rng() * 600) : -1;
+      }
+    }
+    const game = testGame(new SlowGuess(), ['a', 'bot:1'], {
+      options: optionsSchema(manifest).parse({}),
+      bots: ['bot:1'],
+    });
+    const ms = game.botDelay('bot:1');
+    expect(ms).toBeGreaterThanOrEqual(600);
+    expect(ms).toBeLessThan(1200);
+    game.send('a', 'guess', { n: -1 });
+    expect(() => game.botDelay('bot:1')).toThrow('botDelay: -1');
   });
 
   it('carries the counted stats and the previous result into the next Match', () => {

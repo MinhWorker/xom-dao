@@ -2,7 +2,7 @@ import { IconDots, IconSettings, IconUsers } from '@tabler/icons-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { GAMES, type HubGame } from '../../games.js';
-import { Button, Chip, Dialog, Icon, Menu, TextField } from '../../kit/index.js';
+import { Button, Chip, Dialog, Icon, Loop, Menu, TextField } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
 import { prefersReducedMotion, transitionsAllowed, useGraphics } from '../../settings/graphics.js';
@@ -125,17 +125,19 @@ export function Lobby() {
         <span className={styles.tools}>
           <button
             type="button"
-            className={`${styles.tool} ${styles.friends}`}
+            className={`${styles.tool} ${styles.friends} glass`}
             aria-label={requests > 0 ? `Bạn bè, ${requests} lời mời` : 'Bạn bè'}
             onClick={() => setFriendsOpen(true)}
           >
-            <Icon icon={IconUsers} />
+            <Loop kind="bob" active={requests > 0}>
+              <Icon icon={IconUsers} />
+            </Loop>
             {requests > 0 && <span className={styles.badge}>{requests}</span>}
           </button>
           <SoundToggle />
           <button
             type="button"
-            className={styles.tool}
+            className={`${styles.tool} glass`}
             aria-label="Cài đặt"
             onClick={() => setSettingsOpen(true)}
           >
@@ -185,7 +187,12 @@ export function Lobby() {
           />
           <div className={styles.actions}>
             <Button onClick={() => setJoinOpen(true)}>Vào phòng</Button>
-            <Button variant="primary" disabled={busy || off} onClick={() => void create(game)}>
+            <Button
+              variant="primary"
+              forward
+              disabled={busy || off}
+              onClick={() => void create(game)}
+            >
               Tạo phòng
             </Button>
           </div>

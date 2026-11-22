@@ -4,14 +4,18 @@ import { FullscreenToggle } from '../../display/FullscreenToggle.js';
 import { enterFullscreen, exitFullscreen } from '../../display/fullscreen.js';
 import { gameById } from '../../games.js';
 import { Button, Dialog, Menu, toast } from '../../kit/index.js';
+import { toasts } from '../../kit/toasts.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate, router } from '../../router.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
 import { InviteSheet } from '../friends/InviteSheet.js';
+import { homeward } from '../homeward/homeward.js';
 import { focusPosition } from '../lobby/summary.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import screen from '../Screen.module.css';
 import { GameFrame } from './GameFrame.js';
+import { type Table, tableNotices } from './notices.js';
+import { Peek } from './Peek.js';
 import { PlayerSlot } from './PlayerSlot.js';
 import { Results } from './Results.js';
 import styles from './Room.module.css';
@@ -35,6 +39,7 @@ export function Room({ code }: { code: string }) {
   const [leaving, setLeaving] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [peeking, setPeeking] = useState(false);
 
   const here = room?.code === code ? room : null;
   const game = here ? gameById(here.gameId) : undefined;
@@ -62,8 +67,11 @@ export function Room({ code }: { code: string }) {
   }, [playing]);
 
   useEffect(() => {
-    if (!playing) return;
-    const unblock = router?.block();
+    if (!playing) {
+      setLeaving(false);
+      return;
+    }
+    const unblock = router?.block(() => setLeaving(true));
     const onUnload = (e: BeforeUnloadEvent) => e.preventDefault();
     addEventListener('beforeunload', onUnload);
     return () => {
@@ -71,6 +79,36 @@ export function Room({ code }: { code: string }) {
       removeEventListener('beforeunload', onUnload);
     };
   }, [playing]);
+
+  const roster = useRef({ matchId: '', names: new Map<string, string>() });
+  if (match && roster.current.matchId !== match.matchId) {
+    roster.current = { matchId: match.matchId, names: new Map() };
+  }
+  for (const seat of here?.seats ?? []) if (seat) roster.current.names.set(seat.id, seat.name);
+
+  const table = useRef<Table | null>(null);
+  /** The toast on screen about each of the others: a newer notice replaces it. */
+  const toasted = useRef(new Map<string, number>());
+  useEffect(() => {
+    if (!here || !user || !frameOpen) {
+      table.current = null;
+      return;
+    }
+    const now: Table = {
+      seats: here.seats,
+      playing: here.status === 'playing',
+      matchId: match?.matchId ?? null,
+      disconnected: match?.disconnectedPlayerIds ?? [],
+    };
+    const before = table.current;
+    table.current = now;
+    if (!before) return;
+    for (const { player, message, tone } of tableNotices(before, now, user.id)) {
+      const shown = toasted.current.get(player);
+      if (shown !== undefined) toasts.dismiss(shown);
+      toasted.current.set(player, toast(message, tone));
+    }
+  }, [here, user, match, frameOpen]);
 
   const over = match?.status === 'over' ? match : null;
   const [fallback, setFallback] = useState<string | null>(null);
@@ -96,6 +134,7 @@ export function Room({ code }: { code: string }) {
 
   const leave = () =>
     run(async () => {
+      if (frameOpen) return homeward.run(() => hub.leaveRoom());
       await hub.leaveRoom();
       navigate('/', { force: true });
     });
@@ -131,7 +170,7 @@ export function Room({ code }: { code: string }) {
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(`${location.origin}/room/${here.code}`);
-      toast('Đã chép liên kết phòng');
+      toast('Đã chép liên kết phòng', 'success');
     } catch {
       toast(`Mã phòng ${here.code}`);
     }
@@ -207,6 +246,7 @@ export function Room({ code }: { code: string }) {
         {isHost ? (
           <Button
             variant="primary"
+            forward
             className={styles.start}
             disabled={busy || !game || seated < minPlayers}
             onClick={() => void start()}
@@ -232,29 +272,33 @@ export function Room({ code }: { code: string }) {
       </aside>
 
       {frameOpen && game && (
-        <div className={styles.play}>
+        <div className={styles.play} data-peek={(showResults && peeking) || undefined}>
           <GameFrame gameId={game.manifest.id} gameName={name} onDone={setDoneFor} />
           <div className={styles.corner}>
-            <FullscreenToggle />
-            <SoundToggle />
-            <Menu
-              label="Menu ván"
-              trigger={<IconMenu2 stroke={2} aria-hidden />}
-              items={[
-                ...(game.rules.length > 0
-                  ? [{ label: 'Luật chơi', onSelect: () => setRulesOpen(true) }]
-                  : []),
-                {
-                  label: playing ? 'Rời ván' : 'Về phòng chờ',
-                  danger: playing,
-                  onSelect: () => (playing ? setLeaving(true) : setFrameOpen(false)),
-                },
-              ]}
-            />
+            {showResults && <Peek onPeek={setPeeking} />}
+            <div className={styles.tools} data-hud>
+              <FullscreenToggle />
+              <SoundToggle />
+              <Menu
+                label="Menu ván"
+                trigger={<IconMenu2 stroke={2} aria-hidden />}
+                items={[
+                  ...(game.rules.length > 0
+                    ? [{ label: 'Luật chơi', onSelect: () => setRulesOpen(true) }]
+                    : []),
+                  {
+                    label: playing ? 'Rời ván' : 'Về phòng chờ',
+                    danger: playing,
+                    onSelect: () => (playing ? setLeaving(true) : setFrameOpen(false)),
+                  },
+                ]}
+              />
+            </div>
           </div>
           {showResults && (
             <Results
               room={here}
+              names={roster.current.names}
               result={
                 over?.outcome === 'settled'
                   ? (over.result?.seats ?? (notice?.matchId === over.matchId ? notice.seats : null))
@@ -262,6 +306,7 @@ export function Room({ code }: { code: string }) {
               }
               me={user.id}
               busy={busy}
+              canReplay={!!game && seated >= minPlayers}
               onReplay={() => void start()}
               onBack={() => setFrameOpen(false)}
             />
@@ -281,6 +326,8 @@ export function Room({ code }: { code: string }) {
       <Dialog
         open={leaving}
         onClose={() => setLeaving(false)}
+        look="band"
+        kicker="Xác nhận"
         title="Rời ván?"
         actions={
           <>

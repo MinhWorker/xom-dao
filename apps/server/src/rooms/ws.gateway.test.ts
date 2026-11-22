@@ -21,7 +21,7 @@ import { GAME_SERVERS } from '../game-host/games.js';
 import { GAME_MANIFESTS } from './manifests.js';
 
 const caro = defineManifest({
-  id: 'tic-tac-toe',
+  id: 'caro',
   name: 'Caro',
   tagline: 'Năm quân liền hàng.',
   minPlayers: 2,
@@ -29,6 +29,7 @@ const caro = defineManifest({
   duration: { min: 5, max: 15 },
   status: 'wip',
   bots: true,
+  island: 'co',
   focus: { x: 50, y: 50 },
 });
 
@@ -106,7 +107,7 @@ describe('WebSocket transport', () => {
     const response = await fetch(`${httpUrl}/api/games`);
 
     expect(response.ok).toBe(true);
-    expect(await response.json()).toEqual(['tic-tac-toe']);
+    expect(await response.json()).toEqual(['caro']);
   });
 
   it('refuses another protocol and requests before logging in', async () => {
@@ -137,7 +138,7 @@ describe('WebSocket transport', () => {
     });
 
     const created = await lan.request('room:create', {
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       version: CARO_VERSION,
     });
     const code = created.roomCode as string;
@@ -166,7 +167,7 @@ describe('WebSocket transport', () => {
       minh.pushed
         .filter((message) => message.event === 'match:state')
         .map((message) => (message.data as { status: string }).status),
-    ).toEqual(['loading', 'playing']);
+    ).toEqual(['loading', 'loading', 'playing']);
     expect(
       (
         minh.pushed.filter((message) => message.event === 'match:state').at(-1)?.data as {
@@ -182,7 +183,14 @@ describe('WebSocket transport', () => {
       minh.pushed
         .filter((message) => message.event === 'match:state')
         .map((message) => (message.data as { status: string }).status),
-    ).toEqual(['loading', 'playing', 'over']);
+    ).toEqual(['loading', 'loading', 'playing', 'playing', 'over']);
+    expect(
+      (
+        minh.pushed.filter((message) => message.event === 'match:state').at(-2)?.data as {
+          view: unknown;
+        }
+      )?.view,
+    ).toEqual({ turn: 0 });
     expect(
       (
         minh.pushed.filter((message) => message.event === 'match:state').at(-1)?.data as {
@@ -259,7 +267,7 @@ describe('WebSocket transport', () => {
     await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
 
     const created = await lan.request('room:create', {
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       version: CARO_VERSION,
     });
     const code = created.roomCode as string;
@@ -277,7 +285,8 @@ describe('WebSocket transport', () => {
     const states = minh.pushed
       .filter((message) => message.event === 'match:state')
       .map((message) => message.data as { status: string; outcome?: string });
-    expect(states.map(({ status }) => status)).toEqual(['loading', 'playing', 'over']);
+    expect(states.map(({ status }) => status)).toEqual(['loading', 'loading', 'playing', 'over']);
+    expect(states[1]).toMatchObject({ readyPlayerIds: [expect.any(String)] });
     expect(states.at(-1)).toMatchObject({ status: 'over', outcome: 'aborted' });
     expect(minh.states().at(-1)).toMatchObject({ code, status: 'waiting', matchId: null });
 
@@ -295,7 +304,7 @@ describe('WebSocket transport', () => {
     await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
 
     const created = await lan.request('room:create', {
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       version: CARO_VERSION,
     });
     await minh.request('room:join', { roomCode: created.roomCode as string });
@@ -339,12 +348,12 @@ describe('WebSocket transport', () => {
     await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
     await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
 
-    expect(await lan.request('room:create', { gameId: 'tic-tac-toe', version: 'old' })).toEqual({
+    expect(await lan.request('room:create', { gameId: 'caro', version: 'old' })).toEqual({
       ok: false,
       error: GAME_UPDATING,
     });
     const created = await lan.request('room:create', {
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       version: CARO_VERSION,
     });
     await minh.request('room:join', { roomCode: created.roomCode as string });
@@ -363,13 +372,13 @@ describe('WebSocket transport', () => {
     const lan = await connect();
     await lan.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Lan' });
 
-    await games.disable('tic-tac-toe');
+    await games.disable('caro');
     const listed = await (await fetch(`${httpUrl}/api/games`)).json();
     const refused = await lan.request('room:create', {
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       version: CARO_VERSION,
     });
-    await games.enable('tic-tac-toe');
+    await games.enable('caro');
     lan.ws.close();
 
     expect(listed).toEqual([]);
@@ -383,7 +392,7 @@ describe('WebSocket transport', () => {
     await minh.request('auth:guest', { protocol: PROTOCOL_VERSION, name: 'Minh' });
     const lanId = (account.user as { id: string }).id;
     const created = await lan.request('room:create', {
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       version: CARO_VERSION,
     });
     await minh.request('room:join', { roomCode: created.roomCode as string });
@@ -457,7 +466,7 @@ describe('Bạn bè over the socket', () => {
       ok: false,
       error: 'Bạn chưa ở trong phòng nào',
     });
-    const room = await lan.request('room:create', { gameId: 'tic-tac-toe', version: CARO_VERSION });
+    const room = await lan.request('room:create', { gameId: 'caro', version: CARO_VERSION });
     expect(await lan.request('friends:invite', { userId: minhUser.id })).toEqual({ ok: true });
     await settle();
     const invite = minh.pushed.find((m) => m.event === 'room:invite');
@@ -466,7 +475,7 @@ describe('Bạn bè over the socket', () => {
     await new Promise((r) => setTimeout(r, 400));
     const moved = minh.pushed.filter((m) => m.event === 'friends:changed').at(-1);
     expect(moved?.data).toMatchObject({
-      friends: [{ id: lanUser.id, gameId: 'tic-tac-toe', roomCode: room.roomCode }],
+      friends: [{ id: lanUser.id, gameId: 'caro', roomCode: room.roomCode }],
     });
     lan.ws.close();
     minh.ws.close();

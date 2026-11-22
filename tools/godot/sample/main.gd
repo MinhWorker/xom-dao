@@ -1,5 +1,5 @@
 extends Control
-## A Godot client of Caro (`games/tic-tac-toe`): the sample Game scene for the Bridge addon. It
+## A Godot client of Caro (`games/caro`): the sample Game scene for the Bridge addon. It
 ## draws the Match from `init` and `match:state`, sends `place` on a tap and reports `done`.
 ## `--autoplay` (after `--`) makes it mark cells itself, for `tools/godot/verify.mjs`.
 

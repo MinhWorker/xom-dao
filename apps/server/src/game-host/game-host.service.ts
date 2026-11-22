@@ -60,6 +60,8 @@ interface ActiveMatch {
   gameTimerId?: number;
   gameTimerDeadline?: number;
   botTurn?: NodeJS.Immediate;
+  /** The computer's move waiting out the Game's `botDelay`. */
+  botWait?: NodeJS.Timeout;
   rules?: GameRuntime;
   stored?: Stored<unknown, unknown>;
   /** A Realtime Match runs these instead of `rules` and `stored`. */
@@ -97,6 +99,7 @@ interface GameRuntime {
   fireTimer(stored: Stored<unknown, unknown>, rng: Rng): Stored<unknown, unknown>;
   leave?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): Stored<unknown, unknown>;
   bot?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): GameEvent | null;
+  botDelay?(stored: Stored<unknown, unknown>, playerId: string, rng: Rng): number;
   view(stored: Stored<unknown, unknown>, playerId: string): unknown;
   result(stored: Stored<unknown, unknown>): MatchResult | null;
 }
@@ -241,8 +244,10 @@ export class GameHostService implements OnModuleDestroy {
       return this.snapshot(match);
     }
 
+    if (match.readyPlayerIds.has(playerId)) return this.snapshot(match);
     match.readyPlayerIds.add(playerId);
-    if (this.allReady(match)) {
+    if (!this.allReady(match)) this.publish(match);
+    else {
       const server = this.server(match.start.gameId);
       if (!server) throw new Error(`Game server unloaded during Match: ${match.start.gameId}`);
       this.startPlaying(match, server);
@@ -388,8 +393,8 @@ export class GameHostService implements OnModuleDestroy {
   }
 
   /**
-   * The player is out of the Match. The computer plays their seat when the Game has one, else
-   * the Game's leave hook runs; without either, or with no person left, the Match is aborted.
+   * The player is out of the Match. The Game's leave hook runs when it has one, else the computer
+   * plays their seat; without either, or with no person left, the Match is aborted.
    */
   private forfeit(match: ActiveMatch, playerId: string) {
     if (match.status !== 'playing' || match.forfeited.has(playerId)) return;
@@ -402,12 +407,12 @@ export class GameHostService implements OnModuleDestroy {
       return;
     }
     if (match.realtime && match.realtimeStored && rng) {
-      if (match.realtime.bot) return;
+      if (match.realtime.bot && !match.realtime.leave) return;
       this.forfeitRealtime(match, match.realtime, match.realtimeStored, playerId, rng);
       return;
     }
     if (!rules || !stored || !rng) return;
-    if (rules.bot) {
+    if (rules.bot && !rules.leave) {
       this.scheduleBotTurn(match);
       return;
     }
@@ -551,13 +556,16 @@ export class GameHostService implements OnModuleDestroy {
     const { rules, stored } = match;
     if (!rules || !stored) throw new Error('Match has no Game state');
     const result = rules.result(stored);
+    this.refreshViews(match);
     if (result) {
+      this.publish(match);
       this.end(match, 'settled', result);
       return;
     }
-    this.refreshViews(match);
     this.scheduleGameTimer(match);
     this.publish(match);
+    clearTimeout(match.botWait);
+    match.botWait = undefined;
     this.scheduleBotTurn(match);
   }
 
@@ -618,7 +626,7 @@ export class GameHostService implements OnModuleDestroy {
       match.inputs.clear();
       if (realtime.bot) {
         for (const { id, bot } of match.start.players) {
-          if (!bot && !match.forfeited.has(id)) continue;
+          if (!bot && (realtime.leave || !match.forfeited.has(id))) continue;
           const move = realtime.bot(stored, id, rng);
           if (move) stored = realtime.applyInput(stored, id, move, rng);
         }
@@ -684,18 +692,32 @@ export class GameHostService implements OnModuleDestroy {
   }
 
   private scheduleBotTurn(match: ActiveMatch) {
-    if (match.botTurn || match.status !== 'playing' || !match.rules?.bot) return;
+    if (match.botTurn || match.botWait || match.status !== 'playing' || !match.rules?.bot) return;
     match.botTurn = setImmediate(() => {
       match.botTurn = undefined;
-      if (match.status !== 'playing' || !match.rules?.bot || !match.stored || !match.rng) return;
+      const { rules, stored, rng } = match;
+      if (match.status !== 'playing' || !rules?.bot || !stored || !rng) return;
       try {
         for (const player of match.start.players) {
-          if (!player.bot && !match.forfeited.has(player.id)) continue;
-          const move = match.rules.bot(match.stored, player.id, match.rng);
-          if (move) {
+          if (!player.bot && (rules.leave || !match.forfeited.has(player.id))) continue;
+          const move = rules.bot(stored, player.id, rng);
+          if (!move) continue;
+          const ms = rules.botDelay?.(stored, player.id, rng) ?? 0;
+          if (ms <= 0) {
             this.applyMove(match, player.id, move, true);
             return;
           }
+          match.botWait = setTimeout(() => {
+            match.botWait = undefined;
+            if (match.status !== 'playing' || match.stored !== stored) return;
+            try {
+              this.applyMove(match, player.id, move, true);
+            } catch (error) {
+              this.abort(match, error);
+            }
+          }, ms);
+          match.botWait.unref();
+          return;
         }
       } catch (error) {
         this.abort(match, error);
@@ -716,6 +738,7 @@ export class GameHostService implements OnModuleDestroy {
     clearTimeout(match.gameTimer);
     clearTimeout(match.tickTimer);
     clearImmediate(match.botTurn);
+    clearTimeout(match.botWait);
     for (const hold of match.holds.values()) clearTimeout(hold);
     match.holds.clear();
     match.timer = undefined;
@@ -726,6 +749,7 @@ export class GameHostService implements OnModuleDestroy {
     match.gameTimerDeadline = undefined;
     match.tickTimer = undefined;
     match.botTurn = undefined;
+    match.botWait = undefined;
   }
 
   private refreshViews(match: ActiveMatch) {
@@ -760,6 +784,7 @@ export class GameHostService implements OnModuleDestroy {
       gameId: match.start.gameId,
       status: match.status,
       disconnectedPlayerIds: [...match.disconnectedPlayerIds],
+      readyPlayerIds: [...match.readyPlayerIds],
       timer: this.timerSnapshot(match),
       ...(match.sync && { tick: match.sync.tick }),
     };
@@ -821,7 +846,7 @@ function timed<T>(gameId: string, hook: string, fn: () => T): T {
 function createRuntime(server: AnyGameServer, gameId: string): GameRuntime {
   const game = server.game as unknown as Game<unknown, unknown, unknown>;
   const rules = turnRules(game);
-  const { leave, bot } = rules;
+  const { leave, bot, botDelay } = rules;
   return {
     setup: (start, rng) => timed(gameId, 'setup', () => rules.setup(start, rng)),
     validateMove: (stored, move, playerId) =>
@@ -837,6 +862,9 @@ function createRuntime(server: AnyGameServer, gameId: string): GameRuntime {
       leave &&
       ((stored, playerId, rng) => timed(gameId, 'leave', () => leave(stored, playerId, rng))),
     bot: bot && ((stored, playerId, rng) => timed(gameId, 'bot', () => bot(stored, playerId, rng))),
+    botDelay:
+      botDelay &&
+      ((stored, playerId, rng) => timed(gameId, 'botDelay', () => botDelay(stored, playerId, rng))),
     view: (stored, playerId) => timed(gameId, 'view', () => rules.view(stored, playerId)),
     result: (stored) => timed(gameId, 'result', () => rules.result(stored)),
   };

@@ -1,7 +1,11 @@
 # Art and audio (the app's and the games')
 
-- Any way of making art or sound is fine: Codex, drawn by people, rendered in Blender, drawn or
-  synthesized in code, or free resources from the web.
+- Make art and sound by hand, in Blender, drawn or synthesized in code, or from free resources on
+  the web.
+- **AI image generation is for splash art only**: the 20:9 Sea chart backgrounds (each Game's
+  `hub/key-art.png` and the Islands' art). Make them with `agy` (Antigravity CLI) from the frame
+  prompt in `assets/sources/splash-prompts.md`, changing only the subject and `focus`. Emblems
+  stay hand-written SVG; in-Game art stays code or Blender. Older AI-made files are legacy.
 - Pick what looks and sounds best for a card/board game in the app's style.
 - Keep a third-party license file next to assets whose license requires one.
 - Use only free, clearly allowed assets, and never sell anything.
@@ -30,6 +34,9 @@
     `node scripts/avatars.mjs emoji <dir>` makes the animal avatars from Microsoft's Fluent Emoji 3D
     (MIT, notice in `assets/app/images/LICENSE-FluentEmoji.txt`). Add avatar ids to `AVATARS` and the generation script;
     add frame ids to `FRAMES` in `account.ts` and the script's `FRAMES` map.
+
+- **The hand cursor** (`cursor-hand.png`, `cursor-hand@2x.png`) is drawn as faceted SVG polygons in
+  `scripts/cursor.mjs`; `node scripts/cursor.mjs` writes both. Its hotspot is (7, 2).
 
 ## Sounds
 

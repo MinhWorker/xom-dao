@@ -23,7 +23,7 @@ const lan = {
 
 const roomState = {
   code: 'ABCD',
-  gameId: 'tic-tac-toe',
+  gameId: 'caro',
   hostId: 'u1',
   seats: [{ id: 'u1', name: 'Minh', connected: true }, null],
   options: {},
@@ -201,8 +201,8 @@ describe('store', () => {
 
   it('lists the Game ids the server runs, or null when it cannot tell', async () => {
     const store = createStore(deps);
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(['tic-tac-toe'])));
-    await expect(store.gameIds()).resolves.toEqual(['tic-tac-toe']);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(['caro'])));
+    await expect(store.gameIds()).resolves.toEqual(['caro']);
     expect(fetchMock).toHaveBeenLastCalledWith('http://srv/api/games');
     fetchMock.mockRejectedValueOnce(new Error('down'));
     await expect(store.gameIds()).resolves.toBeNull();
@@ -222,7 +222,7 @@ describe('store', () => {
     lastSocket().push('match:state', {
       roomCode: 'ABCD',
       matchId: 'm1',
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       status: 'playing',
       disconnectedPlayerIds: [],
       timer: null,
@@ -232,12 +232,12 @@ describe('store', () => {
     lastSocket().push('match:result', {
       roomCode: 'ABCD',
       matchId: 'm1',
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       seats: [{ player: 'u1', place: 1 }],
     });
     expect(store.getState().result?.seats[0]?.place).toBe(1);
 
-    lastSocket().push('room:closed', { gameId: 'tic-tac-toe', reason: 'Phòng đã giải tán' });
+    lastSocket().push('room:closed', { gameId: 'caro', reason: 'Phòng đã giải tán' });
     expect(store.getState()).toMatchObject({
       room: null,
       match: null,
@@ -248,7 +248,7 @@ describe('store', () => {
 
   it('forgets why the last Room closed once we ask for another', async () => {
     const store = await online();
-    lastSocket().push('room:closed', { gameId: 'tic-tac-toe', reason: 'Phòng đã giải tán' });
+    lastSocket().push('room:closed', { gameId: 'caro', reason: 'Phòng đã giải tán' });
     void store.request('room:join', { roomCode: 'WXYZ' }).catch(() => {});
     expect(store.getState().closed).toBeNull();
   });
@@ -258,13 +258,13 @@ describe('store', () => {
     lastSocket().push('match:result', {
       roomCode: 'ABCD',
       matchId: 'm1',
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       seats: [],
     });
     lastSocket().push('match:state', {
       roomCode: 'ABCD',
       matchId: 'm2',
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
       status: 'loading',
       disconnectedPlayerIds: [],
       timer: null,
@@ -274,7 +274,7 @@ describe('store', () => {
 
   it('resolves a request with its reply and rejects with the server error', async () => {
     const store = await online();
-    const created = store.request('room:create', { gameId: 'tic-tac-toe', version: 'v1' });
+    const created = store.request('room:create', { gameId: 'caro', version: 'v1' });
     lastSocket().reply('room:create', { ok: true, roomCode: 'ABCD', playerId: 'u1' });
     await expect(created).resolves.toEqual({ roomCode: 'ABCD', playerId: 'u1' });
 
@@ -357,7 +357,7 @@ describe('store', () => {
       avatar: 'girl',
       frame: 'gold',
       roomCode: 'WXYZ',
-      gameId: 'tic-tac-toe',
+      gameId: 'caro',
     };
     lastSocket().push('room:invite', invite);
     expect(store.getState().invite).toMatchObject({ roomCode: 'WXYZ' });

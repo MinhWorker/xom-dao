@@ -21,7 +21,6 @@
   padding: var(--space-1);
   border: 1px solid var(--line-strong);
   border-left: 3px solid var(--accent);
-  background: var(--bg-raised);
   color: var(--text);
 }
 

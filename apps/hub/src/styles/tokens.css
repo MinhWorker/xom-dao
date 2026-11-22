@@ -17,11 +17,11 @@
   --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Roboto Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  --text-sm: clamp(14px, calc(1.6 * var(--vmin)) + 8px, 15px);
-  --text-md: clamp(15px, calc(2 * var(--vmin)) + 8px, 17px);
+  --text-sm: 16px;
+  --text-md: clamp(16px, calc(2.4 * var(--vmin)) + 8px, 19px);
   --text-lg: clamp(20px, calc(3 * var(--vmin)) + 10px, 28px);
   --text-xl: clamp(28px, calc(6 * var(--vmin)) + 8px, 48px);
-  --label: clamp(11px, calc(1 * var(--vmin)) + 8px, 12px);
+  --label: clamp(14px, calc(1 * var(--vmin)) + 10px, 15px);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -31,8 +31,14 @@
   --space-6: 32px;
 
   --cut: 12px;
-  --tap: 40px;
-  --tap-main: 48px;
+  --tap: 48px;
+  --tap-main: 56px;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Frosted glass, and the solid panel it falls back to. */
+  --glass: rgb(20 23 28 / 0.5);
+  --glass-solid: var(--bg-raised);
+  --glass-edge: rgb(255 255 255 / 0.12);
 
   /* Set by `applyGraphics`: the HUD scale (1 = 100%) and the extra margin around the screen. */
   --hud-scale: 1;
@@ -50,13 +56,8 @@
   --safe-left: calc((env(safe-area-inset-left, 0px) + var(--margin)) / var(--hud-scale));
   /* What is left of the screen's height inside those margins. */
   --view-h: calc(100 * var(--dvh) - var(--safe-top) - var(--safe-bottom));
-}
-
-@media (pointer: coarse) {
-  :root {
-    --tap: 44px;
-    --tap-main: 56px;
-  }
+  /* The top HUD row, left clear by toasts and the rules pager. */
+  --band: calc(var(--safe-top) + var(--space-3) + var(--tap) + var(--space-2));
 }
 
 /** A panel or button with its bottom-right corner cut off. */
@@ -68,4 +69,46 @@
     calc(100% - var(--cut)) 100%,
     0 100%
   );
+}
+
+/**
+ * Frosted glass; a solid panel where the browser has no backdrop-filter or under
+ * `data-graphics="low"` (set on `<html>` by `applyGraphics`, or on a `/dev/kit` frame).
+ */
+.glass {
+  background: var(--glass-solid);
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .glass {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.06), transparent 40%), var(--glass);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+
+  [data-graphics="low"] .glass {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Looping motion (anything marked `data-loop`) stops on the low level and when the OS asks for less motion.
+   It must beat each component's own animation rule, hence the !important. */
+[data-graphics="low"] [data-loop],
+[data-graphics="low"] [data-loop]::before,
+[data-graphics="low"] [data-loop]::after,
+[data-reduce] [data-loop],
+[data-reduce] [data-loop]::before,
+[data-reduce] [data-loop]::after {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-loop],
+  [data-loop]::before,
+  [data-loop]::after {
+    animation: none !important;
+  }
 }

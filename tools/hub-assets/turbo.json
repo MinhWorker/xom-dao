@@ -1,0 +1,15 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/games/*/manifest.ts",
+        "$TURBO_ROOT$/games/*/RULES.md",
+        "$TURBO_ROOT$/games/*/hub/emblem.svg",
+        "$TURBO_ROOT$/apps/hub/src/emblems/*.svg"
+      ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="xuc-xac-die"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM32 -0.31L49.16 9.6V29.4L32 39.31L14.84 29.4V9.6Z"/></clipPath>
+    <clipPath id="xuc-xac-foot"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM21 54a11 4.6 0 1 0 22 0a11 4.6 0 1 0-22 0Z"/></clipPath>
+    <clipPath id="xuc-xac-tip"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM21 54H43V66H21Z"/></clipPath>
+  </defs>
+  <g clip-path="url(#xuc-xac-die)"><g clip-path="url(#xuc-xac-tip)"><path fill="none" stroke="currentColor" stroke-width="2" clip-path="url(#xuc-xac-foot)" d="M32 3L57.11 17.5V46.5L32 61L6.89 46.5V17.5Z"/></g></g>
+  <path fill="currentColor" fill-rule="evenodd" d="M17.83 10.18L32 2L46.17 10.18L32 18.36ZM25.5 10.2a6.5 3.7 0 1 0 13 0a6.5 3.7 0 1 0-13 0Z"/>
+  <path fill="currentColor" d="M27.5 10.2q1.125-1 2.25 0t2.25 0t2.25 0t2.25 0A4.5 1.7 0 0 1 27.5 10.2Z"/>
+  <path fill="currentColor" fill-rule="evenodd" transform="matrix(1.5155 0.875 0 1.75 16.84 10.75)" d="M0 .65H9.35V10H0ZM2 3.5a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0ZM5.4 7a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0Z"/>
+  <path fill="currentColor" fill-rule="evenodd" transform="matrix(1.5155 -0.875 0 1.75 32 19.5)" d="M.65 .65H10V10H.65ZM1.9 3a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0ZM4.2 5.3a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0ZM6.5 7.6a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0Z"/>
+  <path fill="currentColor" d="M30.5 38.5H33.5L33 40.5V47.5Q33 50.8 35.5 51.8H28.5Q31 50.8 31 47.5V40.5ZM23 54a9 2.6 0 1 0 18 0a9 2.6 0 1 0-18 0Z"/>
+</svg>

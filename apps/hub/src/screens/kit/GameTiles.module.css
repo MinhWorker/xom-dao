@@ -1,0 +1,232 @@
+/* Game tiles: card games get a three-layer glass card, board games two objects on a shadow. */
+.tile {
+  --px: 0;
+  --py: 0;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: var(--space-3);
+  width: var(--tile-w);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.stage {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--tile-h);
+  perspective: 720px;
+  transition: scale 160ms var(--ease-out);
+}
+
+.tile:active .stage {
+  scale: 0.95;
+  transition-duration: 60ms;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.soon {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  z-index: 2;
+  translate: -50% 0;
+  padding: 2px var(--space-2);
+  white-space: nowrap;
+  background: rgb(11 13 16 / 0.85);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tile[data-locked] .stage {
+  filter: grayscale(0.9) brightness(0.65);
+}
+
+.tile[data-locked] .name {
+  color: var(--text-dim);
+}
+
+/* The card: three layers apart in depth, tilted, each shifted by the pointer by its own depth. */
+.stack {
+  position: absolute;
+  inset: 6% 8%;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(8deg - var(--py) * 8deg)) rotateY(calc(-14deg + var(--px) * 12deg))
+    rotateZ(-5deg);
+  transition: transform 260ms var(--ease-out);
+  animation: float 4.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -1.3s);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+
+.back,
+.middle,
+.front {
+  position: absolute;
+  transition: translate 260ms var(--ease-out);
+}
+
+.back {
+  inset: 0;
+  border: 1.5px solid rgb(255 255 255 / 0.4);
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.22),
+    rgb(255 255 255 / 0.04) 40%,
+    rgb(140 200 255 / 0.1) 70%,
+    rgb(255 255 255 / 0.2)
+  );
+  box-shadow:
+    inset 0 0 0 4px rgb(255 255 255 / 0.06),
+    0 16px 28px rgb(0 0 0 / 0.45);
+  translate: calc(var(--px) * -5px) calc(var(--py) * -5px) -26px;
+}
+
+.middle {
+  --tint: #4a515b;
+  inset: 10% 12% 12% 9%;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgb(11 13 16 / 0.6);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 50% 55%, rgb(255 194 52 / 0.22), transparent 55%),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.03) 0 6px, transparent 6px 12px),
+    linear-gradient(160deg, var(--tint), #23272d);
+  translate: calc(var(--px) * 2px) calc(var(--py) * 2px) 0;
+}
+
+.middle svg {
+  width: 96%;
+  height: auto;
+  filter: drop-shadow(0 4px 4px rgb(0 0 0 / 0.4));
+}
+
+.front {
+  inset: 3% 4% 7% 6%;
+  border: 2px solid rgb(255 255 255 / 0.65);
+  border-radius: 12px;
+  background: linear-gradient(
+    115deg,
+    rgb(255 255 255 / 0.3) 0 10%,
+    transparent 10% 26%,
+    rgb(255 255 255 / 0.12) 26% 32%,
+    transparent 32% 72%,
+    rgb(160 220 255 / 0.16)
+  );
+  box-shadow:
+    inset 2px 2px 0 rgb(255 255 255 / 0.45),
+    inset -3px -3px 0 rgb(255 194 52 / 0.35),
+    inset 4px 0 0 rgb(46 200 230 / 0.25),
+    inset 0 0 0 7px rgb(255 255 255 / 0.07);
+  translate: calc(var(--px) * 9px) calc(var(--py) * 9px) 30px;
+}
+
+/* The pieces: no frame, a soft shadow that shrinks as they rise. */
+.pieces {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  animation: float 4.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -1.3s);
+}
+
+.blockLayer,
+.pieceLayer {
+  transition: translate 260ms var(--ease-out);
+}
+
+.blockLayer {
+  translate: calc(var(--px) * -3px) calc(var(--py) * -2px);
+}
+
+.pieceLayer {
+  translate: calc(var(--px) * 7px) calc(var(--py) * 5px);
+}
+
+.shadow {
+  position: absolute;
+  inset: auto 14% -2% 14%;
+  height: 14%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(0 0 0 / 0.55), transparent);
+  animation: shade 4.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -1.3s);
+}
+
+@keyframes shade {
+  0%,
+  100% {
+    scale: 1;
+    opacity: 1;
+  }
+  50% {
+    scale: 0.88;
+    opacity: 0.7;
+  }
+}
+
+.glow {
+  animation: glow 2.4s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.pieceLayer .glow {
+  filter: drop-shadow(0 0 4px #ffc234);
+}
+
+/* Low graphics, less motion: no floating, no glow pulse; less motion also drops the parallax. */
+[data-graphics="low"] :is(.stack, .pieces, .shadow, .glow),
+[data-reduce] :is(.stack, .pieces, .shadow, .glow) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.stack, .pieces, .shadow, .glow) {
+    animation: none;
+  }
+}
+
+.piece .soon {
+  top: 0;
+}

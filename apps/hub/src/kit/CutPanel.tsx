@@ -7,9 +7,13 @@ export interface CutPanelProps extends HTMLAttributes<HTMLElement> {
   children: ReactNode;
 }
 
+/** A panel of frosted glass with its bottom-right corner cut off. */
 export function CutPanel({ label, children, className, ...rest }: CutPanelProps) {
   return (
-    <section className={[styles.panel, 'cut-br', className].filter(Boolean).join(' ')} {...rest}>
+    <section
+      className={[styles.panel, 'glass', 'cut-br', className].filter(Boolean).join(' ')}
+      {...rest}
+    >
       {label && <span className={styles.label}>{label}</span>}
       {children}
     </section>

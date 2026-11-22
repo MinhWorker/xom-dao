@@ -1,8 +1,7 @@
 .panel {
   --cut: 18px;
   padding: var(--space-4) var(--space-5);
-  background: var(--bg-raised);
-  border-left: 3px solid var(--accent);
+  border-left: 4px solid var(--accent);
 }
 
 .label {

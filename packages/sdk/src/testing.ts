@@ -78,6 +78,10 @@ export function testGame<State, Options, View>(
     bot(player: PlayerId) {
       return rules.bot?.(stored, player, rng) ?? null;
     },
+    /** How many ms the computer would think before its move for `player` (0 = no `botDelay`). */
+    botDelay(player: PlayerId) {
+      return rules.botDelay?.(stored, player, rng) ?? 0;
+    },
     /** What `viewer` sees of a move `player` sent (secret events lose their payload). */
     moveView(player: PlayerId, viewer: PlayerId | null, event: string, payload?: object) {
       return rules.moveView(move(event, payload), player, viewer);

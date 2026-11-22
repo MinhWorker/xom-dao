@@ -31,7 +31,7 @@ function finished(
   matchId = randomUUID(),
 ): FinishedGame {
   return {
-    gameId: 'tic-tac-toe',
+    gameId: 'caro',
     matchId,
     startedAt: 1_000,
     endedAt: 61_000,

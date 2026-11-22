@@ -1,0 +1,1737 @@
+.lab {
+  --glass: rgb(20 23 28 / 0.5);
+  --glass-solid: var(--bg-raised);
+  --glass-edge: rgb(255 255 255 / 0.12);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Phone-first sizes: big targets and type, spacing that grows with the screen's short side. */
+  --tap: 48px;
+  --tap-main: 56px;
+  --text-sm: 16px;
+  --text-md: clamp(16px, calc(2.4 * var(--vmin)) + 8px, 19px);
+  --text-lg: clamp(20px, calc(3 * var(--vmin)) + 10px, 26px);
+  --label: clamp(14px, calc(1 * var(--vmin)) + 10px, 15px);
+  --pad: clamp(12px, calc(4 * var(--vmin)), 22px);
+  --gap: clamp(10px, calc(3 * var(--vmin)), 18px);
+  /* The HUD's band at the top, left clear by the pager and the toasts. */
+  --band: calc(var(--safe-top) + var(--gap) + var(--tap) + 2 * var(--space-1) + var(--space-2));
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 844px;
+  height: 390px;
+  flex: none;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--gap);
+  padding: var(--gap) var(--pad);
+  font-size: var(--text-md);
+  border: 1px dashed var(--line-strong);
+  background: linear-gradient(135deg, #16314a, #0b0d10 60%, #3a2a0b);
+}
+
+/* One hand cursor everywhere on a mouse, buttons and overlays included; hotspot at the fingertip.
+   It beats the kit's own `cursor: pointer` and disabled cursors, hence the !important. */
+@media (hover: hover) and (pointer: fine) {
+  .lab,
+  .lab *,
+  .lab dialog::backdrop {
+    cursor:
+      url("../../../../../assets/app/images/cursor-hand.png") 7 2,
+      auto !important;
+  }
+
+  @supports (
+      cursor:
+        image-set(url("data:,") 1x) 0 0,
+        auto
+    ) {
+    .lab,
+    .lab *,
+    .lab dialog::backdrop {
+      cursor:
+        image-set(
+          url("../../../../../assets/app/images/cursor-hand.png") 1x,
+          url("../../../../../assets/app/images/cursor-hand@2x.png") 2x
+        )
+        7 2,
+        auto !important;
+    }
+  }
+}
+
+.full {
+  width: 100%;
+  height: var(--view-h);
+  border: 0;
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.75);
+}
+
+/* Frosted glass; a solid panel where the browser has no backdrop-filter or the graphics level is low. */
+.glass {
+  background: var(--glass-solid);
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .lab:not([data-graphics="low"]) .glass {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.06), transparent 40%), var(--glass);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+}
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  border-left: 4px solid var(--accent);
+}
+
+.who,
+.money,
+.amount,
+.tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.who {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.who img {
+  width: 44px;
+  height: 44px;
+}
+
+.money {
+  gap: var(--space-5);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tools {
+  gap: var(--space-1);
+}
+
+.tool {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  transition:
+    background 120ms,
+    scale 120ms var(--ease-out);
+}
+
+button.tool {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  button.tool:hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+}
+
+button.tool:active {
+  background: rgb(255 255 255 / 0.14);
+  scale: 0.9;
+  transition-duration: 40ms;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--gap);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.panel {
+  --cut: 18px;
+  display: grid;
+  gap: var(--gap);
+  padding: var(--pad);
+  border-left: 4px solid var(--accent);
+}
+
+.panel:last-child {
+  container-type: inline-size;
+}
+
+.group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.even {
+  flex-wrap: nowrap;
+}
+
+.even > * {
+  flex: 1 0 auto;
+  padding-inline: var(--space-3);
+}
+
+/* Buttons: a sheen crosses on hover, a press sinks and flashes. */
+.lab .alive {
+  position: relative;
+  overflow: hidden;
+  transition:
+    background 120ms,
+    transform 120ms var(--ease-out),
+    filter 120ms;
+}
+
+.lab .alive::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.28), transparent);
+  translate: -150% 0;
+  pointer-events: none;
+}
+
+.lab .alive::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: currentColor;
+  scale: 0 1;
+  transform-origin: left;
+  transition: scale 180ms var(--ease-out);
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .lab .alive:hover:not(:disabled)::after {
+    scale: 1 1;
+  }
+}
+
+.lab .alive:focus-visible::after {
+  scale: 1 1;
+}
+
+.lab .alive:active:not(:disabled) {
+  transform: scale(0.96);
+  filter: brightness(1.25);
+  transition-duration: 40ms;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .lab:not([data-reduce]) .alive:hover:not(:disabled)::before {
+    translate: 350% 0;
+    transition: translate 520ms var(--ease-out);
+  }
+}
+
+/* The main button: chevrons march and a sheen passes now and then. */
+.go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.lab .go::before {
+  animation: sheen 3.6s var(--ease-out) infinite;
+}
+
+@keyframes sheen {
+  0%,
+  70% {
+    translate: -150% 0;
+  }
+  100% {
+    translate: 350% 0;
+  }
+}
+
+.chevrons {
+  display: inline-flex;
+}
+
+.chevrons svg {
+  margin-left: -12px;
+  animation: march 1.2s infinite;
+}
+
+.chevrons svg:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chevrons svg:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes march {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* Looping HUD icons. */
+.legend {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: space-between;
+  gap: 6px var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--label);
+  color: var(--text-dim);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 26px;
+  white-space: nowrap;
+}
+
+@container (inline-size < 330px) {
+  .legend {
+    grid-template-columns: repeat(2, auto);
+    justify-content: start;
+    column-gap: var(--space-6);
+  }
+}
+
+.legend li > .online {
+  min-width: 10px;
+  margin-inline: 7px;
+}
+
+.legend li > :first-child:not(.online) {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 24px;
+}
+
+.signalWrap {
+  display: inline-flex;
+}
+
+.signal rect {
+  fill: var(--text);
+  animation: signal 1.6s infinite;
+  animation-delay: calc(var(--i) * 0.2s);
+}
+
+@keyframes signal {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  25%,
+  60% {
+    opacity: 1;
+  }
+}
+
+.swing {
+  display: inline-flex;
+  transform-origin: 50% 2px;
+  animation: swing 4s ease-in-out infinite;
+}
+
+@keyframes swing {
+  0%,
+  72%,
+  100% {
+    rotate: 0deg;
+  }
+  76% {
+    rotate: 16deg;
+  }
+  82% {
+    rotate: -12deg;
+  }
+  88% {
+    rotate: 7deg;
+  }
+  94% {
+    rotate: -3deg;
+  }
+}
+
+.online {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3ddc84;
+}
+
+.online > span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #3ddc84;
+  animation: ping 1.8s var(--ease-out) infinite;
+}
+
+@keyframes ping {
+  0% {
+    scale: 1;
+    opacity: 0.9;
+  }
+  100% {
+    scale: 2.8;
+    opacity: 0;
+  }
+}
+
+.glint {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.glint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.85) 50%,
+    transparent 65%
+  );
+  translate: -100% 0;
+  animation: glint 5s infinite;
+}
+
+@keyframes glint {
+  0%,
+  80% {
+    translate: -100% 0;
+  }
+  100% {
+    translate: 100% 0;
+  }
+}
+
+.diamond {
+  position: relative;
+  display: inline-block;
+  width: var(--size);
+  height: var(--size);
+}
+
+.diamond span {
+  position: absolute;
+  inset: 15%;
+  border: 2px solid var(--accent);
+  rotate: 45deg;
+  animation: turn 1.4s var(--ease-out) infinite;
+}
+
+.diamond span + span {
+  inset: 35%;
+  border: 0;
+  background: var(--accent);
+  animation-direction: reverse;
+}
+
+@keyframes turn {
+  0% {
+    rotate: 45deg;
+  }
+  100% {
+    rotate: 225deg;
+  }
+}
+
+.bob {
+  position: relative;
+  display: inline-flex;
+  animation: bob 2.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  70% {
+    translate: 0 -4px;
+  }
+  80% {
+    translate: 0 0;
+  }
+  88% {
+    translate: 0 -2px;
+  }
+}
+
+.pip {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+/* Low graphics, the OS asking for less motion, or the page's own switch: nothing loops. */
+.lab:is([data-graphics="low"], [data-reduce])
+:is(
+  .loop,
+  .loopAfter::after,
+  .signal rect,
+  .diamond span,
+  .chevrons svg,
+  .go::before,
+  .stripes,
+  .dot
+) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab
+    :is(
+      .loop,
+      .loopAfter::after,
+      .signal rect,
+      .diamond span,
+      .chevrons svg,
+      .go::before,
+      .stripes,
+      .dot
+    ) {
+    animation: none;
+  }
+}
+
+.lab:is([data-graphics="low"], [data-reduce]) :is(.signal rect, .chevrons svg) {
+  opacity: 1;
+}
+
+/* Waiting on the server: after 300 ms the strip shows and all else goes inert; only "Vào phòng" dims. */
+.contents {
+  display: contents;
+}
+
+/* Takes stray taps over the whole screen while the strip shows. */
+.blocker {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+.full .blocker {
+  position: fixed;
+}
+
+.scrim {
+  background: rgb(0 0 0 / 0.55);
+  transition: opacity 200ms;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.badge {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 52px;
+  padding: 0 var(--pad);
+  border-top: 2px solid var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition:
+    opacity 180ms,
+    translate 220ms var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    translate: 0 100%;
+  }
+}
+
+/* Full screen: the strip reaches the screen's edges; its content stays inside the safe area. */
+.full .badge {
+  position: fixed;
+  min-height: calc(52px + var(--safe-bottom));
+  padding: 0 calc(var(--pad) + var(--safe-right)) var(--safe-bottom)
+    calc(var(--pad) + var(--safe-left));
+}
+
+.badgeText {
+  margin-right: -0.2em;
+}
+
+.rule {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent));
+}
+
+.rule:last-child {
+  background: linear-gradient(270deg, transparent, var(--accent));
+}
+
+.mirror {
+  display: inline-flex;
+  scale: -1 1;
+}
+
+.mirror .diamond span {
+  animation-direction: reverse;
+}
+
+.mirror .diamond span + span {
+  animation-direction: normal;
+}
+
+/* Loading screens: they wipe in from the left and fade out. */
+.loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(24px, calc(6 * var(--vw)), 64px);
+  padding: var(--pad) calc(var(--pad) * 2);
+  background: #090b0e;
+  clip-path: inset(0 0 0 0);
+  transition:
+    clip-path 320ms var(--ease-out),
+    opacity 240ms;
+
+  @starting-style {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+.leaving {
+  opacity: 0;
+}
+
+.stripes {
+  position: absolute;
+  inset: 0 -60px 0 0;
+  z-index: -1;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgb(255 255 255 / 0.025) 0 12px,
+    transparent 12px 24px
+  );
+  animation: drift 3s linear infinite;
+}
+
+@keyframes drift {
+  to {
+    translate: -34px 0;
+  }
+}
+
+.emblem {
+  --emblem: clamp(140px, calc(48 * var(--vmin)), 220px);
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--emblem);
+  height: var(--emblem);
+  color: var(--accent);
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed rgb(255 194 52 / 0.45);
+  border-radius: 50%;
+  animation: spin 12s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.plate {
+  display: grid;
+  place-items: center;
+  width: calc(var(--emblem) * 0.62);
+  height: calc(var(--emblem) * 0.62);
+  border: 3px solid var(--accent);
+  background: rgb(255 194 52 / 0.08);
+  rotate: 45deg;
+}
+
+.plate > * {
+  width: 78%;
+  height: 78%;
+  rotate: -45deg;
+}
+
+.loadInfo {
+  display: grid;
+  gap: var(--space-3);
+  width: clamp(280px, calc(44 * var(--vw)), 480px);
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(40px, calc(13 * var(--vmin)), 64px);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bar {
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  border: 0;
+  background: var(--line);
+}
+
+.bar::-webkit-progress-bar {
+  background: var(--line);
+}
+
+.bar::-webkit-progress-value {
+  background: var(--accent);
+  transition: inline-size 200ms;
+}
+
+.bar::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.percent {
+  justify-self: end;
+  margin-top: calc(-1 * var(--space-2));
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--text-dim);
+}
+
+.players {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-md);
+}
+
+.players li {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.players img {
+  width: 36px;
+  height: 36px;
+}
+
+.players li > span:last-child {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.ready {
+  color: #3ddc84;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+/* Dialogs: the box pops, the band opens from its middle line, the sheet slides in. */
+.box,
+.band,
+.sheet {
+  color: var(--text);
+  border: 0;
+  transition-property: opacity, scale, clip-path, translate;
+  transition-duration: 220ms;
+  transition-timing-function: var(--ease-out);
+}
+
+.box::backdrop,
+.band::backdrop,
+.sheet::backdrop {
+  background: rgb(0 0 0 / 0);
+  transition-property: background-color, backdrop-filter;
+  transition-duration: 200ms;
+}
+
+/* The blur lives only while the dialog is open, so nothing is left once it closes. */
+:is(.box, .band, .sheet)[open]:not([data-closing])::backdrop {
+  background: rgb(0 0 0 / 0.55);
+
+  @starting-style {
+    background: rgb(0 0 0 / 0);
+  }
+}
+
+.lab:not([data-graphics="low"]) :is(.box, .band, .sheet)[open]:not([data-closing])::backdrop {
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+
+  @starting-style {
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+  }
+}
+
+.box {
+  --cut: 22px;
+  width: min(480px, calc(100 * var(--vw) - 2 * var(--pad)));
+  max-width: none;
+  padding: clamp(24px, calc(8 * var(--vmin)), 40px);
+  border-left: 4px solid var(--accent);
+  opacity: 0;
+}
+
+.box[open]:not([data-closing]) {
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+:is(.box, .band, .sheet) h2 {
+  margin: 0;
+  font-size: clamp(28px, calc(8 * var(--vmin)), 40px);
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.box p,
+.band p {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-md);
+  color: var(--text-dim);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: clamp(20px, calc(6 * var(--vmin)), 32px);
+}
+
+.actions > * {
+  min-width: 9rem;
+  min-height: var(--tap-main);
+}
+
+.band {
+  width: 100%;
+  max-width: none;
+  margin: auto 0;
+  padding: clamp(24px, calc(8 * var(--vmin)), 44px) 0;
+  border-block: 2px solid var(--accent);
+  clip-path: inset(50% 0);
+  opacity: 0;
+}
+
+.band[open]:not([data-closing]) {
+  clip-path: inset(0 0);
+  opacity: 1;
+
+  @starting-style {
+    clip-path: inset(50% 0);
+    opacity: 0;
+  }
+}
+
+.bandInner {
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: 0 calc(var(--pad) + var(--safe-right)) 0 calc(var(--pad) + var(--safe-left));
+  transition:
+    opacity 200ms 120ms,
+    translate 260ms var(--ease-out) 120ms;
+}
+
+.band:not([open]) .bandInner,
+.band[data-closing] .bandInner {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+
+.band[open] .bandInner {
+  @starting-style {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
+
+.sheet {
+  width: clamp(320px, calc(48 * var(--vw)), 440px);
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0 0 0 auto;
+  padding: calc(var(--pad) + var(--safe-top)) calc(var(--pad) + var(--safe-right))
+    calc(var(--pad) + var(--safe-bottom)) var(--pad);
+  border-left: 4px solid var(--accent);
+  overflow-y: auto;
+  translate: 100% 0;
+  opacity: 0;
+}
+
+.sheet[open]:not([data-closing]) {
+  translate: 0 0;
+  opacity: 1;
+
+  @starting-style {
+    translate: 100% 0;
+    opacity: 0;
+  }
+}
+
+.sheetTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.close {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background 120ms,
+    scale 120ms var(--ease-out);
+}
+
+@media (hover: hover) {
+  .close:hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+}
+
+.close:active {
+  background: rgb(255 255 255 / 0.14);
+  scale: 0.92;
+  transition-duration: 40ms;
+}
+
+.settings {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--gap);
+}
+
+.settings [role="switch"] > span:first-child {
+  width: 56px;
+  height: 32px;
+}
+
+.settings [role="switch"] > span:first-child::after {
+  width: 22px;
+}
+
+.settings [role="switch"][aria-checked="true"] > span:first-child::after {
+  translate: 24px 0;
+}
+
+.friends {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--gap) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friends li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 64px;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+  font-size: var(--text-lg);
+  font-family: var(--font-display);
+  font-weight: 600;
+  background: rgb(255 255 255 / 0.04);
+  transition:
+    opacity 200ms,
+    translate 260ms var(--ease-out);
+  transition-delay: calc(80ms + var(--i) * 50ms);
+}
+
+.sheet[open] .friends li {
+  @starting-style {
+    opacity: 0;
+    translate: 24px 0;
+  }
+}
+
+.friends img {
+  width: 48px;
+  height: 48px;
+}
+
+/* The pager: the HUD's band stays clear, one glass panel of swipeable pages between round arrows. */
+.pager {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: var(--band) calc(var(--pad) + var(--safe-right)) calc(var(--gap) + var(--safe-bottom))
+    calc(var(--pad) + var(--safe-left));
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  overflow: hidden;
+  opacity: 0;
+  transition-property: opacity;
+  transition-duration: 220ms;
+  transition-timing-function: var(--ease-out);
+}
+
+.pager[open] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--gap);
+}
+
+.pager[open]:not([data-closing]) {
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.pager::backdrop {
+  background: transparent;
+}
+
+.pager::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--band) - var(--space-1)) 0 0;
+  z-index: -1;
+  border-top: 1px solid rgb(255 194 52 / 0.35);
+  background: rgb(0 0 0 / 0.6);
+}
+
+.lab:not([data-graphics="low"]) .pager::before {
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.pagerMain {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+.pagerPanel {
+  --cut: 22px;
+  justify-self: center;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  width: min(100%, 760px);
+  height: 100%;
+  min-height: 0;
+  padding: var(--pad) var(--pad) var(--pad) calc(var(--pad) + 4px);
+  border-left: 4px solid var(--accent);
+  transition:
+    scale 260ms var(--ease-out),
+    opacity 220ms;
+}
+
+.pager[open]:not([data-closing]) .pagerPanel {
+  @starting-style {
+    scale: 0.96;
+    opacity: 0;
+  }
+}
+
+.pager[data-closing] .pagerPanel {
+  scale: 0.96;
+}
+
+.pagerPanel h2 {
+  flex: 1;
+  margin: 0;
+  font-size: clamp(24px, calc(7 * var(--vmin)), 34px);
+  line-height: 1.1;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.nav {
+  --dir: -1;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 96px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    opacity 200ms,
+    translate 260ms var(--ease-out);
+}
+
+.nav:last-child {
+  --dir: 1;
+}
+
+.nav:last-child .chevron {
+  rotate: 180deg;
+}
+
+.pager[open]:not([data-closing]) .nav {
+  @starting-style {
+    opacity: 0;
+    translate: calc(var(--dir) * 16px) 0;
+  }
+}
+
+.chevron {
+  width: auto;
+  height: clamp(56px, calc(17 * var(--vmin)), 72px);
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.8)) drop-shadow(0 0 10px rgb(255 194 52 / 0.25));
+  transition:
+    translate 160ms var(--ease-out),
+    scale 120ms var(--ease-out),
+    color 120ms;
+}
+
+@media (hover: hover) {
+  .nav:hover:not(:disabled) {
+    color: var(--accent-hi);
+  }
+
+  .nav:hover:not(:disabled) .chevron {
+    translate: calc(var(--dir) * 4px) 0;
+  }
+}
+
+.nav:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.nav:active:not(:disabled) {
+  color: var(--accent-hi);
+}
+
+.nav:active:not(:disabled) .chevron {
+  translate: calc(var(--dir) * 6px) 0;
+  scale: 0.85;
+  transition-duration: 40ms;
+}
+
+.nav:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.track {
+  display: flex;
+  min-height: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.page {
+  flex: 0 0 100%;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: var(--space-3);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  font-size: var(--text-md);
+  line-height: 1.55;
+  opacity: 0.25;
+  transition: opacity 240ms;
+}
+
+.page[data-active] {
+  opacity: 1;
+}
+
+.page p {
+  margin: 0 0 var(--space-3);
+  text-wrap: pretty;
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding-left: 1.6em;
+}
+
+.steps li::marker {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+.figure {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  height: 100%;
+  margin: 0;
+}
+
+.figure img,
+.figure > span {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+  border: 1px solid var(--line-strong);
+}
+
+.figure figcaption {
+  font-size: var(--label);
+  color: var(--text-dim);
+}
+
+.scores {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scores li {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 52px;
+  padding: 0 var(--space-4) 0 var(--space-2);
+  background: rgb(255 255 255 / 0.04);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.scores img {
+  width: 40px;
+  height: 40px;
+}
+
+.scores li > span:last-child {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--accent);
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 16px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--text-dim);
+  rotate: 45deg;
+  transition:
+    width 260ms var(--ease-out),
+    rotate 260ms var(--ease-out),
+    background 200ms,
+    border-color 200ms;
+}
+
+.dot[data-active] {
+  width: 32px;
+  rotate: 0deg;
+  border-color: var(--accent);
+  background: var(--accent);
+  animation: pop 360ms var(--ease-out);
+}
+
+@keyframes pop {
+  0% {
+    scale: 0.6 1;
+  }
+  60% {
+    scale: 1.15 1;
+  }
+  100% {
+    scale: 1 1;
+  }
+}
+
+/* Toasts: top right under the HUD, oldest on top; they take input only on their own cards. */
+.kind {
+  padding-inline: 0;
+  min-width: var(--tap);
+  font-family: var(--font-mono);
+}
+
+.kind.info {
+  color: var(--info);
+}
+
+.kind.success {
+  color: #3ddc84;
+}
+
+.kind.warning {
+  color: var(--accent);
+}
+
+.toasts {
+  position: fixed;
+  inset: var(--band) calc(var(--pad) + var(--safe-right)) auto auto;
+  width: min(clamp(280px, calc(38 * var(--vw)), 340px), calc(100 * var(--vw) - 2 * var(--pad)));
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  overflow: visible;
+  pointer-events: none;
+  transition: top 260ms var(--ease-out);
+}
+
+/* Over the pager the stack starts under the panel's close button. */
+.toasts[data-pager] {
+  top: calc(var(--band) + var(--pad) + 52px + var(--space-3));
+}
+
+.toasts:popover-open {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.toast {
+  --kind: var(--info);
+  --cut: 10px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-left: 4px solid var(--kind);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-md);
+  line-height: 1.3;
+  text-align: left;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: filter 120ms;
+}
+
+.lab:not([data-graphics="low"]) .toast {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.06), transparent 40%), rgb(20 23 28 / 0.84);
+}
+
+.toast > svg {
+  color: var(--kind);
+}
+
+.toast.success {
+  --kind: #3ddc84;
+}
+
+.toast.warning {
+  --kind: var(--accent);
+}
+
+.toast:active {
+  filter: brightness(1.2);
+}
+
+.toast[data-leaving] {
+  position: absolute;
+  inset-inline: 0;
+  pointer-events: none;
+}
+
+.life {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: var(--kind);
+  transform-origin: left;
+  opacity: 0.85;
+}
+
+/* Offline: frosted glass over the whole screen, HUD included. */
+.offline {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: calc(var(--pad) + var(--safe-top)) calc(var(--pad) + var(--safe-right))
+    calc(var(--pad) + var(--safe-bottom)) calc(var(--pad) + var(--safe-left));
+  border: 0;
+  background: rgb(11 13 16 / 0.94);
+  color: var(--text);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 260ms var(--ease-out);
+}
+
+.lab:not([data-graphics="low"]) .offline {
+  background: rgb(8 10 13 / 0.45);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
+
+.offline[open] {
+  display: grid;
+  place-items: center;
+}
+
+.offline[open]:not([data-closing]) {
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.offline::backdrop {
+  background: transparent;
+}
+
+.offlineInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, calc(5 * var(--vw)), 56px);
+  transition:
+    scale 320ms var(--ease-out),
+    translate 320ms var(--ease-out);
+}
+
+.offline[open]:not([data-closing]) .offlineInner {
+  @starting-style {
+    scale: 0.94;
+    translate: 0 12px;
+  }
+}
+
+.adrift {
+  flex: none;
+  width: clamp(180px, calc(52 * var(--vmin)), 280px);
+  height: auto;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+
+.offlineText {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  max-width: 340px;
+}
+
+.offlineText h2 {
+  margin: 0;
+  font-size: clamp(30px, calc(9 * var(--vmin)), 44px);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.offlineText p {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--text-dim);
+}
+
+.retryLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--accent);
+}
+
+.offlineText button {
+  min-width: 11rem;
+}
+
+.boat {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: adrift 3.2s ease-in-out infinite;
+}
+
+@keyframes adrift {
+  0%,
+  100% {
+    translate: 0 0;
+    rotate: -3deg;
+  }
+  50% {
+    translate: 0 4px;
+    rotate: 3deg;
+  }
+}
+
+.waves {
+  animation: waves 3.2s ease-in-out infinite;
+}
+
+@keyframes waves {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: -14px 2px;
+  }
+}
+
+.lost {
+  animation: lost 1.6s steps(2, jump-none) infinite;
+}
+
+@keyframes lost {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* The gallery of game tiles: frosted over everything, the tiles in one row. */
+.gallery {
+  --tile-h: clamp(140px, calc(var(--view-h) - 2 * var(--pad) - 150px), 260px);
+  --tile-w: calc(var(--tile-h) * 0.72);
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: calc(var(--pad) + var(--safe-top)) calc(var(--pad) + var(--safe-right))
+    calc(var(--pad) + var(--safe-bottom)) calc(var(--pad) + var(--safe-left));
+  border: 0;
+  background: rgb(11 13 16 / 0.95);
+  color: var(--text);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 240ms var(--ease-out);
+}
+
+.lab:not([data-graphics="low"]) .gallery {
+  background:
+    radial-gradient(ellipse at 50% 60%, rgb(46 200 230 / 0.12), transparent 60%), rgb(8 10 13 / 0.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+}
+
+.gallery[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--gap);
+}
+
+.gallery[open]:not([data-closing]) {
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.gallery::backdrop {
+  background: transparent;
+}
+
+.galleryTop {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+}
+
+.galleryTop h2 {
+  flex: 1;
+  margin: 0;
+  font-size: clamp(26px, calc(7 * var(--vmin)), 36px);
+  text-transform: uppercase;
+}
+
+.segments {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.segments > * {
+  min-width: 5.5rem;
+}
+
+.segments > [aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tiles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, calc(5 * var(--vw)), 64px);
+  min-height: 0;
+}
+
+.tiles > * {
+  transition:
+    opacity 260ms,
+    translate 320ms var(--ease-out);
+  transition-delay: calc(var(--i) * 70ms);
+
+  @starting-style {
+    opacity: 0;
+    translate: 0 18px;
+  }
+}
+
+.lab[data-reduce] .tiles > * {
+  translate: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab .tiles > * {
+    translate: none;
+  }
+}
+
+/* Less motion: dialogs and screens only fade. */
+.lab[data-reduce] :is(.box, .band, .sheet, .loading, .pagerPanel, .nav, .chevron, .offlineInner),
+.lab[data-reduce] .friends li,
+.lab[data-reduce] .bandInner {
+  translate: none;
+  clip-path: none;
+  transition-property: opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab :is(.box, .band, .sheet, .loading, .pagerPanel, .nav, .chevron, .offlineInner),
+  .lab .friends li,
+  .lab .bandInner {
+    translate: none;
+    clip-path: none;
+    transition-property: opacity;
+  }
+}

@@ -48,3 +48,63 @@
   color: var(--text-dim);
   font-size: var(--text-sm);
 }
+
+.figure {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.frame {
+  position: relative;
+  isolation: isolate;
+}
+
+/* The Game's art behind the samples, so the glass has something to frost. */
+.art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.6);
+}
+
+.loops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--label);
+  color: var(--text-dim);
+}
+
+.loops li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+}
+
+.dotBox {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+}
+
+.people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

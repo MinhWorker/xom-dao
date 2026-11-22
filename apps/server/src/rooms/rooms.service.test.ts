@@ -11,6 +11,7 @@ const caro = defineManifest({
   duration: { min: 5, max: 15 },
   status: 'wip',
   bots: true,
+  island: 'co',
   focus: { x: 50, y: 50 },
   options: {
     level: {
@@ -35,6 +36,7 @@ const party = defineManifest({
   duration: { min: 1, max: 2 },
   status: 'wip',
   bots: true,
+  island: 'co',
   focus: { x: 50, y: 50 },
 });
 

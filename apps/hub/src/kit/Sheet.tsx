@@ -1,6 +1,7 @@
 import { IconX } from '@tabler/icons-react';
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { type ReactNode, useId } from 'react';
 import { Icon } from './Icon.js';
+import { useModal } from './modal.js';
 import styles from './Sheet.module.css';
 
 export interface SheetProps {
@@ -11,28 +12,19 @@ export interface SheetProps {
   children?: ReactNode;
 }
 
-/** A modal `<dialog>` docked to the right edge, full height, for lists that scroll. Children mount only while open. */
+/**
+ * A modal `<dialog>` of frosted glass docked to the right edge, full height, for lists that scroll.
+ * It slides in and its rows follow one by one; children mount only while open.
+ */
 export function Sheet({ open, onClose, title, children }: SheetProps) {
-  const ref = useRef<HTMLDialogElement>(null);
+  const modal = useModal(open, onClose);
   const titleId = useId();
-
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: a tap on the backdrop is a pointer shortcut; Escape and the close button are the keyboard routes
     <dialog
-      ref={ref}
-      className={styles.sheet}
-      onClose={onClose}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
+      {...modal}
+      className={`${styles.sheet} glass`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -41,7 +33,7 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
       <header className={styles.top}>
         <h2 id={titleId}>{title}</h2>
         <button type="button" className={styles.close} aria-label="Đóng" onClick={onClose}>
-          <Icon icon={IconX} />
+          <Icon icon={IconX} size={28} />
         </button>
       </header>
       <div className={styles.body}>{open && children}</div>

@@ -12,15 +12,22 @@ src/router.ts      History routing (`/`, `/room/<code>`, `/dev/kit` in dev), Vie
 src/net/store.ts   The one socket (`/ws`) and the Session state; every push and reply is parsed with
                    `@xomdao/shared/client` first. `net/hub.ts` makes the page's store + `useHub`
 src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.json` + the art and
-                   rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production
-src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon:
-                   no server knowledge. `toast()` needs `<ToastRegion />` (mounted in main.tsx)
-src/screens/       login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, Results), rules/ (RulesPager), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
+                   rules pages in `dist/hub/hub.json`, globbed at build time; `wip` ones are hidden on Vercel production,
+                   `soon` ones are left out
+src/islands.ts     The Islands' names, order and Emblems, and `HUB_EMBLEM` (ids are `ISLANDS` in `@xomdao/sdk`)
+src/emblems/       The Hub's (`hub.svg`) and each Island's (`<island>.svg`) Emblem, same contract as a Game's;
+                   `tools/hub-assets` tests them
+src/kit/           Button, CutPanel, Chip, TextField, Dialog, Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
+                   Loops (looping HUD icons): no server knowledge. `toast()` needs `<ToastRegion />` (mounted in
+                   main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
+                   `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;
+                   `net/hub.ts` wraps every request in it, and Room create/join and Match start block
+src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the picked Game's art fills the screen, `GameStrip` picks), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, MatchLoading over it until the Match starts, Results), rules/ (RulesPager), homeward/ (the Hub's loading screen on the way back to the Bến), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
-src/settings/      Graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, HUD scale, margin), kept in localStorage
-src/styles/        tokens.css (colours, type, spacing, `.cut-br`), base.css, fonts.ts (@fontsource)
+src/settings/      Graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, level, HUD scale, margin), kept in localStorage
+src/styles/        tokens.css (colours, type, spacing, `.cut-br`, `.glass`, `data-loop`), base.css (hand cursor), fonts.ts (@fontsource)
 public/            `manifest.webmanifest` and `icons/` (PWA), copied to the build root
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
 ```
@@ -38,7 +45,10 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
 - `npm run e2e` (root) plays a whole Caro Match between two pages, from sign-up to Results, against a
   real server and the dev Hub; it saves screenshots to `e2e/`. Run it when you change the login,
   lobby, Room, GameFrame or Results.
-- Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes.
+- Check screens at 844×390, 667×375 and 1280×720. `/dev/kit` shows the kit at the phone sizes, at both
+  graphics levels and with less motion; `/dev/kit#motion` is the approved motion prototype (#295), still the
+  reference for the loading screens. `/dev/kit#emblems` shows the Hub's and the Islands' Emblems (#302, in review). `/dev/kit#sea` is the Sea chart prototype (#306,
+  in review), with stand-in splash art. `/dev/kit#harbour` is the Bến prototype (#308, in review), with stand-in art.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
 ## Conventions
@@ -56,8 +66,15 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   also scales viewport units, so in CSS never write `vw`, `dvh` or `vmin`: use `calc(N * var(--vw))`,
   `var(--view-h)` (the screen's height inside the safe area and margin), `calc(N * var(--dvh))` or
   `calc(N * var(--vmin))`. The Game's iframe is not scaled inside; only its box is.
-- Touch targets ≥ 44 px and main buttons ≥ 56 px on `pointer: coarse`, text ≥ 14 px, inputs
-  ≥ 16 px (iOS zooms on smaller), `safe-area-inset` respected.
+- Touch targets ≥ 48 px (`--tap`) and main buttons ≥ 56 px (`--tap-main`), text ≥ 16 px (labels ≥ 14 px),
+  `safe-area-inset` respected.
+- Motion and glass: the graphics level (`Cao`/`Thấp`) is `data-graphics` on `<html>`. Put the global `glass`
+  class on a panel instead of a background (solid on `low` or without `backdrop-filter`). Mark anything that
+  animates forever with `data-loop` (on the element or the one whose `::before`/`::after` animates): it stops on
+  `low`, under `prefers-reduced-motion` and in a `[data-reduce]` frame. A modal `<dialog>` closes through
+  `useModal`/`closeAnimated`: its exit CSS keys on `[data-closing]` and its backdrop dims only while
+  `[open]:not([data-closing])`; never transition `display` or `overlay`. The hand cursor is only under
+  `(hover: hover) and (pointer: fine)`.
 - Browsers: Safari iOS 18+ and Chrome Android of the last two years. Baseline "Newly available"
   features are fine behind a feature check that leaves older browsers working; no heavy
   polyfills. Desktop only has to work.
@@ -69,11 +86,24 @@ goes back to the waiting room, so playing again reuses it.
 
 - `ready` → `init` (player, Room seats, `vi`, settings, `match` = the latest `view` or `null`),
   then `match:ready` once per Match.
+- `MatchLoading` covers the iframe until the Game is `ready` and the Match leaves `loading`: the Game's
+  Emblem (for now a stand-in, its initial on the diamond plate), a bar and each seat's load (yours from
+  the Bridge's `progress`, the others' from `match:state`'s `readyPlayerIds`).
 - A new Match or a reconnect → a fresh `init`.
 - Every `match:state` push → `message('match:state', data)`: the whole push, `view` included.
 - `send` → `match:move { matchId, event, payload }`; the server's refusal goes back in `ack`.
 - Results show on `done`, or 4 s after the Match is over if the Game never says it. Places come
   from the `match:state` that ends it (`match:result` is not resent after a reconnect).
+- While Results show, the eye button (`screens/room/Peek`) in the corner hides every element marked
+  `data-hud` (Results and the corner's other buttons) while a mouse hovers it or a finger holds it,
+  so the Game's last state shows. The Game does nothing for it.
+- Leaving a running Match (the corner menu's "Rời ván", or the back button, which `router.block`
+  turns into the same) asks first. Saying yes covers the screen with the Hub's loading screen
+  (`screens/homeward/`, the anchor as a stand-in Emblem) until the Bến is up. While the Match
+  view is open, the others hear who left, lost their connection or came back as toasts (`screens/room/notices.ts`). Results keep the
+  names of those who left, marked "Đã rời", and "Chơi lại" waits for enough players.
+- A reload or a dropped connection mid-Match comes back through `session:resume`; the Game
+  gets a fresh `init` with the latest `view` and redraws from it.
 - Rules: `screens/rules/RulesPager` is a modal `<dialog>` over everything, opened from the
   waiting room's "Luật chơi" button and from the corner menu during a Match (the Match keeps
   running under it). It is a scroll-snap track, one slide per page of `HubGame.rules`; mount it to

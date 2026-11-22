@@ -14,6 +14,11 @@
  * sends every member what `view(ctx, viewer)` shows them. Hooks are pure: they never change
  * `ctx.state` and take randomness only from `ctx.rng`. `ctx.finish(places)` ends the Match with
  * its Match result; the shared backend settles it. `ctx.stat` counts things a player did.
+ *
+ * The computer plays a seat through `bot(ctx)`. By default the server applies its move at once;
+ * `botDelay(ctx)` returns how many ms the computer seems to think first (e.g.
+ * `600 + Math.floor(ctx.rng() * 600)`). The server waits that long, then plays the move, and
+ * drops the wait when the Match ends or its state changes in between.
  */
 import { z } from 'zod';
 import type { GameManifest } from './manifest.js';
@@ -123,8 +128,9 @@ export interface BotContext<State, Options = undefined> extends GameContext<Stat
  * Optional hooks, written in the subclass (not declared here, so no `override`):
  *   on<Timer>(ctx: TimerContext)   a timer set with ctx.setTimer(ms, '<timer>') went off
  *   onLeave(ctx: LeaveContext)     a player left; the Match goes on without them
- *                                  (without it, a player leaving aborts the Match)
+ *                                  (without it, `bot` plays their seat, else the Match is aborted)
  *   bot(ctx: BotContext)           the computer's event for seat ctx.player, or null
+ *   botDelay(ctx: BotContext)      ms the computer thinks before that event (default 0)
  *   view(ctx, viewer: Seat | null) what a seat (null = spectator) sees. Default: the state.
  */
 export abstract class Game<State, Options = undefined, View = State> {
@@ -150,6 +156,7 @@ export type AnyGameServer = { manifest: GameManifest; game: object };
 interface OptionalHooks<State, Options, View> {
   onLeave?(ctx: LeaveContext<State, Options>): State;
   bot?(ctx: BotContext<State, Options>): GameEvent | null;
+  botDelay?(ctx: BotContext<State, Options>): number;
   view?(ctx: GameContext<State, Options>, viewer: Seat | null): View;
 }
 
@@ -233,6 +240,8 @@ export interface TurnRules<State, Options, View> {
   leave?(stored: Stored<State, Options>, player: PlayerId, rng: Rng): Stored<State, Options>;
   /** Missing when the game has no `bot`. `null` when the seat has nothing to play now. */
   bot?(stored: Stored<State, Options>, player: PlayerId, rng: Rng): GameEvent | null;
+  /** Missing when the game has no `botDelay`: ms to wait before playing `player`'s bot move. */
+  botDelay?(stored: Stored<State, Options>, player: PlayerId, rng: Rng): number;
   /** `null` while the Match is being played. */
   result(stored: Stored<State, Options>): MatchResult | null;
 }
@@ -468,6 +477,19 @@ export function turnRules<State, Options, View>(
         const { ctx } = context(stored, rng);
         const seat = ctx.players.find((p) => p.id === player && !p.left);
         return seat ? (hooks.bot?.call(game, { ...ctx, player: seat }) ?? null) : null;
+      },
+    }),
+
+    ...(hooks.botDelay && {
+      botDelay(stored: Stored<State, Options>, player: PlayerId, rng: Rng) {
+        const { ctx } = context(stored, rng);
+        const seat = ctx.players.find((p) => p.id === player);
+        if (!seat) return 0;
+        const ms = hooks.botDelay?.call(game, { ...ctx, player: seat }) ?? 0;
+        if (!Number.isFinite(ms) || ms < 0) {
+          throw new Error(`botDelay: ${ms} is not a number of ms from 0`);
+        }
+        return ms;
       },
     }),
 

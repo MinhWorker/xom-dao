@@ -13,8 +13,8 @@ An independently developed sub-project, built to a web bundle in any engine, emb
 _Avoid_: Plugin, module, mini-game
 
 **Island**:
-A group of Games of one kind, under which the Hub lists them. Every Game belongs to exactly one Island.
-_Avoid_: Category, genre (for the group); Island (for a single Game)
+A group of Games of one kind (Cờ, Bài, Xúc Xắc, Náo Nhiệt), under which the Hub lists them. Every Game belongs to exactly one Island. Vietnamese: Đảo.
+_Avoid_: Category, genre (for the group); calling a Game an island
 
 **Harbour**:
 The Hub's home screen (players see "Bến"): panels leading to the Hub's features, some locked until they exist. It does not list Games.
@@ -25,7 +25,7 @@ The Hub screen where a player picks a Game (players see "Hải đồ"): Islands 
 _Avoid_: Game list, catalog, game picker
 
 **Emblem**:
-A flat single-colour mark, drawn in code, standing for the Hub, an Island or a Game.
+A flat single-colour mark, drawn in code (an SVG the Hub tints), standing for the Hub, an Island or a Game.
 _Avoid_: Icon, logo, badge
 
 **Game manifest**:

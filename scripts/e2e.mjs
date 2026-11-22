@@ -1,14 +1,19 @@
 // End-to-end test of the Hub: a real server (no database), the Hub in dev mode and two headless
 // Chromium pages on a phone-sized screen. Alice signs up, Bob logs in, Alice opens a Room for a
-// Game, Bob joins by its code and gets ready, Alice starts, and they play the Game inside its
-// iframe until the Match ends. Both pages must receive `match:result` and show the Results.
+// Game, Bob joins by its code and gets ready, Alice starts and sees the loading screen wait for
+// Bob's Game (held back for the screenshot), and they play the Game inside its
+// iframe until the Match ends. Both pages must receive `match:result` and show the Results, and
+// holding the eye button must hide the HUD.
+// Caro then goes on in the same Room: Alice plays again, Bob reloads mid-Match and carries on from
+// where it was, Alice's back button asks before leaving, and Bob leaves mid-Match, so Alice is
+// told and wins.
 //   caro       Caro (TypeScript canvas): they click marks until Alice's five in a row wins.
 //   tien-len   Tiến Lên (Godot, a one-round Match): the player who leads taps the lowest card and
 //              Đánh each trick and the other taps Bỏ lượt, so the leader empties their hand first.
 //              The taps land on the Godot canvas by the layout in games/tien-len/godot/main.gd
 //              (`_hand_slot`, `_layout_buttons`), which `tienLenGeometry` mirrors.
 // Needs a built server and the Games (`npx turbo run build --filter=@xomdao/server
-// --filter=@xomdao/game-tic-tac-toe --filter=@xomdao/game-tien-len`; Tiến Lên needs `npm run
+// --filter=@xomdao/game-caro --filter=@xomdao/game-tien-len`; Tiến Lên needs `npm run
 // setup:godot` first) and Chromium (`npx playwright-core install chromium`). Saves screenshots
 // to e2e/.
 // Usage: node scripts/e2e.mjs [caro|tien-len]   (no argument: both, one after the other)
@@ -142,38 +147,114 @@ async function seat(browser, { server, hub }, game) {
   await aliceSlots.getByText('Bob', { exact: true }).waitFor();
   await aliceSlots.getByText('Sẵn sàng').waitFor();
   await a.screenshot({ path: resolve(shots, `${game.id}-2-room.png`) });
+
+  let held = false;
+  let release;
+  const holding = new Promise((done) => {
+    release = done;
+  });
+  await b.route(`**/games/${game.id}/**`, async (route) => {
+    if (!held) {
+      held = true;
+      await holding;
+    }
+    await route.continue();
+  });
   await a.getByRole('button', { name: /^Bắt đầu/ }).click();
+  const loading = a.getByRole('status').filter({ hasText: 'Đang tải ván' });
+  await loading.getByText('Xong').waitFor();
+  await loading.getByText('Đang tải', { exact: true }).waitFor();
+  await a.screenshot({ path: resolve(shots, `${game.id}-2-loading.png`) });
+  release();
+  await loading.waitFor({ state: 'detached' });
   return { alice, bob, a, b, code };
 }
 
+/**
+ * Clicks the middle of Caro's board cell (x, y) on the 9×9 board once it is the page's turn;
+ * unless `last`, waits for the turn to pass.
+ */
+async function markCaro(page, { x, y }, last = false) {
+  const game = page.frameLocator('iframe');
+  await game.locator('.seat.me.active').waitFor();
+  const canvas = game.locator('#board');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('The board is not on screen');
+  const cell = Math.min(box.width - PAD * 2, box.height - PAD * 2) / SIDE;
+  await canvas.click({
+    position: {
+      x: (box.width - SIDE * cell) / 2 + (x + 0.5) * cell,
+      y: (box.height - SIDE * cell) / 2 + (y + 0.5) * cell,
+    },
+  });
+  if (!last) await game.locator('.seat.me:not(.active)').waitFor();
+}
+
 /** Clicks marks in the Game's iframe; each player waits for their own turn. */
-async function playCaro({ alice, bob, a, b }) {
-  const games = new Map([
-    [alice, a.frameLocator('iframe')],
-    [bob, b.frameLocator('iframe')],
-  ]);
-  /** Clicks the middle of board cell (x, y) on the 9×9 board; unless `last`, waits for the turn to pass. */
-  async function mark(who, { x, y }, last = false) {
-    const game = games.get(who);
-    await game.locator('.seat.me.active').waitFor();
-    const canvas = game.locator('#board');
-    const box = await canvas.boundingBox();
-    if (!box) throw new Error('The board is not on screen');
-    const cell = Math.min(box.width - PAD * 2, box.height - PAD * 2) / SIDE;
-    await canvas.click({
-      position: {
-        x: (box.width - SIDE * cell) / 2 + (x + 0.5) * cell,
-        y: (box.height - SIDE * cell) / 2 + (y + 0.5) * cell,
-      },
-    });
-    if (!last) await game.locator('.seat.me:not(.active)').waitFor();
-  }
+async function playCaro({ alice, a, b }) {
   for (const [turn, cell] of X_CELLS.entries()) {
-    await mark(alice, cell, turn === X_CELLS.length - 1);
-    if (turn === 2) await b.screenshot({ path: resolve(shots, 'tic-tac-toe-3-playing.png') });
-    if (turn < O_CELLS.length) await mark(bob, O_CELLS[turn]);
+    await markCaro(a, cell, turn === X_CELLS.length - 1);
+    if (turn === 2) await b.screenshot({ path: resolve(shots, 'caro-3-playing.png') });
+    if (turn < O_CELLS.length) await markCaro(b, O_CELLS[turn]);
   }
   return alice;
+}
+
+/**
+ * After the first Match: play again in the same Room, come back mid-Match after a reload, ask
+ * before leaving on the back button, and leave mid-Match.
+ */
+async function caroAfterMatch({ a, b, code }) {
+  const results = (page) => page.getByText('Kết quả', { exact: true });
+
+  // Playing again keeps the Room: both leave Results for a new Match with Alice as X again.
+  await a.getByRole('button', { name: 'Chơi lại' }).click();
+  await results(a).waitFor({ state: 'hidden' });
+  await results(b).waitFor({ state: 'hidden' });
+  for (const page of [a, b]) {
+    if (new URL(page.url()).pathname !== `/room/${code}`)
+      throw new Error('Playing again left the Room');
+  }
+  await markCaro(a, { x: 4, y: 4 });
+
+  // Bob reloads mid-Match: he is back in his seat, his Game redraws the board and his turn.
+  b.once('dialog', (dialog) => void dialog.accept());
+  await b.reload();
+  await b.frameLocator('iframe').locator('.seat.me.active').waitFor({ timeout: 30000 });
+  await a.getByText('Bob đã kết nối lại').waitFor();
+  await b.screenshot({ path: resolve(shots, 'caro-7-rejoined.png') });
+  await markCaro(b, { x: 4, y: 3 });
+
+  // The back button asks before leaving; staying keeps the Match.
+  // (A test page's first entries can be skipped by back, so it goes back over one of its own.)
+  await a.evaluate(() => {
+    history.pushState(null, '', location.pathname);
+    history.back();
+  });
+  const ask = a.getByRole('dialog', { name: 'Rời ván?' });
+  await ask.waitFor();
+  await ask.getByRole('button', { name: 'Ở lại' }).click();
+  await ask.waitFor({ state: 'hidden' });
+  await markCaro(a, { x: 5, y: 4 });
+
+  // Bob leaves from the menu, after saying yes: Alice is told, the Match stops and she wins.
+  await b.getByRole('button', { name: 'Menu ván' }).click();
+  await b.getByRole('menuitem', { name: 'Rời ván' }).click();
+  const leave = b.getByRole('dialog', { name: 'Rời ván?' });
+  await leave.getByRole('button', { name: 'Rời', exact: true }).click();
+  const homeward = b.getByRole('status').filter({ hasText: 'Đang về' });
+  await homeward.waitFor();
+  await b.waitForURL((url) => url.pathname === '/');
+  await b.screenshot({ path: resolve(shots, 'caro-8-homeward.png') });
+  await homeward.waitFor({ state: 'detached' });
+  await a.getByText('Bob đã rời ván').waitFor();
+  await results(a).waitFor({ timeout: 15000 });
+  await a.getByRole('heading', { name: 'Thắng' }).waitFor();
+  await a.getByRole('listitem').filter({ hasText: 'Bob' }).getByText('Đã rời').waitFor();
+  if (!(await a.getByRole('button', { name: 'Chơi lại' }).isDisabled())) {
+    throw new Error('Alice can play again alone');
+  }
+  await a.screenshot({ path: resolve(shots, 'caro-9-left.png') });
 }
 
 /** Where a tap lands on the Godot canvas of Tiến Lên: its virtual 844×390 screen, stretched. */
@@ -254,11 +335,12 @@ async function playTienLen({ alice, bob, a, b }) {
 
 const GAMES = {
   caro: {
-    id: 'tic-tac-toe',
+    id: 'caro',
     name: 'Caro',
     pick: /Caro/,
     play: playCaro,
-    summary: 'Alice beat Bob at Caro',
+    after: caroAfterMatch,
+    summary: 'Alice beat Bob at Caro, played again, came back after a reload and saw Bob leave',
   },
   'tien-len': {
     id: 'tien-len',
@@ -288,6 +370,18 @@ async function main(game, stack, browser) {
   await winner.getByText('Thắng').waitFor();
   await a.screenshot({ path: resolve(shots, `${game.id}-5-results.png`) });
   await b.screenshot({ path: resolve(shots, `${game.id}-5-results-bob.png`) });
+
+  // Holding the eye hides the whole HUD, Results included, so the Game's last state shows.
+  const eye = a.getByRole('button', { name: 'Xem ván' });
+  const panel = a.getByText('Kết quả', { exact: true });
+  const opacity = () => panel.evaluate((el) => getComputedStyle(el.closest('[data-hud]')).opacity);
+  await eye.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 7, isPrimary: true });
+  await until('the HUD to hide', async () => (await opacity()) === '0', 5);
+  await a.screenshot({ path: resolve(shots, `${game.id}-6-peek.png`) });
+  await eye.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 7, isPrimary: true });
+  await until('the HUD to come back', async () => (await opacity()) === '1', 5);
+
+  await game.after?.(room);
 
   const problems = [...alice.problems, ...bob.problems];
   if (problems.length) throw new Error(`The pages reported errors:\n${problems.join('\n')}`);

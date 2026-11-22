@@ -8,6 +8,7 @@ import {
   type RankInfo,
   type Ranking,
   type RankingEntry,
+  serverGames,
   XP_PER_GAME,
 } from '@xomdao/shared';
 import { AccountsService } from '../accounts/accounts.service.js';
@@ -86,7 +87,8 @@ export class StatsService {
 
   /** The top of a board, and `me`'s row when they are on it. */
   async ranking(board: string, me: string): Promise<Ranking> {
-    if (board !== CORE_BOARD && !getGame(board)) throw new StatsError('Không có bảng xếp hạng này');
+    const known = getGame(board) || serverGames.some((g) => g.manifest.id === board);
+    if (board !== CORE_BOARD && !known) throw new StatsError('Không có bảng xếp hạng này');
     const { gameId, name } = boardStat(board);
     const top = await this.store.top(gameId, name, RANKING_LIMIT);
     const entries: RankingEntry[] = [];

@@ -9,6 +9,7 @@ const manifest = {
   id: 'demo',
   name: 'Demo',
   tagline: 'Một trò thử.',
+  island: 'co',
   minPlayers: 2,
   maxPlayers: 2,
   duration: { min: 1, max: 2 },
@@ -50,6 +51,9 @@ function mp4(seconds: number, extra = 0) {
   ]);
 }
 
+const EMBLEM =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="20" fill="currentColor"/></svg>\n';
+
 let dir: string;
 let game: string;
 
@@ -58,6 +62,7 @@ beforeEach(() => {
   game = join(dir, 'demo');
   mkdirSync(join(game, 'hub'), { recursive: true });
   writeFileSync(join(game, 'RULES.md'), '# Demo\n');
+  writeFileSync(join(game, 'hub/emblem.svg'), EMBLEM);
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -136,6 +141,19 @@ describe('buildHubAssets', () => {
     await art();
     rmSync(join(game, 'RULES.md'));
     expect((await buildHubAssets(game, manifest)).problems).toEqual(['RULES.md is missing']);
+  });
+
+  it('fails without an Emblem, or with one in more than one colour', async () => {
+    await art();
+    rmSync(join(game, 'hub/emblem.svg'));
+    expect((await buildHubAssets(game, manifest)).problems).toEqual([
+      'hub/emblem.svg is missing: a one-colour SVG painted with currentColor',
+    ]);
+    writeFileSync(join(game, 'hub/emblem.svg'), EMBLEM.replace('currentColor', '#c00'));
+    expect((await buildHubAssets(game, manifest)).problems).toEqual([
+      'hub/emblem.svg paints only with currentColor, not #c00',
+      'hub/emblem.svg must paint with currentColor',
+    ]);
   });
 
   it('writes the rules as pages in hub.json, with page images by content hash', async () => {

@@ -5,8 +5,8 @@ Games to play with friends in the browser; a solo project. npm-workspaces monore
 Godot client, web shell and console are removed.
 
 **Direction:** the project is moving to a web Hub that embeds each Game, built in any engine, in
-an iframe. The old Godot hub and its games are legacy (tag `legacy-godot`); only `tic-tac-toe` keeps its
-legacy rules and tests as the source for rewriting it (`tien-len` is already rewritten). Vocabulary: `GLOSSARY.md`. Before planning platform work, read
+an iframe. The old Godot hub and its games are legacy (tag `legacy-godot`); every kept Game (`caro`,
+`dat-bom`, `tien-len`) is rewritten for the new platform. Vocabulary: `GLOSSARY.md`. Before planning platform work, read
 the wayfinder map, issue #200, and the decisions linked from it.
 
 ## Read first when working on

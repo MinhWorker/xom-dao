@@ -25,6 +25,8 @@ const NO_MATCH = 'Ván không còn nữa';
 export class Player {
   room: RoomState | null = null;
   match: MatchPush | null = null;
+  /** The Match's last `view`: the push that ends it has none, and a later `init` redraws it. */
+  private lastView: unknown;
   result: MatchResultNotice | null = null;
   settings: BridgeSettings = { volume: 1, muted: false };
   hidden = false;
@@ -116,7 +118,7 @@ export class Player {
       bridgeInit({
         user: this.link.user,
         room: this.room,
-        match: this.match,
+        match: this.match && { ...this.match, view: this.match.view ?? this.lastView },
         settings: this.settings,
       }),
     );
@@ -188,6 +190,8 @@ export class Player {
         if (!match.success) break;
         const fresh = match.data.matchId !== this.match?.matchId;
         this.match = match.data;
+        if (fresh) this.lastView = undefined;
+        if (match.data.view !== undefined) this.lastView = match.data.view;
         if (fresh) {
           this.result = null;
           this.sync();
