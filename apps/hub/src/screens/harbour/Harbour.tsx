@@ -48,8 +48,14 @@ interface LockedPanel {
   compact?: boolean;
 }
 
-const LOCKED: LockedPanel[] = [
-  { area: 'dinh', name: 'Đình', code: 'Sự kiện · Thư', icon: IconBuildingPavilion },
+const DINH: LockedPanel = {
+  area: 'dinh',
+  name: 'Đình',
+  code: 'Sự kiện · Thư',
+  icon: IconBuildingPavilion,
+};
+
+const BOTTOM_ROW: LockedPanel[] = [
   { area: 'cho', name: 'Chợ', code: 'Cửa hàng', icon: IconBuildingStore, compact: true },
   { area: 'kho', name: 'Kho', code: 'Kho đồ', icon: IconBox, compact: true },
   { area: 'bv', name: 'Bảng vàng', code: 'Thành tích', icon: IconTrophy },
@@ -223,7 +229,7 @@ export function Harbour() {
 
       <nav className={styles.cluster} aria-label="Bến">
         <div className={styles.tilt}>
-          <Locked panel={LOCKED[0] as LockedPanel} />
+          <Locked panel={DINH} />
 
           <button
             type="button"
@@ -306,7 +312,7 @@ export function Harbour() {
             {requests > 0 && <span className={styles.badge}>{requests}</span>}
           </button>
 
-          {LOCKED.slice(1).map((panel) => (
+          {BOTTOM_ROW.map((panel) => (
             <Locked key={panel.area} panel={panel} />
           ))}
         </div>
