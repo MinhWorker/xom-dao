@@ -1,41 +1,50 @@
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { type ReactNode, useId } from 'react';
 import styles from './Dialog.module.css';
+import { useModal } from './modal.js';
 
 export interface DialogProps {
   open: boolean;
-  /** Escape or the backdrop: the dialog asks to close. */
+  /** Escape: the dialog asks to close. */
   onClose(): void;
   title: string;
+  /** `box` fades in place; `band` is a full-width strip that opens from its middle line, for a question that needs an answer. */
+  look?: 'box' | 'band';
+  /** A small line over the title (`band` only). */
+  kicker?: string;
   children?: ReactNode;
   actions: ReactNode;
 }
 
-/** A modal `<dialog>` opened with `showModal()`. */
-export function Dialog({ open, onClose, title, children, actions }: DialogProps) {
-  const ref = useRef<HTMLDialogElement>(null);
+/** A modal `<dialog>` of frosted glass opened with `showModal()`; it plays its exit before it closes. */
+export function Dialog({
+  open,
+  onClose,
+  title,
+  look = 'box',
+  kicker,
+  children,
+  actions,
+}: DialogProps) {
+  const modal = useModal(open, onClose);
   const titleId = useId();
-
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
-
-  return (
-    <dialog
-      ref={ref}
-      className={`${styles.dialog} cut-br`}
-      onClose={onClose}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      aria-labelledby={titleId}
-    >
+  const body = (
+    <>
+      {look === 'band' && kicker && <span className={styles.kicker}>{kicker}</span>}
       <h2 id={titleId}>{title}</h2>
       {children}
       <div className={styles.actions}>{actions}</div>
+    </>
+  );
+
+  return (
+    <dialog
+      {...modal}
+      className={
+        look === 'band' ? `${styles.dialog} ${styles.band} glass` : `${styles.dialog} glass cut-br`
+      }
+      aria-labelledby={titleId}
+    >
+      {look === 'band' ? <div className={styles.inner}>{body}</div> : body}
     </dialog>
   );
 }

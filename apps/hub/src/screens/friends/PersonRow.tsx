@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { OnlineDot } from '../../kit/index.js';
 import styles from './PersonRow.module.css';
 
 export interface PersonRowProps {
@@ -19,7 +20,7 @@ export function PersonRow({ name, detail, online, dim, children }: PersonRowProp
     <li className={`${styles.row} ${dim ? styles.dim : ''}`}>
       <span className={styles.face} aria-hidden="true">
         {name.slice(0, 1).toUpperCase()}
-        {online && <span className={styles.dot} />}
+        {online && <OnlineDot className={styles.dot} />}
       </span>
       <span className={styles.text}>
         <span className={styles.name}>{name}</span>

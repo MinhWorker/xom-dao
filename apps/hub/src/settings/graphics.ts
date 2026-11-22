@@ -1,6 +1,10 @@
 import { useSyncExternalStore } from 'react';
 
+export type GraphicsLevel = 'high' | 'low';
+
 export interface Graphics {
+  /** `low` swaps frosted glass for solid panels and stops looping motion. */
+  level: GraphicsLevel;
   /** The short video behind the lobby. */
   loopVideo: boolean;
   /** View Transitions between screens and Games. */
@@ -16,7 +20,13 @@ export const MARGIN = { min: 0, max: 32, step: 16 } as const;
 
 export const GRAPHICS_KEY = 'xomdao.graphics';
 
-const DEFAULTS: Graphics = { loopVideo: true, transitions: true, hudScale: 100, margin: 0 };
+const DEFAULTS: Graphics = {
+  level: 'high',
+  loopVideo: true,
+  transitions: true,
+  hudScale: 100,
+  margin: 0,
+};
 
 export interface GraphicsStore {
   getState(): Graphics;
@@ -39,10 +49,11 @@ function read(storage: Pick<Storage, 'getItem'> | undefined): Graphics {
   try {
     const saved: unknown = JSON.parse(storage?.getItem(GRAPHICS_KEY) ?? '{}');
     if (typeof saved !== 'object' || saved === null) return DEFAULTS;
-    const { loopVideo, transitions, hudScale, margin } = saved as Partial<
+    const { level, loopVideo, transitions, hudScale, margin } = saved as Partial<
       Record<keyof Graphics, unknown>
     >;
     return {
+      level: level === 'low' || level === 'high' ? level : DEFAULTS.level,
       loopVideo: typeof loopVideo === 'boolean' ? loopVideo : DEFAULTS.loopVideo,
       transitions: typeof transitions === 'boolean' ? transitions : DEFAULTS.transitions,
       hudScale: inRange(hudScale, HUD_SCALE, DEFAULTS.hudScale),
@@ -94,8 +105,9 @@ function pageStorage() {
 /** The page's one set of graphics choices. */
 export const graphics = createGraphics(pageStorage());
 
-/** Puts the HUD scale and margin on the page as the CSS variables `tokens.css` reads. */
-export function applyGraphics(root: HTMLElement, { hudScale, margin }: Graphics) {
+/** Puts the level, HUD scale and margin on the page: `data-graphics` and the CSS variables `tokens.css` reads. */
+export function applyGraphics(root: HTMLElement, { level, hudScale, margin }: Graphics) {
+  root.dataset.graphics = level;
   root.style.setProperty('--hud-scale', String(hudScale / 100));
   root.style.setProperty('--margin', `${margin}px`);
 }

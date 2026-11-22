@@ -55,7 +55,7 @@ export function Menu({ label, trigger, items }: MenuProps) {
         ref={popoverRef}
         id={id}
         popover="auto"
-        className={`${styles.popover} cut-br`}
+        className={`${styles.popover} glass cut-br`}
         onToggle={(e) => {
           const open = e.nativeEvent.newState === 'open';
           triggerRef.current?.setAttribute('aria-expanded', String(open));

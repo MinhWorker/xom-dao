@@ -140,7 +140,10 @@ function AddFriend() {
       const { friends } = await hub.request('friends:add', { username });
       const them = friends.find((f) => f.username.toLowerCase() === username.toLowerCase());
       const who = name ?? them?.name ?? username;
-      toast(them?.state === 'friend' ? `Đã kết bạn với ${who}` : `Đã gửi lời mời tới ${who}`);
+      toast(
+        them?.state === 'friend' ? `Đã kết bạn với ${who}` : `Đã gửi lời mời tới ${who}`,
+        'success',
+      );
     });
 
   async function submit(event: FormEvent<HTMLFormElement>) {

@@ -1,20 +1,130 @@
 .dialog {
-  --cut: 18px;
-  max-width: min(420px, calc(100 * var(--vw) - 2 * var(--space-4)));
-  padding: var(--space-5);
-  border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--accent);
-  background: var(--bg-raised);
+  --cut: 22px;
+  width: min(480px, calc(100 * var(--vw) - 2 * var(--space-4)));
+  max-width: none;
+  padding: clamp(24px, calc(8 * var(--vmin)), 40px);
+  border: 0;
+  border-left: 4px solid var(--accent);
   color: var(--text);
+  opacity: 0;
+  transition-property: opacity, scale, clip-path, translate;
+  transition-duration: 220ms;
+  transition-timing-function: var(--ease-out);
 }
 
+.dialog[open]:not([data-closing]) {
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+/* The dim and blur live only while the dialog is open, so nothing lingers once it closes. */
 .dialog::backdrop {
-  background: rgb(0 0 0 / 0.6);
+  background: rgb(0 0 0 / 0);
+  transition-property: background-color, backdrop-filter;
+  transition-duration: 200ms;
+}
+
+.dialog[open]:not([data-closing])::backdrop {
+  background: rgb(0 0 0 / 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+
+  @starting-style {
+    background: rgb(0 0 0 / 0);
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+  }
+}
+
+[data-graphics="low"] .dialog::backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.dialog h2 {
+  font-size: clamp(28px, calc(8 * var(--vmin)), 40px);
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.dialog p {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-md);
+  color: var(--text-dim);
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
+  gap: var(--space-3);
+  margin-top: clamp(20px, calc(6 * var(--vmin)), 32px);
+}
+
+.actions > * {
+  min-width: 9rem;
+  min-height: var(--tap-main);
+}
+
+/* The band: full width, it opens from its middle line and its content slides in after. */
+.band {
+  width: 100%;
+  margin: auto 0;
+  padding: clamp(24px, calc(8 * var(--vmin)), 44px) 0;
+  border-left: 0;
+  border-block: 2px solid var(--accent);
+  clip-path: inset(50% 0);
+}
+
+.band[open]:not([data-closing]) {
+  clip-path: inset(0 0);
+
+  @starting-style {
+    clip-path: inset(50% 0);
+  }
+}
+
+.inner {
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: 0 calc(var(--space-5) + var(--safe-right)) 0 calc(var(--space-5) + var(--safe-left));
+  transition:
+    opacity 200ms 120ms,
+    translate 260ms var(--ease-out) 120ms;
+}
+
+.band:not([open]) .inner,
+.band[data-closing] .inner {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+
+.band[open] .inner {
+  @starting-style {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
+
+.kicker {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band,
+  .band[open] {
+    clip-path: none;
+  }
+
+  .inner {
+    translate: none;
+  }
 }

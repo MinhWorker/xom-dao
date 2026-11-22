@@ -1,0 +1,184 @@
+.still {
+  display: inline-flex;
+}
+
+.signal rect {
+  fill: currentColor;
+  animation: signal 1.6s infinite;
+  animation-delay: calc(var(--i) * 0.2s);
+}
+
+@keyframes signal {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  25%,
+  60% {
+    opacity: 1;
+  }
+}
+
+.sync {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--size);
+  height: var(--size);
+}
+
+.sync span {
+  position: absolute;
+  inset: 15%;
+  border: 2px solid var(--accent);
+  rotate: 45deg;
+  animation: turn 1.4s var(--ease-out) infinite;
+}
+
+.sync span + span {
+  inset: 35%;
+  border: 0;
+  background: var(--accent);
+  animation-direction: reverse;
+}
+
+.mirror {
+  scale: -1 1;
+}
+
+.sync.mirror span {
+  animation-direction: reverse;
+}
+
+.sync.mirror span + span {
+  animation-direction: normal;
+}
+
+@keyframes turn {
+  0% {
+    rotate: 45deg;
+  }
+  100% {
+    rotate: 225deg;
+  }
+}
+
+.online {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3ddc84;
+}
+
+.online > span {
+  position: absolute;
+  inset: 0;
+  border: 2px solid #3ddc84;
+  border-radius: 50%;
+  opacity: 0;
+  animation: ping 1.8s var(--ease-out) infinite;
+}
+
+@keyframes ping {
+  0% {
+    scale: 1;
+    opacity: 0.9;
+  }
+  100% {
+    scale: 2.8;
+    opacity: 0;
+  }
+}
+
+.swing {
+  display: inline-flex;
+  transform-origin: 50% 2px;
+  animation: swing 4s ease-in-out infinite;
+}
+
+@keyframes swing {
+  0%,
+  72%,
+  100% {
+    rotate: 0deg;
+  }
+  76% {
+    rotate: 16deg;
+  }
+  82% {
+    rotate: -12deg;
+  }
+  88% {
+    rotate: 7deg;
+  }
+  94% {
+    rotate: -3deg;
+  }
+}
+
+.bob {
+  position: relative;
+  display: inline-flex;
+  animation: bob 2.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  70% {
+    translate: 0 -4px;
+  }
+  80% {
+    translate: 0 0;
+  }
+  88% {
+    translate: 0 -2px;
+  }
+}
+
+.pip {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.glint {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.glint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.85) 50%,
+    transparent 65%
+  );
+  translate: -100% 0;
+  animation: glint 5s infinite;
+}
+
+@keyframes glint {
+  0%,
+  80% {
+    translate: -100% 0;
+  }
+  100% {
+    translate: 100% 0;
+  }
+}

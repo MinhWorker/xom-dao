@@ -102,10 +102,10 @@ export function Room({ code }: { code: string }) {
     const before = table.current;
     table.current = now;
     if (!before) return;
-    for (const { player, message } of tableNotices(before, now, user.id)) {
+    for (const { player, message, tone } of tableNotices(before, now, user.id)) {
       const shown = toasted.current.get(player);
       if (shown !== undefined) toasts.dismiss(shown);
-      toasted.current.set(player, toast(message));
+      toasted.current.set(player, toast(message, tone));
     }
   }, [here, user, match, frameOpen]);
 
@@ -168,7 +168,7 @@ export function Room({ code }: { code: string }) {
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(`${location.origin}/room/${here.code}`);
-      toast('Đã chép liên kết phòng');
+      toast('Đã chép liên kết phòng', 'success');
     } catch {
       toast(`Mã phòng ${here.code}`);
     }
@@ -244,6 +244,7 @@ export function Room({ code }: { code: string }) {
         {isHost ? (
           <Button
             variant="primary"
+            forward
             className={styles.start}
             disabled={busy || !game || seated < minPlayers}
             onClick={() => void start()}
@@ -323,6 +324,8 @@ export function Room({ code }: { code: string }) {
       <Dialog
         open={leaving}
         onClose={() => setLeaving(false)}
+        look="band"
+        kicker="Xác nhận"
         title="Rời ván?"
         actions={
           <>
