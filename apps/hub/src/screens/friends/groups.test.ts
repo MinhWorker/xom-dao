@@ -1,6 +1,6 @@
 import type { Friend } from '@xomdao/shared/client';
 import { describe, expect, it } from 'vitest';
-import { canInvite, filterFriends, groupFriends, presenceLabel } from './groups.js';
+import { canInvite, filterFriends, groupFriends, onlineFriends, presenceLabel } from './groups.js';
 
 const friend = (patch: Partial<Friend>): Friend => ({
   id: 'u1',
@@ -70,5 +70,17 @@ describe('filterFriends', () => {
   it('keeps the order and returns nothing when nobody matches', () => {
     expect(filterFriends(list, 'n').map((f) => f.id)).toEqual(['b', 'c']);
     expect(filterFriends(list, 'zzz')).toEqual([]);
+  });
+});
+
+describe('onlineFriends', () => {
+  it('counts friends who are online, not requests', () => {
+    const list = [
+      friend({ id: 'a', state: 'friend', online: true }),
+      friend({ id: 'b', state: 'friend', online: false }),
+      friend({ id: 'c', state: 'incoming', online: true }),
+      friend({ id: 'd', state: 'friend', online: true, roomCode: 'ABCD' }),
+    ];
+    expect(onlineFriends(list)).toBe(2);
   });
 });

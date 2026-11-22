@@ -6,8 +6,6 @@ export type GraphicsLevel = 'high' | 'low';
 export interface Graphics {
   /** `low` swaps frosted glass for solid panels and stops looping motion. */
   level: GraphicsLevel;
-  /** The short video behind the lobby. */
-  loopVideo: boolean;
   /** View Transitions between screens and Games. */
   transitions: boolean;
   /** The Hub's size in percent, between `HUD_SCALE.min` and `HUD_SCALE.max`. */
@@ -25,7 +23,6 @@ export const GRAPHICS_KEY = 'xomdao.graphics';
 
 const DEFAULTS: Graphics = {
   level: 'high',
-  loopVideo: true,
   transitions: true,
   hudScale: 100,
   margin: 0,
@@ -53,12 +50,11 @@ function read(storage: Pick<Storage, 'getItem'> | undefined): Graphics {
   try {
     const saved: unknown = JSON.parse(storage?.getItem(GRAPHICS_KEY) ?? '{}');
     if (typeof saved !== 'object' || saved === null) return DEFAULTS;
-    const { level, loopVideo, transitions, hudScale, margin, frame } = saved as Partial<
+    const { level, transitions, hudScale, margin, frame } = saved as Partial<
       Record<keyof Graphics, unknown>
     >;
     return {
       level: level === 'low' || level === 'high' ? level : DEFAULTS.level,
-      loopVideo: typeof loopVideo === 'boolean' ? loopVideo : DEFAULTS.loopVideo,
       transitions: typeof transitions === 'boolean' ? transitions : DEFAULTS.transitions,
       hudScale: inRange(hudScale, HUD_SCALE, DEFAULTS.hudScale),
       margin: inRange(margin, MARGIN, DEFAULTS.margin),

@@ -24,7 +24,7 @@ src/kit/           Button, CutPanel, Chip, TextField, Select (popover dropdown, 
                    main.tsx). `modal.ts`: `useModal` / `closeAnimated` open a `<dialog>` and play its exit.
                    `wait(promise, { block })` shows `<WaitBadge />` (main.tsx) once a request passes 300 ms;
                    `net/hub.ts` wraps every request in it, and Room create/join and Match start block
-src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, lobby/ (the Bến for now: "Ra khơi" opens the Sea chart, "Vào phòng" joins by code), sea/ (the Sea chart at `/sea`: Islands in a column, the Island's Games on a track that snaps one card at a time; "Ra khơi" makes the Room, Escape goes back; `chart.ts` builds the cards), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, MatchLoading over it until the Match starts, Results), rules/ (RulesPager), homeward/ (the Hub's loading screen on the way back to the Bến), friends/ (FriendsSheet, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay, opened by the lobby's gear: Đồ họa, Âm thanh, Giới thiệu), kit/
+src/screens/       offline/ (OfflineOverlay, after 1 s without the server), login/, harbour/ (the Bến at `/`: Nhà opens the profile, "Ra khơi" the Sea chart, "Vào phòng" joins by code, Hàng xóm the FriendsSheet, Cài đặt the SettingsOverlay; Đình, Chợ, Kho and Bảng vàng are locked shells; `HarbourLook` picks the character and backdrop; `portrait.ts` has the avatar and frame pictures), sea/ (the Sea chart at `/sea`: Islands in a column, the Island's Games on a track that snaps one card at a time; "Ra khơi" makes the Room, Escape goes back; `chart.ts` builds the cards, `summary.ts` the Game's labels), room/ (waiting room = `PlayerSlot` x seats + `RoomOptions` drawn from the manifest, GameFrame = iframe + Bridge, MatchLoading over it until the Match starts, Results), rules/ (RulesPager), homeward/ (the Hub's loading screen on the way back to the Bến), friends/ (FriendsSheet, titled Hàng xóm, InviteSheet, InviteNotice), profile/ (`/profile`, `/profile/<id>`), settings/ (SettingsOverlay: Đồ họa, Âm thanh, Giới thiệu), kit/
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
@@ -44,13 +44,13 @@ vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (min
   a fake socket, `fetch` and storage (`StoreDeps`). Add to them when you change either.
 - `npm run smoke:hub` (root) drives two headless pages through friends and invites against a real
   server and the dev Hub; it saves screenshots to `smoke-hub/`. Run it when you change `screens/friends/`.
-- `npm run e2e` (root) plays a whole Caro Match between two pages, from sign-up through the Sea chart to Results, against a
+- `npm run e2e` (root) plays a whole Caro Match between two pages, from sign-up through the Bến and the Sea chart to Results, against a
   real server and the dev Hub; it saves screenshots to `e2e/`. Run it when you change the login,
-  lobby, Sea chart, Room, GameFrame or Results.
+  Bến, Sea chart, Room, GameFrame or Results.
 - Check screens at 640×360, 667×375, 844×390, 932×430, 1024×768 and 1280×720 (landscape, 4:3 to about 21:9; under 360 px high is not supported). `/dev/kit` shows the kit at the phone sizes, at both
   graphics levels and with less motion; `/dev/kit#motion` is the approved motion prototype (#295), still the
   reference for the loading screens. `/dev/kit#emblems` shows every Emblem: the Hub's, the Islands' (#302) and the Games' (#303). The Sea chart is the real screen at `/sea` (approved in #306), with glass three-layer cards
-  (`GameTiles`) and a rules button that opens `RulesPager`. `/dev/kit#harbour` is the Bến prototype (#308, in review), with a generated character and backdrop.
+  (`GameTiles`) and a rules button that opens `RulesPager`.
 - Before writing client HTML/CSS/JS, look it up with the `modern-web-guidance` skill.
 
 ## Conventions
@@ -138,7 +138,7 @@ goes back to the waiting room, so playing again reuses it.
   `touchstart`), plays a silent buffer, and sets `navigator.audioSession.type = 'playback'` so the
   iPhone silent switch does not mute it. A tap after the browser interrupts audio resumes it.
 - Play with `playSound(name)` (`hoverSound(event)` for a real mouse only). The kit's Button, Toggle,
-  Choice, Tabs and Menu already click; the lobby strip and Results add theirs. A sound still not
+  Choice, Tabs and Menu already click; the Bến's panels and Results add theirs. A sound still not
   ready 300 ms after its tap is dropped.
 - Mute (`xomdao.muted`) and the levels `xomdao.volume` (master), `xomdao.music` and `xomdao.effects` (0 to 1) are in localStorage and go to the Game as `settings`; the settings overlay sets them. The Hub's own sounds are effects: the master gain is volume × effects. The Hub plays no music; `music` is for Games.
   The Game unlocks its own audio on its first tap (issue #202); the Hub's unlock does not cover it.

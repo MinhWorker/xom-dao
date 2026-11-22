@@ -5,7 +5,7 @@ export interface GameArt {
   lobby: string;
   card: string;
   thumb: string;
-  /** A short muted loop for the lobby background, when the Game has one. */
+  /** A short muted loop of the Game's art, when it has one. */
   loop?: string;
 }
 

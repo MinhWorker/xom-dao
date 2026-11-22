@@ -26,7 +26,7 @@
   filter: brightness(0.55) saturate(0.8);
 }
 
-/* Darker than the lobby: the slots and options sit on it, the art's subject shows top right. */
+/* Darker than the Bến: the slots and options sit on it, the art's subject shows top right. */
 .backdrop::after {
   content: "";
   position: absolute;

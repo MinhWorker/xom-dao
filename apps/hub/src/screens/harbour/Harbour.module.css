@@ -84,14 +84,17 @@
   z-index: 1;
 }
 
-/* The customise button, on the left edge halfway down. */
+/* Customise, sound and the menu, down the left edge halfway. */
 .side {
   grid-area: side;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-2);
 }
 
-.look {
+.tool {
   --cut: 10px;
   display: grid;
   place-items: center;
@@ -108,13 +111,13 @@
 }
 
 @media (hover: hover) {
-  .look:hover {
+  .tool:hover {
     translate: 3px 0;
     color: var(--accent);
   }
 }
 
-.look:active {
+.tool:active {
   translate: 0 0;
 }
 
@@ -212,19 +215,6 @@
   color: var(--text-dim);
 }
 
-.avatar {
-  display: grid;
-  place-items: center;
-  width: var(--tap);
-  height: var(--tap);
-  flex: none;
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--accent-ink);
-  background: var(--accent);
-}
-
 .homeText {
   position: relative;
   display: grid;
@@ -256,12 +246,14 @@
 
 .title {
   grid-area: title;
+  margin: 0;
   display: grid;
   gap: var(--space-2);
   line-height: 1;
 }
 
 .titleName {
+  margin: 0;
   font-family: var(--font-display);
   font-size: calc(var(--text-xl) * 1.4);
   font-weight: 700;
@@ -284,7 +276,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: var(--tap-main) minmax(0, 1.2fr) minmax(0, 1fr) minmax(var(--tap-main), 0.8fr);
   grid-template-areas:
-    "dinh dinh dinh set"
+    "dinh dinh join set"
     "go   go   go   nb"
     "go   go   go   nb"
     "cho  kho  bv   bv";
@@ -400,7 +392,7 @@ a.panel:active,
   background: var(--accent-ink);
 }
 
-/* Hàng xóm: a tall panel beside Ra khơi. */
+/* Hàng xóm: a tall panel beside Ra khơi, with the count of requests waiting in its corner. */
 .tall {
   flex-direction: column;
   justify-content: space-between;
@@ -411,6 +403,21 @@ a.panel:active,
 
 .tallIcon {
   color: var(--info);
+}
+
+.badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  min-width: 22px;
+  padding: 0 5px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
 }
 
 .tallName {
@@ -523,38 +530,22 @@ a.panel:active,
   display: none;
 }
 
-.people {
-  display: grid;
-  gap: var(--space-2);
-  margin: var(--space-3) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.noMatch {
-  margin: var(--space-4) 0 0;
-  color: var(--text-dim);
-}
-
-.person {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.person[data-dim] {
-  opacity: 0.55;
-}
-
-.personName {
+.error {
+  margin: 0 0 var(--space-2);
+  color: var(--danger);
   font-weight: 600;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.9);
 }
 
-.personDetail {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--text-dim);
+.join {
+  margin-top: var(--space-3);
+}
+
+.codeField input {
+  width: 100%;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
 }
 
 /* Short phone screens: the title gives its room to the panels. */
@@ -564,6 +555,7 @@ a.panel:active,
   }
 
   .titleName {
+    margin: 0;
     font-size: var(--text-xl);
   }
 }

@@ -11,7 +11,7 @@ const manifest = (over: Partial<GameManifest>): GameManifest =>
     ...over,
   }) as GameManifest;
 
-describe('lobby summary', () => {
+describe('Game summary', () => {
   it('writes a range only when the numbers differ', () => {
     expect(playersLabel(manifest({}))).toBe('2–4 người');
     expect(playersLabel(manifest({ maxPlayers: 2 }))).toBe('2 người');

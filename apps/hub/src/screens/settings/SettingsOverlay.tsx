@@ -27,7 +27,7 @@ const marginName = (value: number) =>
   MARGIN_NAMES[Math.round((value - MARGIN.min) / MARGIN.step)] ?? `${value}px`;
 
 function GraphicsTab() {
-  const { level, loopVideo, transitions, hudScale, margin, frame } = useGraphics();
+  const { level, transitions, hudScale, margin, frame } = useGraphics();
   return (
     <div className={styles.tab}>
       <Choice
@@ -35,11 +35,6 @@ function GraphicsTab() {
         options={LEVELS}
         value={level}
         onChange={(value) => graphics.set({ level: value === 'low' ? 'low' : 'high' })}
-      />
-      <Toggle
-        label="Video nền ở sảnh"
-        checked={loopVideo}
-        onChange={(checked) => graphics.set({ loopVideo: checked })}
       />
       <Toggle
         label="Hiệu ứng chuyển cảnh"

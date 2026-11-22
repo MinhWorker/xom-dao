@@ -127,7 +127,7 @@ export function Profile({ userId }: { userId?: string }) {
       <header className={styles.top}>
         <Button variant="ghost" className={styles.back} onClick={() => navigate('/')}>
           <IconArrowLeft stroke={2} aria-hidden />
-          Về sảnh
+          Về Bến
         </Button>
         <h1 className={styles.heading}>Hồ sơ</h1>
       </header>

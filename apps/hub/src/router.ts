@@ -2,14 +2,14 @@ import { useSyncExternalStore } from 'react';
 import { transitionsAllowed } from './settings/graphics.js';
 
 export type Route =
-  | { name: 'lobby' }
+  | { name: 'harbour' }
   | { name: 'room'; code: string }
   /** `/profile` is yours; `/profile/<id>` is someone else's. */
   | { name: 'profile'; userId?: string }
   | { name: 'sea' }
   | { name: 'kit' };
 
-/** The screen a path shows; unknown paths show the lobby. */
+/** The screen a path shows; unknown paths show the Harbour (Bến). */
 export function parseRoute(path: string): Route {
   const parts = path.split('/').filter(Boolean);
   if (parts[0] === 'room' && parts[1] && parts.length === 2) {
@@ -21,7 +21,7 @@ export function parseRoute(path: string): Route {
     return { name: 'profile', userId: decodeURIComponent(parts[1]) };
   }
   if (parts[0] === 'dev' && parts[1] === 'kit' && parts.length === 2) return { name: 'kit' };
-  return { name: 'lobby' };
+  return { name: 'harbour' };
 }
 
 export interface NavigateOptions {

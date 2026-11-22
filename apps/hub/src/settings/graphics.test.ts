@@ -23,7 +23,6 @@ describe('graphics', () => {
   it('starts with everything on', () => {
     expect(createGraphics(memory()).getState()).toEqual({
       level: 'high',
-      loopVideo: true,
       transitions: true,
       hudScale: 100,
       margin: 0,
@@ -36,19 +35,19 @@ describe('graphics', () => {
     const graphics = createGraphics(storage);
     const listener = vi.fn();
     graphics.subscribe(listener);
-    graphics.set({ loopVideo: false });
-    graphics.set({ loopVideo: false });
-    expect(graphics.getState().loopVideo).toBe(false);
-    expect(graphics.getState().transitions).toBe(true);
-    expect(JSON.parse(storage.store.get(GRAPHICS_KEY) ?? '')).toMatchObject({ loopVideo: false });
+    graphics.set({ transitions: false });
+    graphics.set({ transitions: false });
+    expect(graphics.getState().transitions).toBe(false);
+    expect(graphics.getState().level).toBe('high');
+    expect(JSON.parse(storage.store.get(GRAPHICS_KEY) ?? '')).toMatchObject({ transitions: false });
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it('reads what was kept, and ignores what is not a choice', () => {
-    expect(
-      createGraphics(memory('{"loopVideo":false,"transitions":"yes"}')).getState(),
-    ).toMatchObject({ loopVideo: false, transitions: true });
-    expect(createGraphics(memory('not json')).getState().loopVideo).toBe(true);
+    expect(createGraphics(memory('{"hudScale":110,"transitions":"yes"}')).getState()).toMatchObject(
+      { hudScale: 110, transitions: true },
+    );
+    expect(createGraphics(memory('not json')).getState().transitions).toBe(true);
     expect(createGraphics(memory('null')).getState().transitions).toBe(true);
     expect(createGraphics(memory('{"level":"low"}')).getState().level).toBe('low');
     expect(createGraphics(memory('{"level":"ultra"}')).getState().level).toBe('high');

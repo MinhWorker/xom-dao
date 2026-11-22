@@ -10,9 +10,9 @@ import { navigate, router } from '../../router.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
 import { InviteSheet } from '../friends/InviteSheet.js';
 import { homeward } from '../homeward/homeward.js';
-import { focusPosition } from '../lobby/summary.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import screen from '../Screen.module.css';
+import { focusPosition } from '../sea/summary.js';
 import { GameFrame } from './GameFrame.js';
 import { type Table, tableNotices } from './notices.js';
 import { Peek } from './Peek.js';
@@ -148,7 +148,7 @@ export function Room({ code }: { code: string }) {
     return (
       <main className={screen.center}>
         <p className={screen.error}>{joinError}</p>
-        <Button onClick={() => navigate('/', { replace: true })}>Về sảnh</Button>
+        <Button onClick={() => navigate('/', { replace: true })}>Về Bến</Button>
       </main>
     );
   }

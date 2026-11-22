@@ -5,7 +5,7 @@ A web hub where friends play games built in any engine, each embedded as an inde
 ## Platform
 
 **Hub**:
-The web app players open: sign-in, lobby, game list, rooms. It hosts games but holds no game rules.
+The web app players open: sign-in, the Harbour, the Sea chart, rooms. It hosts games but holds no game rules.
 _Avoid_: Client, shell, launcher
 
 **Game**:
