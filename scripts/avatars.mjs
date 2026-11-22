@@ -1,5 +1,6 @@
 // Builds the avatar pictures and frames in assets/app/images/. The two are separate:
 // the app stacks a frame (frame-<id>) over a round, frameless avatar (avatar-<id>).
+//   node scripts/avatars.mjs gold                frame-gold drawn here: a flat octagonal ring in the Hub's style
 //   node scripts/avatars.mjs frames              frame-<id> recolored from frame-gold
 //   node scripts/avatars.mjs emoji <assets dir>  avatar-<id> from Microsoft Fluent Emoji 3D (MIT):
 //     npm pack @lobehub/fluent-emoji-3d && tar xzf lobehub-fluent-emoji-3d-*.tgz → package/assets
@@ -54,8 +55,55 @@ const DISC = 100;
 const images = resolve(fileURLToPath(import.meta.url), '../../assets/app/images');
 const webp = { quality: 88, alphaQuality: 100 };
 
+/** Corner points of an octagon with axis-aligned flats at distance `apothem` from the centre. */
+function octagon(apothem) {
+  const c = SIZE / 2;
+  const k = apothem * Math.tan(Math.PI / 8);
+  return [
+    [c - k, c - apothem],
+    [c + k, c - apothem],
+    [c + apothem, c - k],
+    [c + apothem, c + k],
+    [c + k, c + apothem],
+    [c - k, c + apothem],
+    [c - apothem, c + k],
+    [c - apothem, c - k],
+  ];
+}
+const points = (list) => list.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+
+/** The default frame: a flat accent-yellow octagonal ring with a dark outline, a light bevel line
+ *  and a dark pointer on each side, its hole just inside the avatar's disc so the edge is covered. */
+function goldFrame() {
+  const c = SIZE / 2;
+  const hole = DISC - 3;
+  const ring = (apothem) =>
+    `M${octagon(apothem)
+      .map(([x, y]) => `${x.toFixed(2)} ${y.toFixed(2)}`)
+      .join(
+        ' L',
+      )} Z M${c - hole} ${c} a${hole} ${hole} 0 1 0 ${hole * 2} 0 a${hole} ${hole} 0 1 0 ${-hole * 2} 0 Z`;
+  const pointer = (rotate) =>
+    `<polygon transform="rotate(${rotate} ${c} ${c})" points="${c - 9},${c - 117} ${c + 9},${c - 117} ${c},${c - 104}" fill="#0b0d10"/>`;
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffd26b"/><stop offset="0.5" stop-color="#ffc234"/>
+        <stop offset="1" stop-color="#e8a60f"/></linearGradient></defs>
+      <path d="${ring(122)}" fill="#0b0d10" fill-rule="evenodd"/>
+      <path d="${ring(118)}" fill="url(#g)" fill-rule="evenodd"/>
+      <polygon points="${points(octagon(110))}" fill="none" stroke="#fff3c9" stroke-opacity="0.7" stroke-width="2"/>
+      <circle cx="${c}" cy="${c}" r="${hole}" fill="none" stroke="#0b0d10" stroke-width="4"/>
+      ${[0, 90, 180, 270].map(pointer).join('')}
+    </svg>`,
+  );
+}
+
 const [mode, source] = process.argv.slice(2);
-if (mode === 'frames') {
+if (mode === 'gold') {
+  await sharp(goldFrame()).webp(webp).toFile(join(images, 'frame-gold.webp'));
+  console.log('frame-gold.webp');
+} else if (mode === 'frames') {
   for (const [id, modulate] of Object.entries(FRAMES)) {
     await sharp(join(images, 'frame-gold.webp'))
       .modulate(modulate)
@@ -85,6 +133,8 @@ if (mode === 'frames') {
     console.log(`avatar-${id}.webp`);
   }
 } else {
-  console.error('usage: node scripts/avatars.mjs frames | emoji <fluent-emoji-3d package/assets>');
+  console.error(
+    'usage: node scripts/avatars.mjs gold | frames | emoji <fluent-emoji-3d package/assets>',
+  );
   process.exit(1);
 }

@@ -56,7 +56,8 @@
     at the viewer (generated with `agy` like the Harbour art above, keyed from green, on the same blue disc
     as `avatar-boy`; original in `assets/shared/images/avatar-harbour-raw.png`). `avatar-long` is a real photo (`assets/shared/images/Long-look-at-u.jpg`), not
     generated art.
-  - `node scripts/avatars.mjs frames` recolors `frame-gold` into the other frames;
+  - `node scripts/avatars.mjs gold` draws `frame-gold` (a flat octagonal ring in the Hub's style: accent
+    yellow, dark outline, a pointer on each side); then `node scripts/avatars.mjs frames` recolors it into the other frames;
     `node scripts/avatars.mjs emoji <dir>` makes the animal avatars from Microsoft's Fluent Emoji 3D
     (MIT, notice in `assets/app/images/LICENSE-FluentEmoji.txt`). Add avatar ids to `AVATARS` and the generation script;
     add frame ids to `FRAMES` in `account.ts` and the script's `FRAMES` map.

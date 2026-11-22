@@ -115,22 +115,20 @@ export function Harbour() {
       <header className={styles.top}>
         <button
           type="button"
-          className={`${styles.home} glass cut-br`}
+          className={styles.home}
           onPointerEnter={(e) => hoverSound(e)}
           onClick={() => playSound('pick')}
         >
-          <span className={styles.homeMain}>
-            <span className={`${styles.homeShape} glass cut-br`} aria-hidden="true" />
-            <span className={styles.portrait} aria-hidden="true">
-              <img src={avatarHarbour} alt="" draggable={false} />
-              <img src={frameGold} alt="" draggable={false} />
-            </span>
-            <span className={styles.homeText}>
-              <span className={styles.code}>Nhà</span>
-              <span className={styles.homeName}>{HOME.name}</span>
-            </span>
+          <span className={`${styles.homeShape} glass cut-br`} aria-hidden="true" />
+          <span className={styles.portrait} aria-hidden="true">
+            <img src={avatarHarbour} alt="" draggable={false} />
+            <img src={frameGold} alt="" draggable={false} />
           </span>
-          <span className={`${styles.homeLevel} glass cut-br`}>
+          <span className={styles.homeText}>
+            <span className={styles.code}>Nhà</span>
+            <span className={styles.homeName}>{HOME.name}</span>
+          </span>
+          <span className={styles.homeLevel}>
             <span className={styles.levelHead}>
               <span className={styles.code}>Cấp</span>
               <span className={styles.levelNumber}>{HOME.level}</span>

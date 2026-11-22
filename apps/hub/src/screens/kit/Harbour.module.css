@@ -125,27 +125,21 @@
   container-type: inline-size;
 }
 
-/* Nhà: a large shape (avatar that breaks out of it, and the name) and a small one (level and EXP). */
+/* Nhà: one shape holding the avatar (breaking out of it), the name, and the level with its EXP bar. */
 .home {
   --portrait: 88px;
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-  padding: 0;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--tap-main);
+  padding: var(--space-2) var(--space-4) var(--space-2) calc(var(--portrait) + var(--space-2));
   border: 0;
   background: none;
   color: var(--text);
   font: inherit;
   text-align: left;
   transition: translate 200ms var(--ease-out);
-}
-
-.homeMain {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-height: var(--tap-main);
-  padding: var(--space-2) var(--space-4) var(--space-2) calc(var(--portrait) + var(--space-2));
 }
 
 .homeShape {
@@ -173,11 +167,12 @@
 }
 
 .homeLevel {
-  --cut: 10px;
+  position: relative;
   display: grid;
   gap: 4px;
-  min-width: 106px;
-  padding: var(--space-2) var(--space-3);
+  min-width: 100px;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--line-strong);
 }
 
 .levelHead {
@@ -210,14 +205,23 @@
   min-width: 56px;
 }
 
-/* In a narrow column the card keeps the avatar, the name, the level number and the bar. */
+/* A narrower column shrinks the card, and a narrow one keeps only the avatar, name, level number and bar. */
 @container (max-width: 290px) {
   .home {
-    --portrait: 64px;
+    --portrait: 72px;
+    gap: var(--space-3);
+    padding-right: var(--space-3);
   }
 
-  .homeMain {
-    padding-right: var(--space-3);
+  .homeLevel {
+    min-width: 88px;
+    padding-left: var(--space-3);
+  }
+}
+
+@container (max-width: 240px) {
+  .home {
+    --portrait: 64px;
   }
 
   .homeName {
@@ -226,7 +230,6 @@
 
   .homeLevel {
     min-width: 0;
-    padding: var(--space-2);
   }
 
   .levelHead .code,
