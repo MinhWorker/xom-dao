@@ -3,11 +3,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { LedgerService, type RewardedGame } from './ledger.service.js';
 import { MemoryLedgerStore } from './ledger.store.js';
 
+vi.mock('@xomdao/shared', async (original) => ({
+  ...(await original<typeof import('@xomdao/shared')>()),
+  getGame: (id: string) => (id === 'caro' ? { rewardCap: { 'core:coin': 20 } } : undefined),
+}));
+
 const seat = (id: string, bot = false) => ({ id, name: id, bot, left: false });
 
 /** A finished Caro game (rewardCap 20 coins) won by `lan`, paying `rewards`. */
 const caroGame = (matchId: string, rewards: RewardedGame['result']['rewards']): RewardedGame => ({
-  gameId: 'tic-tac-toe',
+  gameId: 'caro',
   matchId,
   startedAt: 0,
   endedAt: 1,
@@ -29,7 +34,7 @@ describe('LedgerService', () => {
     expect(await ledger.rewardMatch(game)).toEqual([
       {
         userId: 'lan',
-        gameId: 'tic-tac-toe',
+        gameId: 'caro',
         rewards: [{ resource: 'core:coin', amount: 20 }],
         balances: { 'core:coin': 20 },
       },

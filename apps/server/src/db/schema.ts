@@ -98,7 +98,7 @@ export const ledgerEntries = pgTable(
     resource: text('resource').notNull(),
     /** Above 0 adds, below 0 spends. */
     amount: bigint('amount', { mode: 'number' }).notNull(),
-    /** Why, for people reading the table: `match:tic-tac-toe`. */
+    /** Why, for people reading the table: `match:caro`. */
     reason: text('reason').notNull(),
     key: text('key').notNull().unique(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

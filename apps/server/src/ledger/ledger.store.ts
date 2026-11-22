@@ -9,7 +9,7 @@ export interface LedgerEntry {
   resource: string;
   /** Above 0 adds, below 0 spends. */
   amount: number;
-  /** Why, for people reading the ledger: `match:tic-tac-toe`. */
+  /** Why, for people reading the ledger: `match:caro`. */
   reason: string;
   /** The same key is applied once; later tries change nothing. */
   key: string;

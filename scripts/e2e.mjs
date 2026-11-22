@@ -8,7 +8,7 @@
 //              The taps land on the Godot canvas by the layout in games/tien-len/godot/main.gd
 //              (`_hand_slot`, `_layout_buttons`), which `tienLenGeometry` mirrors.
 // Needs a built server and the Games (`npx turbo run build --filter=@xomdao/server
-// --filter=@xomdao/game-tic-tac-toe --filter=@xomdao/game-tien-len`; Tiến Lên needs `npm run
+// --filter=@xomdao/game-caro --filter=@xomdao/game-tien-len`; Tiến Lên needs `npm run
 // setup:godot` first) and Chromium (`npx playwright-core install chromium`). Saves screenshots
 // to e2e/.
 // Usage: node scripts/e2e.mjs [caro|tien-len]   (no argument: both, one after the other)
@@ -170,7 +170,7 @@ async function playCaro({ alice, bob, a, b }) {
   }
   for (const [turn, cell] of X_CELLS.entries()) {
     await mark(alice, cell, turn === X_CELLS.length - 1);
-    if (turn === 2) await b.screenshot({ path: resolve(shots, 'tic-tac-toe-3-playing.png') });
+    if (turn === 2) await b.screenshot({ path: resolve(shots, 'caro-3-playing.png') });
     if (turn < O_CELLS.length) await mark(bob, O_CELLS[turn]);
   }
   return alice;
@@ -254,7 +254,7 @@ async function playTienLen({ alice, bob, a, b }) {
 
 const GAMES = {
   caro: {
-    id: 'tic-tac-toe',
+    id: 'caro',
     name: 'Caro',
     pick: /Caro/,
     play: playCaro,

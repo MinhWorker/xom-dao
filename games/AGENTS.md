@@ -1,15 +1,14 @@
 # Games and the SDK
 
 Where to look:
-- **Examples**: `games/tic-tac-toe` (Caro) is the new platform's test Game: `manifest.ts`,
+- **Examples**: `games/caro` (Caro) is the new platform's test Game: `manifest.ts`,
   `server/` (rules with room options and a computer player) and `client/` (TypeScript + canvas,
-  no engine). Its `src/` is the legacy plugin, still loaded by the legacy registry.
+  no engine).
   `games/dat-bom` (Đặt Bom) is the Realtime example: a `RealtimeGame` with a `bot` hook, its
   arena physics in `server/game/arena.ts`, and a Three.js client in `client/` (low-poly scene
   built in code in `scene.ts`; `sync.ts` interpolates snapshots 150 ms behind the server and
-  `predict.ts` replays `walk` on the player's own character so keys answer at once). It has no
-  `src/`: a Game made for the new platform needs only `server/index.ts`, and the legacy registry
-  skips it.
+  `predict.ts` replays `walk` on the player's own character so keys answer at once). A Game made
+  for the new platform needs only `server/index.ts`; the legacy registry skips it.
   `games/tien-len` (Tiến Lên) is the Turn-based example with hidden hands: rounds, a turn clock,
   `bot` that also plays the seat of anyone who leaves (so it has no `onLeave`), and `finish`
   with places and scores. Its client is a Godot project in `godot/` (the reference Godot Game): the
@@ -30,9 +29,9 @@ Where to look:
   `defineManifest`, `optionsSchema` and `GameServer` for Turn-based games; `RealtimeGame`,
   `realtimeRules`, `testRealtimeGame` and `RealtimeGameServer` for Realtime ones. New Game servers
   use it.
-- `@xomdao/sdk/legacy` is the old one (`definePlugin`, `meta`, `ctx.reward`, dev commands). The
-  two kept games and the legacy registry in `@xomdao/shared` still import it; the rest of this file
-  describes it. Delete it once those games and the legacy registry are gone.
+- `@xomdao/sdk/legacy` is the old one (`definePlugin`, `meta`, `ctx.reward`, dev commands). No
+  Game uses it any more; the legacy registry in `@xomdao/shared` still imports it, and the rest of
+  this file describes it. Delete both.
 
 ## The Bridge
 
@@ -92,7 +91,7 @@ Caro without a client: `create --headless`, `join --headless`, `start`, then
   uses `postMessage`; from the editor, headless or a browser tab with `?harness=<ws url>` it uses a
   WebSocket to the Harness (`--harness=<url>` after `--`, or `XOMDAO_HARNESS`; default
   `ws://127.0.0.1:8040/bridge?player=0`). The Game code is the same in both.
-- **A sample scene** `tools/godot/sample`: a Godot client of Caro (the `tic-tac-toe` server), the
+- **A sample scene** `tools/godot/sample`: a Godot client of Caro (the `caro` server), the
   reference for how a Godot Game uses the addon.
 - **The web export**: `export.mjs`, with the single-threaded ("nothreads") template and no
   COOP/COEP, as the iframe research (#202) decided.
@@ -142,7 +141,7 @@ Make a Godot Game:
 `ready`, `init` (also replayed mid-Match), moves, `done`, `settings`, `visibility`.
 `npm run godot:verify -- --web` also exports the sample, loads it in headless Chromium with
 `?harness=` and taps the board (saves `smoke-godot/sample.png`). Needs Godot, a built server,
-Harness and `tic-tac-toe` (`npm run build`). Neither runs in CI; `npm run check` only tests that
+Harness and `caro` (`npm run build`). Neither runs in CI; `npm run check` only tests that
 the addon's Bridge version and message types match `packages/bridge`. CI does install Godot
 (`npm run setup:godot`, cached) so that Tiến Lên's build exports its client, and `npm run e2e`
 plays it through the Hub: `npm run e2e -- tien-len` taps the Godot canvas (its layout is

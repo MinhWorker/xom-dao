@@ -1,7 +1,7 @@
 import { defineManifest } from '@xomdao/sdk';
 
 export default defineManifest({
-  id: 'tic-tac-toe',
+  id: 'caro',
   name: 'Caro',
   tagline: 'Xếp năm quân liền hàng trước đối thủ.',
   minPlayers: 2,
