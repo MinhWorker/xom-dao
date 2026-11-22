@@ -131,13 +131,10 @@ async function seat(browser, { server, hub }, game) {
   await a.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
   await b.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
 
-  // Alice sails from the Bến to the Sea chart, picks the Game's Island and card, and makes a Room.
   await a.getByRole('button', { name: 'Ra khơi' }).click();
   await a.waitForURL(/\/sea$/);
   await a.getByRole('button', { name: `Đảo ${game.island}` }).click();
-  const card = a.getByRole('toolbar').getByRole('button', { name: game.name, exact: true });
-  // A tap on the focused card already makes the Room; tap only to bring it into focus.
-  if ((await card.getAttribute('aria-current')) !== 'true') await card.click();
+  await a.getByRole('toolbar').getByRole('button', { name: game.name, exact: true }).click();
   await a.getByRole('heading', { name: game.name }).waitFor();
   await a.screenshot({ path: resolve(shots, `${game.id}-1-sea-chart.png`) });
   await a.getByRole('button', { name: 'Ra khơi' }).click();

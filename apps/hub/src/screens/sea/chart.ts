@@ -1,11 +1,10 @@
-import type { AnyManifest, Island } from '@xomdao/sdk';
+import type { Island } from '@xomdao/sdk';
 import type { HubGame, SoonGame } from '../../games.js';
 
 /** One card on the Sea chart. `game` is set when the Game can be played. */
 export interface ChartCard {
   id: string;
   name: string;
-  manifest: AnyManifest;
   emblem: string;
   game?: HubGame;
   /** The screen's art while the card is focused. */
@@ -28,7 +27,6 @@ export function islandCards(
     .map((game) => ({
       id: game.manifest.id,
       name: game.manifest.name,
-      manifest: game.manifest,
       emblem: game.emblem,
       game,
       splash: game.art.lobby,
@@ -39,7 +37,6 @@ export function islandCards(
     .map(({ manifest, emblem }) => ({
       id: manifest.id,
       name: manifest.name,
-      manifest,
       emblem,
       splash: islandArt,
     }));

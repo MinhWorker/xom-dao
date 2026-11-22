@@ -116,6 +116,7 @@ function useSnapTrack(
   useEffect(() => {
     const track = ref.current;
     if (!track) return;
+    if (focusRef.current > 0) scrollToCard(track, focusRef.current, true);
     let frame = 0;
     const sync = () => {
       frame = 0;
@@ -171,7 +172,7 @@ function Splash({ card, on }: { card: ChartCard; on: boolean }) {
 /**
  * `/sea`: the Sea chart, after Arknights' stage select. Islands in a column, the Island's Games as
  * glass cards on a track that snaps one card at a time; the focused card grows and the screen's art
- * follows it. "Ra khơi" (or a tap on the focused card) makes a Room of that Game.
+ * follows it. "Ra khơi" makes a Room of that Game; Escape goes back to the Bến.
  */
 export function SeaChart() {
   const closedReason = useHub((s) => s.closed);
@@ -211,11 +212,6 @@ export function SeaChart() {
     select,
   } = useSnapTrack(island.id, cards.length, focus, onFocus);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only on mount, to show the card picked last
-  useEffect(() => {
-    if (focus > 0) select(focus, true);
-  }, []);
-
   const pickIsland = (id: Island) => {
     if (id === islandId) return;
     playSound('pick');
@@ -251,6 +247,15 @@ export function SeaChart() {
 
   const message = error || closedReason;
 
+  useEffect(() => {
+    if (rulesOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !document.querySelector('dialog[open]')) navigate('/');
+    };
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [rulesOpen]);
+
   return (
     <main className={styles.chart} style={{ '--hue': HUES[island.id] } as CSSProperties}>
       <div className={styles.backdrop} aria-hidden="true" key={island.id}>
@@ -282,8 +287,8 @@ export function SeaChart() {
         <ul onKeyDown={(e) => rovingKeyDown(e, 'button')}>
           {ISLANDS.map((item, index) => {
             const on = item.id === island.id;
-            const all = cardsOf(item);
-            const made = all.filter((c) => c.game).length;
+            const islandList = cardsOf(item);
+            const made = islandList.filter((c) => c.game).length;
             return (
               <li key={item.id}>
                 <button
@@ -299,7 +304,7 @@ export function SeaChart() {
                   <Svg markup={item.emblem} className={styles.islandEmblem} />
                   <span className={styles.islandName}>{item.name}</span>
                   <span className={styles.islandCount}>
-                    {made}/{all.length}
+                    {made}/{islandList.length}
                   </span>
                 </button>
               </li>
@@ -397,8 +402,7 @@ export function SeaChart() {
                 onPointerLeave={untilt}
                 onClick={() => {
                   if (!on) select(index);
-                  else if (card.game && canSail) void sail(card.game);
-                  else playSound('locked');
+                  else playSound(card.game ? 'pick' : 'locked');
                 }}
               >
                 <span className={styles.face}>
