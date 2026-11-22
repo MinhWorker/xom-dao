@@ -31,6 +31,9 @@
     (MIT, notice in `assets/app/images/LICENSE-FluentEmoji.txt`). Add avatar ids to `AVATARS` and the generation script;
     add frame ids to `FRAMES` in `account.ts` and the script's `FRAMES` map.
 
+- **The hand cursor** (`cursor-hand.png`, `cursor-hand@2x.png`) is drawn as SVG in
+  `scripts/cursor.mjs`; `node scripts/cursor.mjs` writes both. Its hotspot is (11, 1).
+
 ## Sounds
 
 - **The app-ready files are the real ones**, with no build step:

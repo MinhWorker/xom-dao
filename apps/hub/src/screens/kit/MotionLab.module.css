@@ -29,6 +29,36 @@
   background: linear-gradient(135deg, #16314a, #0b0d10 60%, #3a2a0b);
 }
 
+/* One hand cursor everywhere on a mouse, buttons and overlays included; hotspot at the fingertip.
+   It beats the kit's own `cursor: pointer` and disabled cursors, hence the !important. */
+@media (hover: hover) and (pointer: fine) {
+  .lab,
+  .lab *,
+  .lab dialog::backdrop {
+    cursor:
+      url("../../../../../assets/app/images/cursor-hand.png") 11 1,
+      auto !important;
+  }
+
+  @supports (
+      cursor:
+        image-set(url("data:,") 1x) 0 0,
+        auto
+    ) {
+    .lab,
+    .lab *,
+    .lab dialog::backdrop {
+      cursor:
+        image-set(
+          url("../../../../../assets/app/images/cursor-hand.png") 1x,
+          url("../../../../../assets/app/images/cursor-hand@2x.png") 2x
+        )
+        11 1,
+        auto !important;
+    }
+  }
+}
+
 .full {
   width: 100%;
   height: var(--view-h);
