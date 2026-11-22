@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import WebSocket from 'ws';
 
 const url = process.argv[2] ?? 'http://localhost:8033';
-const gameId = process.argv[3] ?? 'tic-tac-toe';
+const gameId = process.argv[3] ?? 'caro';
 
 const versionFile = new URL(`../games/${gameId}/dist/version.json`, import.meta.url);
 const version = existsSync(versionFile)

@@ -43,10 +43,10 @@ describe('Thống kê, xếp hạng', () => {
   it('counts each game once, for people only, with experience', async () => {
     const { stats, ids } = await setup(['Lan']);
     const [lan] = ids as [string];
-    const once = game('tic-tac-toe', [lan], lan);
+    const once = game('caro', [lan], lan);
     await stats.recordMatch(once);
     await stats.recordMatch(once);
-    await stats.recordMatch(game('tic-tac-toe', [lan], 'bot'));
+    await stats.recordMatch(game('caro', [lan], 'bot'));
     const mine = await stats.playerStats(lan);
     expect(mine).toMatchObject({ played: 2, won: 1, level: 1 });
     expect(mine.xp).toBe(2 * XP_PER_GAME);
@@ -67,11 +67,11 @@ describe('Thống kê, xếp hạng', () => {
       [chi, an, chi],
       [dung, an, null],
     ];
-    for (const [a, b, winner] of caro) await stats.recordMatch(game('tic-tac-toe', [a, b], winner));
+    for (const [a, b, winner] of caro) await stats.recordMatch(game('caro', [a, b], winner));
     // Dũng plays Tiến Lên a lot without winning: the most experience.
     for (let i = 0; i < 6; i++) await stats.recordMatch(game('tien-len', [dung], null));
 
-    const board = await stats.ranking('tic-tac-toe', dung);
+    const board = await stats.ranking('caro', dung);
     expect(board.entries[0]).toMatchObject({ id: binh, value: 3, rank: 1 });
     // A tie shares its rank, in account id order.
     expect(board.entries.slice(1).map((e) => [e.id, e.value, e.rank])).toEqual(
@@ -92,7 +92,7 @@ describe('Thống kê, xếp hạng', () => {
     const mine = await stats.playerStats(an);
     expect(mine.ranks).toEqual([
       { board: 'core', value: 5 * XP_PER_GAME, rank: 2 },
-      { board: 'tic-tac-toe', value: 2, rank: 2 },
+      { board: 'caro', value: 2, rank: 2 },
     ]);
     await expect(stats.ranking('dua-xe', an)).rejects.toThrow('Không có bảng');
   });

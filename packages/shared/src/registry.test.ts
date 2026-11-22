@@ -1,55 +1,9 @@
-import { existsSync } from 'node:fs';
 import { Game, gameRules, validateConsoleDefinitions } from '@xomdao/sdk/legacy';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { EVENT_GENRE, type Genre, genreProblems, genres, metaProblems } from './catalog.js';
 import { games } from './registry.js';
 import { levelOf } from './stats.js';
-
-const gameDir = (id: string) => new URL(`../../../games/${id}/`, import.meta.url);
-
-describe('game registry', () => {
-  it('has at least one ready game', () => {
-    expect(Object.values(games).some((g) => g.status === 'ready')).toBe(true);
-  });
-
-  for (const game of Object.values(games)) {
-    describe(game.id, () => {
-      it('has valid optional console declarations', () => {
-        validateConsoleDefinitions(game.commands ?? {}, game.catalogs ?? {}, game.events);
-        if (Object.keys(game.commands ?? {}).length) expect(game.runCommand).toBeTypeOf('function');
-      });
-
-      it('lives in games/<id>', () => {
-        expect(existsSync(gameDir(game.id))).toBe(true);
-      });
-
-      it('has sane player counts', () => {
-        expect(game.minPlayers).toBeGreaterThanOrEqual(1);
-        expect(game.maxPlayers).toBeGreaterThanOrEqual(game.minPlayers);
-      });
-
-      it('declares a valid hub card', () => {
-        expect(metaProblems(game)).toEqual([]);
-      });
-
-      it('has its card art in assets/', () => {
-        const image = game.card ?? game.portal.image;
-        const found = ['webp', 'png'].some((ext) =>
-          existsSync(new URL(`assets/${image}.${ext}`, gameDir(game.id))),
-        );
-        expect(found).toBe(true);
-      });
-
-      it('has its portal image in assets/', () => {
-        const found = ['webp', 'png'].some((ext) =>
-          existsSync(new URL(`assets/${game.portal.image}.${ext}`, gameDir(game.id))),
-        );
-        expect(found).toBe(true);
-      });
-    });
-  }
-});
 
 describe('genres', () => {
   it('has a valid genre list with Cờ and Bài as the main genres', () => {

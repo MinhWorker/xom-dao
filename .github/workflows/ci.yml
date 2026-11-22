@@ -43,7 +43,7 @@ jobs:
       - run: npx turbo run typecheck test build ${{ github.event_name == 'pull_request' && '--affected' || '' }}
       # Browsers play Đặt Bom through the Harness, use the Hub's friends and play Caro and Tiến Lên (Godot)
       # through the Hub against the real server. Build what they run first: --affected may have skipped them.
-      - run: npx turbo run build --filter=@xomdao/game-dat-bom --filter=@xomdao/game-tic-tac-toe --filter=@xomdao/game-tien-len --filter=@xomdao/harness --filter=@xomdao/server
+      - run: npx turbo run build --filter=@xomdao/game-caro --filter=@xomdao/game-dat-bom --filter=@xomdao/game-tien-len --filter=@xomdao/harness --filter=@xomdao/server
       - run: npx playwright-core install --with-deps chromium
       - run: npm run smoke:web
       - uses: actions/upload-artifact@v7
@@ -76,7 +76,7 @@ jobs:
             tienlen=false
             both='^(packages|e2e)/|^scripts/(e2e|libs|game-version)\.mjs$|^(package-lock\.json|turbo\.json|\.github/workflows/ci\.yml)$'
             if grep -qE "$both" <<<"$files"; then caro=true; tienlen=true; fi
-            if grep -qE '^games/tic-tac-toe/' <<<"$files"; then caro=true; fi
+            if grep -qE '^games/caro/' <<<"$files"; then caro=true; fi
             if grep -qE '^(games/tien-len|tools/godot)/' <<<"$files"; then tienlen=true; fi
             if [ $caro = true ] && [ $tienlen = true ]; then scenario=all
             elif [ $caro = true ]; then scenario=caro

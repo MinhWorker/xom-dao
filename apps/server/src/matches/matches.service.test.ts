@@ -13,7 +13,7 @@ const seat = (id: string, extra: Partial<FinishedGame['seats'][number]> = {}) =>
 
 /** A Match won by `winners` (a draw when empty). */
 const game = (endedAt: number, winners: string[], seats = [seat('a'), seat('b')]) => ({
-  gameId: 'tic-tac-toe',
+  gameId: 'caro',
   matchId: `match-${endedAt}`,
   startedAt: endedAt - 60_000,
   endedAt,

@@ -1,14 +1,9 @@
 {
-  "name": "@xomdao/game-tic-tac-toe",
+  "name": "@xomdao/game-caro",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "xomdao-source": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
     "./server": {
       "xomdao-source": "./server/index.ts",
       "types": "./dist/server/index.d.ts",
@@ -16,7 +11,7 @@
     }
   },
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.build.json --incremental false && tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs && node ../../tools/hub-assets/dist/cli.js",
+    "build": "vite build && tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs && node ../../tools/hub-assets/dist/cli.js",
     "dev": "vite build --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
