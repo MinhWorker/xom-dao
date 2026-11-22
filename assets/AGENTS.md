@@ -18,12 +18,18 @@
     `caro()` in `scripts/splash.mjs` projects every point through `project`; tune the view with
     `away` (camera distance: smaller is stronger perspective), `pitch` (look-down angle) and `yaw`,
     then run `npm run splash -- caro` and check the sheet stays inside the frame, right of 40%.
-- **Character art** (the Bến's standing character, `apps/hub/src/harbour-art/harbour-master.webp`)
-  is the one place AI image generation is allowed, because it is the owner's friend drawn as an
-  Arknights-style operator. Describe the person in words and never send their photo to the
-  generator. Run `agy --print` with the prompt, asking for a flat `#00FF00` background and no green
-  on the character, then key the green out into transparency and trim it. Originals are in
-  `assets/shared/images/` (`harbour-master-raw.png` is the generated image, `harbour-master.png` the cut-out).
+- **Harbour art** (`apps/hub/src/harbour-art/`: `harbour-master.webp`, the Bến's standing character,
+  and `harbour-night.webp`, its night backdrop) is the one place AI image generation is allowed. The
+  character is the owner's friend Long drawn as an Arknights-style operator.
+  - Describe the person in words and never send their photo to the generator. Run `agy --print`
+    with the prompt (it saves the PNG to the path the prompt names); for a later change, give it the
+    previous generated image as the reference so the face and costume stay the same.
+  - The character is generated on flat `#00FF00` with no green on him. His ID badge is generated
+    with a flat `#FF00FF` square where the photo goes and a blank white strip below it. Measure the
+    square's corners, warp Long's real photo (`assets/shared/images/Long-look-at-u.jpg`) into it,
+    write his name in the strip, then key the green out into transparency and trim.
+  - Originals are in `assets/shared/images/`: `harbour-master-raw.png` (generated),
+    `harbour-master.png` (cut-out with the photo), `harbour-night-raw.png` (the backdrop).
 - Pick what looks and sounds best for a card/board game in the app's style.
 - Keep a third-party license file next to assets whose license requires one.
 - Use only free, clearly allowed assets, and never sell anything.

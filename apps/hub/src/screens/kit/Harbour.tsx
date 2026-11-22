@@ -11,6 +11,7 @@ import {
 } from '@tabler/icons-react';
 import { type CSSProperties, useState } from 'react';
 import harbourMaster from '../../harbour-art/harbour-master.webp';
+import harbourNight from '../../harbour-art/harbour-night.webp';
 import { HUB_EMBLEM, ISLANDS } from '../../islands.js';
 import { Icon, OnlineDot, Sheet } from '../../kit/index.js';
 import { hoverSound, playSound } from '../../sound/index.js';
@@ -74,7 +75,7 @@ function Locked({ panel }: { panel: LockedPanel }) {
 
 /**
  * `/dev/kit#harbour`, dev only: a throwaway prototype of the Bến for review (#308), after Arknights'
- * lobby. The left half is left for art (a stand-in here); a tilted cluster of panels on the right
+ * lobby. The backdrop and the character on the left are generated art (Long wears his own badge); a tilted cluster of panels on the right
  * leads to each function. Chợ, Kho, Bảng vàng and Đình are locked shells.
  */
 export function Harbour() {
@@ -85,8 +86,7 @@ export function Harbour() {
   return (
     <main className={styles.harbour}>
       <div className={styles.backdrop} aria-hidden="true">
-        <div className={styles.sun} />
-        <div className={styles.sea} data-loop />
+        <img className={styles.scene} src={harbourNight} alt="" draggable={false} />
       </div>
       <img className={styles.character} src={harbourMaster} alt="" draggable={false} />
 
