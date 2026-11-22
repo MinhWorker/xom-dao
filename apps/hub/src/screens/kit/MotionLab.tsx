@@ -26,6 +26,16 @@ import avatarCat from '../../../../../assets/app/images/avatar-cat.webp';
 import avatarFox from '../../../../../assets/app/images/avatar-fox.webp';
 import { GAMES } from '../../games.js';
 import { Button, Choice, CoinIcon, GemIcon, Icon, Toggle } from '../../kit/index.js';
+import {
+  BackArt,
+  CardTile,
+  caroPieces,
+  FanArt,
+  knightPieces,
+  PairArt,
+  PieceTile,
+  pawnPieces,
+} from './GameTiles.js';
 import styles from './MotionLab.module.css';
 
 const LEVELS = [
@@ -645,24 +655,16 @@ function AdriftArt() {
   );
 }
 
-/** The connection is lost: frosted glass over everything, a picture, the retries, and only "Thử lại" closes it. */
+/** The connection is lost: frosted glass over everything while it retries; only "Thoát" (back to the Bến) leaves it. */
 function Offline({ open, onDone }: { open: boolean; onDone(): void }) {
   const [tries, setTries] = useState(1);
-  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setTries(1);
-    setRetrying(false);
     const id = setInterval(() => setTries((n) => n + 1), 2500);
     return () => clearInterval(id);
   }, [open]);
-
-  useEffect(() => {
-    if (!retrying) return;
-    const id = setTimeout(onDone, 1500);
-    return () => clearTimeout(id);
-  }, [retrying, onDone]);
 
   return (
     <LabDialog open={open} onClose={() => {}} className={styles.offline ?? ''}>
@@ -673,17 +675,62 @@ function Offline({ open, onDone }: { open: boolean; onDone(): void }) {
           <p>Server không phản hồi</p>
           <span className={styles.retryLine} role="status">
             <Diamond size={20} />
-            {retrying ? 'Đang thử lại…' : `Đang kết nối lại · lần ${tries}`}
+            Đang kết nối lại · lần {tries}
           </span>
-          <Button
-            variant="primary"
-            className={styles.alive}
-            disabled={retrying}
-            onClick={() => setRetrying(true)}
-          >
-            Thử lại
+          <Button variant="primary" className={styles.alive} onClick={onDone}>
+            Thoát
           </Button>
         </div>
+      </div>
+    </LabDialog>
+  );
+}
+
+/** The game tiles side by side: card games (glass cards) or board games (pieces on blocks). */
+function Gallery({ open, onClose }: { open: boolean; onClose(): void }) {
+  const [kind, setKind] = useState<'card' | 'piece'>('card');
+  const caro = caroPieces();
+  const knight = knightPieces();
+  const pawn = pawnPieces();
+  return (
+    <LabDialog open={open} onClose={onClose} className={styles.gallery ?? ''}>
+      <header className={styles.galleryTop}>
+        <h2>Hải đồ</h2>
+        <div className={styles.segments}>
+          {(
+            [
+              ['card', 'Bài'],
+              ['piece', 'Cờ'],
+            ] as const
+          ).map(([value, label]) => (
+            <Button
+              key={value}
+              className={styles.alive}
+              aria-pressed={kind === value}
+              onClick={() => setKind(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+        <button type="button" className={styles.close} aria-label="Đóng" onClick={onClose}>
+          <Icon icon={IconX} size={28} />
+        </button>
+      </header>
+      <div className={styles.tiles} key={kind}>
+        {kind === 'card' ? (
+          <>
+            <CardTile index={0} name="Tiến Lên" art={<FanArt />} />
+            <CardTile index={1} name="Phỏm" art={<PairArt />} tint="#3b4e66" />
+            <CardTile index={2} name="Xì dách" art={<BackArt />} locked />
+          </>
+        ) : (
+          <>
+            <PieceTile index={0} name="Caro" block={caro.block} piece={caro.piece} />
+            <PieceTile index={1} name="Cờ vua" block={knight.block} piece={knight.piece} />
+            <PieceTile index={2} name="Cờ tướng" block={pawn.block} piece={pawn.piece} locked />
+          </>
+        )}
       </div>
     </LabDialog>
   );
@@ -729,11 +776,12 @@ export function MotionLab({ full }: { full?: boolean }) {
   const [pager, setPager] = useState(false);
   const [sheet, setSheet] = useState<'friends' | 'settings' | null>(null);
   const [offline, setOffline] = useState(false);
+  const [gallery, setGallery] = useState(false);
   const endOffline = useCallback(() => setOffline(false), []);
   const toasts = useToasts();
   const region = useRef<HTMLElement>(null);
   const showing = toasts.items.length > 0;
-  const overlays = `${dialog}${sheet}${pager}${offline}`;
+  const overlays = `${dialog}${sheet}${pager}${offline}${gallery}`;
   const [wait, setWait] = useState<{ blocking: boolean; shown: boolean } | null>(null);
   const [loading, setLoading] = useState<'match' | 'harbour' | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -907,7 +955,11 @@ export function MotionLab({ full }: { full?: boolean }) {
           </div>
           <div className={`${styles.panel} ${styles.glass} cut-br`}>
             <span className={styles.label}>Nút</span>
-            <Button variant="primary" className={`${styles.alive} ${styles.go}`}>
+            <Button
+              variant="primary"
+              className={`${styles.alive} ${styles.go}`}
+              onClick={() => setGallery(true)}
+            >
               Ra khơi
               <span className={styles.chevrons} aria-hidden="true">
                 <IconChevronRight size={24} stroke={3} />
@@ -955,6 +1007,7 @@ export function MotionLab({ full }: { full?: boolean }) {
         </section>
 
         <Pager open={pager} onClose={() => setPager(false)} art={art} />
+        <Gallery open={gallery} onClose={() => setGallery(false)} />
 
         {loading && <Loading kind={loading} onDone={() => setLoading(null)} />}
 
