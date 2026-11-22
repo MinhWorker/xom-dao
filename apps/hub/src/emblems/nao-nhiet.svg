@@ -1,4 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <path fill="none" stroke="currentColor" stroke-width="2" d="M32 3L57.11 17.5V46.5L32 61L6.89 46.5V17.5Z"/>
-  <path fill="currentColor" fill-rule="evenodd" d="M32 12L35.83 23.76L42.96 22.04L41.24 29.17L53 33L41.24 36.83L42.96 43.96L35.83 42.24L32 54L28.17 42.24L21.04 43.96L22.76 36.83L11 33L22.76 29.17L21.04 22.04L28.17 23.76ZM26.5 33a5.5 5.5 0 1 0 11 0a5.5 5.5 0 1 0-11 0ZM29 33a3 3 0 1 0 6 0a3 3 0 1 0-6 0Z"/>
+  <defs>
+    <clipPath id="nao-nhiet-rays"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM24.72 19.65L32 -5.76L39.28 19.65L32 37.23ZM44.35 24.72L69.76 32L44.35 39.28L26.77 32ZM39.28 44.35L32 69.76L24.72 44.35L32 26.77ZM19.65 39.28L-5.76 32L19.65 24.72L37.23 32Z"/></clipPath>
+  </defs>
+  <path fill="none" stroke="currentColor" stroke-width="2" clip-path="url(#nao-nhiet-rays)" d="M32 3L57.11 17.5V46.5L32 61L6.89 46.5V17.5Z"/>
+  <path fill="currentColor" fill-rule="evenodd" d="M32 1.5L41.55 22.45L62.5 32L41.55 41.55L32 62.5L22.45 41.55L1.5 32L22.45 22.45ZM32 7.53L39.66 24.34L56.47 32L39.66 39.66L32 56.47L24.34 39.66L7.53 32L24.34 24.34Z"/>
+  <path fill="currentColor" fill-rule="evenodd" d="M23.5 32a8.5 8.5 0 1 0 17 0a8.5 8.5 0 1 0-17 0ZM26.4 30.3Q28.6 26.2 30.8 30.3Q28.6 29.2 26.4 30.3ZM33.2 30.3Q35.4 26.2 37.6 30.3Q35.4 29.2 33.2 30.3ZM26.6 32.7H37.4Q37.1 38.2 32 38.2Q26.9 38.2 26.6 32.7Z"/>
+  <g fill="currentColor"><path transform="rotate(45 32 32) translate(32 13.2) scale(0.7)" d="M0.8 -6C1.6 -4 3 -2.6 3 1C3 3 1.8 4.2 0 4.2C-1.8 4.2 -3 3 -3 1C-3 -0.8 -2.2 -1.8 -1.2 -3C-1.2 -1.6 -0.6 -0.9 0 -0.7C0.6 -2.6 0.9 -4.2 0.8 -6Z"/><path transform="rotate(135 32 32) translate(32 13.2) scale(0.7)" d="M0.8 -6C1.6 -4 3 -2.6 3 1C3 3 1.8 4.2 0 4.2C-1.8 4.2 -3 3 -3 1C-3 -0.8 -2.2 -1.8 -1.2 -3C-1.2 -1.6 -0.6 -0.9 0 -0.7C0.6 -2.6 0.9 -4.2 0.8 -6Z"/><path transform="rotate(225 32 32) translate(32 13.2) scale(0.7)" d="M0.8 -6C1.6 -4 3 -2.6 3 1C3 3 1.8 4.2 0 4.2C-1.8 4.2 -3 3 -3 1C-3 -0.8 -2.2 -1.8 -1.2 -3C-1.2 -1.6 -0.6 -0.9 0 -0.7C0.6 -2.6 0.9 -4.2 0.8 -6Z"/><path transform="rotate(315 32 32) translate(32 13.2) scale(0.7)" d="M0.8 -6C1.6 -4 3 -2.6 3 1C3 3 1.8 4.2 0 4.2C-1.8 4.2 -3 3 -3 1C-3 -0.8 -2.2 -1.8 -1.2 -3C-1.2 -1.6 -0.6 -0.9 0 -0.7C0.6 -2.6 0.9 -4.2 0.8 -6Z"/></g>
 </svg>
