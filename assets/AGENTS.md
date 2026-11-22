@@ -3,7 +3,7 @@
 - Make art and sound by hand, in Blender, drawn or synthesized in code, or from free resources on
   the web.
 - **AI image generation is for splash art only**: the 20:9 Sea chart backgrounds (each Game's
-  `hub/key-art.png` and the Islands' art). The owner makes them on an external AI image platform by
+  `hub/key-art.png` and each Island's `apps/hub/src/island-art/<island>.png`). The owner makes them on an external AI image platform by
   pasting the frame from `assets/sources/splash-prompts.md`, changing only the subject and `focus`.
   Agents do not generate splash art. Emblems stay hand-written SVG; in-Game art stays code or
   Blender. Older AI-made files are legacy.
