@@ -19,6 +19,7 @@ import {
 import screen from '../Screen.module.css';
 import { SettingsOverlay } from '../settings/SettingsOverlay.js';
 import styles from './Kit.module.css';
+import { MotionLab } from './MotionLab.js';
 
 /** Phone landscape frames the kit is checked at. */
 const FRAMES = [
@@ -130,8 +131,9 @@ function Samples() {
   );
 }
 
-/** `/dev/kit`, dev only: every kit component at the phone frames. */
+/** `/dev/kit`, dev only: every kit component at the phone frames; `#motion` shows only the motion prototype, full screen. */
 export function Kit() {
+  if (location.hash === '#motion') return <MotionLab full />;
   return (
     <main className={screen.screen}>
       <h1 className={screen.brand}>Kit</h1>
@@ -146,6 +148,7 @@ export function Kit() {
             <Samples />
           </section>
         ))}
+        <MotionLab />
       </div>
     </main>
   );
