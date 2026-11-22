@@ -52,7 +52,9 @@
   round, frameless picture (a disc of radius 100), `frame-<id>.webp` the ring drawn over it. The ids
   are `AVATARS` and `FRAMES` in `packages/shared/src/account.ts`; `avatar-bot` keeps its own frame.
   - `avatar-boy`, `avatar-girl` and `avatar-long` had the gold frame cut off (`frame-gold` is the
-    generated ring). `avatar-long` is a real photo (`assets/shared/images/Long-look-at-u.jpg`), not
+    generated ring). `avatar-harbour`, the default avatar, is the Bến character's face looking straight
+    at the viewer (generated with `agy` like the Harbour art above, keyed from green, on the same blue disc
+    as `avatar-boy`; original in `assets/shared/images/avatar-harbour-raw.png`). `avatar-long` is a real photo (`assets/shared/images/Long-look-at-u.jpg`), not
     generated art.
   - `node scripts/avatars.mjs frames` recolors `frame-gold` into the other frames;
     `node scripts/avatars.mjs emoji <dir>` makes the animal avatars from Microsoft's Fluent Emoji 3D
