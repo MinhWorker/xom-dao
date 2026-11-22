@@ -6,13 +6,13 @@ import {
   type BridgeSeat,
   createGameBridge,
 } from '@xomdao/bridge';
-import { at, keyOf, markOf, points } from '../server/game/board.js';
+import { at, isDraw, keyOf, markOf, points } from '../server/game/board.js';
 import type { Point, State } from '../server/game/model.js';
-import { BoardView, LINE_MS, MARK_MS, type Scene } from './render.js';
+import { BoardView, END_MS, type Ending, LINE_AT, MARK_MS, type Scene } from './render.js';
 import { Sounds } from './sound.js';
 
-/** How long the finished board stays after the winning line is drawn. */
-const LINGER_MS = 900;
+/** How soon a Match that ended without a winner or a draw (aborted) hands over to the Hub. */
+const ABORT_MS = 400;
 /** How long a refusal stays on screen. */
 const TOAST_MS = 2200;
 /** The turn cue waits for the other side's mark to land first. */
@@ -23,6 +23,7 @@ interface MatchPush {
   matchId: string;
   status: 'loading' | 'playing' | 'over';
   view?: State;
+  result?: { seats: { player: string; place: number }[] };
 }
 
 const canvas = document.getElementById('board') as HTMLCanvasElement;
@@ -47,6 +48,7 @@ const scene: Scene = {
   mine: null,
   placedAt: new Map(),
   overAt: null,
+  ending: null,
 };
 
 const bridge = createGameBridge({
@@ -60,6 +62,7 @@ const bridge = createGameBridge({
     donePendingFor = null;
     scene.placedAt.clear();
     scene.overAt = null;
+    scene.ending = null;
     show((init.match as State | null) ?? null, false);
   },
   onMessage(event, data) {
@@ -69,14 +72,15 @@ const bridge = createGameBridge({
     if (fresh) {
       scene.placedAt.clear();
       scene.overAt = null;
+      scene.ending = null;
     }
     matchId = push.matchId;
     status = push.status;
-    show(push.view ?? null, !fresh);
+    if (push.view || status !== 'over') show(push.view ?? null, !fresh);
     if (fresh && status === 'playing' && scene.state && !scene.state.last && myTurn()) {
       sounds.play('turn');
     }
-    if (status === 'over') finish(push.matchId);
+    if (status === 'over') finish(push);
   },
   onSettings: (settings) => sounds.apply(settings),
   onVisibility: (hidden) => sounds.setHidden(hidden),
@@ -97,30 +101,65 @@ function show(state: State | null, animate: boolean) {
     }
     if (theirs) {
       sounds.play('other');
-      if (status === 'playing' && state.turn === me) sounds.play('turn', TURN_CUE_MS);
+      if (status === 'playing' && state.turn === me && !endingOf(state)) {
+        sounds.play('turn', TURN_CUE_MS);
+      }
     }
-  }
-  if (state && (state.line || status === 'over') && scene.overAt === null) {
-    scene.overAt = animate ? now : now - LINE_MS;
   }
   scene.state = state;
   scene.pending = null;
   scene.mine = state && markOf(state, me);
+  const ending = state && endingOf(state);
+  if (ending) end(ending, animate);
   if (state) view.track(state.board, now, animate);
   updateSeats();
   frame();
 }
 
-/** Tells the Hub the end of the Match has played out, once per Match. */
-function finish(id: string) {
+/** How the Match on the board ended for this player, `null` while it goes on. */
+function endingOf(state: State): Ending | null {
+  if (state.line) {
+    const winner = at(state.board, state.line[0] as Point);
+    return !scene.mine ? 'watch' : winner === scene.mine ? 'win' : 'lose';
+  }
+  return isDraw(state.board) ? 'draw' : null;
+}
+
+/** Starts the end of the Match: the winning line and its sound, or the draw; at once on a redraw. */
+function end(ending: Ending, animate: boolean) {
+  if (scene.overAt !== null) return;
+  const now = performance.now();
+  scene.overAt = animate ? now : now - END_MS;
+  scene.ending = ending;
+  if (animate) sounds.play(ending === 'watch' ? 'win' : ending, LINE_AT);
+}
+
+/**
+ * The Match is over: once its end has played out, tells the Hub, once per Match. The end starts
+ * here when the last view did not show it (an older server), from the result.
+ */
+function finish(push: MatchPush) {
+  const id = push.matchId;
   if (doneSentFor === id || donePendingFor === id) return;
+  if (scene.overAt === null && push.result) {
+    const places = push.result.seats;
+    const mine = places.find((seat) => seat.player === me);
+    const draw = places.every((seat) => seat.place === places[0]?.place);
+    end(draw ? 'draw' : !mine ? 'watch' : mine.place === 1 ? 'win' : 'lose', true);
+    updateSeats();
+    frame();
+  }
+  const left = scene.overAt === null ? ABORT_MS : scene.overAt + END_MS - performance.now();
   donePendingFor = id;
   clearTimeout(doneTimer);
-  doneTimer = window.setTimeout(() => {
-    donePendingFor = null;
-    doneSentFor = id;
-    bridge.done();
-  }, LINE_MS + LINGER_MS);
+  doneTimer = window.setTimeout(
+    () => {
+      donePendingFor = null;
+      doneSentFor = id;
+      bridge.done();
+    },
+    Math.max(0, left),
+  );
 }
 
 /** Whether the player's own tap already played the sound of the mark on `p`. */
@@ -129,7 +168,11 @@ function placedByHand(p: Point) {
 }
 
 const myTurn = () =>
-  status === 'playing' && !!scene.state && !scene.pending && scene.state.turn === me;
+  status === 'playing' &&
+  !!scene.state &&
+  !scene.pending &&
+  scene.ending === null &&
+  scene.state.turn === me;
 
 function updateSeats() {
   const state = scene.state;
@@ -139,10 +182,19 @@ function updateSeats() {
   ] as const) {
     const id = state?.players[index];
     el.hidden = !id;
-    if (!id) continue;
+    if (!id) {
+      el.classList.remove('active', 'won');
+      continue;
+    }
     (el.querySelector('.name') as HTMLElement).textContent =
       seats.find((s) => s.id === id)?.name ?? '';
-    el.classList.toggle('active', status === 'playing' && state.turn === id);
+    const won = !!state.line && at(state.board, state.line[0] as Point) === (index ? 'O' : 'X');
+    el.classList.toggle(
+      'active',
+      won || (status === 'playing' && scene.ending === null && state.turn === id),
+    );
+    el.classList.toggle('won', won);
+    (el.querySelector('.turn') as HTMLElement).textContent = won ? 'Thắng' : 'Đến lượt';
     el.classList.toggle('me', id === me);
     (el.querySelector('.who') as HTMLElement).textContent = id === me ? 'Bạn' : '';
   }

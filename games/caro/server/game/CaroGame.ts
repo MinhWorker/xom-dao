@@ -50,4 +50,11 @@ export class CaroGame extends Game<State, Options> {
     const cell = botMove(state, player.id, rng, options.level);
     return cell && { event: 'place', payload: cell };
   }
+
+  /** The computer seems to think: briefly on the first mark, longer once the board fills. */
+  botDelay({ state, rng }: BotContext<State, Options>) {
+    if (!state.last) return 450 + Math.floor(rng() * 300);
+    const marks = state.board.cells.filter((cell) => cell !== null).length;
+    return 600 + Math.min(marks, 20) * 15 + Math.floor(rng() * 500);
+  }
 }

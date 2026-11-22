@@ -432,7 +432,7 @@ func _present_round_end(view: Dictionary) -> void:
 	_show_round_board(view)
 
 
-## The Match is over. The server sends no `view` with that push, only the result (each seat's
+## The Match is over. That push has no `view`, only the result (each seat's
 ## place and score): show the standings, then tell the Hub.
 func _present_over(result: Variant, epoch: int) -> void:
 	if not result is Dictionary:
@@ -452,7 +452,8 @@ func _present_over(result: Variant, epoch: int) -> void:
 	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["place"] < b["place"])
 	if rows.is_empty():
 		return
-	_sfx("win" if int(rows[0]["seat"]) == _me else "lose")
+	if _view.get("phase") != "over":
+		_sfx("win" if int(rows[0]["seat"]) == _me else "lose")
 	_show_standings(rows)
 	if not await _pause(DONE_AFTER_STANDINGS, epoch):
 		return

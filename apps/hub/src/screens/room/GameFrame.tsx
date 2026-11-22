@@ -18,11 +18,23 @@ const settings = () => {
   return { volume, muted, music, effects };
 };
 
-/** What `init` tells the Game, from the store as it is now. */
+/** The last `view` of each Match the Game was shown, as the Match ended without one. */
+const lastViews = new Map<string, unknown>();
+
+/**
+ * What `init` tells the Game, from the store as it is now. A Match that is over keeps its last
+ * view, so the Game redraws how it ended.
+ */
 function currentInit(): BridgeInit | null {
   const { user, room, match } = hub.getState();
   if (!user || !room) return null;
-  return bridgeInit({ user, room, match, settings: settings() });
+  const view = match && (match.view ?? lastViews.get(match.matchId));
+  return bridgeInit({
+    user,
+    room,
+    match: match && (view === undefined ? match : { ...match, view }),
+    settings: settings(),
+  });
 }
 
 /** Forwards a Game's `send` as `match:move`; the server's refusal goes back to the Game. */
@@ -128,6 +140,10 @@ export function GameFrame({ gameId, gameName, onDone }: GameFrameProps) {
   }, [ready, soundState]);
 
   useEffect(() => {
+    if (match?.view !== undefined) {
+      lastViews.clear();
+      lastViews.set(match.matchId, match.view);
+    }
     if (ready && match) host.current?.message('match:state', match);
   }, [ready, match]);
 

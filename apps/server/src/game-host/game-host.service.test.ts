@@ -346,6 +346,25 @@ describe('GameHostService', () => {
     expect(updates.at(-1)).toMatchObject({ status: 'over', outcome: 'settled', timer: null });
   });
 
+  it('publishes the final views before the Match is over', () => {
+    vi.useFakeTimers();
+    const updates: { status: string }[] = [];
+    const views: unknown[] = [];
+    const host = hostOf([{ manifest, version: 'v1', game: new TimerGame() }]);
+    host.onState((match) => {
+      updates.push(match);
+      if (match.status === 'playing') views.push(host.view('match-1', 'lan'));
+    });
+
+    host.startMatch(matchStart);
+    host.ready('match-1', 'lan');
+    host.ready('match-1', 'minh');
+    vi.advanceTimersByTime(100);
+
+    expect(updates.map(({ status }) => status)).toEqual(['loading', 'playing', 'playing', 'over']);
+    expect(views).toEqual([{ done: false }, { done: true }]);
+  });
+
   it('runs a bot move when it is the bot seat’s turn', async () => {
     const host = hostOf([{ manifest, version: 'v1', game: new BotGame() }]);
     const start = {

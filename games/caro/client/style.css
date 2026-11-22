@@ -168,6 +168,10 @@ body::after {
   visibility: visible;
 }
 
+.seat.won .turn::before {
+  animation: none;
+}
+
 @keyframes beat {
   50% {
     opacity: 0.35;
