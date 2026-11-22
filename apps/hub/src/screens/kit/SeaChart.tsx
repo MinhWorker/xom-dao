@@ -193,7 +193,7 @@ export function SeaChart() {
       </div>
 
       <header className={styles.top}>
-        <a className={styles.back} href="/dev/kit" aria-label="Về Bến">
+        <a className={styles.back} href="/dev/kit#harbour" aria-label="Về Bến">
           <Icon icon={IconChevronLeft} />
         </a>
         <h1 className={styles.title}>

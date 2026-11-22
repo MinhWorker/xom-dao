@@ -1,0 +1,469 @@
+.harbour {
+  --pad-x: max(var(--space-4), calc(2 * var(--vw)));
+  --cluster-w: clamp(420px, calc(58 * var(--vw)), 820px);
+
+  position: relative;
+  height: var(--view-h);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--cluster-w);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "top     cluster"
+    ".       cluster"
+    "title   cluster";
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--pad-x) var(--space-3) max(var(--pad-x), var(--safe-left));
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.svg {
+  display: inline-block;
+  flex: none;
+}
+
+.svg svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Stand-in harbour art: dusk sky, the sea below a horizon, the Hub's Emblem where the art will stand. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    #10202e 0,
+    #1d3a4c 44%,
+    #2c5466 58%,
+    #0a1b26 58.4%,
+    #06121a 100%
+  );
+}
+
+.backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(270deg, rgb(11 13 16 / 0.85) 0, rgb(11 13 16 / 0.4) 40%, transparent 62%),
+    linear-gradient(0deg, rgb(11 13 16 / 0.7) 0, transparent 30%);
+}
+
+.sun {
+  position: absolute;
+  left: 22%;
+  top: 58%;
+  width: calc(40 * var(--dvh));
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgb(255 194 52 / 0.55),
+    rgb(255 194 52 / 0.08) 45%,
+    transparent 70%
+  );
+}
+
+.sea {
+  position: absolute;
+  inset: 58.4% 0 0;
+  background: repeating-linear-gradient(180deg, rgb(46 200 230 / 0.1) 0 1px, transparent 1px 14px);
+  background-size: 100% 28px;
+  animation: swell 6s linear infinite;
+}
+
+@keyframes swell {
+  to {
+    background-position: 0 28px;
+  }
+}
+
+.watermark {
+  position: absolute;
+  left: 22%;
+  top: 48%;
+  width: calc(62 * var(--dvh));
+  height: calc(62 * var(--dvh));
+  translate: -50% -50%;
+  color: rgb(232 236 241 / 0.1);
+}
+
+/* Nhà: who is at the Bến, top left. */
+.top {
+  grid-area: top;
+  display: flex;
+}
+
+.home {
+  --cut: 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-main);
+  padding: var(--space-1) var(--space-5) var(--space-1) var(--space-1);
+  border: 0;
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  transition: translate 200ms var(--ease-out);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.homeText {
+  display: grid;
+  white-space: nowrap;
+  line-height: 1.15;
+}
+
+.homeName {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.title {
+  grid-area: title;
+  display: grid;
+  line-height: 1;
+}
+
+.titleName {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-xl) * 1.4);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text);
+  text-shadow: 0 2px 16px rgb(0 0 0 / 0.5);
+}
+
+/* The panels, tilted away from the art as if on a wall to the right. */
+.cluster {
+  grid-area: cluster;
+  display: grid;
+  min-height: 0;
+  perspective: 1400px;
+  perspective-origin: 0 50%;
+}
+
+.tilt {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: var(--tap-main) minmax(0, 1.2fr) minmax(0, 1fr) minmax(var(--tap-main), 0.8fr);
+  grid-template-areas:
+    "dinh dinh dinh set"
+    "go   go   go   nb"
+    "go   go   go   nb"
+    "cho  kho  bv   bv";
+  gap: var(--space-2);
+  min-height: 0;
+  transform: rotateY(-9deg);
+  transform-origin: 100% 50%;
+}
+
+.panel {
+  --cut: 14px;
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  transition:
+    translate 200ms var(--ease-out),
+    filter 200ms;
+}
+
+button.panel:focus-visible,
+a.panel:focus-visible,
+.home:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.panel:hover,
+  a.panel:hover,
+  .home:hover {
+    translate: -4px 0;
+    filter: brightness(1.15);
+  }
+}
+
+button.panel:active,
+a.panel:active,
+.home:active {
+  translate: 0 2px;
+}
+
+/* Ra khơi: the biggest panel, in the accent. */
+.go {
+  --cut: 28px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  color: var(--accent-ink);
+  background:
+    repeating-linear-gradient(135deg, rgb(0 0 0 / 0.05) 0 2px, transparent 2px 10px),
+    linear-gradient(135deg, var(--accent-hi), var(--accent) 60%, #e8a60f);
+}
+
+.go .code {
+  color: rgb(26 20 5 / 0.7);
+}
+
+.goMark {
+  position: absolute;
+  right: -8%;
+  top: 50%;
+  width: 72%;
+  aspect-ratio: 1;
+  translate: 0 -50%;
+  color: rgb(26 20 5 / 0.12);
+}
+
+.goHead {
+  position: relative;
+  display: grid;
+}
+
+.goName {
+  font-family: var(--font-display);
+  font-size: calc(var(--text-xl) * 1.25);
+  font-weight: 700;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.goFoot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.islands {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.islandMark {
+  width: 28px;
+  height: 28px;
+  color: rgb(26 20 5 / 0.65);
+}
+
+.goArrow {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  color: var(--accent);
+  background: var(--accent-ink);
+}
+
+/* Hàng xóm: a tall panel beside Ra khơi. */
+.tall {
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 3px solid var(--info);
+}
+
+.tallIcon {
+  color: var(--info);
+}
+
+.tallName {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.online {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  color: var(--text-dim);
+}
+
+/* Cài đặt: small, top right, where a player looks for it. */
+.small {
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+
+.smallName {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Locked shells: dimmed, striped, untouchable. */
+.locked {
+  container-type: inline-size;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  pointer-events: none;
+  user-select: none;
+  color: var(--text-dim);
+  opacity: 0.6;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.04) 0 6px,
+    transparent 6px 14px
+  );
+}
+
+.lockedIcon {
+  flex: none;
+}
+
+.lockedText {
+  display: grid;
+  min-width: 0;
+  line-height: 1.1;
+}
+
+.lockedText .code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lockedName {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.lock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  flex: none;
+}
+
+.lockLabel {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  white-space: nowrap;
+}
+
+/* Narrow locked panels stack the name under the code and keep only the lock. */
+.locked[data-compact] {
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.locked[data-compact] .lockedIcon {
+  display: none;
+}
+
+.locked[data-compact] .lock {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+}
+
+.locked[data-compact] .lockLabel {
+  display: none;
+}
+
+.people {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.person[data-dim] {
+  opacity: 0.55;
+}
+
+.personName {
+  font-weight: 600;
+}
+
+.personDetail {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-dim);
+}
+
+/* Short phone screens: the title gives its room to the panels. */
+@media (max-height: 420px) {
+  .harbour {
+    --cluster-w: clamp(420px, calc(62 * var(--vw)), 820px);
+  }
+
+  .titleName {
+    font-size: var(--text-xl);
+  }
+}
+
+@container (max-width: 150px) {
+  .lockedText .code {
+    display: none;
+  }
+}
+
+@container (max-width: 300px) {
+  .lockLabel {
+    display: none;
+  }
+}
