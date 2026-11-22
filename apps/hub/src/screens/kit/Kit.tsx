@@ -27,6 +27,7 @@ import { PersonRow } from '../friends/PersonRow.js';
 import { OfflineOverlay } from '../offline/OfflineOverlay.js';
 import screen from '../Screen.module.css';
 import { SettingsOverlay } from '../settings/SettingsOverlay.js';
+import { EmblemSheet } from './EmblemSheet.js';
 import styles from './Kit.module.css';
 import { MotionLab } from './MotionLab.js';
 
@@ -219,10 +220,12 @@ function Samples() {
 
 /**
  * `/dev/kit`, dev only: every kit component at the phone frames, at both graphics levels and with
- * less motion; toasts follow the real setting. `#motion` shows the motion prototype full screen.
+ * less motion; toasts follow the real setting. `#motion` shows the motion prototype full screen,
+ * `#emblems` the Hub's and the Islands' Emblems.
  */
 export function Kit() {
   if (location.hash === '#motion') return <MotionLab full />;
+  if (location.hash === '#emblems') return <EmblemSheet />;
   const art = (GAMES.find((g) => g.manifest.id === 'caro') ?? GAMES[0])?.art.lobby;
   return (
     <main className={screen.screen}>
