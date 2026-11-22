@@ -10,10 +10,26 @@ _Avoid_: Client, shell, launcher
 
 **Game**:
 An independently developed sub-project, built to a web bundle in any engine, embedded in the Hub in an iframe and talking to it only through the Bridge.
-_Avoid_: Island, plugin, module, mini-game
+_Avoid_: Plugin, module, mini-game
+
+**Island**:
+A group of Games of one kind, under which the Hub lists them. Every Game belongs to exactly one Island.
+_Avoid_: Category, genre (for the group); Island (for a single Game)
+
+**Harbour**:
+The Hub's home screen (players see "Bến"): panels leading to the Hub's features, some locked until they exist. It does not list Games.
+_Avoid_: Lobby, home, main menu
+
+**Sea chart**:
+The Hub screen where a player picks a Game (players see "Hải đồ"): Islands in one list, the chosen Island's Games as cards in another.
+_Avoid_: Game list, catalog, game picker
+
+**Emblem**:
+A flat single-colour mark, drawn in code, standing for the Hub, an Island or a Game.
+_Avoid_: Icon, logo, badge
 
 **Game manifest**:
-What a Game declares, as static data, so the Hub can present it and open Rooms for it: name, short description, player count, duration, room options and art.
+What a Game declares, as static data, so the Hub can present it and open Rooms for it: name, short description, player count, duration, its Island, room options, art and Emblem.
 _Avoid_: Meta, catalog entry, game info
 
 **Bridge**:
