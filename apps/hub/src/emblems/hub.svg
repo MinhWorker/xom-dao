@@ -1,6 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" stroke-width="2"/>
+  <path fill="none" stroke="currentColor" stroke-width="1.5" d="M6.13 15.84A30.5 30.5 0 0 1 26.18 2.06M37.82 2.06A30.5 30.5 0 0 1 57.87 15.84"/>
   <path fill="currentColor" d="M32 1l3 6h-6zM63 32l-6 3v-6zM32 63l-3-6h6zM1 32l6-3v6z"/>
-  <path fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M23 22.5L28.5 13.5L31.5 17.5L35 10.5L41 22.5ZM12 42L17.5 33L20.5 37L24 30L30 42ZM34 42L39.5 33L42.5 37L46 30L52 42Z"/>
-  <path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" d="M24 26q2-1.8 4 0t4 0t4 0t4 0M13 45.5q2-1.8 4 0t4 0t4 0t4 0M35 45.5q2-1.8 4 0t4 0t4 0t4 0"/>
+  <path fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" d="M18 18L24 11L27 13.5L32 8.5L37 13.5L40 11L46 18ZM51.12 26.88L54.19 35.57L50.52 36.92L52.35 43.75L45.52 45.58L46.19 49.43L37.12 51.12ZM26.88 51.12L17.81 49.43L18.48 45.58L11.65 43.75L13.48 36.92L9.81 35.57L12.88 26.88Z"/>
+  <g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+    <path transform="translate(32 32)" d="M-6 -7q2 -1.6 4 0t4 0t4 0M-10 -10.5q2 -1.6 4 0t4 0t4 0t4 0t4 0"/>
+    <path transform="rotate(120 32 32) translate(32 32)" d="M-6 -7q2 -1.6 4 0t4 0t4 0M-10 -10.5q2 -1.6 4 0t4 0t4 0t4 0t4 0"/>
+    <path transform="rotate(240 32 32) translate(32 32)" d="M-6 -7q2 -1.6 4 0t4 0t4 0M-10 -10.5q2 -1.6 4 0t4 0t4 0t4 0t4 0"/>
+  </g>
 </svg>
