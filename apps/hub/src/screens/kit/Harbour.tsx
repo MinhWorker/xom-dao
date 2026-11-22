@@ -11,6 +11,8 @@ import {
   type Icon as TablerIcon,
 } from '@tabler/icons-react';
 import { type CSSProperties, useState } from 'react';
+import avatarHarbour from '../../../../../assets/app/images/avatar-harbour.webp';
+import frameGold from '../../../../../assets/app/images/frame-gold.webp';
 import { BACKGROUNDS, CHARACTERS, pickArt } from '../../harbour-art/arts.js';
 import { HUB_EMBLEM, ISLANDS } from '../../islands.js';
 import { Icon, OnlineDot, Sheet, TextField } from '../../kit/index.js';
@@ -38,6 +40,9 @@ const NEIGHBOURS = [
   { name: 'Đức Anh', username: 'ducanh', detail: 'Ngoại tuyến', online: false },
   { name: 'Long', username: 'long', detail: 'Ở Bến', online: true },
 ];
+
+/** The player's Nhà card: stand-in numbers for the prototype. */
+const HOME = { name: 'Minh', level: 12, exp: 340, next: 500 };
 
 interface LockedPanel {
   area: string;
@@ -114,12 +119,38 @@ export function Harbour() {
           onPointerEnter={(e) => hoverSound(e)}
           onClick={() => playSound('pick')}
         >
-          <span className={styles.avatar} aria-hidden="true">
-            M
+          <span className={styles.homeMain}>
+            <span className={`${styles.homeShape} glass cut-br`} aria-hidden="true" />
+            <span className={styles.portrait} aria-hidden="true">
+              <img src={avatarHarbour} alt="" draggable={false} />
+              <img src={frameGold} alt="" draggable={false} />
+            </span>
+            <span className={styles.homeText}>
+              <span className={styles.code}>Nhà</span>
+              <span className={styles.homeName}>{HOME.name}</span>
+            </span>
           </span>
-          <span className={styles.homeText}>
-            <span className={styles.code}>Nhà · Cấp 12</span>
-            <span className={styles.homeName}>Minh</span>
+          <span className={`${styles.homeLevel} glass cut-br`}>
+            <span className={styles.levelHead}>
+              <span className={styles.code}>Cấp</span>
+              <span className={styles.levelNumber}>{HOME.level}</span>
+            </span>
+            <span
+              className={styles.exp}
+              role="progressbar"
+              aria-label="Kinh nghiệm"
+              aria-valuemin={0}
+              aria-valuemax={HOME.next}
+              aria-valuenow={HOME.exp}
+            >
+              <span
+                className={styles.expFill}
+                style={{ width: `${(HOME.exp / HOME.next) * 100}%` }}
+              />
+            </span>
+            <span className={styles.expText}>
+              {HOME.exp} / {HOME.next}
+            </span>
           </span>
         </button>
       </header>

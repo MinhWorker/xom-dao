@@ -69,7 +69,7 @@
   bottom: 0;
   left: calc((100% - var(--cluster-w)) / 2);
   translate: -50% 0;
-  height: 83%;
+  height: 80%;
   width: auto;
   max-width: none;
   pointer-events: none;
@@ -122,21 +122,125 @@
 .top {
   grid-area: top;
   display: flex;
+  container-type: inline-size;
 }
 
+/* Nhà: a large shape (avatar that breaks out of it, and the name) and a small one (level and EXP). */
 .home {
-  --cut: 12px;
+  --portrait: 88px;
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: var(--tap-main);
-  padding: var(--space-1) var(--space-5) var(--space-1) var(--space-1);
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: 0;
   border: 0;
-  border-left: 3px solid var(--accent);
+  background: none;
   color: var(--text);
   font: inherit;
   text-align: left;
   transition: translate 200ms var(--ease-out);
+}
+
+.homeMain {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-main);
+  padding: var(--space-2) var(--space-4) var(--space-2) calc(var(--portrait) + var(--space-2));
+}
+
+.homeShape {
+  --cut: 14px;
+  position: absolute;
+  inset: 0;
+  border-left: 3px solid var(--accent);
+}
+
+.portrait {
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  display: grid;
+  width: var(--portrait);
+  height: var(--portrait);
+  translate: 0 -50%;
+}
+
+.portrait img {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.5));
+}
+
+.homeLevel {
+  --cut: 10px;
+  display: grid;
+  gap: 4px;
+  min-width: 106px;
+  padding: var(--space-2) var(--space-3);
+}
+
+.levelHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.levelNumber {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.exp {
+  display: block;
+  height: 6px;
+  background: rgb(255 255 255 / 0.14);
+}
+
+.expFill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hi));
+}
+
+.exp {
+  min-width: 56px;
+}
+
+/* In a narrow column the card keeps the avatar, the name, the level number and the bar. */
+@container (max-width: 290px) {
+  .home {
+    --portrait: 64px;
+  }
+
+  .homeMain {
+    padding-right: var(--space-3);
+  }
+
+  .homeName {
+    font-size: var(--text-lg);
+  }
+
+  .homeLevel {
+    min-width: 0;
+    padding: var(--space-2);
+  }
+
+  .levelHead .code,
+  .expText {
+    display: none;
+  }
+}
+
+.expText {
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
 }
 
 .avatar {
@@ -153,6 +257,7 @@
 }
 
 .homeText {
+  position: relative;
   display: grid;
   white-space: nowrap;
   line-height: 1.15;
@@ -160,7 +265,7 @@
 
 .homeName {
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: 700;
   text-transform: uppercase;
 }
