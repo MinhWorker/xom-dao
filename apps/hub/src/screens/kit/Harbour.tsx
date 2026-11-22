@@ -10,6 +10,7 @@ import {
   type Icon as TablerIcon,
 } from '@tabler/icons-react';
 import { type CSSProperties, useState } from 'react';
+import harbourMaster from '../../harbour-art/harbour-master.webp';
 import { HUB_EMBLEM, ISLANDS } from '../../islands.js';
 import { Icon, OnlineDot, Sheet } from '../../kit/index.js';
 import { hoverSound, playSound } from '../../sound/index.js';
@@ -86,8 +87,8 @@ export function Harbour() {
       <div className={styles.backdrop} aria-hidden="true">
         <div className={styles.sun} />
         <div className={styles.sea} data-loop />
-        <Svg markup={HUB_EMBLEM} className={styles.watermark} />
       </div>
+      <img className={styles.character} src={harbourMaster} alt="" draggable={false} />
 
       <header className={styles.top}>
         <button

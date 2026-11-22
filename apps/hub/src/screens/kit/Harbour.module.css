@@ -91,14 +91,24 @@
   }
 }
 
-.watermark {
+/* The character stands centred in the free column left of the panels. */
+.character {
   position: absolute;
-  left: 22%;
-  top: 48%;
-  width: calc(62 * var(--dvh));
-  height: calc(62 * var(--dvh));
-  translate: -50% -50%;
-  color: rgb(232 236 241 / 0.1);
+  bottom: 0;
+  left: calc((100% - var(--cluster-w)) / 2);
+  translate: -50% 0;
+  height: 83%;
+  width: auto;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 0 18px rgb(255 194 52 / 0.22)) drop-shadow(0 6px 14px rgb(0 0 0 / 0.5));
+}
+
+.top,
+.title,
+.cluster {
+  z-index: 1;
 }
 
 /* Nhà: who is at the Bến, top left. */

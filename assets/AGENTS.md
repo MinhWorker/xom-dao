@@ -18,6 +18,12 @@
     `caro()` in `scripts/splash.mjs` projects every point through `project`; tune the view with
     `away` (camera distance: smaller is stronger perspective), `pitch` (look-down angle) and `yaw`,
     then run `npm run splash -- caro` and check the sheet stays inside the frame, right of 40%.
+- **Character art** (the Bến's standing character, `apps/hub/src/harbour-art/harbour-master.webp`)
+  is the one place AI image generation is allowed, because it is the owner's friend drawn as an
+  Arknights-style operator. Describe the person in words and never send their photo to the
+  generator. Run `agy --print` with the prompt, asking for a flat `#00FF00` background and no green
+  on the character, then key the green out into transparency and trim it. Originals are in
+  `assets/shared/images/` (`harbour-master-raw.png` is the generated image, `harbour-master.png` the cut-out).
 - Pick what looks and sounds best for a card/board game in the app's style.
 - Keep a third-party license file next to assets whose license requires one.
 - Use only free, clearly allowed assets, and never sell anything.
