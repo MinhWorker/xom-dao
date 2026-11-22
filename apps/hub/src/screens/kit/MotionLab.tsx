@@ -1,7 +1,6 @@
 import {
   IconAnchor,
   IconBell,
-  IconChevronLeft,
   IconChevronRight,
   IconMail,
   IconSettings,
@@ -304,6 +303,21 @@ const PAGES: { title: string; body(art?: string): ReactNode }[] = [
   },
 ];
 
+function Chevron() {
+  return (
+    <svg className={styles.chevron} viewBox="0 0 32 64" width={32} height={64} aria-hidden="true">
+      <path
+        d="M23 8 9 32l14 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** The pager overlay: pages on a swipeable snap track inside one glass panel, the HUD's band left clear. */
 function Pager({ open, onClose, art }: { open: boolean; onClose(): void; art?: string }) {
   const [page, setPage] = useState(0);
@@ -341,12 +355,12 @@ function Pager({ open, onClose, art }: { open: boolean; onClose(): void; art?: s
       <div className={styles.pagerMain}>
         <button
           type="button"
-          className={`${styles.nav} ${styles.glass}`}
+          className={styles.nav}
           aria-label="Trang trước"
           disabled={page === 0}
           onClick={() => go(page - 1)}
         >
-          <Icon icon={IconChevronLeft} size={32} />
+          <Chevron />
         </button>
         <div className={`${styles.pagerPanel} ${styles.glass} cut-br`}>
           <header className={styles.sheetTop}>
@@ -380,12 +394,12 @@ function Pager({ open, onClose, art }: { open: boolean; onClose(): void; art?: s
         </div>
         <button
           type="button"
-          className={`${styles.nav} ${styles.glass}`}
+          className={styles.nav}
           aria-label="Trang sau"
           disabled={page === last}
           onClick={() => go(page + 1)}
         >
-          <Icon icon={IconChevronRight} size={32} />
+          <Chevron />
         </button>
       </div>
       <div className={styles.dots} aria-hidden="true">
