@@ -10,10 +10,10 @@ import { navigate } from '../../router.js';
 import { prefersReducedMotion } from '../../settings/graphics.js';
 import { hoverSound, playSound } from '../../sound/index.js';
 import { tilt, untilt } from '../kit/GameTiles.js';
-import { durationLabel, focusPosition, playersLabel } from '../lobby/summary.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import { type ChartCard, islandCards } from './chart.js';
 import styles from './SeaChart.module.css';
+import { durationLabel, focusPosition, playersLabel } from './summary.js';
 
 const CODES: Record<Island, string> = { co: 'CO', bai: 'BA', 'xuc-xac': 'XX', 'nao-nhiet': 'NN' };
 

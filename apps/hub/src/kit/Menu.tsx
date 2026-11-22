@@ -14,13 +14,15 @@ export interface MenuProps {
   label: string;
   trigger: ReactNode;
   items: MenuItem[];
+  /** Extra classes on the trigger button. */
+  triggerClassName?: string;
 }
 
 /** Not in React's types yet: the invoker attributes that let the button toggle the popover. */
 const invoker = (id: string) => ({ commandfor: id, command: 'toggle-popover' }) as object;
 
 /** A popover menu under its trigger; arrow keys move between items, Escape closes. */
-export function Menu({ label, trigger, items }: MenuProps) {
+export function Menu({ label, trigger, items, triggerClassName }: MenuProps) {
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -37,7 +39,7 @@ export function Menu({ label, trigger, items }: MenuProps) {
       <button
         ref={triggerRef}
         type="button"
-        className={styles.trigger}
+        className={[styles.trigger, triggerClassName].filter(Boolean).join(' ')}
         aria-label={label}
         aria-haspopup="menu"
         {...(hasInvoker ? invoker(id) : {})}

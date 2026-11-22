@@ -4,7 +4,7 @@ import { hub, useHub } from './net/hub.js';
 import { OFFLINE } from './net/store.js';
 import { navigate, useRoute } from './router.js';
 import { InviteNotice } from './screens/friends/InviteNotice.js';
-import { Lobby } from './screens/lobby/Lobby.js';
+import { Harbour } from './screens/harbour/Harbour.js';
 import { Login } from './screens/login/Login.js';
 import { OfflineOverlay } from './screens/offline/OfflineOverlay.js';
 import { Profile } from './screens/profile/Profile.js';
@@ -57,7 +57,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (roomCode && route.name === 'lobby') navigate(`/room/${roomCode}`, { replace: true });
+    if (roomCode && route.name === 'harbour') navigate(`/room/${roomCode}`, { replace: true });
   }, [roomCode, route.name]);
 
   if (route.name === 'kit' && Kit) {
@@ -94,7 +94,7 @@ export function App() {
       {route.name === 'room' && <Room key={route.code} code={route.code} />}
       {route.name === 'sea' && <SeaChart />}
       {route.name === 'profile' && <Profile key={route.userId ?? 'me'} userId={route.userId} />}
-      {(route.name === 'lobby' || route.name === 'kit') && <Lobby />}
+      {(route.name === 'harbour' || route.name === 'kit') && <Harbour />}
       <InviteNotice />
     </>
   );

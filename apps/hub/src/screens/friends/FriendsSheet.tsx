@@ -216,12 +216,12 @@ export interface FriendsSheetProps {
   onClose(): void;
 }
 
-/** Bạn bè in a sheet: requests to answer, friends and where they are, and a way to add people. */
+/** Hàng xóm in a sheet: requests to answer, friends and where they are, and a way to add people. */
 export function FriendsSheet({ open, onClose }: FriendsSheetProps) {
   return (
-    <Sheet open={open} onClose={onClose} title="Bạn bè">
+    <Sheet open={open} onClose={onClose} title="Hàng xóm">
       <Tabs
-        label="Bạn bè"
+        label="Hàng xóm"
         tabs={[
           { id: 'list', label: 'Danh sách', content: <FriendList onClose={onClose} /> },
           { id: 'add', label: 'Thêm bạn', content: <AddFriend /> },

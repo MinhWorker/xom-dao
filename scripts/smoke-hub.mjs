@@ -109,22 +109,22 @@ async function main() {
         if (message.type() === 'error') problems.push(message.text());
       });
       await page.goto(hub);
-      await page.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
+      await page.getByRole('button', { name: /^Nhà/ }).waitFor();
       return page;
     }
     const a = await open(alice);
     const b = await open(bob);
 
     // Alice asks Bob by username.
-    await a.getByRole('button', { name: /^Bạn bè/ }).click();
-    const aliceSheet = a.getByRole('dialog', { name: 'Bạn bè' });
+    await a.getByRole('button', { name: /^Hàng xóm/ }).click();
+    const aliceSheet = a.getByRole('dialog', { name: 'Hàng xóm' });
     await aliceSheet.getByRole('tab', { name: 'Thêm bạn' }).click();
     await aliceSheet.getByLabel('Tên đăng nhập').fill(bob.username);
     await aliceSheet.locator('form').getByRole('button', { name: 'Kết bạn' }).click();
 
-    // Bob sees the request on the lobby button and accepts it.
-    await b.getByRole('button', { name: 'Bạn bè, 1 lời mời' }).click();
-    const bobSheet = b.getByRole('dialog', { name: 'Bạn bè' });
+    // Bob sees the request on the Hàng xóm panel and accepts it.
+    await b.getByRole('button', { name: 'Hàng xóm, 1 lời mời' }).click();
+    const bobSheet = b.getByRole('dialog', { name: 'Hàng xóm' });
     await bobSheet.getByRole('button', { name: 'Nhận' }).click();
     await bobSheet.getByText('Alice', { exact: true }).waitFor();
     await bobSheet.getByText('Trực tuyến').waitFor();
@@ -157,9 +157,9 @@ async function main() {
     await a.getByRole('list', { name: 'Người chơi' }).getByText('Bob', { exact: true }).waitFor();
     await a.screenshot({ path: resolve(shots, 'room-with-friend.png') });
 
-    // Bob's profile is reachable from the lobby.
+    // Bob's profile is reachable from the Bến.
     await b.getByRole('button', { name: 'Rời phòng' }).click();
-    await b.getByRole('button', { name: /^Hồ sơ/ }).click();
+    await b.getByRole('button', { name: /^Nhà/ }).click();
     await b.getByText('Cấp độ').waitFor();
     await b.getByText('Chưa có ván nào.').waitFor();
     await sleep(600); // the View Transition into the screen

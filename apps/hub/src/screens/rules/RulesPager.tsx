@@ -2,7 +2,7 @@ import { IconX } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import type { HubGame, RulesBlock, RulesPage } from '../../games.js';
 import { closeAnimated } from '../../kit/modal.js';
-import { focusPosition } from '../lobby/summary.js';
+import { focusPosition } from '../sea/summary.js';
 import { parseInline } from './inline.js';
 import { nearestPage, pageLabel } from './pager.js';
 import styles from './RulesPager.module.css';

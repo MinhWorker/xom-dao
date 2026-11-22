@@ -42,3 +42,8 @@ export function filterFriends<T extends { name: string; username: string }>(
   if (!needle) return list;
   return list.filter((p) => fold(p.name).includes(needle) || fold(p.username).includes(needle));
 }
+
+/** How many friends are online, in a Room or not. */
+export function onlineFriends(list: readonly Friend[]): number {
+  return list.filter((f) => f.state === 'friend' && f.online).length;
+}

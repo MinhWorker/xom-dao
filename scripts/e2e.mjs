@@ -1,12 +1,12 @@
 // End-to-end test of the Hub: a real server (no database), the Hub in dev mode and two headless
-// Chromium pages on a phone-sized screen. Alice signs up, Bob logs in, Alice opens a Room for a
-// Game, Bob joins by its code and gets ready, Alice starts and sees the loading screen wait for
+// Chromium pages on a phone-sized screen. Alice signs up, Bob logs in, Alice goes from the Bến
+// through the Sea chart to a Room for a Game, Bob joins by its code and gets ready, Alice starts and sees the loading screen wait for
 // Bob's Game (held back for the screenshot), and they play the Game inside its
 // iframe until the Match ends. Both pages must receive `match:result` and show the Results, and
 // holding the eye button must hide the HUD.
 // Caro then goes on in the same Room: Alice plays again, Bob reloads mid-Match and carries on from
 // where it was, Alice's back button asks before leaving, and Bob leaves mid-Match, so Alice is
-// told and wins.
+// told and wins, and Bob is back at the Bến.
 //   caro       Caro (TypeScript canvas): they click marks until Alice's five in a row wins.
 //   tien-len   Tiến Lên (Godot, a one-round Match): the player who leads taps the lowest card and
 //              Đánh each trick and the other taps Bỏ lượt, so the leader empties their hand first.
@@ -128,8 +128,9 @@ async function seat(browser, { server, hub }, game) {
   await b.getByLabel('Tên đăng nhập').fill(bob.username);
   await b.getByLabel('Mật khẩu').fill(password);
   await b.getByRole('button', { name: 'Vào', exact: true }).click();
-  await a.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
-  await b.getByRole('button', { name: /^Hồ sơ/ }).waitFor();
+  await a.getByRole('button', { name: /^Nhà/ }).waitFor();
+  await b.getByRole('button', { name: /^Nhà/ }).waitFor();
+  await a.screenshot({ path: resolve(shots, `${game.id}-1-harbour.png`) });
 
   await a.getByRole('button', { name: 'Ra khơi' }).click();
   await a.waitForURL(/\/sea$/);
@@ -251,6 +252,7 @@ async function caroAfterMatch({ a, b, code }) {
   await b.waitForURL((url) => url.pathname === '/');
   await b.screenshot({ path: resolve(shots, 'caro-8-homeward.png') });
   await homeward.waitFor({ state: 'detached' });
+  await b.getByRole('button', { name: /^Nhà/ }).waitFor();
   await a.getByText('Bob đã rời ván').waitFor();
   await results(a).waitFor({ timeout: 15000 });
   await a.getByRole('heading', { name: 'Thắng' }).waitFor();

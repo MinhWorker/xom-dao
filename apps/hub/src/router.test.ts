@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe('parseRoute', () => {
   it('reads the Hub screens from a path', () => {
-    expect(parseRoute('/')).toEqual({ name: 'lobby' });
+    expect(parseRoute('/')).toEqual({ name: 'harbour' });
     expect(parseRoute('/room/ab3x')).toEqual({ name: 'room', code: 'AB3X' });
     expect(parseRoute('/room/AB3X/')).toEqual({ name: 'room', code: 'AB3X' });
     expect(parseRoute('/dev/kit')).toEqual({ name: 'kit' });
@@ -17,9 +17,9 @@ describe('parseRoute', () => {
     expect(parseRoute('/profile/u-1')).toEqual({ name: 'profile', userId: 'u-1' });
   });
 
-  it('sends unknown paths to the lobby', () => {
-    expect(parseRoute('/nowhere')).toEqual({ name: 'lobby' });
-    expect(parseRoute('/room/')).toEqual({ name: 'lobby' });
+  it('sends unknown paths to the Harbour', () => {
+    expect(parseRoute('/nowhere')).toEqual({ name: 'harbour' });
+    expect(parseRoute('/room/')).toEqual({ name: 'harbour' });
   });
 });
 
@@ -33,7 +33,7 @@ describe('createRouter', () => {
     router.subscribe(seen);
     router.navigate('/');
     expect(location.pathname).toBe('/');
-    expect(router.route()).toEqual({ name: 'lobby' });
+    expect(router.route()).toEqual({ name: 'harbour' });
     expect(seen).toHaveBeenCalledTimes(1);
     router.dispose();
   });
@@ -51,7 +51,7 @@ describe('createRouter', () => {
     router.navigate('/room/AAAA');
     history.replaceState(null, '', '/');
     dispatchEvent(new PopStateEvent('popstate'));
-    expect(router.route()).toEqual({ name: 'lobby' });
+    expect(router.route()).toEqual({ name: 'harbour' });
     router.dispose();
   });
 
@@ -78,7 +78,7 @@ describe('createRouter', () => {
 
     unblock();
     router.navigate('/');
-    expect(router.route()).toEqual({ name: 'lobby' });
+    expect(router.route()).toEqual({ name: 'harbour' });
     router.dispose();
   });
 
@@ -105,7 +105,7 @@ describe('createRouter', () => {
     router.navigate('/room/AAAA');
     router.block();
     router.navigate('/', { force: true });
-    expect(router.route()).toEqual({ name: 'lobby' });
+    expect(router.route()).toEqual({ name: 'harbour' });
     router.dispose();
   });
 });
