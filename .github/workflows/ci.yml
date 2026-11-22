@@ -60,10 +60,39 @@ jobs:
           name: smoke-hub
           path: smoke-hub/
           if-no-files-found: ignore
+      # The e2e plays the real Games, so a PR runs only the scenarios whose Game changed: caro,
+      # tien-len, both (shared code, the e2e itself or the build) or none. Every push to main runs both.
+      - id: games
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: origin/${{ github.base_ref }}
+        run: |
+          scenario=none
+          if [ "$EVENT" != pull_request ]; then
+            scenario=all
+          else
+            files=$(git diff --name-only "$BASE...HEAD")
+            caro=false
+            tienlen=false
+            both='^(packages|e2e)/|^scripts/(e2e|libs|game-version)\.mjs$|^(package-lock\.json|turbo\.json|\.github/workflows/ci\.yml)$'
+            if grep -qE "$both" <<<"$files"; then caro=true; tienlen=true; fi
+            if grep -qE '^games/tic-tac-toe/' <<<"$files"; then caro=true; fi
+            if grep -qE '^(games/tien-len|tools/godot)/' <<<"$files"; then tienlen=true; fi
+            if [ $caro = true ] && [ $tienlen = true ]; then scenario=all
+            elif [ $caro = true ]; then scenario=caro
+            elif [ $tienlen = true ]; then scenario=tien-len
+            fi
+          fi
+          echo "e2e=$scenario" >> "$GITHUB_OUTPUT"
+          echo "e2e scenario: $scenario"
       # Two browsers finish a Caro and a Tiến Lên match through the Hub, against the server and the dev Hub.
-      - run: npm run e2e
+      - run: |
+          if [ "$SCENARIO" = all ]; then npm run e2e; else npm run e2e -- "$SCENARIO"; fi
+        if: steps.games.outputs.e2e != 'none'
+        env:
+          SCENARIO: ${{ steps.games.outputs.e2e }}
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: always() && steps.games.outputs.e2e != 'none'
         with:
           name: e2e
           path: e2e/
