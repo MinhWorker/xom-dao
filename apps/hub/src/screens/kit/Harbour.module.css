@@ -402,9 +402,14 @@ a.panel:active,
 .people {
   display: grid;
   gap: var(--space-2);
-  margin: 0;
+  margin: var(--space-3) 0 0;
   padding: 0;
   list-style: none;
+}
+
+.noMatch {
+  margin: var(--space-4) 0 0;
+  color: var(--text-dim);
 }
 
 .person {

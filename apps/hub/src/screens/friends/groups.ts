@@ -27,3 +27,18 @@ export function presenceLabel(friend: Friend, gameName?: string): string {
 export function canInvite(friend: Friend, roomCode: string): boolean {
   return friend.state === 'friend' && friend.online && friend.roomCode !== roomCode;
 }
+
+/** Lowercase and without Vietnamese marks, so "hai" finds "Hải" and "duc" finds "Đức". */
+export function fold(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd').toLowerCase();
+}
+
+/** The people whose name or username contains the query; a blank query keeps the whole list. */
+export function filterFriends<T extends { name: string; username: string }>(
+  list: readonly T[],
+  query: string,
+): readonly T[] {
+  const needle = fold(query.trim());
+  if (!needle) return list;
+  return list.filter((p) => fold(p.name).includes(needle) || fold(p.username).includes(needle));
+}

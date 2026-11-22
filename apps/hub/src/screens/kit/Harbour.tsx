@@ -13,8 +13,9 @@ import { type CSSProperties, useState } from 'react';
 import harbourMaster from '../../harbour-art/harbour-master.webp';
 import harbourNight from '../../harbour-art/harbour-night.webp';
 import { HUB_EMBLEM, ISLANDS } from '../../islands.js';
-import { Icon, OnlineDot, Sheet } from '../../kit/index.js';
+import { Icon, OnlineDot, Sheet, TextField } from '../../kit/index.js';
 import { hoverSound, playSound } from '../../sound/index.js';
+import { filterFriends } from '../friends/groups.js';
 import { SettingsOverlay } from '../settings/SettingsOverlay.js';
 import styles from './Harbour.module.css';
 
@@ -29,9 +30,11 @@ function Svg({ markup, className }: { markup: string; className?: string }) {
 }
 
 const NEIGHBOURS = [
-  { name: 'Lan', detail: 'Ở Bến', online: true },
-  { name: 'Minh', detail: 'Đang chơi Caro', online: true },
-  { name: 'Hải', detail: 'Ngoại tuyến', online: false },
+  { name: 'Lan', username: 'lan', detail: 'Ở Bến', online: true },
+  { name: 'Minh', username: 'minh99', detail: 'Đang chơi Caro', online: true },
+  { name: 'Hải', username: 'hai_xom', detail: 'Ngoại tuyến', online: false },
+  { name: 'Đức Anh', username: 'ducanh', detail: 'Ngoại tuyến', online: false },
+  { name: 'Long', username: 'long', detail: 'Ở Bến', online: true },
 ];
 
 interface LockedPanel {
@@ -81,7 +84,9 @@ function Locked({ panel }: { panel: LockedPanel }) {
 export function Harbour() {
   const [neighbours, setNeighbours] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [query, setQuery] = useState('');
   const online = NEIGHBOURS.filter((n) => n.online).length;
+  const shown = filterFriends(NEIGHBOURS, query);
 
   return (
     <main className={styles.harbour}>
@@ -176,8 +181,18 @@ export function Harbour() {
 
       <SettingsOverlay open={settings} onClose={() => setSettings(false)} />
       <Sheet open={neighbours} onClose={() => setNeighbours(false)} title="Hàng xóm">
+        <TextField
+          label="Tìm bạn"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+        />
+        {shown.length === 0 && <p className={styles.noMatch}>Không tìm thấy ai.</p>}
         <ul className={styles.people}>
-          {NEIGHBOURS.map((n) => (
+          {shown.map((n) => (
             <li key={n.name} className={styles.person} data-dim={!n.online || undefined}>
               <span className={styles.avatar} aria-hidden="true">
                 {n.name.slice(0, 1)}

@@ -6,7 +6,7 @@ import { Button, Chip, Icon, Menu, Sheet, Tabs, TextField, toast } from '../../k
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
 import styles from './FriendsSheet.module.css';
-import { groupFriends, presenceLabel } from './groups.js';
+import { filterFriends, groupFriends, presenceLabel } from './groups.js';
 import { PersonRow } from './PersonRow.js';
 
 const message = (err: unknown) => (err instanceof Error ? err.message : 'Máy chủ gặp lỗi');
@@ -43,7 +43,9 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
 function FriendList({ onClose }: { onClose(): void }) {
   const friends = useHub((s) => s.friends);
   const { error, busy, run } = useAction();
-  const groups = groupFriends(friends);
+  const [query, setQuery] = useState('');
+  const shown = filterFriends(friends, query);
+  const groups = groupFriends(shown);
 
   const answer = (who: Friend, accept: boolean) =>
     run(() => hub.request('friends:answer', { userId: who.id, accept }));
@@ -53,9 +55,19 @@ function FriendList({ onClose }: { onClose(): void }) {
     navigate(path);
   };
 
-  const empty = friends.length === 0;
   return (
     <div className={styles.lists}>
+      {friends.length > 0 && (
+        <TextField
+          label="Tìm bạn"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+        />
+      )}
       {groups.incoming.length > 0 && (
         <Section label="Lời mời">
           {groups.incoming.map((f) => (
@@ -108,7 +120,10 @@ function FriendList({ onClose }: { onClose(): void }) {
           ))}
         </Section>
       )}
-      {empty && <p className={styles.empty}>Chưa có bạn bè.</p>}
+      {friends.length === 0 && <p className={styles.empty}>Chưa có bạn bè.</p>}
+      {friends.length > 0 && shown.length === 0 && (
+        <p className={styles.empty}>Không tìm thấy ai.</p>
+      )}
       {error && (
         <p className={styles.error} role="alert">
           {error}
