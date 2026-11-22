@@ -37,7 +37,7 @@ export function EmblemSheet() {
         <dt>Lưới</dt>
         <dd>viewBox 64 × 64, ô 8</dd>
         <dt>Khung</dt>
-        <dd>Hub: vòng tròn r27 + 4 mũi la bàn · Đảo: lục giác r29 · nét 2</dd>
+        <dd>Hub: vòng tròn r27 + hai cung r30.5 + 4 mũi la bàn · Đảo: lục giác r29 · nét 2</dd>
         <dt>Hình</dt>
         <dd>khối đặc, khoét lỗ bằng evenodd, khe 2–2.5 · nét mảnh 2, nét đậm 3–3.5</dd>
         <dt>Màu</dt>
