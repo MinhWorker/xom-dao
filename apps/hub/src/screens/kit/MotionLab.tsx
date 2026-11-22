@@ -35,10 +35,12 @@ const PLAYERS = [
 
 const BADGE_DELAY = 300;
 
-/** Closes a top-layer `<dialog>` after its exit transition; Safari and Firefox cannot animate `display` out. */
+/** Closes a top-layer `<dialog>` the moment its exit transitions end; looping animations inside are not waited on. */
 async function closeAnimated(dialog: HTMLDialogElement) {
   dialog.setAttribute('data-closing', '');
-  const running = dialog.getAnimations({ subtree: true });
+  const running = dialog
+    .getAnimations({ subtree: true })
+    .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity);
   await Promise.race([
     Promise.allSettled(running.map((a) => a.finished)),
     new Promise((resolve) => setTimeout(resolve, 600)),

@@ -774,31 +774,35 @@ button.tool:active {
 .sheet {
   color: var(--text);
   border: 0;
-  transition-property: opacity, scale, clip-path, translate, display, overlay;
+  transition-property: opacity, scale, clip-path, translate;
   transition-duration: 220ms;
   transition-timing-function: var(--ease-out);
-  transition-behavior: allow-discrete;
 }
 
 .box::backdrop,
 .band::backdrop,
 .sheet::backdrop {
   background: rgb(0 0 0 / 0);
-  transition-property: background-color, display, overlay;
-  transition-duration: 220ms;
-  transition-behavior: allow-discrete;
+  transition-property: background-color, backdrop-filter;
+  transition-duration: 200ms;
 }
 
-.lab:not([data-graphics="low"]) :is(.box, .band, .sheet)::backdrop {
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-}
-
+/* The blur lives only while the dialog is open, so nothing is left once it closes. */
 :is(.box, .band, .sheet)[open]:not([data-closing])::backdrop {
   background: rgb(0 0 0 / 0.55);
 
   @starting-style {
     background: rgb(0 0 0 / 0);
+  }
+}
+
+.lab:not([data-graphics="low"]) :is(.box, .band, .sheet)[open]:not([data-closing])::backdrop {
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+
+  @starting-style {
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
   }
 }
 
@@ -1018,10 +1022,9 @@ button.tool:active {
   color: var(--text);
   overflow: hidden;
   opacity: 0;
-  transition-property: opacity, display, overlay;
+  transition-property: opacity;
   transition-duration: 220ms;
   transition-timing-function: var(--ease-out);
-  transition-behavior: allow-discrete;
 }
 
 .pager[open] {
@@ -1324,7 +1327,7 @@ button.tool:active {
 .lab[data-reduce] .bandInner {
   translate: none;
   clip-path: none;
-  transition-property: opacity, display, overlay;
+  transition-property: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1333,6 +1336,6 @@ button.tool:active {
   .lab .bandInner {
     translate: none;
     clip-path: none;
-    transition-property: opacity, display, overlay;
+    transition-property: opacity;
   }
 }
