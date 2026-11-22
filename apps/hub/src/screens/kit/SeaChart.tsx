@@ -125,7 +125,7 @@ function useSnapTrack(scope: string, count: number, onFocus: (index: number) => 
     [onFocus],
   );
 
-  /** Focuses a card and scrolls to it; scroll events are ignored while the scroll settles. */
+  /** Focuses a card and scrolls to it; scroll events are ignored until the scroll has settled. */
   const select = useCallback(
     (index: number) => {
       const target = Math.max(0, Math.min(count - 1, index));
@@ -153,6 +153,9 @@ function useSnapTrack(scope: string, count: number, onFocus: (index: number) => 
       focusOn(atEnd ? Math.max(tail, focusRef.current) : snappedIndex(track));
     };
     const onScroll = () => {
+      const lock = lockRef.current;
+      const now = performance.now();
+      if (now < lock.until) lock.until = Math.max(lock.until, now + 150);
       if (!frame) frame = requestAnimationFrame(sync);
     };
     let lastStep = 0;
@@ -199,9 +202,10 @@ function Splash({ card, island, on }: { card: ChartCard; island: HubIsland; on: 
 }
 
 /**
- * `/dev/kit#sea`, dev only: a throwaway prototype of the Sea chart for review (#306), after
- * Arknights' stage select. Islands in a column, the Island's Games on a track that snaps one card at
- * a time; the card at the snap line grows and the screen's art follows it. Splash art is a stand-in.
+ * `/dev/kit#sea`, dev only: the approved prototype of the Sea chart (#306), after Arknights' stage
+ * select. Islands in a column, the Island's Games as glass cards on a track that snaps one card at a
+ * time; the focused card grows and the screen's art follows it. A button opens the Game's rules in
+ * `RulesPager`. Splash art is a stand-in.
  */
 export function SeaChart() {
   const [islandId, setIslandId] = useState<Island>(ISLANDS[0]?.id ?? 'co');

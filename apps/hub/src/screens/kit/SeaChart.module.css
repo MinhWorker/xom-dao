@@ -307,6 +307,8 @@
 
 /* The snap target stays untransformed so snap positions never move; its face grows and slides. */
 .card {
+  --px: 0;
+  --py: 0;
   position: relative;
   flex: none;
   width: var(--card-w);
@@ -352,8 +354,6 @@
 }
 
 .stack {
-  --px: 0;
-  --py: 0;
   position: absolute;
   inset: 4% 8% 2%;
   transform-style: preserve-3d;
@@ -473,6 +473,17 @@
   text-align: center;
   text-transform: uppercase;
   text-shadow: 0 1px 6px rgb(0 0 0 / 0.8);
+}
+
+/* Less motion: the layers settle without easing (the pointer already does not tilt them). */
+[data-reduce] :is(.stack, .glassBack, .glassMid, .glassFront) {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.stack, .glassBack, .glassMid, .glassFront) {
+    transition: none;
+  }
 }
 
 /* A Game not made yet: dimmed and locked, its name still readable. */
