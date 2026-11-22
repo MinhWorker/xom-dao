@@ -7,7 +7,7 @@ export default defineManifest({
   minPlayers: 2,
   maxPlayers: 2,
   duration: { min: 5, max: 15 },
-  status: 'wip',
+  status: 'ready',
   bots: true,
   focus: { x: 70, y: 50 },
   options: {
