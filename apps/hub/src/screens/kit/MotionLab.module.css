@@ -1,0 +1,827 @@
+.lab {
+  --glass: rgb(20 23 28 / 0.5);
+  --glass-solid: var(--bg-raised);
+  --glass-edge: rgb(255 255 255 / 0.12);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 844px;
+  height: 390px;
+  flex: none;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--line-strong);
+  background: linear-gradient(135deg, #16314a, #0b0d10 60%, #3a2a0b);
+}
+
+.full {
+  width: 100%;
+  height: var(--view-h);
+  border: 0;
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.75);
+}
+
+/* Frosted glass; a solid panel where the browser has no backdrop-filter or the graphics level is low. */
+.glass {
+  background: var(--glass-solid);
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .lab:not([data-graphics="low"]) .glass {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.06), transparent 40%), var(--glass);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+}
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-2);
+  border-left: 3px solid var(--accent);
+}
+
+.who,
+.money,
+.tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.who {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.who img {
+  width: 32px;
+  height: 32px;
+}
+
+.money {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.tools {
+  gap: var(--space-3);
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: 1.25fr 1.25fr 0.9fr;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.panel {
+  --cut: 16px;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-left: 3px solid var(--accent);
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Buttons: a sheen crosses on hover, a press sinks and flashes. */
+.lab .alive {
+  position: relative;
+  overflow: hidden;
+  transition:
+    background 120ms,
+    transform 120ms var(--ease-out),
+    filter 120ms;
+}
+
+.lab .alive::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.28), transparent);
+  translate: -150% 0;
+  pointer-events: none;
+}
+
+.lab .alive::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: currentColor;
+  scale: 0 1;
+  transform-origin: left;
+  transition: scale 180ms var(--ease-out);
+  pointer-events: none;
+}
+
+.lab .alive:hover:not(:disabled)::after,
+.lab .alive:focus-visible::after {
+  scale: 1 1;
+}
+
+.lab .alive:active:not(:disabled) {
+  transform: scale(0.96);
+  filter: brightness(1.25);
+  transition-duration: 40ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lab:not([data-reduce]) .alive:hover:not(:disabled)::before {
+    translate: 350% 0;
+    transition: translate 520ms var(--ease-out);
+  }
+}
+
+/* The main button: chevrons march and a sheen passes now and then. */
+.go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.lab .go::before {
+  animation: sheen 3.6s var(--ease-out) infinite;
+}
+
+@keyframes sheen {
+  0%,
+  70% {
+    translate: -150% 0;
+  }
+  100% {
+    translate: 350% 0;
+  }
+}
+
+.chevrons {
+  display: inline-flex;
+}
+
+.chevrons svg {
+  margin-left: -10px;
+  animation: march 1.2s infinite;
+}
+
+.chevrons svg:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chevrons svg:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes march {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* Looping HUD icons. */
+.legend {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: start;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.signalWrap {
+  display: inline-flex;
+}
+
+.signal rect {
+  fill: var(--text);
+  animation: signal 1.6s infinite;
+  animation-delay: calc(var(--i) * 0.2s);
+}
+
+@keyframes signal {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  25%,
+  60% {
+    opacity: 1;
+  }
+}
+
+.swing {
+  display: inline-flex;
+  transform-origin: 50% 2px;
+  animation: swing 4s ease-in-out infinite;
+}
+
+@keyframes swing {
+  0%,
+  72%,
+  100% {
+    rotate: 0deg;
+  }
+  76% {
+    rotate: 16deg;
+  }
+  82% {
+    rotate: -12deg;
+  }
+  88% {
+    rotate: 7deg;
+  }
+  94% {
+    rotate: -3deg;
+  }
+}
+
+.online {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3ddc84;
+}
+
+.online > span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #3ddc84;
+  animation: ping 1.8s var(--ease-out) infinite;
+}
+
+@keyframes ping {
+  0% {
+    scale: 1;
+    opacity: 0.9;
+  }
+  100% {
+    scale: 2.8;
+    opacity: 0;
+  }
+}
+
+.glint {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.glint::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.85) 50%,
+    transparent 65%
+  );
+  translate: -100% 0;
+  animation: glint 5s infinite;
+}
+
+@keyframes glint {
+  0%,
+  80% {
+    translate: -100% 0;
+  }
+  100% {
+    translate: 100% 0;
+  }
+}
+
+.diamond {
+  position: relative;
+  display: inline-block;
+  width: var(--size);
+  height: var(--size);
+}
+
+.diamond span {
+  position: absolute;
+  inset: 15%;
+  border: 2px solid var(--accent);
+  rotate: 45deg;
+  animation: turn 1.4s var(--ease-out) infinite;
+}
+
+.diamond span + span {
+  inset: 35%;
+  border: 0;
+  background: var(--accent);
+  animation-direction: reverse;
+}
+
+@keyframes turn {
+  0% {
+    rotate: 45deg;
+  }
+  100% {
+    rotate: 225deg;
+  }
+}
+
+.bob {
+  position: relative;
+  display: inline-flex;
+  animation: bob 2.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  70% {
+    translate: 0 -4px;
+  }
+  80% {
+    translate: 0 0;
+  }
+  88% {
+    translate: 0 -2px;
+  }
+}
+
+.pip {
+  position: absolute;
+  top: -1px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+/* Low graphics, the OS asking for less motion, or the page's own switch: nothing loops. */
+.lab:is([data-graphics="low"], [data-reduce])
+:is(.loop, .loopAfter::after, .signal rect, .diamond span, .chevrons svg, .go::before, .stripes) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab
+    :is(
+      .loop,
+      .loopAfter::after,
+      .signal rect,
+      .diamond span,
+      .chevrons svg,
+      .go::before,
+      .stripes
+    ) {
+    animation: none;
+  }
+}
+
+.lab:is([data-graphics="low"], [data-reduce]) :is(.signal rect, .chevrons svg) {
+  opacity: 1;
+}
+
+/* Waiting on the server: a badge after 300 ms; a scrim only when the player must wait. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: rgb(0 0 0 / 0.55);
+  transition: opacity 200ms;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.badge {
+  --cut: 8px;
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-3);
+  border-left: 3px solid var(--accent);
+  translate: -50% 0;
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition:
+    opacity 180ms,
+    translate 180ms var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    translate: -50% 8px;
+  }
+}
+
+/* Loading screens: they wipe in from the left and fade out. */
+.loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(6 * var(--space-2));
+  padding: var(--space-5);
+  background: #090b0e;
+  clip-path: inset(0 0 0 0);
+  transition:
+    clip-path 320ms var(--ease-out),
+    opacity 240ms;
+
+  @starting-style {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+.leaving {
+  opacity: 0;
+}
+
+.stripes {
+  position: absolute;
+  inset: 0 -60px 0 0;
+  z-index: -1;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgb(255 255 255 / 0.025) 0 12px,
+    transparent 12px 24px
+  );
+  animation: drift 3s linear infinite;
+}
+
+@keyframes drift {
+  to {
+    translate: -34px 0;
+  }
+}
+
+.emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 150px;
+  height: 150px;
+  color: var(--accent);
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed rgb(255 194 52 / 0.45);
+  border-radius: 50%;
+  animation: spin 12s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.plate {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border: 2px solid var(--accent);
+  background: rgb(255 194 52 / 0.08);
+  rotate: 45deg;
+}
+
+.plate > * {
+  rotate: -45deg;
+}
+
+.loadInfo {
+  display: grid;
+  gap: var(--space-2);
+  width: 340px;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bar {
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  background: var(--line);
+}
+
+.bar::-webkit-progress-bar {
+  background: var(--line);
+}
+
+.bar::-webkit-progress-value {
+  background: var(--accent);
+  transition: inline-size 200ms;
+}
+
+.bar::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.percent {
+  justify-self: end;
+  margin-top: calc(-1 * var(--space-1));
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  color: var(--text-dim);
+}
+
+.players {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.players li {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.players img {
+  width: 28px;
+  height: 28px;
+}
+
+.players li > span:last-child {
+  font-family: var(--font-mono);
+  font-size: var(--label);
+}
+
+.ready {
+  color: #3ddc84;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+/* Dialogs: the box pops, the band opens from its middle line, the sheet slides in. */
+.box,
+.band,
+.sheet {
+  color: var(--text);
+  border: 0;
+  transition-property: opacity, scale, clip-path, translate, display, overlay;
+  transition-duration: 220ms;
+  transition-timing-function: var(--ease-out);
+  transition-behavior: allow-discrete;
+}
+
+.box::backdrop,
+.band::backdrop,
+.sheet::backdrop {
+  background: rgb(0 0 0 / 0);
+  transition-property: background-color, display, overlay;
+  transition-duration: 220ms;
+  transition-behavior: allow-discrete;
+}
+
+.lab:not([data-graphics="low"]) :is(.box, .band, .sheet)::backdrop {
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+:is(.box, .band, .sheet)[open]:not([data-closing])::backdrop {
+  background: rgb(0 0 0 / 0.55);
+
+  @starting-style {
+    background: rgb(0 0 0 / 0);
+  }
+}
+
+.box {
+  --cut: 18px;
+  max-width: 420px;
+  padding: var(--space-5);
+  border-left: 3px solid var(--accent);
+  opacity: 0;
+}
+
+.box[open]:not([data-closing]) {
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.box p,
+.band p {
+  margin: var(--space-2) 0 0;
+  color: var(--text-dim);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.band {
+  width: 100%;
+  max-width: none;
+  margin: auto 0;
+  padding: var(--space-5) 0;
+  border-block: 1px solid var(--accent);
+  clip-path: inset(50% 0);
+  opacity: 0;
+}
+
+.band[open]:not([data-closing]) {
+  clip-path: inset(0 0);
+  opacity: 1;
+
+  @starting-style {
+    clip-path: inset(50% 0);
+    opacity: 0;
+  }
+}
+
+.bandInner {
+  width: min(520px, 100%);
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  transition:
+    opacity 200ms 120ms,
+    translate 260ms var(--ease-out) 120ms;
+}
+
+.band:not([open]) .bandInner,
+.band[data-closing] .bandInner {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+
+.band[open] .bandInner {
+  @starting-style {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
+
+.sheet {
+  width: 360px;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0 0 0 auto;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--accent);
+  translate: 100% 0;
+  opacity: 0;
+}
+
+.sheet[open]:not([data-closing]) {
+  translate: 0 0;
+  opacity: 1;
+
+  @starting-style {
+    translate: 100% 0;
+    opacity: 0;
+  }
+}
+
+.sheetTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.close {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.friends {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friends li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  background: rgb(255 255 255 / 0.04);
+  transition:
+    opacity 200ms,
+    translate 260ms var(--ease-out);
+  transition-delay: calc(80ms + var(--i) * 50ms);
+}
+
+.sheet[open] .friends li {
+  @starting-style {
+    opacity: 0;
+    translate: 24px 0;
+  }
+}
+
+.friends img {
+  width: 32px;
+  height: 32px;
+}
+
+/* Less motion: dialogs and screens only fade. */
+.lab[data-reduce] :is(.box, .band, .sheet, .loading),
+.lab[data-reduce] .friends li,
+.lab[data-reduce] .bandInner {
+  translate: none;
+  clip-path: none;
+  transition-property: opacity, display, overlay;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab :is(.box, .band, .sheet, .loading),
+  .lab .friends li,
+  .lab .bandInner {
+    translate: none;
+    clip-path: none;
+    transition-property: opacity, display, overlay;
+  }
+}
