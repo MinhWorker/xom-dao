@@ -16,7 +16,7 @@ src/games.ts       Games the Hub ships: `games/*/manifest.ts` + `dist/version.js
                    `soon` ones are left out
 src/islands.ts     The Islands' names, order and Emblems, and `HUB_EMBLEM` (ids are `ISLANDS` in `@xomdao/sdk`)
 src/island-art/    Each Island's splash art (`<island>.png`, 20:9), drawn by `scripts/splash.mjs`
-src/harbour-art/   The Bến's character (`harbour-master.webp`, transparent) and night backdrop (`harbour-night.webp`): see "Harbour art" in `assets/AGENTS.md`
+src/harbour-art/   The Bến's characters (transparent) and backdrops, listed in `arts.ts`: to add art, drop the image here and add a line to `CHARACTERS` or `BACKGROUNDS`; see "Harbour art" in `assets/AGENTS.md`
 src/emblems/       The Hub's (`hub.svg`) and each Island's (`<island>.svg`) Emblem, same contract as a Game's;
                    `tools/hub-assets` tests them
 src/kit/           Button, CutPanel, Chip, TextField, Dialog, Emblem (inlines an Emblem's SVG), Sheet, Tabs, Choice, Toggle, Slider, Menu, Toast, Icon,
@@ -28,7 +28,7 @@ src/screens/       offline/ (OfflineOverlay, after 1 s without the server), logi
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
-src/settings/      Graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, level, HUD scale, margin), kept in localStorage
+src/settings/      Graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, level, HUD scale, margin) and the Bến's character and backdrop (`harbour`, `useHarbourLook`), kept in localStorage
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`, `.glass`, `data-loop`), base.css (hand cursor), fonts.ts (@fontsource)
 public/            `manifest.webmanifest` and `icons/` (PWA), copied to the build root
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build

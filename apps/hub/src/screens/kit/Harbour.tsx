@@ -4,20 +4,22 @@ import {
   IconBuildingPavilion,
   IconBuildingStore,
   IconLock,
+  IconPalette,
   IconSettings,
   IconTrophy,
   IconUsers,
   type Icon as TablerIcon,
 } from '@tabler/icons-react';
 import { type CSSProperties, useState } from 'react';
-import harbourMaster from '../../harbour-art/harbour-master.webp';
-import harbourNight from '../../harbour-art/harbour-night.webp';
+import { BACKGROUNDS, CHARACTERS, pickArt } from '../../harbour-art/arts.js';
 import { HUB_EMBLEM, ISLANDS } from '../../islands.js';
 import { Icon, OnlineDot, Sheet, TextField } from '../../kit/index.js';
+import { useHarbourLook } from '../../settings/harbour.js';
 import { hoverSound, playSound } from '../../sound/index.js';
 import { filterFriends } from '../friends/groups.js';
 import { SettingsOverlay } from '../settings/SettingsOverlay.js';
 import styles from './Harbour.module.css';
+import { HarbourLookOverlay } from './HarbourLook.js';
 
 function Svg({ markup, className }: { markup: string; className?: string }) {
   return (
@@ -84,6 +86,10 @@ function Locked({ panel }: { panel: LockedPanel }) {
 export function Harbour() {
   const [neighbours, setNeighbours] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [look, setLook] = useState(false);
+  const picked = useHarbourLook();
+  const character = pickArt(CHARACTERS, picked.character);
+  const background = pickArt(BACKGROUNDS, picked.background);
   const [query, setQuery] = useState('');
   const online = NEIGHBOURS.filter((n) => n.online).length;
   const shown = filterFriends(NEIGHBOURS, query);
@@ -91,9 +97,15 @@ export function Harbour() {
   return (
     <main className={styles.harbour}>
       <div className={styles.backdrop} aria-hidden="true">
-        <img className={styles.scene} src={harbourNight} alt="" draggable={false} />
+        <img
+          className={styles.scene}
+          src={background.src}
+          style={{ objectPosition: background.position }}
+          alt=""
+          draggable={false}
+        />
       </div>
-      <img className={styles.character} src={harbourMaster} alt="" draggable={false} />
+      <img className={styles.character} src={character.src} alt="" draggable={false} />
 
       <header className={styles.top}>
         <button
@@ -111,6 +123,21 @@ export function Harbour() {
           </span>
         </button>
       </header>
+
+      <div className={styles.side}>
+        <button
+          type="button"
+          className={`${styles.look} glass cut-br`}
+          aria-label="Tuỳ chỉnh Bến"
+          onPointerEnter={(e) => hoverSound(e)}
+          onClick={() => {
+            playSound('click');
+            setLook(true);
+          }}
+        >
+          <Icon icon={IconPalette} />
+        </button>
+      </div>
 
       <div className={styles.title} aria-hidden="true">
         <span className={styles.code}>Xóm Đảo</span>
@@ -180,6 +207,7 @@ export function Harbour() {
       </nav>
 
       <SettingsOverlay open={settings} onClose={() => setSettings(false)} />
+      <HarbourLookOverlay open={look} onClose={() => setLook(false)} />
       <Sheet open={neighbours} onClose={() => setNeighbours(false)} title="Hàng xóm">
         <TextField
           label="Tìm bạn"

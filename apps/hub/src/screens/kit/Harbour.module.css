@@ -9,7 +9,7 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
     "top     cluster"
-    ".       cluster"
+    "side    cluster"
     "title   cluster";
   gap: var(--space-2) var(--space-4);
   padding: var(--space-3) var(--pad-x) var(--space-3) max(var(--pad-x), var(--safe-left));
@@ -78,9 +78,44 @@
 }
 
 .top,
+.side,
 .title,
 .cluster {
   z-index: 1;
+}
+
+/* The customise button, on the left edge halfway down. */
+.side {
+  grid-area: side;
+  display: flex;
+  align-items: center;
+}
+
+.look {
+  --cut: 10px;
+  display: grid;
+  place-items: center;
+  inline-size: var(--tap-main);
+  block-size: var(--tap-main);
+  padding: 0;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  color: var(--text);
+  touch-action: manipulation;
+  transition:
+    translate 200ms var(--ease-out),
+    color 120ms;
+}
+
+@media (hover: hover) {
+  .look:hover {
+    translate: 3px 0;
+    color: var(--accent);
+  }
+}
+
+.look:active {
+  translate: 0 0;
 }
 
 /* Nhà: who is at the Bến, top left. */
