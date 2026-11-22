@@ -2,15 +2,15 @@
   <defs>
     <clipPath id="bai-left"><path d="M-2 -2H19.13L19.13 13C16.95 20 16.95 29 19.13 36C21.3 43 26.38 48.5 30 49.5V66H-2Z"/></clipPath>
     <clipPath id="bai-right"><path d="M66 -2H44.88L44.88 13C47.05 20 47.05 29 44.88 36C42.7 43 37.63 48.5 34 49.5V66H66Z"/></clipPath>
-    <clipPath id="bai-c0"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM12.51 25.97L26.06 23.58L34.69 72.58L21.15 74.96Z"/></clipPath>
-    <clipPath id="bai-c1"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM6.12 30.54L19.19 26.29L34.57 73.61L21.49 77.85Z"/></clipPath>
-    <clipPath id="bai-c2"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM-2.42 34.98L13.75 27.09L24.28 48.66L8.1 56.55Z"/></clipPath>
+    <clipPath id="bai-c0"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM11.67 27.4L24.89 23.61L38.6 71.44L25.38 75.23Z"/></clipPath>
+    <clipPath id="bai-c1"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM6.07 32.78L17.73 25.49L44.1 67.68L32.44 74.97Z"/></clipPath>
+    <clipPath id="bai-c2"><path clip-rule="evenodd" d="M-2 -2H66V66H-2ZM-0.83 39.65L11.22 26.27L29.05 42.33L17.01 55.71Z"/></clipPath>
   </defs>
-  <path fill="none" stroke="currentColor" stroke-width="2" d="M6.89 28.04L6.89 17.5L32 3L57.11 17.5L57.11 28.28M57.11 37.84L57.11 46.5L32 61L16.88 52.27"/>
+  <path fill="none" stroke="currentColor" stroke-width="2" d="M6.89 29.76L6.89 17.5L32 3L57.11 17.5L57.11 28.28M57.11 37.84L57.11 46.5L32 61L19.01 53.5"/>
   <g fill="none" stroke="currentColor" stroke-width="2" clip-path="url(#bai-left)">
-    <g transform="rotate(-10 21 34.5)"><rect stroke-width="1.75" x="15" y="25.5" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="17.6" y="28.1" width="6.8" height="12.8" rx="0.5"/></g>
-    <g clip-path="url(#bai-c0)"><g transform="rotate(-18 15.71 37.81)"><rect stroke-width="1.75" x="9.71" y="28.81" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="12.31" y="31.41" width="6.8" height="12.8" rx="0.5"/></g></g>
-    <g clip-path="url(#bai-c0)"><g clip-path="url(#bai-c1)"><g transform="rotate(-26 10.93 41.82)"><rect stroke-width="1.75" x="4.93" y="32.82" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="7.53" y="35.42" width="6.8" height="12.8" rx="0.5"/></g></g></g>
+    <g transform="rotate(-16 21 35)"><rect stroke-width="1.75" x="15" y="26" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="17.6" y="28.6" width="6.8" height="12.8" rx="0.5"/></g>
+    <g clip-path="url(#bai-c0)"><g transform="rotate(-32 17.14 37.51)"><rect stroke-width="1.75" x="11.14" y="28.51" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="13.74" y="31.11" width="6.8" height="12.8" rx="0.5"/></g></g>
+    <g clip-path="url(#bai-c0)"><g clip-path="url(#bai-c1)"><g transform="rotate(-48 14.11 40.99)"><rect stroke-width="1.75" x="8.11" y="31.99" width="12" height="18" rx="1.5"/><rect stroke-width="0.9" x="10.71" y="34.59" width="6.8" height="12.8" rx="0.5"/></g></g></g>
   </g>
   <g clip-path="url(#bai-right)"><path fill="currentColor" fill-rule="evenodd" transform="rotate(27 48.4 36.2)" d="M43.4 27.2h10a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-10a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5ZM49.2 32.4l2.6 3.8-2.6 3.8-2.6-3.8Z"/></g>
   <path fill="currentColor" fill-rule="evenodd" d="M21.13 13C18.95 20 18.95 29 21.13 36C23.3 43 28.38 48.5 32 49.5C35.63 48.5 40.7 43 42.88 36C45.05 29 45.05 20 42.88 13Q41.42 17 39.98 22.5L37.8 18.5L32 22L26.2 18.5L24.02 22.5Q22.58 17 21.13 13ZM26.4 25.1C27.7 26.92 30.3 28.22 30.3 30.17C30.3 31.86 28.22 32.38 27.05 31.34L27.83 33.16H24.97L25.75 31.34C24.58 32.38 22.5 31.86 22.5 30.17C22.5 28.22 25.1 26.92 26.4 25.1ZM37.6 32.9C36.04 31.08 33.7 29.52 33.7 27.44C33.7 25.62 36.3 24.84 37.6 26.92C38.9 24.84 41.5 25.62 41.5 27.44C41.5 29.52 39.16 31.08 37.6 32.9ZM23.3 36.5Q32 40 40.7 36.5Q38.52 44.5 32 44.5Q25.48 44.5 23.3 36.5Z"/>
