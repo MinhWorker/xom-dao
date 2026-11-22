@@ -5,11 +5,11 @@ Splash art is the 20:9 background of the Sea chart: one per Island (`co`, `bai`,
 it around the manifest's `focus` and checks it.
 
 Every image uses the frame below unchanged; only `{subject}`, `{x}` and `{y}` change. `{x}` and
-`{y}` are the manifest's `focus` (an Island's art uses `x: 70, y: 50`). Make it with `agy -p`,
-asking it to call `generate_image` once with the filled frame; the reply names the file under
-`~/.gemini/antigravity-cli/brain/`. It comes out about 1376×768 (16:9): crop it to 20:9 keeping
-the subject, and resize it with sharp (lanczos3) to a 2560×1152 PNG.
-`splash-caro-sample.png` is the Caro sample made this way.
+`{y}` are the manifest's `focus` (an Island's art uses `x: 70, y: 50`). The owner pastes the
+filled frame into an AI image platform of their choice. Whatever it returns, crop it to 20:9 keeping
+the subject, and save it as a 2560×1152 PNG; `tools/hub-assets` checks the ratio and size.
+`splash-caro-sample.png` is a reference sample made with `agy` (Antigravity CLI) from this frame;
+the owner may replace it.
 
 ## Frame
 
@@ -22,7 +22,7 @@ Lighting: warm low golden-hour key light from the upper right, a warm rim light 
 
 Composition: the subject's centre sits at {x}% of the width and {y}% of the height, and the subject stays inside the right 60% of the frame. The left 40% falls off smoothly into a dark, calm, low-detail area of near-black navy (about #0b1018 to #18202b) with no objects or bright spots, so a list of names can sit over it. Slightly high three-quarter camera, shallow depth of field, the background softly out of focus.
 
-Never: text, letters, numbers, logos, interface, frames, borders, watermark, signatures, close-up human faces.
+Never: text, letters, numbers, logos, interface, frames, borders, watermark, signatures, human.
 
 Subject: {subject}
 ```
@@ -30,7 +30,7 @@ Subject: {subject}
 ## Subjects
 
 - **Caro** (`caro`, focus 70, 50): A game of Caro (Vietnamese gomoku) on a large sheet of squared
-  school notebook paper lying on an old dark wooden table, seen at the winning moment: five red
-  cross-shaped marks drawn in ink form one unbroken diagonal line that glows faintly, with blue
-  ring-shaped marks scattered around them. A worn pencil and a cup of iced tea in a glass rest at
+  school notebook paper lying on an old dark wooden table, seen at the winning moment: exactly five red
+  cross-shaped marks drawn in ink form one unbroken diagonal line that glows faintly, and no other
+  red marks on the paper; blue ring-shaped marks are scattered around them. A worn pencil and a cup of iced tea in a glass rest at
   the edge of the paper; behind, the out-of-focus tiled courtyard of a Vietnamese house at dusk.
