@@ -391,8 +391,8 @@ export class GameHostService implements OnModuleDestroy {
   }
 
   /**
-   * The player is out of the Match. The computer plays their seat when the Game has one, else
-   * the Game's leave hook runs; without either, or with no person left, the Match is aborted.
+   * The player is out of the Match. The Game's leave hook runs when it has one, else the computer
+   * plays their seat; without either, or with no person left, the Match is aborted.
    */
   private forfeit(match: ActiveMatch, playerId: string) {
     if (match.status !== 'playing' || match.forfeited.has(playerId)) return;
@@ -405,12 +405,12 @@ export class GameHostService implements OnModuleDestroy {
       return;
     }
     if (match.realtime && match.realtimeStored && rng) {
-      if (match.realtime.bot) return;
+      if (match.realtime.bot && !match.realtime.leave) return;
       this.forfeitRealtime(match, match.realtime, match.realtimeStored, playerId, rng);
       return;
     }
     if (!rules || !stored || !rng) return;
-    if (rules.bot) {
+    if (rules.bot && !rules.leave) {
       this.scheduleBotTurn(match);
       return;
     }
@@ -624,7 +624,7 @@ export class GameHostService implements OnModuleDestroy {
       match.inputs.clear();
       if (realtime.bot) {
         for (const { id, bot } of match.start.players) {
-          if (!bot && !match.forfeited.has(id)) continue;
+          if (!bot && (realtime.leave || !match.forfeited.has(id))) continue;
           const move = realtime.bot(stored, id, rng);
           if (move) stored = realtime.applyInput(stored, id, move, rng);
         }
@@ -697,7 +697,7 @@ export class GameHostService implements OnModuleDestroy {
       if (match.status !== 'playing' || !rules?.bot || !stored || !rng) return;
       try {
         for (const player of match.start.players) {
-          if (!player.bot && !match.forfeited.has(player.id)) continue;
+          if (!player.bot && (rules.leave || !match.forfeited.has(player.id))) continue;
           const move = rules.bot(stored, player.id, rng);
           if (!move) continue;
           const ms = rules.botDelay?.(stored, player.id, rng) ?? 0;

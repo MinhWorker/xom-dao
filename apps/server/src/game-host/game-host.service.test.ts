@@ -174,6 +174,14 @@ class RaceGame extends Game<{ turn: number }> {
   }
 }
 
+/** RaceGame whose leave hook ends the Match: the one who stays wins. */
+class ForfeitRaceGame extends RaceGame {
+  onLeave(ctx: LeaveContext<{ turn: number }>) {
+    ctx.finish(ctx.players.map((seat) => (seat.id === ctx.player.id ? 2 : 1)));
+    return ctx.state;
+  }
+}
+
 const matchStart = {
   matchId: 'match-1',
   roomCode: 'ABCD',
@@ -594,6 +602,24 @@ describe('GameHostService', () => {
           seats: [
             { player: 'lan', place: 2 },
             { player: 'minh', place: 1 },
+          ],
+        },
+      });
+    });
+
+    it('runs the Game’s leave hook rather than letting the computer play the seat', () => {
+      vi.useFakeTimers();
+      const { host, updates } = playing(new ForfeitRaceGame());
+
+      host.leave('match-1', 'minh');
+      vi.runOnlyPendingTimers();
+
+      expect(updates.at(-1)).toMatchObject({
+        outcome: 'settled',
+        result: {
+          seats: [
+            { player: 'lan', place: 1 },
+            { player: 'minh', place: 2 },
           ],
         },
       });

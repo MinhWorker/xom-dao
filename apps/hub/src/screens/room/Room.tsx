@@ -4,6 +4,7 @@ import { FullscreenToggle } from '../../display/FullscreenToggle.js';
 import { enterFullscreen, exitFullscreen } from '../../display/fullscreen.js';
 import { gameById } from '../../games.js';
 import { Button, Dialog, Menu, toast } from '../../kit/index.js';
+import { toasts } from '../../kit/toasts.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate, router } from '../../router.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
@@ -12,6 +13,7 @@ import { focusPosition } from '../lobby/summary.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import screen from '../Screen.module.css';
 import { GameFrame } from './GameFrame.js';
+import { type Table, tableNotices } from './notices.js';
 import { Peek } from './Peek.js';
 import { PlayerSlot } from './PlayerSlot.js';
 import { Results } from './Results.js';
@@ -64,8 +66,11 @@ export function Room({ code }: { code: string }) {
   }, [playing]);
 
   useEffect(() => {
-    if (!playing) return;
-    const unblock = router?.block();
+    if (!playing) {
+      setLeaving(false);
+      return;
+    }
+    const unblock = router?.block(() => setLeaving(true));
     const onUnload = (e: BeforeUnloadEvent) => e.preventDefault();
     addEventListener('beforeunload', onUnload);
     return () => {
@@ -73,6 +78,36 @@ export function Room({ code }: { code: string }) {
       removeEventListener('beforeunload', onUnload);
     };
   }, [playing]);
+
+  const roster = useRef({ matchId: '', names: new Map<string, string>() });
+  if (match && roster.current.matchId !== match.matchId) {
+    roster.current = { matchId: match.matchId, names: new Map() };
+  }
+  for (const seat of here?.seats ?? []) if (seat) roster.current.names.set(seat.id, seat.name);
+
+  const table = useRef<Table | null>(null);
+  /** The toast on screen about each of the others: a newer notice replaces it. */
+  const toasted = useRef(new Map<string, number>());
+  useEffect(() => {
+    if (!here || !user || !frameOpen) {
+      table.current = null;
+      return;
+    }
+    const now: Table = {
+      seats: here.seats,
+      playing: here.status === 'playing',
+      matchId: match?.matchId ?? null,
+      disconnected: match?.disconnectedPlayerIds ?? [],
+    };
+    const before = table.current;
+    table.current = now;
+    if (!before) return;
+    for (const { player, message } of tableNotices(before, now, user.id)) {
+      const shown = toasted.current.get(player);
+      if (shown !== undefined) toasts.dismiss(shown);
+      toasted.current.set(player, toast(message));
+    }
+  }, [here, user, match, frameOpen]);
 
   const over = match?.status === 'over' ? match : null;
   const [fallback, setFallback] = useState<string | null>(null);
@@ -260,6 +295,7 @@ export function Room({ code }: { code: string }) {
           {showResults && (
             <Results
               room={here}
+              names={roster.current.names}
               result={
                 over?.outcome === 'settled'
                   ? (over.result?.seats ?? (notice?.matchId === over.matchId ? notice.seats : null))
@@ -267,6 +303,7 @@ export function Room({ code }: { code: string }) {
               }
               me={user.id}
               busy={busy}
+              canReplay={!!game && seated >= minPlayers}
               onReplay={() => void start()}
               onBack={() => setFrameOpen(false)}
             />

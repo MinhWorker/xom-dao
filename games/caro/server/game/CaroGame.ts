@@ -1,4 +1,10 @@
-import { type BotContext, type EventContext, Game, type StartContext } from '@xomdao/sdk';
+import {
+  type BotContext,
+  type EventContext,
+  Game,
+  type LeaveContext,
+  type StartContext,
+} from '@xomdao/sdk';
 import { z } from 'zod';
 import { at, grow, inside, isDraw, markOf, newBoard, place, winningLine, winsAt } from './board.js';
 import { botMove } from './bot.js';
@@ -43,6 +49,12 @@ export class CaroGame extends Game<State, Options> {
       if (isDraw(board)) ctx.finish([1, 1]);
     }
     return { ...state, board, turn: mark === 'X' ? o : x, last: p, line };
+  }
+
+  /** A player left mid-Match: it stops there and the one who stays wins. */
+  onLeave(ctx: LeaveContext<State, Options>): State {
+    ctx.finish(ctx.players.map((seat) => (seat.id === ctx.player.id ? 2 : 1)));
+    return ctx.state;
   }
 
   /** The computer's move for its seat, at the Room's level (see bot.ts). */

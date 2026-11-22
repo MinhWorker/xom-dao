@@ -23,17 +23,30 @@ export function outcomeFor(seats: Places, me: string): Outcome | null {
 
 export interface ResultsProps {
   room: RoomState;
+  /** Everyone who sat in the Match, by id: those who left are no longer in `room`. */
+  names: ReadonlyMap<string, string>;
   /** Each seat's place; `null` for an aborted Match. */
   result: Places | null;
   me: string;
   busy: boolean;
+  /** Enough people are seated to play again. */
+  canReplay: boolean;
   onReplay(): void;
   onBack(): void;
 }
 
 /** The end of a Match, over the Game: how it went, each seat's place, then play again or go back. */
-export function Results({ room, result, me, busy, onReplay, onBack }: ResultsProps) {
-  const names = new Map(room.seats.flatMap((s) => (s ? [[s.id, s.name] as const] : [])));
+export function Results({
+  room,
+  names,
+  result,
+  me,
+  busy,
+  canReplay,
+  onReplay,
+  onBack,
+}: ResultsProps) {
+  const seated = new Map(room.seats.flatMap((s) => (s ? [[s.id, s.name] as const] : [])));
   const seats = [...(result ?? [])].sort((a, b) => a.place - b.place);
   const host = room.hostId === me;
   const outcome = result ? outcomeFor(seats, me) : null;
@@ -63,7 +76,10 @@ export function Results({ room, result, me, busy, onReplay, onBack }: ResultsPro
                 data-first={seat.place === 1 || undefined}
               >
                 <span className={styles.place}>{seat.place}</span>
-                <span className={styles.name}>{names.get(seat.player) ?? 'Người chơi đã rời'}</span>
+                <span className={styles.name}>
+                  {seated.get(seat.player) ?? names.get(seat.player) ?? 'Người chơi'}
+                </span>
+                {!seated.has(seat.player) && <Chip>Đã rời</Chip>}
                 {seat.score !== undefined && <Chip>{seat.score} điểm</Chip>}
                 {seat.place === 1 && (
                   <Chip tone={draw ? undefined : 'accent'}>{draw ? 'Hoà' : 'Thắng'}</Chip>
@@ -77,7 +93,7 @@ export function Results({ room, result, me, busy, onReplay, onBack }: ResultsPro
         <div className={styles.actions}>
           <Button onClick={onBack}>Về phòng chờ</Button>
           {host ? (
-            <Button variant="primary" onClick={onReplay} disabled={busy}>
+            <Button variant="primary" onClick={onReplay} disabled={busy || !canReplay}>
               Chơi lại
             </Button>
           ) : (
