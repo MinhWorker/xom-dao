@@ -4,7 +4,8 @@
  * `use-card` before rolling. Every decision runs the clock of the Room's "Tốc độ"; when it runs
  * out the safe choice is made (`timeout`): roll, or pass the offer.
  *
- * Bankruptcy is for now a player whose cash goes below zero: their Lots go back to the bank.
+ * Debt and Selling are not in yet: a player whose cash goes below zero is bankrupt at once and
+ * their Lots go back to the bank.
  */
 import {
   type EventContext,
@@ -40,9 +41,9 @@ const fly = z.object({
 
 export interface CoTyPhuSetup {
   tuning?: Tuning;
-  /** Rolls two dice for the Match's `roll`-th roll (from 0); tests and the simulator script them. */
+  /** Rolls two dice for the Match's `roll`-th roll (from 0); tests script them. */
   dice?: (rng: Rng, roll: number) => [number, number];
-  /** Changes the first state (tests and the simulator set up a board with it). */
+  /** Changes the first state (tests set up a board with it). */
   arrange?: (state: State) => State;
 }
 
@@ -101,18 +102,14 @@ export class CoTyPhuGame extends Game<State, Options> {
   }
 
   onPayBail(ctx: Move): State {
-    const me = this.check(ctx, 'roll');
-    if (!me.jailed) ctx.reject('Bạn không ở tù');
-    if (me.jailTries >= JAIL_TRIES - 1) ctx.reject('Lần này phải gieo');
+    const me = this.checkJailed(ctx);
     if (me.cash < this.t.jailFine) ctx.reject('Không đủ tiền');
     const free = { ...me, cash: me.cash - this.t.jailFine, jailed: false, jailTries: 0 };
     return this.settle(ctx, withPlayer(ctx.state, ctx.player.seat, free));
   }
 
   onUseCard(ctx: Move): State {
-    const me = this.check(ctx, 'roll');
-    if (!me.jailed) ctx.reject('Bạn không ở tù');
-    if (me.jailTries >= JAIL_TRIES - 1) ctx.reject('Lần này phải gieo');
+    const me = this.checkJailed(ctx);
     if (me.jailCards < 1) ctx.reject('Bạn không có vé ra tù');
     const free = { ...me, jailCards: me.jailCards - 1, jailed: false, jailTries: 0 };
     return this.settle(ctx, withPlayer(ctx.state, ctx.player.seat, free));
@@ -134,7 +131,8 @@ export class CoTyPhuGame extends Game<State, Options> {
     const me = this.check(ctx, 'upgrade');
     const cost = levelCost(this.t, me.tile);
     const lot = ctx.state.lots[me.tile];
-    if (!lot || me.cash < cost) ctx.reject('Không đủ tiền');
+    if (!lot) ctx.reject('Chưa thể làm việc này lúc này');
+    if (me.cash < cost) ctx.reject('Không đủ tiền');
     const state = withPlayer(ctx.state, ctx.player.seat, { ...me, cash: me.cash - cost });
     const built = { ...lot, level: lot.level + 1, built: lot.built + cost };
     return this.settle(ctx, this.next(withLot(state, me.tile, built)));
@@ -144,7 +142,8 @@ export class CoTyPhuGame extends Game<State, Options> {
     const me = this.check(ctx, 'takeover');
     const price = takeoverPrice(this.t, ctx.state, me.tile);
     const lot = ctx.state.lots[me.tile];
-    if (!lot || price === null || me.cash < price) ctx.reject('Không đủ tiền');
+    if (!lot || price === null) ctx.reject('Chưa thể làm việc này lúc này');
+    if (me.cash < price) ctx.reject('Không đủ tiền');
     let state = pay(ctx.state, ctx.player.seat, lot.owner, price);
     state = withLot(state, me.tile, { ...lot, owner: ctx.player.seat });
     return this.settle(ctx, this.offerUpgrade(state, ctx.player.seat) ?? this.next(state));
@@ -155,10 +154,10 @@ export class CoTyPhuGame extends Game<State, Options> {
     if (ctx.payload.to === AIRPORT_TILE) ctx.reject('Bạn đang ở Sân bay');
     if (me.cash < this.t.airportFee) ctx.reject('Không đủ tiền');
     const seat = ctx.player.seat;
-    let state = pay(ctx.state, seat, null, this.t.airportFee);
     const to = ctx.payload.to;
     const bonus = to === 0 ? this.t.startBonus : 0;
-    state = withPlayer(state, seat, { ...me, cash: me.cash - this.t.airportFee + bonus, tile: to });
+    const cash = me.cash - this.t.airportFee + bonus;
+    const state = withPlayer(ctx.state, seat, { ...me, cash, tile: to });
     return this.settle(ctx, this.land(state, seat));
   }
 
@@ -179,6 +178,14 @@ export class CoTyPhuGame extends Game<State, Options> {
     if (ctx.state.turn !== ctx.player.seat) ctx.reject('Chưa tới lượt bạn');
     if (ctx.state.phase !== phase) ctx.reject('Chưa thể làm việc này lúc này');
     return ctx.state.players[ctx.player.seat] as Player;
+  }
+
+  /** Refuses getting out of jail before the roll, unless jailed and not on the last try. */
+  private checkJailed(ctx: Move): Player {
+    const me = this.check(ctx, 'roll');
+    if (!me.jailed) ctx.reject('Bạn không ở tù');
+    if (me.jailTries >= JAIL_TRIES - 1) ctx.reject('Lần này phải gieo');
+    return me;
   }
 
   /** Ends the Match when one player is left, or runs the clock for the next decision. */

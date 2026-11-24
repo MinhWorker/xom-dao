@@ -6,7 +6,7 @@ import type { Tuning } from './tuning.js';
 /** A Lot's listed price, or 0 for a Tile that is no Lot. */
 export function landPrice(t: Tuning, tile: number) {
   const lot = BOARD[tile];
-  if (lot?.kind === 'city') return lot.price;
+  if (lot?.kind === 'city') return Math.round(lot.price * t.cityPrice);
   if (lot?.kind === 'station') return t.stationPrice;
   if (lot?.kind === 'utility') return t.utilityPrice;
   return 0;

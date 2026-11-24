@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import manifest from '../../manifest.js';
 import { CoTyPhuGame } from './CoTyPhuGame.js';
 import type { Player, State } from './model.js';
+import { TUNING } from './tuning.js';
 
 const PLAYERS = ['a', 'b', 'c', 'd'];
 
@@ -349,5 +350,17 @@ describe('Bankruptcy', () => {
     game.send('b', 'roll');
     game.send('c', 'roll');
     expect(game.result?.seats.map((s) => s.place)).toEqual([3, 1, 2]);
+  });
+});
+
+describe('tuning', () => {
+  it('scales City prices, and what follows from them', () => {
+    const game = testGame(
+      new CoTyPhuGame({ tuning: { ...TUNING, cityPrice: 2 }, dice: () => [1, 2] }),
+      PLAYERS.slice(0, 2),
+      { options: optionsSchema(manifest).parse({}) },
+    ).send('a', 'roll');
+    game.send('a', 'buy');
+    expect(game.state.players[0]?.cash).toBe(640);
   });
 });

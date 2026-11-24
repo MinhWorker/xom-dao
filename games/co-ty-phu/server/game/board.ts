@@ -1,6 +1,6 @@
 /**
- * The 40 Tiles of the board, clockwise from Xuất phát, in the legacy Classic order. Land prices
- * are the legacy ones; what they cost to build and the rent they charge come from `Tuning`.
+ * The 40 Tiles of the board, clockwise from Xuất phát, in the legacy Classic order, with the
+ * legacy City prices. Everything else they cost or charge comes from `Tuning`.
  */
 
 /** The eight Colour sets, three Cities each. */
