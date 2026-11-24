@@ -11,9 +11,8 @@
  * Cơ hội and Khí vận draw a Card (cards.ts). A Card that asks waits in phase `card` for the
  * drawer's `pick`; a Quiz then waits in phase `quiz` for their `answer`, on a 20 s clock. The
  * piles' order and a running Quiz's answer are hidden from `view`. Effects count down at the end
- * of each of their holder's turns; a seat with Ốm skips its turn. A seat whose person left is
- * played by `bot`, which makes the safe choice, except that it picks for its Cards sensibly and
- * answers a Quiz right 70% of the time.
+ * of each of their holder's turns; a seat with Ốm skips its turn. A computer seat, and the seat of
+ * a person who left, is played by `bot` (bot.ts).
  */
 import {
   type BotContext,
@@ -21,7 +20,6 @@ import {
   Game,
   type GameContext,
   type GameEvent,
-  int,
   type Rng,
   type Seat,
   type StartContext,
@@ -29,6 +27,7 @@ import {
 } from '@xomdao/sdk';
 import { z } from 'zod';
 import { AIRPORT_TILE, BOARD, isLot, JAIL_TILE } from './board.js';
+import { botMove } from './bot.js';
 import {
   asks,
   botPick,
@@ -41,7 +40,7 @@ import {
   offers,
   picksOf,
 } from './cards.js';
-import { landPrice, levelCost, rent, takeoverPrice, taxOf } from './economy.js';
+import { landPrice, rent, takeoverPrice, taxOf, upgradeCost } from './economy.js';
 import {
   CLOCK_MS,
   type Deck,
@@ -166,7 +165,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
   }
   onUpgrade(ctx: Move): State {
     const me = this.check(ctx, 'upgrade');
-    const cost = this.upgradeCost(ctx.state, ctx.player.seat, me.tile);
+    const cost = upgradeCost(this.t, ctx.state, ctx.player.seat, me.tile);
     const lot = ctx.state.lots[me.tile];
     if (!lot) ctx.reject('Chưa thể làm việc này lúc này');
     if (me.cash < cost) ctx.reject('Không đủ tiền');
@@ -255,28 +254,9 @@ export class CoTyPhuGame extends Game<State, Options, View> {
     };
   }
 
-  /**
-   * A computer seat rolls, passes every offer and makes the suggested sale; it picks for a Card
-   * what serves it best and answers a Quiz right as often as `Tuning.quiz.botRight`.
-   */
+  /** A computer seat plays sensibly (bot.ts). */
   bot(ctx: BotContext<State, Options>): GameEvent | null {
-    const { state, player } = ctx;
-    if (state.phase === 'debt')
-      return state.debt?.from === player.seat
-        ? { event: 'sell', payload: { sale: state.debt.suggested } }
-        : null;
-    if (state.turn !== player.seat) return null;
-    if (state.phase === 'card') {
-      const action = this.pending(state);
-      const choice = botPick(this.t, state, action, picksOf(state, player.seat, action));
-      return { event: 'pick', payload: { pick: choice } };
-    }
-    if (state.phase === 'quiz' && state.quiz) {
-      const right = ctx.rng() < this.t.quiz.botRight;
-      const choice = right ? state.quiz.answer : (state.quiz.answer + int(ctx.rng, 1, 3)) % 4;
-      return { event: 'answer', payload: { choice } };
-    }
-    return { event: state.phase === 'roll' ? 'roll' : 'pass' };
+    return botMove(this.t, ctx.state, ctx.player.seat, ctx.rng);
   }
   /** Refuses a move out of turn or out of `phase`; the turn player otherwise. */
   private check(ctx: Move<unknown>, phase: State['phase']): Player {
@@ -369,15 +349,9 @@ export class CoTyPhuGame extends Game<State, Options, View> {
     const me = state.players[seat] as Player;
     const lot = state.lots[me.tile];
     if (BOARD[me.tile]?.kind !== 'city' || !lot || lot.level >= HOTEL) return undefined;
-    return me.cash >= this.upgradeCost(state, seat, me.tile)
+    return me.cash >= upgradeCost(this.t, state, seat, me.tile)
       ? { ...state, phase: 'upgrade' }
       : undefined;
-  }
-
-  /** What the next Level of `tile` costs `seat`: less under Khởi nghiệp. */
-  private upgradeCost(state: State, seat: number, tile: number) {
-    const share = has(state, seat, 'startup') ? this.t.startupCost : 1;
-    return Math.round(levelCost(this.t, tile) * share);
   }
 
   /** `seat` draws the top Card of `deck`: it waits for a pick when it asks, else it is applied. */

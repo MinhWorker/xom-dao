@@ -1,7 +1,7 @@
 /**
  * Every number the balance can be tuned with: prices, rents and fees. The legacy Classic table
- * is the starting point; City land prices are in board.ts and scaled by `cityPrice`, Card
- * amounts are in cards.ts.
+ * was the starting point; the simulator (sim/simulate.ts) measures a change. City land prices
+ * are in board.ts and scaled by `cityPrice`, Card amounts are in cards.ts.
  */
 import type { EffectId } from './model.js';
 
@@ -46,7 +46,7 @@ export const TUNING: Tuning = {
   startingCash: 1000,
   startBonus: 200,
   cityPrice: 1,
-  levelRent: [0.4, 1.1, 3, 4, 5],
+  levelRent: [0.25, 0.9, 2.6, 4, 5],
   levelCost: 0.5,
   fullSet: 2,
   takeover: 1.5,

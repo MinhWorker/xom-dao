@@ -4,9 +4,12 @@ import manifest from '../../manifest.js';
 import { CoTyPhuGame } from './CoTyPhuGame.js';
 import type { CardId } from './cards.js';
 import type { Player, State } from './model.js';
-import type { Tuning } from './tuning.js';
+import { TUNING, type Tuning } from './tuning.js';
 
 export const PLAYERS = ['a', 'b', 'c', 'd'];
+
+/** The prices the rule tests are worked out with, so a balance pass does not change them. */
+export const RULES_TUNING: Tuning = { ...TUNING, levelRent: [0.4, 1.1, 3, 4, 5] };
 
 /**
  * A Match whose dice come from `rolls` in order and whose piles are `chance` and `chest` (empty
@@ -21,10 +24,10 @@ export function open({
   chest = [] as CardId[],
   bots = [] as string[],
   seed = 1,
-  tuning = undefined as Tuning | undefined,
+  tuning = RULES_TUNING,
 } = {}) {
   const game = new CoTyPhuGame({
-    ...(tuning ? { tuning } : {}),
+    tuning,
     dice: (_, roll) => {
       const next = rolls[roll];
       if (!next) throw new Error('the test ran out of dice');

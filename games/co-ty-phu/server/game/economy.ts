@@ -15,6 +15,12 @@ export function landPrice(t: Tuning, tile: number) {
 /** What the next Level of a City costs. */
 export const levelCost = (t: Tuning, tile: number) => Math.round(landPrice(t, tile) * t.levelCost);
 
+/** What the next Level of `tile` costs `seat`: less under Khởi nghiệp. */
+export function upgradeCost(t: Tuning, state: State, seat: number, tile: number) {
+  const startup = state.players[seat]?.effects.some((e) => e.id === 'startup');
+  return Math.round(levelCost(t, tile) * (startup ? t.startupCost : 1));
+}
+
 /** The owner of a City has all three of its Colour set. */
 export function isFullSet(state: State, tile: number) {
   const city = BOARD[tile];
