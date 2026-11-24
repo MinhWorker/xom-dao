@@ -130,6 +130,9 @@ export interface State {
   blackout: { tile: number; by: number } | null;
 }
 
+/** What prices and rents depend on: a `State` or a `View`. */
+export type BoardState = Pick<State, 'players' | 'lots' | 'festival' | 'blackout'>;
+
 /** What a player sees: the piles' sizes, and no answer while the Quiz runs. */
 export interface View extends Omit<State, 'decks' | 'quiz'> {
   decks: Record<Deck, number>;

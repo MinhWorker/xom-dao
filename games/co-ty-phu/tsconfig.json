@@ -1,6 +1,14 @@
 {
   "extends": "../tsconfig.base.json",
-  "include": ["server", "sim", "manifest.ts", "vitest.config.ts", "prototype"],
+  "include": [
+    "server",
+    "client",
+    "sim",
+    "manifest.ts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "prototype"
+  ],
   "compilerOptions": {
     "types": ["node", "vite/client"]
   }

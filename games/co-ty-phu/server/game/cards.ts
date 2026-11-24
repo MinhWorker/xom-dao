@@ -6,7 +6,7 @@
  */
 import { BOARD, tilesOf } from './board.js';
 import { rent } from './economy.js';
-import { type Deck, type EffectId, HOTEL, type State } from './model.js';
+import { type BoardState, type Deck, type EffectId, HOTEL, type State } from './model.js';
 import type { Tuning } from './tuning.js';
 
 export type CardAction =
@@ -231,7 +231,7 @@ export const deckOf = (deck: Deck) =>
   (Object.keys(DEFS) as CardId[]).filter((id) => DEFS[id].deck === deck);
 
 /** What `seat` may pick for a Card that asks; an empty list means the Card does nothing. */
-export function picksOf(state: State, seat: number, action: CardAction): number[] {
+export function picksOf(state: BoardState, seat: number, action: CardAction): number[] {
   const lots = (mine: boolean) =>
     state.lots.flatMap((l, tile) => (l && (l.owner === seat) === mine ? [tile] : []));
   switch (action.kind) {

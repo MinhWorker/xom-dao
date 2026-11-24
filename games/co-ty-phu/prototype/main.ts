@@ -21,10 +21,10 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
+import { ambience } from '../client/ambience.js';
+import { DIE, die, hotel, house, token } from '../client/pieces.js';
+import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from '../client/print.js';
 import { BOARD } from '../server/game/board.js';
-import { ambience } from './ambience.js';
-import { DIE, die, hotel, house, token } from './pieces.js';
-import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from './print.js';
 
 const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
