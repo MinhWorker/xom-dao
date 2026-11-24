@@ -283,6 +283,7 @@ export class BoardView {
   private readonly look = new Vector3();
   private lastFrame = 0;
   /** The marquee bulbs round the board's rim: every other one lit, swapping (`marquee`). */
+  private readonly marquee: Group;
   private readonly bulbs = [
     new MeshBasicMaterial({ color: BULB_ON }),
     new MeshBasicMaterial({ color: BULB_OFF }),
@@ -337,6 +338,7 @@ export class BoardView {
     sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
     this.scene.add(this.world);
+    this.marquee = marquee(this.bulbs, this.halos);
 
     const base = new Mesh(
       new BoxGeometry(SIDE + 0.4, BOARD_H, SIDE + 0.4),
@@ -373,7 +375,7 @@ export class BoardView {
     this.world.add(
       base,
       top,
-      marquee(this.bulbs, this.halos),
+      this.marquee,
       this.pointers,
       this.notice,
       this.lots,
@@ -481,6 +483,7 @@ export class BoardView {
     if (low === this.low) return;
     this.low = low;
     this.sun.castShadow = !low;
+    this.marquee.visible = !low;
     this.renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(this.size[0], this.size[1], false);
     if (low) this.tick();

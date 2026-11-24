@@ -86,7 +86,29 @@ let rolling = false;
 const rollButton = document.getElementById('roll') as HTMLButtonElement;
 const pauseButton = document.getElementById('pause') as HTMLButtonElement;
 const halt = document.getElementById('halt') as HTMLElement;
+/** The board draws less: the Hub's Đồ họa is low, or the player asked for fewer effects. */
 let low = false;
+let hubLow = false;
+
+/** A switch the player keeps on this device; storage may be missing. */
+const kept = (key: string) => {
+  try {
+    return localStorage.getItem(`co-ty-phu:${key}`) === '1';
+  } catch {
+    return false;
+  }
+};
+const keep = (key: string, on: boolean) => {
+  try {
+    localStorage.setItem(`co-ty-phu:${key}`, on ? '1' : '0');
+  } catch {}
+};
+/** Fewer effects: low graphics and no bulbs round the board. */
+let calm = kept('calm');
+/** Every move plays twice as fast. */
+let quick = kept('quick');
+const calmButton = document.getElementById('calm') as HTMLButtonElement;
+const quickButton = document.getElementById('quick') as HTMLButtonElement;
 /** Everyone else at the table is the computer. */
 let solo = false;
 /** Paused: the queued views wait and no decision shows. */
@@ -98,10 +120,29 @@ const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
 /** The Hub's graphics level and the player's preferences (`manifest.ts`). */
 const applySettings = (settings: BridgeSettings) => {
   sounds.apply(settings);
-  low = settings.graphics === 'low';
-  board.setGraphics(low ? 'low' : 'high');
+  hubLow = settings.graphics === 'low';
+  look();
   board.setFollowing(settings.preferences?.follow !== false);
 };
+
+/** The graphics and the tools' switches, from the Hub's level and the player's own. */
+function look() {
+  low = hubLow || calm;
+  board.setGraphics(low ? 'low' : 'high');
+  calmButton.setAttribute('aria-pressed', String(calm));
+  quickButton.setAttribute('aria-pressed', String(quick));
+}
+
+calmButton.addEventListener('click', () => {
+  calm = !calm;
+  keep('calm', calm);
+  look();
+});
+quickButton.addEventListener('click', () => {
+  quick = !quick;
+  keep('quick', quick);
+  look();
+});
 
 const bridge = createGameBridge({
   onInit(init) {
@@ -287,7 +328,12 @@ async function play() {
     }
     idle();
     board.highlight([]);
-    await animate(next, changes(before, next), pace(next, queue.length), () => mine === epoch);
+    await animate(
+      next,
+      changes(before, next),
+      pace(next, queue.length) * (quick ? 0.5 : 1),
+      () => mine === epoch,
+    );
     if (mine !== epoch) break;
     const ended = isOver(next) && endedAt === null;
     if (ended) endedAt = performance.now();

@@ -1600,12 +1600,18 @@ body.quake .roster {
   font-size: 1.15em;
 }
 
-/* Pausing a Match against the computer: a medallion at the top middle, the card over the board. */
-.pause {
+/* The tools at the top middle, medallions: fewer effects, pause (alone with the computer), ×2. */
+.tools {
   position: fixed;
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 7;
+}
+
+.tool {
   width: 44px;
   height: 44px;
   display: grid;
@@ -1620,27 +1626,60 @@ body.quake .roster {
     0 4px 0 #0b0704,
     0 7px 12px rgba(0, 0, 0, 0.5);
   cursor: pointer;
-  z-index: 7;
+  font-family: var(--display);
   transition:
     translate 0.08s,
-    box-shadow 0.08s;
+    box-shadow 0.08s,
+    background 0.15s;
 }
 
-.pause:active {
+.tool:active {
   translate: 0 3px;
   box-shadow:
     inset 0 1px 0 rgba(255, 236, 180, 0.35),
     0 1px 0 #0b0704;
 }
 
-.pause svg {
+.tool[hidden] {
+  display: none;
+}
+
+.tools .tool svg {
   width: 18px;
   height: 18px;
   fill: currentColor;
   filter: drop-shadow(0 1px 0 #3a2600);
 }
 
-.pause[hidden],
+.tools .x2 {
+  font-size: 15px;
+  font-weight: 900;
+  text-shadow: 0 1px 0 #3a2600;
+}
+
+.tools .tool .slash {
+  display: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Switched on: lit gold, the effects icon struck through. */
+.tool[aria-pressed="true"] {
+  background: linear-gradient(180deg, #ffe58e, #dc9c12);
+  color: #3b2300;
+}
+
+.tools .tool[aria-pressed="true"] svg,
+.tools [aria-pressed="true"] .x2 {
+  filter: none;
+  text-shadow: none;
+}
+
+.tools .tool[aria-pressed="true"] .slash {
+  display: inline;
+}
+
 .halt[hidden] {
   display: none;
 }
@@ -1736,15 +1775,23 @@ body.quake .roster {
     font-size: 13px;
   }
 
-  .pause {
+  .tools {
     top: 4px;
+    gap: 8px;
+  }
+
+  .tool {
     width: 36px;
     height: 36px;
   }
 
-  .pause svg {
+  .tools .tool svg {
     width: 14px;
     height: 14px;
+  }
+
+  .tools .x2 {
+    font-size: 12px;
   }
 }
 
