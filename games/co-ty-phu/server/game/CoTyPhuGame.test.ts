@@ -69,7 +69,7 @@ describe('moving', () => {
 });
 
 describe('buying', () => {
-  it('buys a City with Nhà 1', () => {
+  it('buys a City with one house', () => {
     const game = open({ rolls: [[1, 2]] }).send('a', 'roll');
     expect(game.state.phase).toBe('buy');
     game.send('a', 'buy');
@@ -301,7 +301,7 @@ describe('Bankruptcy', () => {
   });
 });
 
-/** a has 100 and lands on b's Việt Trì (Nhà 2, rent 198): 98 short. */
+/** a has 100 and lands on b's Việt Trì (two houses, rent 198): 98 short. */
 const short = (...steps: ((s: State) => State)[]) =>
   open({ rolls: [[1, 2]], arrange: all(own(1, [3], 2, 90), player(0, { cash: 100 }), ...steps) });
 

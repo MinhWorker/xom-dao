@@ -6,9 +6,9 @@ Gieo hai xúc xắc và đi theo tổng. Đi qua hoặc dừng ở Xuất phát 
 
 ## Mua đất
 
-Dừng ở ô chưa có chủ thì được mua. Mua một thành phố là có luôn **Nhà 1**. Bến xe giá 200, Điện lực và Cấp nước giá 150, không xây được.
+Dừng ở ô chưa có chủ thì được mua. Mua một thành phố là có luôn **một nhà**. Bến xe giá 200, Điện lực và Cấp nước giá 150, không xây được.
 
-Mỗi lần dừng ở thành phố của mình được nâng một cấp với giá bằng nửa giá đất: Nhà 1 tới Nhà 4, rồi **Khách sạn**.
+Mỗi lần dừng ở thành phố của mình được nâng một cấp với giá bằng nửa giá đất: thêm một nhà, tới bốn nhà, rồi đổi thành **Khách sạn**.
 
 ## Tiền thuê và mua lại
 
