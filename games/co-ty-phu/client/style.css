@@ -1607,7 +1607,7 @@ body.quake .roster {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 10px;
+  gap: 28px;
   z-index: 7;
 }
 
@@ -1777,7 +1777,7 @@ body.quake .roster {
 
   .tools {
     top: 4px;
-    gap: 8px;
+    gap: 22px;
   }
 
   .tool {
