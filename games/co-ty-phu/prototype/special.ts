@@ -10,7 +10,7 @@ export const DECK_COLORS = { chance: '#e2731c', chest: '#138a84' } as const;
 
 /** Each special Tile is filled with its own colour, none of them a seat colour. */
 export const SPECIAL_COLORS: Partial<Record<Tile['kind'], string>> = {
-  start: '#9e2b3a',
+  start: '#5b2a86',
   jail: '#5a4632',
   airport: '#4b5266',
   'go-jail': '#3c424c',

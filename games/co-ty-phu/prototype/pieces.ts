@@ -1,17 +1,20 @@
 /** The models on the board, built from primitives in code: houses, Hotels, tokens and dice. */
 import {
   BoxGeometry,
+  type BufferAttribute,
   CanvasTexture,
   Color,
   ConeGeometry,
   CylinderGeometry,
   Group,
   LatheGeometry,
+  MathUtils,
   Mesh,
   MeshStandardMaterial,
   SphereGeometry,
   SRGBColorSpace,
   Vector2,
+  Vector3,
 } from 'three';
 
 const paint = (color: string | Color, roughness = 0.6, metalness = 0) =>
@@ -93,59 +96,68 @@ export const token = (color: string) => {
   return g;
 };
 
-const PIPS: Record<number, [number, number][]> = {
-  1: [[0, 0]],
-  2: [
-    [-1, -1],
-    [1, 1],
-  ],
-  3: [
-    [-1, -1],
-    [0, 0],
-    [1, 1],
-  ],
-  4: [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ],
-  5: [
-    [-1, -1],
-    [1, -1],
-    [0, 0],
-    [-1, 1],
-    [1, 1],
-  ],
-  6: [
-    [-1, -1],
-    [1, -1],
-    [-1, 0],
-    [1, 0],
-    [-1, 1],
-    [1, 1],
-  ],
+const DIE = 0.5;
+const DIE_ROUND = 0.075;
+
+/** A cube of side `size` with its edges and corners rounded to `radius`. */
+const roundedCube = (size: number, radius: number, segments = 16) => {
+  const g = new BoxGeometry(size, size, size, segments, segments, segments);
+  const pos = g.attributes.position as BufferAttribute;
+  const normal = g.attributes.normal as BufferAttribute;
+  const inner = size / 2 - radius;
+  const p = new Vector3();
+  const core = new Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    p.fromBufferAttribute(pos, i);
+    core.set(
+      MathUtils.clamp(p.x, -inner, inner),
+      MathUtils.clamp(p.y, -inner, inner),
+      MathUtils.clamp(p.z, -inner, inner),
+    );
+    const n = p.sub(core).normalize();
+    normal.setXYZ(i, n.x, n.y, n.z);
+    pos.setXYZ(i, core.x + n.x * radius, core.y + n.y * radius, core.z + n.z * radius);
+  }
+  return g;
 };
 
+/** A red face with a gold rim and the number in a pea-green disc. */
 const dieFace = (n: number) => {
   const c = document.createElement('canvas');
-  c.width = c.height = 128;
+  c.width = c.height = 256;
   const ctx = c.getContext('2d') as CanvasRenderingContext2D;
-  ctx.fillStyle = '#fbf7ee';
-  ctx.fillRect(0, 0, 128, 128);
-  ctx.fillStyle = n === 1 ? '#c8302a' : '#1f1a16';
-  for (const [x, y] of PIPS[n] ?? []) {
-    ctx.beginPath();
-    ctx.arc(64 + x * 32, 64 + y * 32, n === 1 ? 17 : 12, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ctx.fillStyle = '#d9a82b';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = '#c0262d';
+  ctx.beginPath();
+  ctx.roundRect(16, 16, 224, 224, 26);
+  ctx.fill();
+  ctx.strokeStyle = '#f2cf63';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  ctx.fillStyle = '#7fae3e';
+  ctx.strokeStyle = '#f2cf63';
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.arc(128, 128, 62, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fffaf0';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 3;
+  ctx.font = '900 92px system-ui, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${n}`, 128, 134);
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;
-  return new MeshStandardMaterial({ map: t, roughness: 0.35 });
+  return new MeshStandardMaterial({ map: t, roughness: 0.32, metalness: 0.05 });
 };
 
 /** BoxGeometry faces: +x, −x, +y, −y, +z, −z. */
 const DIE_FACES = [3, 4, 1, 6, 2, 5].map(dieFace);
+const DIE_SHAPE = roundedCube(DIE, DIE_ROUND);
 
 /** A die with 1 up. */
-export const die = () => shadowed(new Mesh(new BoxGeometry(0.5, 0.5, 0.5), DIE_FACES));
+export const die = () => shadowed(new Mesh(DIE_SHAPE, DIE_FACES));

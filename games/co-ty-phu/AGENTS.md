@@ -22,7 +22,8 @@ Direction, reviewed by the owner on #351:
   1–4 are that many houses on the band; a Hotel is one larger building with white trim and a gold
   cap. A Full set has a gold rim round its three Tiles. Unowned Tiles show only the print.
 - Tokens are glossy pawns in the seat colour, smaller than a Tile is wide; the dice
-  and the Cơ hội and Khí vận decks sit in the middle of the board.
+  and the Cơ hội and Khí vận decks sit in the middle of the board. Dice are red with rounded,
+  gold-rimmed edges and the number in a pea-green disc on each face, not pips.
 - The Tiles that cannot be owned (corners, Cơ hội, Khí vận, Thuế) are filled with their own
   colour with name and icon in cream, and their icon itself moves, flat on the Tile: nothing
   rises off the board. `special.ts` draws each icon at a time (at rest without one) and
@@ -31,5 +32,5 @@ Direction, reviewed by the owner on #351:
   sways and hops; the chest's lid lifts and lets out sparkles; Thuế is a chart that draws itself
   climbing; a glint runs across Nhà tù's bars; the Vào tù cuffs swing.
 - Seat colours match Đặt Bom (red, blue, yellow, green); nothing else on the board uses them:
-  bến xe buses are grey, Khí vận teal, Cơ hội orange, and the Tp. HCM set bronze. Card backs are the deck colour with its icon repeated small (`cardBack`). Vào tù is
+  bến xe buses are grey, Xuất phát royal purple, Khí vận teal, Cơ hội orange, and the Tp. HCM set bronze. Card backs are the deck colour with its icon repeated small (`cardBack`). Vào tù is
   handcuffs. Colour set colours are in `SET_COLORS` (`prototype/print.ts`), approved.
