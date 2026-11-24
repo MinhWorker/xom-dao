@@ -48,6 +48,8 @@ const sounds = new Sounds();
 let myId = '';
 let me = -1;
 let names: string[] = [];
+/** Each seat's picture: the account's avatar id, `bot` for the computer. */
+let avatars: (string | undefined)[] = [];
 let matchId: string | null = null;
 /** The view on screen. */
 let shown: View | null = null;
@@ -95,6 +97,7 @@ const bridge = createGameBridge({
     myId = init.player.id;
     const seats: BridgeSeat[] = init.room.seats;
     names = seats.map((s) => s.name);
+    avatars = seats.map((s) => (s.bot ? 'bot' : s.avatar));
     me = seats.findIndex((s) => s.id === myId);
     solo = seats.every((s) => s.bot || s.id === myId);
     matchId = null;
@@ -106,7 +109,7 @@ const bridge = createGameBridge({
     const view = (init.match as View | null) ?? null;
     held = !!view?.paused;
     halt.hidden = !held;
-    hud.seats(view ? names.slice(0, view.players.length) : names);
+    hud.seats(view ? names.slice(0, view.players.length) : names, avatars);
     present(view);
   },
   onMessage(event, data) {
@@ -123,7 +126,7 @@ const bridge = createGameBridge({
     timer = push.timer ? { ms: push.timer.ms, at: Date.now() } : null;
     if (push.view) {
       if (fresh || !shown || shown.players.length !== push.view.players.length) {
-        hud.seats(names.slice(0, push.view.players.length));
+        hud.seats(names.slice(0, push.view.players.length), avatars);
         present(push.view);
       } else queue.push(push.view);
       play();

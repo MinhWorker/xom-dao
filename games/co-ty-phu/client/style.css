@@ -274,6 +274,7 @@ body {
   font-weight: 900;
   font-size: 22px;
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  overflow: hidden;
   z-index: 1;
 }
 
@@ -281,6 +282,21 @@ body {
 .seat-3 .avatar {
   left: auto;
   right: -14px;
+}
+
+/* The account's picture fills the medallion; its letter shows until it loads, or without one. */
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* The computer's picture comes in its own frame: cropped to the robot. */
+.avatar img.bot {
+  scale: 1.3;
 }
 
 .who {

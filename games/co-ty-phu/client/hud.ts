@@ -77,15 +77,26 @@ export class Hud {
     });
   }
 
-  /** Builds one card per seat. */
-  seats(names: readonly string[]) {
+  /** Builds one card per seat; `avatars` are the accounts' pictures' ids (`bot` for the computer). */
+  seats(names: readonly string[], avatars: readonly (string | undefined)[] = []) {
     this.roster.innerHTML = '';
     this.cards = names.map((name, seat) => {
       const li = document.createElement('li');
       li.className = `seat seat-${seat}`;
       li.style.setProperty('--seat', SEAT_COLORS[seat] ?? '#888');
       li.innerHTML = `<span class="avatar"></span><span class="who"><b></b></span><span class="cash"></span><span class="tags"></span><span class="timer" hidden></span><span class="stamp">Phá sản</span>`;
-      (li.querySelector('.avatar') as HTMLElement).textContent = (name[0] ?? '?').toUpperCase();
+      const medallion = li.querySelector('.avatar') as HTMLElement;
+      medallion.textContent = (name[0] ?? '?').toUpperCase();
+      const avatar = avatars[seat];
+      if (avatar) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.draggable = false;
+        img.classList.toggle('bot', avatar === 'bot');
+        img.addEventListener('error', () => img.remove());
+        img.src = `/avatars/${encodeURIComponent(avatar)}.webp`;
+        medallion.append(img);
+      }
       (li.querySelector('b') as HTMLElement).textContent = name;
       this.roster.append(li);
       return li;
