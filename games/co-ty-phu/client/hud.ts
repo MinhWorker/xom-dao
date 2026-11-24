@@ -200,7 +200,9 @@ export class Hud {
     this.cards.forEach((li, s) => {
       const el = li.querySelector('.timer') as HTMLElement;
       el.hidden = left === null || s !== seat;
-      if (left !== null) el.style.transform = `scaleX(${left})`;
+      if (left === null) return;
+      el.style.setProperty('--left', String(left));
+      el.style.setProperty('--ring', left < 0.3 ? '#ff5a3c' : '');
     });
   }
 
