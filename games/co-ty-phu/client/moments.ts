@@ -59,7 +59,8 @@ export class Moments {
    * `grandeur(amount)`, 0 to 3); from 2 the screen shakes and its edge glows red. The `payer`
    * taps "Thanh toán" (or it pays itself after 5 s); for the others it shows a moment, or until a
    * tap. Then it is stamped "Đã thanh toán" as the payer's card shudders, and flies off while its
-   * money flies from card `from` to card `to`; `onFly` is told how long that takes. Resolves when
+   * money flies from card `from` to card `to`; `onPaid` is told at the stamp, `onCoin` as each coin lands
+   * and `onFly` how long the flight takes. Resolves when
    * the last coin lands.
    */
   async pay(
@@ -68,7 +69,19 @@ export class Moments {
     bill: Bill,
     grand: number,
     pace: number,
-    { low, payer, onFly }: { low: boolean; payer: boolean; onFly: (ms: number) => void },
+    {
+      low,
+      payer,
+      onPaid,
+      onCoin,
+      onFly,
+    }: {
+      low: boolean;
+      payer: boolean;
+      onPaid?: () => void;
+      onCoin?: () => void;
+      onFly: (ms: number) => void;
+    },
   ) {
     if (!from || !to || pace <= 0) {
       onFly(0);
@@ -91,10 +104,11 @@ export class Moments {
     await Promise.race([tapped, this.sleep(run, limit)]);
     if (run !== this.run) return;
     paper.classList.add('paid');
+    onPaid?.();
     replay(from, 'paying');
     if (!(await this.sleep(run, 520 * pace))) return;
     paper.classList.add('gone');
-    await this.fly(from, to, tier, pace, low, onFly);
+    await this.fly(from, to, tier, pace, low, onFly, onCoin);
     paper.remove();
   }
 
@@ -130,6 +144,7 @@ export class Moments {
     pace: number,
     low: boolean,
     onFly: (ms: number) => void,
+    onCoin?: () => void,
   ) {
     const stagger = STAGGER[tier] * pace;
     const a = centre(from);
@@ -169,6 +184,7 @@ export class Moments {
       flights.push(
         flight.finished
           .then(() => {
+            onCoin?.();
             if (k === 0) replay(to, 'earning');
           })
           .catch(() => {})

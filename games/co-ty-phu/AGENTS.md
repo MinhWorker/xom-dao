@@ -44,7 +44,11 @@ edge glows red), which its payer taps "Thanh toán" on or which pays itself afte
 "Đã thanh toán", then coins and notes flying from the payer's card to the payee's while both
 cards' cash counts; and confetti. `hud.ts` is the rest of the HTML over the board (player cards,
 their counting cash and "Phá sản" stamp, the decision's buttons, a Tile's details, the end with
-its fanfare). `npm run smoke:web` rolls on the dice and plays the next decision in CI.
+its fanfare). `sound.ts` plays the effects in `assets/` (ElevenLabs, see `assets/AGENTS.md`)
+at the Hub's effects level and loops one background track at its music level: any
+`assets/music-*.mp3` the owner adds (none yet). `main.ts` times each effect to its animation's
+beats in `scene.ts`, `cardshow.ts` and `moments.ts` (the dice's three bounces, a clink per coin
+landing, a chime per Tile of a Full set), so change those numbers together. `npm run smoke:web` rolls on the dice and plays the next decision in CI.
 
 ## Look
 

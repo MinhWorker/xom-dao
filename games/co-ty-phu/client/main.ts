@@ -23,6 +23,7 @@ import { Hud } from './hud.js';
 import { Moments } from './moments.js';
 import { type Change, changes, grandeur, pace } from './present.js';
 import { BoardView, SEAT_COLORS } from './scene.js';
+import { Sounds, ticks } from './sound.js';
 
 /** How long the end of the Match shows before the Hub is told. */
 const END_MS = 5000;
@@ -41,6 +42,7 @@ const board = new BoardView(canvas);
 const hud = new Hud();
 const cards = new CardShow();
 const moments = new Moments();
+const sounds = new Sounds();
 
 let myId = '';
 let me = -1;
@@ -55,6 +57,8 @@ let playing = false;
 let epoch = 0;
 /** The decision clock of the last push, counted from when it arrived. */
 let timer: { ms: number; at: number } | null = null;
+/** The ms left on the clock when it was last drawn, for its ticks. */
+let clockLeft = Infinity;
 let panel: Panel | null = null;
 let sending = false;
 let endedAt: number | null = null;
@@ -70,6 +74,7 @@ const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
 
 /** The Hub's graphics level and the player's preferences (`manifest.ts`). */
 const applySettings = (settings: BridgeSettings) => {
+  sounds.apply(settings);
   low = settings.graphics === 'low';
   board.setGraphics(low ? 'low' : 'high');
   board.setFollowing(settings.preferences?.follow !== false);
@@ -118,6 +123,7 @@ const bridge = createGameBridge({
   onVisibility(paused) {
     hidden = paused;
     board.pause(paused);
+    sounds.setHidden(paused);
     if (paused) moments.land();
     document.documentElement.classList.toggle('paused', paused);
   },
@@ -212,6 +218,7 @@ function celebrate(view: View) {
   const winner = view.players.findIndex((p) => !p.bankrupt);
   if (winner < 0 || hidden) return;
   board.victory(winner);
+  sounds.play('victory');
   moments.confetti([SEAT_COLORS[winner] ?? '#e8c04a', '#f6d77a', '#fff2c2', '#e6b422'], 1, low);
 }
 
@@ -257,22 +264,32 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
     if (!live()) return;
     switch (step.kind) {
       case 'dice':
+        rollBeats(step.dice.length, ms);
         await board.roll(step.dice, ms(900));
         break;
       case 'walk':
+        for (let k = 1; k <= step.steps; k++) sounds.play('step', { at: k * ms(170) });
         await board.walk(step.seat, step.from, step.steps, ms(170));
         break;
       case 'release':
         board.say(`${names[step.seat] ?? ''} ra tù`);
+        sounds.play('release');
         await board.release(step.seat, ms(650));
         break;
       case 'jump':
         if (step.how === 'jail') board.say(`${names[step.seat] ?? ''} vào tù`, { tone: 'bad' });
+        if (step.how === 'flight') {
+          sounds.play('plane', { rate: 1 / pace });
+          sounds.play('slam', { at: ms(1400), gain: 0.7 });
+        } else if (step.how === 'jail') sounds.play('jail', { at: ms(560 + 504 * BOUNCE_LAND) });
+        else sounds.play('step', { at: ms(560) });
         await board.jump(step.seat, step.to, ms(step.how === 'flight' ? 1400 : 560), step.how);
         break;
       case 'card': {
         board.follow(null);
         const speed = hidden ? 0 : pace;
+        if (!low) sounds.play('card-slide', { at: 260 * speed });
+        sounds.play('card', { at: low ? 0 : 1030 * speed });
         await cards.draw(step.id, names[step.seat] ?? '', speed, low);
         const choosing =
           after.phase === 'card' &&
@@ -290,7 +307,7 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
             steps.map((s) => s.kind === 'lot' && board.build(s.tile, s.before, s.after, ms(800))),
           );
         }
-        if (step.kind === 'lot') announceLot(step);
+        if (step.kind === 'lot') announceLot(step, ms);
         if (step.kind === 'festival' && step.tile !== null)
           board.say('Lễ hội', { sub: BOARD[step.tile]?.name, tone: 'gold' });
         if (step.kind === 'blackout' && step.tile !== null)
@@ -300,6 +317,9 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
       case 'fullset':
         await building;
         if (!live()) return;
+        for (const [k, rate] of [1, 1.26, 1.5].entries())
+          sounds.play('chime', { at: ms(252 * k), rate });
+        sounds.play('fullset', { at: ms(1134) });
         board.say('Đủ bộ màu!', {
           sub: `${names[step.seat] ?? ''} · thuê ×${TUNING.fullSet}`,
           tone: 'gold',
@@ -327,6 +347,8 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         await moments.pay(hud.card(from), hud.card(to), bill, grand, show, {
           low,
           payer: from === me,
+          onPaid: () => sounds.play('stamp'),
+          onCoin: () => sounds.play('coin', { gain: 0.55, rate: 0.9 + Math.random() * 0.35 }),
           onFly: (flight) => {
             hud.delta(from, -amount, flight);
             hud.delta(to, amount, flight);
@@ -338,7 +360,10 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
       }
       case 'cash': {
         const rest = step.delta - (counted[step.seat] ?? 0);
-        if (rest !== 0) hud.delta(step.seat, rest, ms(600));
+        if (rest !== 0) {
+          sounds.play('coins');
+          hud.delta(step.seat, rest, ms(600));
+        }
         break;
       }
       case 'bankrupt':
@@ -346,7 +371,16 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         if (!live()) return;
         board.showLots(after);
         hud.broke(step.seat);
-        board.say('Phá sản!', { sub: names[step.seat], tone: 'bad', big: true, ms: 2400 });
+        sounds.play('bankrupt');
+        sounds.play('slam', { at: ms(257), gain: 0.8 });
+        for (let k = 0; k < step.lots.length; k++)
+          sounds.play('crumble', { at: ms(700 + k * 300), gain: 0.8 });
+        board.say('Phá sản!', {
+          sub: names[step.seat],
+          tone: 'bad',
+          big: true,
+          ms: 2400,
+        });
         await board.fall(step.seat, step.lots, ms(2000));
         await wait(ms(400));
         break;
@@ -357,29 +391,55 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
   if (steps.some((s) => s.kind === 'cash')) await wait(ms(500));
 }
 
+/** Where in a bounce-out (`scene.ts`) a falling thing first lands. */
+const BOUNCE_LAND = 1 / 2.75;
+
+/** The dice's clacks, on `roll`'s landing and its two smaller bounces; the second die just after. */
+function rollBeats(dice: number, ms: (n: number) => number) {
+  const beats = [
+    { at: 405, gain: 1 },
+    { at: 648, gain: 0.5 },
+    { at: 792, gain: 0.25 },
+  ];
+  for (const { at, gain } of beats)
+    for (let d = 0; d < dice; d++)
+      sounds.play('dice-hit', {
+        at: ms(at) + d * 28,
+        gain: gain * (d ? 0.8 : 1),
+        rate: 1 + d * 0.12,
+      });
+}
+
 /** Prints what happened to a Lot in the middle of the board; a Takeover or a new Hotel big. */
-function announceLot(step: Extract<Change, { kind: 'lot' }>) {
+function announceLot(step: Extract<Change, { kind: 'lot' }>, ms: (n: number) => number) {
   const name = BOARD[step.tile]?.name ?? '';
   const who = (seat: number) => names[seat] ?? '';
   const { before: was, after: now } = step;
   if (!now) board.say(`${name} về ngân hàng`);
-  else if (!was) board.say(`${who(now.owner)} mua ${name}`);
-  else if (was.owner !== now.owner)
+  else if (!was) {
+    sounds.play('buy');
+    board.say(`${who(now.owner)} mua ${name}`);
+  } else if (was.owner !== now.owner) {
+    sounds.play('takeover');
+    sounds.play('slam', { at: ms(752) });
     board.say('Mua lại!', {
       sub: `${who(now.owner)} lấy ${name} của ${who(was.owner)}`,
       tone: 'bad',
       big: true,
       ms: 2400,
     });
-  else if (now.level >= HOTEL && was.level < HOTEL)
+  } else if (now.level >= HOTEL && was.level < HOTEL) {
+    sounds.play('hotel');
     board.say('Khách sạn!', {
       sub: `${who(now.owner)} · ${name}`,
       tone: 'gold',
       big: true,
       ms: 2400,
     });
-  else if (now.level > was.level) board.say(`${name} lên ${levelName(now.level)}`);
-  else board.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
+  } else if (now.level > was.level) {
+    for (let k = 0; k < now.level - was.level; k++) sounds.play('build', { at: ms(144 * k) });
+    board.say(`${name} lên ${levelName(now.level)}`);
+  } else board.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
 }
 
 /** What a bill is for: the rent or Takeover of a Lot, the Card drawn, or a Debt. */
@@ -410,13 +470,19 @@ async function revealQuiz(
   await wait(ms(quiz.picked === null ? 500 : 1100));
   if (!live()) return;
   cards.quizResult(quiz.answer ?? 0, quiz.picked);
+  sounds.play(right ? 'right' : 'wrong');
   await wait(ms(1100));
   if (!live()) return;
   cards.hide();
   const won = TUNING.quiz.safe * TUNING.quiz.times;
   const answer = asked.buttons[quiz.answer ?? 0]?.label ?? '';
   if (right) {
-    board.say('Đúng rồi!', { sub: `+${money(won)}`, tone: 'good', big: true, ms: 2000 });
+    board.say('Đúng rồi!', {
+      sub: `+${money(won)}`,
+      tone: 'good',
+      big: true,
+      ms: 2000,
+    });
     moments.confetti(['#58b368', '#f6d77a', '#fff2c2'], pace, low, 45);
   } else
     board.say(quiz.picked === null ? 'Hết giờ!' : 'Sai mất rồi', {
@@ -499,11 +565,15 @@ function clock() {
     });
   }
   if (!timer || !shown || isOver(shown) || playing) {
+    clockLeft = Infinity;
     hud.timer(null, -1);
     cards.timer(null);
     return;
   }
-  const left = Math.max(0, timer.ms - (Date.now() - timer.at)) / timer.ms;
+  const ms = Math.max(0, timer.ms - (Date.now() - timer.at));
+  const left = ms / timer.ms;
+  if (decider(shown) === me && ticks(clockLeft, ms)) sounds.play('tick');
+  clockLeft = ms;
   hud.timer(left, decider(shown));
   cards.timer(shown.phase === 'quiz' ? left : null);
 }
