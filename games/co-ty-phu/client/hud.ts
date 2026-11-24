@@ -1,6 +1,6 @@
 /**
  * The HTML over the board: the player cards (cash, Effects, jail, the turn clock), the decision
- * panel, a Tile's details, short banners and the end of the Match.
+ * panel, a Tile's details and the end of the Match. Events are printed on the board (`say`).
  */
 import { BOARD, setTiles } from '../server/game/board.js';
 import {
@@ -13,7 +13,7 @@ import {
 } from '../server/game/economy.js';
 import { type EffectId, HOTEL, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
-import { type Button, levelName, money, type Panel } from './decisions.js';
+import { type Button, levelName, money } from './decisions.js';
 import { SET_COLORS } from './print.js';
 import { SEAT_COLORS } from './scene.js';
 
@@ -60,13 +60,13 @@ export class Hud {
   private readonly panel = $<HTMLElement>('panel');
   private readonly clock = $<HTMLElement>('clock').firstElementChild as HTMLElement;
   private readonly info = $<HTMLElement>('info');
-  private readonly banner = $<HTMLElement>('banner');
   private readonly toast = $<HTMLElement>('toast');
   private readonly end = $<HTMLElement>('end');
   private cards: HTMLElement[] = [];
   private cashShown: number[] = [];
+  /** Bumped per seat by each count: an older one stops. */
+  private counting: number[] = [];
   private toastTimer = 0;
-  private bannerTimer = 0;
 
   /** Called with a button the player tapped. */
   onButton: (button: Button) => void = () => {};
@@ -84,7 +84,7 @@ export class Hud {
       const li = document.createElement('li');
       li.className = `seat seat-${seat}`;
       li.style.setProperty('--seat', SEAT_COLORS[seat] ?? '#888');
-      li.innerHTML = `<span class="avatar"></span><span class="who"><b></b></span><span class="cash"></span><span class="tags"></span><span class="timer" hidden></span>`;
+      li.innerHTML = `<span class="avatar"></span><span class="who"><b></b></span><span class="cash"></span><span class="tags"></span><span class="timer" hidden></span><span class="stamp">Phá sản</span>`;
       (li.querySelector('.avatar') as HTMLElement).textContent = (name[0] ?? '?').toUpperCase();
       (li.querySelector('b') as HTMLElement).textContent = name;
       this.roster.append(li);
@@ -119,8 +119,25 @@ export class Hud {
     });
   }
 
-  /** A "+200" or "−72" rising from a player's card. */
-  delta(seat: number, amount: number) {
+  card(seat: number): HTMLElement | undefined {
+    return this.cards[seat];
+  }
+
+  /** "Phá sản" is stamped on `seat`'s card. */
+  broke(seat: number) {
+    const li = this.cards[seat];
+    if (!li) return;
+    li.classList.add('out', 'stamping');
+    (li.querySelector('.cash') as HTMLElement).textContent = 'Phá sản';
+    li.querySelector('.stamp')?.addEventListener(
+      'animationend',
+      () => li.classList.remove('stamping'),
+      { once: true },
+    );
+  }
+
+  /** A "+200" or "−72" rising from a player's card while its cash counts there over `ms`. */
+  delta(seat: number, amount: number, ms = 0) {
     const li = this.cards[seat];
     if (!li) return;
     const el = document.createElement('span');
@@ -129,23 +146,32 @@ export class Hud {
     li.append(el);
     el.addEventListener('animationend', () => el.remove());
     const cash = li.querySelector('.cash') as HTMLElement;
-    this.cashShown[seat] = (this.cashShown[seat] ?? 0) + amount;
-    cash.textContent = money(this.cashShown[seat] ?? 0);
+    const from = this.cashShown[seat] ?? 0;
+    const to = from + amount;
+    this.cashShown[seat] = to;
+    const run = (this.counting[seat] ?? 0) + 1;
+    this.counting[seat] = run;
+    const start = performance.now();
+    const step = () => {
+      if (this.counting[seat] !== run) return;
+      const k = ms > 0 ? Math.min(1, (performance.now() - start) / ms) : 1;
+      cash.textContent = money(Math.round(from + (to - from) * k));
+      cash.classList.toggle('counting', k < 1);
+      cash.classList.toggle('falling', k < 1 && amount < 0);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    step();
   }
 
-  /** The decision panel; `null` hides it. */
-  show(panel: Panel | null, mine: boolean) {
-    this.panel.hidden = !panel;
-    if (!panel) return;
-    this.panel.classList.toggle('picking', !!panel.pick && panel.buttons.length <= 1);
-    const quiz = panel.buttons.some((b) => b.event === 'answer');
-    this.panel.classList.toggle('quiz', quiz);
-    this.panel.classList.toggle('watch', !mine && !quiz);
-    $('panel-title').textContent = panel.title;
-    $('panel-text').textContent = panel.text ?? '';
+  /**
+   * The buttons of the decision this player makes, at the bottom; none hides them. What the
+   * decision is about is printed on the board.
+   */
+  show(buttons: Button[]) {
+    this.panel.hidden = buttons.length === 0;
     const box = $('panel-buttons');
     box.innerHTML = '';
-    panel.buttons.forEach((b, i) => {
+    buttons.forEach((b, i) => {
       const el = document.createElement('button');
       el.type = 'button';
       el.textContent = b.label;
@@ -166,15 +192,6 @@ export class Hud {
     }
   }
 
-  /** Marks the Quiz's right answer, and the one picked when it was wrong. */
-  quizResult(answer: number, picked: number | null) {
-    const buttons = [...$('panel-buttons').querySelectorAll('button')];
-    buttons.forEach((b, i) => {
-      b.classList.toggle('right', i === answer);
-      b.classList.toggle('wrong', i === picked && i !== answer);
-    });
-  }
-
   /** The turn clock: how much of it is left, from 0 to 1; `null` hides it. */
   timer(left: number | null, seat: number) {
     const bar = this.panel.querySelector('.clock') as HTMLElement;
@@ -185,16 +202,6 @@ export class Hud {
       el.hidden = left === null || s !== seat;
       if (left !== null) el.style.transform = `scaleX(${left})`;
     });
-  }
-
-  /** A short line at the top of the screen. */
-  say(text: string, ms = 1600) {
-    this.banner.textContent = text;
-    this.banner.hidden = false;
-    clearTimeout(this.bannerTimer);
-    this.bannerTimer = window.setTimeout(() => {
-      this.banner.hidden = true;
-    }, ms);
   }
 
   /** The server's refusal of a move. */
@@ -274,11 +281,15 @@ export class Hud {
       .join(' · ');
   }
 
-  /** The end of the Match: the winner and every place, at once or after the last move. */
-  over(view: View | null, names: readonly string[], me: number) {
+  /**
+   * The end of the Match: the winner and every place, at once or, with `fanfare`, coming in one
+   * after another under a crown after the last move.
+   */
+  over(view: View | null, names: readonly string[], me: number, fanfare = false) {
     this.end.hidden = !view;
+    this.end.classList.toggle('fanfare', fanfare);
     if (!view) return;
-    this.show(null, false);
+    this.show([]);
     const n = view.players.length;
     const places = view.players
       .map((p, seat) => {
@@ -291,7 +302,7 @@ export class Hud {
     $('end-places').innerHTML = places
       .map(
         (p) =>
-          `<li style="--seat:${SEAT_COLORS[p.seat]}"><span class="place">${p.place}</span><span class="dot"></span><span class="name"></span><span class="cash">${p.place === 1 ? money(p.cash) : 'Phá sản'}</span></li>`,
+          `<li style="--seat:${SEAT_COLORS[p.seat]};--k:${p.place}"><span class="place">${p.place}</span><span class="dot"></span><span class="name"></span><span class="cash">${p.place === 1 ? money(p.cash) : 'Phá sản'}</span></li>`,
       )
       .join('');
     $('end-places')

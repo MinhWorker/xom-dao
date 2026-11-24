@@ -1,7 +1,7 @@
 // Web smoke test of Game clients: a real server (no database), the Harness and a headless
 // Chromium on a phone-sized screen; the browser plays seat 0 against the server's computer.
 // Đặt Bom must draw the arena, walk and drop a bomb on the arrow keys and Space. Cờ Tỷ Phú must
-// draw the board, roll and answer the next decision from its panel, and show a Tile's details on
+// draw the board, roll on its dice and answer the next decision, and show a Tile's details on
 // a tap. The server must have applied every move. Needs a built server, Harness and Games, and
 // Chromium (`npx playwright-core install chromium`). Saves a screenshot to smoke-web/<game>.png.
 // Usage: node scripts/smoke-web.mjs [gameId...] (default: every Game below)
@@ -173,17 +173,17 @@ const SCENARIOS = {
   },
   'co-ty-phu': async ({ page, state }) => {
     const view = async () => (await state()).players[0]?.view;
-    const button = (label) =>
-      page.locator('#panel-buttons button:not([disabled])', { hasText: label });
-    await button('Gieo').first().click({ timeout: 15000 });
+    await page.locator('#roll:not([hidden])').click({ timeout: 15000 });
     const rolled = await until('the roll', async () => {
       const v = await view();
       return v?.rolls > 0 && v;
     });
-    await page.waitForSelector('#panel-buttons button:not([disabled])', { timeout: 30000 });
+    const next =
+      '#panel-buttons button:not([disabled]), #roll:not([hidden]), .cardshow:not([hidden]) button.choice:not([disabled])';
+    await page.waitForSelector(next, { timeout: 30000 });
     const before = JSON.stringify(await view());
-    const answer = await page.locator('#panel-buttons button:not([disabled])').first();
-    const label = await answer.textContent();
+    const answer = page.locator(next).first();
+    const label = (await answer.textContent()) || (await answer.getAttribute('aria-label'));
     await answer.click();
     await until('the answer', async () => JSON.stringify(await view()) !== before, 30);
     await page.mouse.click(265, 45);

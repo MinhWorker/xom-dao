@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CardId } from '../server/game/cards.js';
 import type { State } from '../server/game/model.js';
 import { all, open, own, player, viewOf } from '../server/game/test-match.js';
-import { changes, pace } from './present.js';
+import { changes, grandeur, pace } from './present.js';
 
 /** What changes when `a` rolls `dice` from the first state after `arrange`. */
 function roll(dice: [number, number], arrange = (s: State) => s, chance: CardId[] = []) {
@@ -20,11 +20,51 @@ describe('what a new view shows', () => {
     ]);
   });
 
-  it('shows money moving after the token lands', () => {
+  it('sends the rent from the payer to the owner after the token lands', () => {
     const steps = roll([1, 2], own(1, [3], 1));
     expect(steps.slice(2)).toEqual([
+      { kind: 'pay', from: 0, to: 1, amount: 72, why: 'rent', tile: 3 },
       { kind: 'cash', seat: 0, delta: -72 },
       { kind: 'cash', seat: 1, delta: 72 },
+    ]);
+  });
+
+  it('sends money to the turn player from the one who pays them', () => {
+    const steps = roll([3, 4], player(1, { cash: 2000 }), ['chance-charity']);
+    expect(steps.filter((s) => s.kind === 'pay')).toEqual([
+      { kind: 'pay', from: 1, to: 0, amount: 150, why: 'card', tile: null },
+    ]);
+  });
+
+  it('sends nothing between players when one pays the bank as the other passes Xuất phát', () => {
+    const arrange = all(player(0, { tile: 38 }), own(1, [1, 3], 5, 500));
+    const steps = roll([4, 5], arrange, ['chance-hotel-tax']);
+    expect(steps.filter((s) => s.kind === 'cash')).toEqual([
+      { kind: 'cash', seat: 0, delta: 200 },
+      { kind: 'cash', seat: 1, delta: -200 },
+    ]);
+    expect(steps.filter((s) => s.kind === 'pay')).toEqual([]);
+  });
+
+  it('sends a Debt to its creditor once the debtor has Sold', () => {
+    const arrange = all(player(0, { cash: 50 }), player(1, { cash: 100 }), own(1, [39], 3, 400));
+    const game = open({ rolls: [[3, 4]], arrange, chance: ['chance-charity'] }).send('a', 'roll');
+    const owing = viewOf(game, 'a');
+    expect(owing.phase).toBe('debt');
+    game.send('b', 'sell', { sale: owing.debt?.suggested });
+    const steps = changes(owing, viewOf(game, 'a'));
+    expect(steps.filter((s) => s.kind === 'pay')).toEqual([
+      { kind: 'pay', from: 1, to: 0, amount: 150, why: 'debt', tile: null },
+    ]);
+  });
+
+  it('bills a Takeover to the owner who lost the Lot', () => {
+    const game = open({ rolls: [[2, 4]], arrange: own(1, [6], 2, 140) }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'takeover');
+    const steps = changes(before, viewOf(game, 'a'));
+    expect(steps.filter((s) => s.kind === 'pay')).toEqual([
+      { kind: 'pay', from: 0, to: 1, amount: 630, why: 'takeover', tile: 6 },
     ]);
   });
 
@@ -130,6 +170,26 @@ describe('what a new view shows', () => {
       { kind: 'cash', seat: 0, delta: -90 },
     ]);
   });
+
+  it('lights up a Colour set when its third City is bought', () => {
+    const game = open({ rolls: [[1, 2]], arrange: own(0, [1, 2], 1) }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'buy');
+    const steps = changes(before, viewOf(game, 'a'));
+    expect(steps.map((s) => s.kind)).toEqual(['lot', 'fullset', 'cash']);
+    expect(steps[1]).toEqual({ kind: 'fullset', seat: 0, tiles: [1, 2, 3] });
+  });
+
+  it('takes the Lots of a player gone bankrupt down with them', () => {
+    const arrange = all(player(0, { cash: 10 }), own(0, [6], 2, 100), own(1, [3], 5, 400));
+    const steps = roll([1, 2], arrange);
+    expect(steps.map((s) => s.kind)).toEqual(['dice', 'walk', 'pay', 'cash', 'cash', 'bankrupt']);
+    expect(steps.at(-1)).toEqual({
+      kind: 'bankrupt',
+      seat: 0,
+      lots: [{ tile: 6, lot: { owner: 0, level: 2, built: 100 } }],
+    });
+  });
 });
 
 describe('how fast the moves play', () => {
@@ -142,5 +202,13 @@ describe('how fast the moves play', () => {
     expect(pace(viewOf(open(), 'a'), 2)).toBe(1);
     expect(pace(viewOf(open(), 'a'), 3)).toBe(0.4);
     expect(pace(viewOf(open({ speed: 'fast' }), 'a'), 3)).toBe(0.2);
+  });
+});
+
+describe('how grand a payment looks', () => {
+  it('grows with the amount, from a glimpse to the camera shaking', () => {
+    expect([50, 149, 150, 399, 400, 999, 1000, 3000].map(grandeur)).toEqual([
+      0, 0, 1, 1, 2, 2, 3, 3,
+    ]);
   });
 });

@@ -2,16 +2,20 @@
  * The board in Three.js, after the approved prototype (#351): the printed board floating in
  * space, the Lots in their owners' colours, the tokens, the dice and the decks. `show` puts
  * everything where a view says; `roll`, `walk`, `jump`, `release` and `build` play the moves
- * between views, with the camera following what moves.
+ * between views, with the camera following what moves, and `fullSet`, `fall` and `victory` the
+ * moments the whole table shouts at (#355).
  */
 
 import type { BridgeGraphics } from '@xomdao/bridge';
 import {
+  AdditiveBlending,
   AmbientLight,
   BoxGeometry,
   CanvasTexture,
   CatmullRomCurve3,
+  CylinderGeometry,
   DirectionalLight,
+  DoubleSide,
   Group,
   HemisphereLight,
   MathUtils,
@@ -53,6 +57,17 @@ const GOLD = '#e6b422';
 const CLOSE = 0.32;
 
 type JumpHow = Extract<Change, { kind: 'jump' }>['how'];
+
+/** The colour of a line printed in the middle of the board. */
+export type Tone = 'plain' | 'gold' | 'good' | 'bad';
+const TONES: Record<Tone, string> = {
+  plain: '#f4ecd8',
+  gold: '#f6d77a',
+  good: '#8fe39e',
+  bad: '#ff6a4f',
+};
+/** The printed middle: between the decks and the dice, in board units and canvas pixels. */
+const NOTICE = { w: 7.2, h: 2.9, z: -0.45, px: 200 } as const;
 
 /** Deep space with stars, drawn in code. */
 function spaceTexture() {
@@ -188,8 +203,24 @@ const smooth = (k: number) => k * k * (3 - 2 * k);
 const buildings = (lot: Lot | null) =>
   !lot ? [] : lot.level >= HOTEL ? [HOTEL] : Array.from({ length: lot.level }, (_, k) => k + 1);
 
+/** A line printed in the middle of the board: `big` for the moments the table shouts at. */
+export interface Line {
+  title: string;
+  sub?: string;
+  tone?: Tone;
+  big?: boolean;
+  blink?: boolean;
+}
+
+/** How long a `say` shows, besides the line. */
+type Say = Omit<Line, 'title' | 'blink'> & { ms?: number };
+
 const DUST = new SphereGeometry(0.05, 8, 6);
 const RING = new RingGeometry(0.32, 0.42, 40);
+const SPARK = new PlaneGeometry(0.07, 0.11);
+const BEAM = new CylinderGeometry(0.34, 0.5, 4, 24, 1, true);
+BEAM.translate(0, 2, 0);
+const CONFETTI = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368', '#fff2c2', '#e6b422'];
 
 interface Tween {
   start: number;
@@ -238,10 +269,21 @@ export class BoardView {
   private zoom = 0;
   private readonly look = new Vector3();
   private lastFrame = 0;
+  /** The middle of the board, where events are printed (`say`). */
+  private readonly notice: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private readonly noticeInk: CanvasRenderingContext2D;
+  /** Bumped by every `say`: an older line stops fading itself. */
+  private saying = 0;
+  /** A `say` is showing. */
+  private speaking = false;
+  /** What `status` keeps printed between `say`s. */
+  private standing: Line | null = null;
+  /** The dice hop, waiting for a tap. */
+  private inviting = false;
   /** The plane that flies from Sân bay, hidden between flights. */
   private readonly aircraft = plane();
-  /** The camera shakes until `until` (performance.now ms). */
-  private shake = { until: 0, strength: 0 };
+  /** The camera shakes until `until` (performance.now ms), fading over its last `ms`. */
+  private shaking = { until: 0, strength: 0, ms: 320 };
   /** The last frame shook, so this one puts the camera back. */
   private shook = false;
 
@@ -274,7 +316,7 @@ export class BoardView {
     );
     base.position.y = BOARD_H / 2;
     base.castShadow = base.receiveShadow = true;
-    const printed = new CanvasTexture(printBoard());
+    const printed = new CanvasTexture(printBoard(336, false));
     printed.colorSpace = SRGBColorSpace;
     printed.anisotropy = anisotropy;
     const top = new Mesh(
@@ -286,7 +328,21 @@ export class BoardView {
     top.receiveShadow = true;
     this.aircraft.scale.setScalar(1.6);
     this.aircraft.visible = false;
-    this.world.add(base, top, this.lots, this.marks, this.fx, this.aircraft);
+    const ink = document.createElement('canvas');
+    ink.width = NOTICE.w * NOTICE.px;
+    ink.height = NOTICE.h * NOTICE.px;
+    this.noticeInk = ink.getContext('2d') as CanvasRenderingContext2D;
+    const inkMap = new CanvasTexture(ink);
+    inkMap.colorSpace = SRGBColorSpace;
+    inkMap.anisotropy = anisotropy;
+    this.notice = new Mesh(
+      new PlaneGeometry(NOTICE.w, NOTICE.h),
+      new MeshBasicMaterial({ map: inkMap, transparent: true, depthWrite: false, opacity: 0 }),
+    );
+    this.notice.rotation.x = -Math.PI / 2;
+    this.notice.position.set(0, BOARD_H + 0.006, NOTICE.z);
+    this.notice.renderOrder = 3;
+    this.world.add(base, top, this.notice, this.lots, this.marks, this.fx, this.aircraft);
 
     for (const [x, kind, turn] of [
       [-1.6, 'chance', 0.12],
@@ -351,7 +407,11 @@ export class BoardView {
     this.finish(false);
     clear(this.fx);
     this.aircraft.visible = false;
-    this.shake.until = 0;
+    this.shaking.until = 0;
+    this.saying++;
+    this.speaking = false;
+    this.standing = null;
+    this.notice.material.opacity = 0;
     this.focus = null;
     this.zoom = 0;
     this.camera.position.copy(this.home.pos);
@@ -442,15 +502,20 @@ export class BoardView {
 
   /**
    * Plays a Lot's change once `showLots` drew how it ends: the houses or Hotel it gained rise, the
-   * ones it lost sink, a Lot bought or taken over pops in, and one given back shrinks away. The
-   * camera comes nearer while a building rises.
+   * ones it lost sink, a bought Lot pops in, and one given back shrinks away. A Lot Taken over is
+   * snatched (`takeOver`); a new Hotel rises slower in a beam of light. The camera comes nearer while
+   * a building rises.
    */
   build(tile: number, was: Lot | null, now: Lot | null, ms = 600) {
     const g = this.lots.children.find((c) => c.userData.tile === tile);
+    if (g && was && now && was.owner !== now.owner)
+      return this.takeOver(g, tile, was, now, ms * 1.6);
     const jobs: Promise<void>[] = [];
     const kept = !!was && !!now && was.owner === now.owner;
     const had = buildings(was);
     const has = buildings(now);
+    const topped = has.includes(HOTEL) && !had.includes(HOTEL);
+    if (topped) ms *= 1.5;
     if (g && !kept) jobs.push(this.popIn(g, Math.round(ms * 0.6)));
     const grew = !was || (kept && (now?.level ?? 0) > was.level);
     if (g && grew) {
@@ -461,6 +526,11 @@ export class BoardView {
       rising.forEach((b, k) => {
         jobs.push(this.rise(b, k * Math.round(ms * 0.18), ms));
       });
+      if (topped && now) {
+        const where = g.getWorldPosition(new Vector3());
+        this.celebrate(where, SEAT_COLORS[now.owner] as string, ms * 1.6);
+        jobs.push(this.wait(ms * 1.2));
+      }
     }
     if (was && (!now || kept)) {
       const ghost = lotPieces(tile, was.owner, was.level, false);
@@ -473,6 +543,269 @@ export class BoardView {
       }
     }
     return Promise.all(jobs).then(() => {});
+  }
+
+  /**
+   * A Takeover: the old owner's houses are yanked up off the Tile and spun round, and come down in
+   * the taker's colour with a flash of it over the Tile; the tint and strip spread out under them.
+   */
+  private async takeOver(g: Object3D, tile: number, was: Lot, now: Lot, ms: number) {
+    const mine = this.generation;
+    const ghost = lotPieces(tile, was.owner, was.level, false);
+    this.fx.add(ghost);
+    g.visible = false;
+    this.focus = g;
+    const lift = 0.95;
+    /** How much larger the houses grow while in the air. */
+    const grow = 0.6;
+    const parts = (o: Object3D) => o.children.filter((c) => c.userData.building);
+    const flats = (o: Object3D) => o.children.filter((c) => !c.userData.building);
+    await this.tween(ms * 0.42, (u) => {
+      const up = Math.sin((u * Math.PI) / 2) * lift;
+      parts(ghost).forEach((b, k) => {
+        const s = b.userData.scale as number;
+        b.scale.setScalar(s * (1 + Math.sin((u * Math.PI) / 2) * grow));
+        b.position.y = up;
+        b.rotation.y = u * u * Math.PI * 1.5 + k * 0.2;
+        b.rotation.z = Math.sin(u * 30 + k) * 0.12 * (1 - u);
+      });
+      for (const f of flats(ghost)) f.visible = Math.sin(u * 40) > -0.2 || u < 0.3;
+    });
+    this.fx.remove(ghost);
+    if (mine !== this.generation) return;
+    g.visible = true;
+    const where = g.getWorldPosition(new Vector3());
+    this.flash(tile, SEAT_COLORS[now.owner] as string, ms * 0.5);
+    const landed = parts(g).map((b) => ({ b, y: b.position.y, turn: b.rotation.y }));
+    const spread = flats(g);
+    let slammed = false;
+    await this.tween(ms * 0.58, (u) => {
+      const k = bounceOut(Math.min(1, u * 1.25));
+      for (const { b, y, turn } of landed) {
+        b.scale.setScalar((b.userData.scale as number) * (1 + (1 - k) * grow));
+        b.position.y = y + (1 - k) * lift;
+        b.rotation.y = turn + (1 - Math.min(1, u * 1.6)) * Math.PI;
+      }
+      for (const f of spread) f.scale.setScalar(Math.max(0.01, ease(Math.min(1, u * 1.8))));
+      if (!slammed && u * 1.25 >= 0.36) {
+        slammed = true;
+        this.puff(where, 12, 520);
+        this.shake(0.07, 280);
+      }
+    });
+  }
+
+  /** A sheet of `color` light over a Tile that fades. */
+  private flash(tile: number, color: string, ms: number) {
+    const p = placement(tile);
+    const m = flat(p.w, p.h, color, 0.9);
+    const material = m.material as MeshBasicMaterial;
+    material.blending = AdditiveBlending;
+    m.position.copy(at(p.x + p.w / 2, p.y + p.h / 2, 0.05));
+    m.renderOrder = 4;
+    this.fx.add(m);
+    return this.tween(ms, (u) => {
+      material.opacity = 0.9 * (1 - u) ** 2;
+    }).then(() => {
+      this.fx.remove(m);
+      material.dispose();
+    });
+  }
+
+  /** A beam of light, a ring and gold sparks from `where`; a ring alone on low graphics. */
+  private celebrate(where: Vector3, color: string, ms: number) {
+    if (this.paused) return;
+    const ring = new MeshBasicMaterial({ color: GOLD, transparent: true, depthWrite: false });
+    const r = new Mesh(RING, ring);
+    r.rotation.x = -Math.PI / 2;
+    r.position.set(where.x, BOARD_H + 0.03, where.z);
+    this.fx.add(r);
+    this.tween(ms * 0.6, (u) => {
+      r.scale.setScalar(0.5 + ease(u) * 3.2);
+      ring.opacity = 0.9 * (1 - u);
+    }).then(() => {
+      this.fx.remove(r);
+      ring.dispose();
+    });
+    if (this.low) return;
+    const light = new MeshBasicMaterial({
+      color,
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      side: DoubleSide,
+    });
+    const beam = new Mesh(BEAM, light);
+    beam.position.set(where.x, BOARD_H, where.z);
+    this.fx.add(beam);
+    this.tween(ms, (u) => {
+      beam.scale.set(1 - u * 0.4, Math.min(1, u * 4), 1 - u * 0.4);
+      light.opacity = 0.55 * Math.min(1, u * 5) * (1 - u);
+    }).then(() => {
+      this.fx.remove(beam);
+      light.dispose();
+    });
+    this.sparks(where, 26, [GOLD, '#fff2c2', color], ms);
+  }
+
+  /** `n` sparks shot up from `where` that tumble and fall back. */
+  private sparks(where: Vector3, n: number, colors: readonly string[], ms: number, up = 2.2) {
+    if (this.low || this.paused) return;
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const out = 0.4 + Math.random() * 1.1;
+      const rise = up * (0.6 + Math.random() * 0.6);
+      const spin = (Math.random() - 0.5) * 20;
+      const material = new MeshBasicMaterial({
+        color: colors[k % colors.length],
+        transparent: true,
+        depthWrite: false,
+        side: DoubleSide,
+      });
+      const m = new Mesh(SPARK, material);
+      this.fx.add(m);
+      const life = ms * (0.7 + Math.random() * 0.5);
+      this.tween(life, (u) => {
+        m.position.set(
+          where.x + Math.cos(a) * out * u,
+          BOARD_H + 0.1 + rise * u - rise * 1.1 * u * u,
+          where.z + Math.sin(a) * out * u,
+        );
+        m.rotation.set(u * spin, u * spin * 0.7, 0);
+        material.opacity = u < 0.8 ? 1 : (1 - u) * 5;
+      }).then(() => {
+        this.fx.remove(m);
+        material.dispose();
+      });
+    }
+  }
+
+  /**
+   * A Full set: its Tiles light up one after another in the owner's colour, then all three flash
+   * gold together and throw up sparks. The camera comes over the middle one.
+   */
+  async fullSet(tiles: number[], seat: number, ms = 1400) {
+    const color = SEAT_COLORS[seat] as string;
+    const middle = tiles[Math.floor(tiles.length / 2)] as number;
+    const p = placement(middle);
+    const marker = new Group();
+    marker.position.copy(at(p.x + p.w / 2, p.y + p.h / 2));
+    this.fx.add(marker);
+    this.focus = marker;
+    const mine = this.generation;
+    const step = ms * 0.18;
+    await Promise.all(
+      tiles.map((tile, k) =>
+        this.wait(step * k).then(() =>
+          mine === this.generation ? this.flash(tile, color, ms * 0.45) : undefined,
+        ),
+      ),
+    );
+    if (mine !== this.generation) return;
+    await Promise.all(
+      tiles.map((tile) => {
+        const q = placement(tile);
+        this.sparks(at(q.x + q.w / 2, q.y + q.h / 2), 10, [GOLD, '#fff2c2', color], ms * 0.6, 1.4);
+        return this.flash(tile, GOLD, ms * 0.4);
+      }),
+    );
+    this.fx.remove(marker);
+  }
+
+  /**
+   * Bankruptcy, over the whole board: the token's Tile flashes red and the token topples and sinks
+   * into it, then the Lots it owned, `lots`, flash and crumble one after another. The camera
+   * shakes.
+   */
+  async fall(seat: number, lots: { tile: number; lot: Lot }[], ms = 1600) {
+    const t = this.tokens[seat];
+    const bars = this.cages[seat];
+    if (bars) bars.group.visible = false;
+    this.focus = null;
+    const mine = this.generation;
+    const stood = this.spots[seat];
+    if (stood !== null && stood !== undefined) this.flash(stood, '#e0553d', ms * 0.5);
+    const ruins = lots.map(({ tile, lot }, k) => {
+      const ghost = lotPieces(tile, lot.owner, lot.level, false);
+      this.fx.add(ghost);
+      return this.wait(ms * 0.35 + k * ms * 0.15).then(() => {
+        if (mine !== this.generation) return;
+        this.flash(tile, '#e0553d', ms * 0.4);
+        return this.crumble(ghost, ms * 0.55);
+      });
+    });
+    if (t) {
+      const from = t.position.clone();
+      const base = t.scale.x;
+      const side = Math.random() < 0.5 ? -1 : 1;
+      let dropped = false;
+      await this.tween(ms * 0.5, (u) => {
+        t.rotation.z = side * bounceOut(Math.min(1, u * 1.4)) * 1.35;
+        t.position.y = from.y - Math.max(0, u - 0.6) * 0.9;
+        t.scale.setScalar(base * (1 - Math.max(0, u - 0.6) * 2.2));
+        if (!dropped && u * 1.4 >= 0.36) {
+          dropped = true;
+          this.puff(from, 10, 520);
+          this.shake(0.12, 520);
+        }
+      });
+      t.rotation.z = 0;
+      t.scale.setScalar(base);
+      if (mine !== this.generation) return;
+      t.visible = false;
+    }
+    this.spots[seat] = null;
+    await Promise.all(ruins);
+  }
+
+  /** A Lot's pieces shake, go grey, tip over and sink, with dust. */
+  private crumble(ghost: Group, ms: number) {
+    const parts = [...ghost.children];
+    const tips = parts.map(() => [(Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2]);
+    this.puff(ghost.getWorldPosition(new Vector3()), 8, 600);
+    const grey = new MeshStandardMaterial({ color: '#5d5a66', roughness: 0.9 });
+    for (const part of parts)
+      part.traverse((o) => {
+        if (o instanceof Mesh && o.material instanceof MeshStandardMaterial) o.material = grey;
+      });
+    return this.tween(ms, (u) => {
+      parts.forEach((part, k) => {
+        if (!part.userData.building) {
+          part.scale.setScalar(Math.max(0.01, 1 - u));
+          return;
+        }
+        const [x, z] = tips[k] as number[];
+        const e = ease(u);
+        part.rotation.x = (x as number) * e;
+        part.rotation.z = (z as number) * e;
+        part.position.y = -e * 0.25;
+        part.position.x += Math.sin(u * 60) * 0.004 * (1 - u);
+        const s = part.userData.scale as number;
+        part.scale.set(s, s * Math.max(0.01, 1 - e), s);
+      });
+    }).then(() => {
+      this.fx.remove(ghost);
+      grey.dispose();
+    });
+  }
+
+  /** The winner's token in a beam of light with sparks, twice; the camera stays over the board. */
+  victory(seat: number, ms = 1800) {
+    const t = this.tokens[seat];
+    if (!t?.visible) return;
+    this.focus = null;
+    const where = t.getWorldPosition(new Vector3());
+    const color = SEAT_COLORS[seat] as string;
+    this.celebrate(where, color, ms);
+    this.sparks(where, 40, CONFETTI, ms * 1.4, 3);
+    const mine = this.generation;
+    this.wait(ms * 0.6).then(() => {
+      if (mine === this.generation) this.sparks(where, 30, CONFETTI, ms * 1.4, 2.6);
+    });
+  }
+
+  private wait(ms: number) {
+    return this.tween(ms, () => {});
   }
 
   private popIn(g: Object3D, ms: number) {
@@ -511,6 +844,7 @@ export class BoardView {
 
   /** Throws the dice from the far side: they bounce twice and settle on `values`. One die shows under Kẹt xe. */
   roll(values: number[], ms = 900) {
+    this.inviteRoll(false);
     const throws = this.dice.map((_, i) => {
       const rest = DIE_REST[i] as Vector3;
       const sign = Math.random() < 0.5 ? -1 : 1;
@@ -698,7 +1032,121 @@ export class BoardView {
       this.fx.remove(ring);
       material.dispose();
     });
-    this.shake = { until: performance.now() + 320 * this.pace, strength: 0.09 };
+    this.shake(0.09, 320);
+  }
+
+  /**
+   * Prints `title` (and `sub` under it) in the middle of the board for `ms`: it comes in a little
+   * large, settles and fades, then what `status` holds shows again. A new line replaces the one
+   * showing.
+   */
+  say(title: string, { sub = '', tone = 'plain', big = false, ms = 1700 }: Say = {}) {
+    this.ink({ title, sub, tone, big });
+    const run = ++this.saying;
+    this.speaking = true;
+    const material = this.notice.material;
+    this.tween(ms * this.pace, (u) => {
+      if (run !== this.saying) return;
+      const into = Math.min(1, u / 0.12);
+      const out = u > 0.8 ? (1 - u) / 0.2 : 1;
+      material.opacity = into * out;
+      this.notice.scale.setScalar(1 + (1 - ease(into)) * (big ? 0.35 : 0.15));
+    }).then(() => {
+      if (run !== this.saying) return;
+      this.speaking = false;
+      this.stand();
+    });
+  }
+
+  /**
+   * What stays printed in the middle of the board while nothing happens (who is deciding, or the
+   * roll waiting for a tap, blinking); `null` leaves it blank. A `say` shows over it.
+   */
+  status(line: Line | null) {
+    this.standing = line;
+    if (!this.speaking) this.stand();
+  }
+
+  private stand() {
+    const material = this.notice.material;
+    this.notice.scale.setScalar(1);
+    if (!this.standing) {
+      material.opacity = 0;
+      return;
+    }
+    this.ink(this.standing);
+    material.opacity = 1;
+  }
+
+  /** Draws `line` on the middle of the board. */
+  private ink({ title, sub = '', tone = 'plain', big = false }: Line) {
+    const ctx = this.noticeInk;
+    const { width, height } = ctx.canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const sizeTo = (text: string, size: number, weight: number) => {
+      let px = size;
+      do {
+        ctx.font = `${weight} ${px}px system-ui, "Segoe UI", Roboto, sans-serif`;
+        px -= 6;
+      } while (ctx.measureText(text).width > width * 0.94 && px > 24);
+    };
+    const y = sub ? height * 0.4 : height / 2;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 8;
+    sizeTo(title, big ? 230 : 150, 900);
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = 'rgba(10, 40, 26, 0.55)';
+    ctx.strokeText(title, width / 2, y);
+    ctx.fillStyle = TONES[tone];
+    ctx.fillText(title, width / 2, y);
+    if (sub) {
+      sizeTo(sub, 86, 700);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.fillText(sub, width / 2, height * 0.8);
+    }
+    (this.notice.material.map as CanvasTexture).needsUpdate = true;
+  }
+
+  /** The dice hop in place while a roll waits for a tap on them; never on low graphics. */
+  inviteRoll(on: boolean) {
+    this.inviting = on;
+    if (!on) for (const d of this.dice) d.position.y = BOARD_H + DIE / 2;
+  }
+
+  /** Where the dice are on the canvas, in CSS pixels from its top-left, with room round them. */
+  diceRect(margin = 18) {
+    const [w, h] = [this.canvas.clientWidth, this.canvas.clientHeight];
+    const xs: number[] = [];
+    const ys: number[] = [];
+    const p = new Vector3();
+    for (const d of this.dice) {
+      if (!d.visible) continue;
+      for (const dx of [-0.5, 0.5])
+        for (const dz of [-0.5, 0.5])
+          for (const y of [BOARD_H, BOARD_H + DIE + 0.2]) {
+            p.set(d.position.x + dx, y, d.position.z + dz).project(this.camera);
+            xs.push(((p.x + 1) / 2) * w);
+            ys.push(((1 - p.y) / 2) * h);
+          }
+    }
+    const left = Math.min(...xs) - margin;
+    const top = Math.min(...ys) - margin;
+    return {
+      left,
+      top,
+      width: Math.max(...xs) + margin - left,
+      height: Math.max(...ys) + margin - top,
+    };
+  }
+
+  /** Shakes the camera for `ms` at `strength` (board units); never on low graphics. */
+  shake(strength: number, ms: number) {
+    if (this.low || this.paused) return;
+    ms *= this.pace;
+    this.shaking = { until: performance.now() + ms, strength, ms };
   }
 
   /** The bars drop round a token that just went to jail. */
@@ -855,6 +1303,12 @@ export class BoardView {
       (g.material as MeshBasicMaterial).opacity = this.picking.includes(i) ? pulse : 0;
     });
     if (!this.low) this.tick(ms / 1000);
+    if (!this.speaking && this.standing?.blink)
+      this.notice.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(ms / 170));
+    if (this.inviting && !this.low)
+      this.dice.forEach((d, i) => {
+        d.position.y = BOARD_H + DIE / 2 + Math.abs(Math.sin(ms / 240 + i * 0.9)) * 0.16;
+      });
     this.steer(dt);
     this.renderer.render(this.scene, this.camera);
   }
@@ -862,7 +1316,7 @@ export class BoardView {
   /** Eases the camera towards the token it follows, nearer and looking at it, or back home. */
   private steer(dt: number) {
     const want = this.focus && this.following && !this.low ? 1 : 0;
-    const shaking = performance.now() < this.shake.until;
+    const shaking = performance.now() < this.shaking.until;
     if (want === 0 && this.zoom === 0 && !shaking && !this.shook) return;
     this.shook = shaking;
     const there = this.focus?.getWorldPosition(new Vector3());
@@ -882,8 +1336,8 @@ export class BoardView {
     this.camera.position.copy(target).add(back);
     this.camera.lookAt(target);
     if (shaking) {
-      const left = (this.shake.until - performance.now()) / 320;
-      const s = this.shake.strength * Math.min(1, left);
+      const left = (this.shaking.until - performance.now()) / this.shaking.ms;
+      const s = this.shaking.strength * Math.min(1, left);
       this.camera.position.x += (Math.random() - 0.5) * s;
       this.camera.position.y += (Math.random() - 0.5) * s;
     }

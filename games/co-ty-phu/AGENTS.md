@@ -8,7 +8,9 @@ Rules: `server/game/model.ts` first, words in `GLOSSARY.md`, numbers in `server/
 `client/` is a Vite + Three.js client (`games/AGENTS.md`). `main.ts` queues each `match:state`
 push and plays it on the board one after another (the computer's moves arrive at once; `pace`
 plays them 2× under "Tốc độ" Nhanh, which the `View` carries as `speed`, and faster while more
-wait), then shows the newest view's decision. Two pure modules carry the logic, with
+wait), then shows the newest view's decision: its title and text printed on the board, the
+deciding player's buttons at the bottom, and for a roll the dice to tap (a transparent `#roll`
+button kept over them, wider than they are drawn). Two pure modules carry the logic, with
 tests built on real Matches (`server/game/test-match.ts`):
 
 - `decisions.ts`: `decide(view, seat, names)` is the panel a seat sees: title, text, buttons
@@ -16,19 +18,33 @@ tests built on real Matches (`server/game/test-match.ts`):
   from `economy.ts`, so they match the server.
 - `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
   of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
-  the Quiz result, money and Bankruptcy.
+  a Full set made, the Quiz result, money paid from one player to another (`pay`, worked out from
+  the cash, with `why`: rent, a Takeover, a Card or a Debt), each player's cash, and Bankruptcy
+  with the Lots it takes down. `grandeur(amount)` is how grand a payment looks (0–3).
 
 `scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the moves: `roll`
 throws the dice with bounces, `walk` hops Tile by Tile with the camera following, `jump` drops
 the bars round a jailed token or sends the plane (`plane()` in `pieces.ts`, the legacy Blender
 model rebuilt from its ellipsoids) to pick the token up at Sân bay, turn over the board and drop
 it with an impact, `release` lifts the bars, `build` raises houses and Hotels and sinks those
-sold. `setGraphics` follows the Hub's Đồ họa (its doc lists what `low` drops) and `setFollowing`
+sold. The tier-1 moments (#355) are there too: `build` snatches a Lot Taken over (houses yanked up,
+spun, slammed down in the taker's colour) and puts a new Hotel in a beam of light, `fullSet` lights
+the set's Tiles one after another, `fall` topples a bankrupt token and crumbles its Lots, `victory`
+throws sparks round the winner, and `shake` shakes the camera. `say` prints every event's text in
+the middle of the board, which is otherwise left blank in a Match, and `status` the decision
+waiting there between them (the roll blinking, its dice hopping: `inviteRoll`); `diceRect` is
+where the dice are on screen. `setGraphics` follows the Hub's
+Đồ họa (its doc lists what `low` drops) and `setFollowing`
 the player's "Máy quay bám theo" preference (`manifest.ts`). `cardshow.ts` is the Card drawn, in
 2D over the board: the deck and its top card pulled off, then the Card turning over; tapped to
-close, or its choices dealt beside it as cards to tap. `hud.ts` is the rest of the HTML over the
-board (player cards, panel, a Tile's details, the end). `npm run smoke:web` plays its first
-decisions in CI.
+close, or its choices dealt beside it as cards to tap; a Quiz is printed on its Card with the
+four answers dealt round it, two each side, where the answer is revealed. `moments.ts` is the HTML
+side of a payment: its bill (warmer paper as `grandeur` grows; from 2 the screen shakes and its
+edge glows red), which its payer taps "Thanh toán" on or which pays itself after 5 s, stamped
+"Đã thanh toán", then coins and notes flying from the payer's card to the payee's while both
+cards' cash counts; and confetti. `hud.ts` is the rest of the HTML over the board (player cards,
+their counting cash and "Phá sản" stamp, the decision's buttons, a Tile's details, the end with
+its fanfare). `npm run smoke:web` rolls on the dice and plays the next decision in CI.
 
 ## Look
 

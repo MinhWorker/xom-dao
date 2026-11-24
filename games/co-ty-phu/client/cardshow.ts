@@ -2,7 +2,8 @@
  * The Card drawn, as 2D cards over the board. `draw` plays the deck, lying on the table backs up:
  * its top card slides off to the left, then the deck and that card fade, and a moment later the
  * Card, face on, turns over. `hold` keeps it until a tap
- * or the time runs out; `choose` deals the Card's choices beside it as cards to tap.
+ * or the time runs out; `choose` deals the Card's choices beside it as cards to tap. `quiz`
+ * prints a Quiz on the Card with its four answers dealt round it, two each side.
  */
 import { type CardId, cardOf } from '../server/game/cards.js';
 import type { Deck } from '../server/game/model.js';
@@ -36,6 +37,9 @@ export class CardShow {
   private readonly pile = el('div', 'pile');
   private readonly card = el('button', 'flip');
   private readonly choices = el('div', 'choices');
+  private readonly stage = el('div', 'stage');
+  /** The Quiz's clock along the bottom of the Card. */
+  private readonly clock = el('i', 'quiz-clock');
   /** Bumped by every show and hide: a sequence under way for an older one stops. */
   private run = 0;
   private release: (() => void) | null = null;
@@ -45,9 +49,8 @@ export class CardShow {
     this.card.type = 'button';
     this.card.innerHTML = '<span class="face back"></span><span class="face front"></span>';
     for (let k = 0; k < 4; k++) this.pile.append(el('i', 'back'));
-    const stage = el('div', 'stage');
-    stage.append(this.card, this.choices);
-    this.root.append(this.pile, stage);
+    this.stage.append(this.card, this.choices);
+    this.root.append(this.pile, this.stage);
     this.root.hidden = true;
     this.card.addEventListener('click', () => this.release?.());
     document.body.append(this.root);
@@ -110,9 +113,83 @@ export class CardShow {
     this.root.dataset.choosing = '';
   }
 
+  /**
+   * The Quiz `text` on a Card of `deck`, taken on by `by`, with `buttons`, its answers, dealt round
+   * it; a tap on one calls `onPick`, or nothing for a player who watches. Kept as it is when that
+   * Quiz already shows.
+   */
+  quiz(
+    deck: Deck,
+    by: string,
+    text: string,
+    buttons: Button[],
+    onPick: ((button: Button) => void) | null,
+  ) {
+    const key = `${deck}|${by}|${text}`;
+    if (this.root.dataset.quiz === key && !this.root.hidden) return;
+    this.hide();
+    this.dress(deck, 1);
+    const front = this.card.querySelector('.front') as HTMLElement;
+    const question = el('span', 'question');
+    const words = el('span', 'words');
+    words.append(...numbered(text));
+    question.append(words);
+    const head = el('span', 'quiz-head');
+    head.append(
+      Object.assign(el('span', 'deck'), { textContent: by }),
+      Object.assign(el('span', 'name'), { textContent: 'Đố' }),
+    );
+    front.replaceChildren(head, question, this.clock);
+    this.clock.hidden = true;
+    this.root.hidden = false;
+    this.root.dataset.step = 'face';
+    this.root.dataset.quiz = key;
+    requestAnimationFrame(() => fitText(question, 30, 13));
+    this.stage.append(
+      ...buttons.map((button, k) => {
+        const answer = el('button', `choice face answer a${k}`);
+        answer.type = 'button';
+        answer.disabled = !onPick || !!button.disabled;
+        answer.style.setProperty('--k', String(k));
+        answer.textContent = button.label;
+        if (onPick) answer.addEventListener('click', () => onPick(button), { once: true });
+        return answer;
+      }),
+    );
+  }
+
+  /** Before the Quiz's answer shows: the answer picked pulses, the others dim. */
+  quizWait(picked: number | null) {
+    this.root.dataset.waiting = '';
+    this.answers().forEach((a, i) => {
+      a.classList.toggle('picked', i === picked);
+    });
+  }
+
+  /** Marks the Quiz's right answer, and the one picked when it was wrong. */
+  quizResult(answer: number, picked: number | null) {
+    delete this.root.dataset.waiting;
+    this.answers().forEach((a, i) => {
+      a.classList.remove('picked');
+      a.classList.toggle('right', i === answer);
+      a.classList.toggle('wrong', i === picked && i !== answer);
+    });
+  }
+
+  /** The Quiz's clock: how much of it is left, from 0 to 1; `null` hides it. */
+  timer(left: number | null) {
+    this.clock.hidden = left === null || this.root.dataset.quiz === undefined;
+    if (left !== null) this.clock.style.transform = `scaleX(${left})`;
+  }
+
+  private answers() {
+    return [...this.stage.querySelectorAll<HTMLButtonElement>('.answer')];
+  }
+
   /** Every choice card stops answering while a pick is on its way. */
   busy(on: boolean) {
-    for (const c of this.choices.children) (c as HTMLButtonElement).disabled ||= on;
+    for (const c of [...this.choices.children, ...this.answers()])
+      (c as HTMLButtonElement).disabled ||= on;
   }
 
   hide() {
@@ -123,17 +200,17 @@ export class CardShow {
     this.root.hidden = true;
     delete this.root.dataset.step;
     delete this.root.dataset.choosing;
+    delete this.root.dataset.quiz;
+    delete this.root.dataset.waiting;
     this.choices.replaceChildren();
+    for (const a of this.answers()) a.remove();
   }
 
   private start(id: CardId, by: string, pace: number) {
     this.hide();
     const card = cardOf(TUNING, id);
     this.shown = id;
-    this.root.style.setProperty('--deck', DECK_COLORS[card.deck]);
-    this.root.style.setProperty('--back', `url(${backOf(card.deck, false)})`);
-    this.root.style.setProperty('--pile-back', `url(${backOf(card.deck, true)})`);
-    this.root.style.setProperty('--pace', String(pace));
+    this.dress(card.deck, pace);
     const front = this.card.querySelector('.front') as HTMLElement;
     front.replaceChildren(
       Object.assign(el('span', 'deck'), { textContent: `${DECK_NAMES[card.deck]} · ${by}` }),
@@ -145,10 +222,35 @@ export class CardShow {
     return this.run;
   }
 
+  /** Colours the cards as `deck`'s and sets how fast they move. */
+  private dress(deck: Deck, pace: number) {
+    this.root.style.setProperty('--deck', DECK_COLORS[deck]);
+    this.root.style.setProperty('--back', `url(${backOf(deck, false)})`);
+    this.root.style.setProperty('--pile-back', `url(${backOf(deck, true)})`);
+    this.root.style.setProperty('--pace', String(pace));
+  }
+
   /** Waits `ms`; false when a newer show or a hide took over meanwhile. */
   private async sleep(run: number, ms: number) {
     await new Promise((done) => setTimeout(done, ms));
     return run === this.run;
+  }
+}
+
+/** `text` with its numbers (and fractions) in their own `<b class="num">`. */
+function numbered(text: string) {
+  return text
+    .split(/(\d+(?:[.,]\d+)?(?:\/\d+)?)/)
+    .map((part, k) =>
+      k % 2 ? Object.assign(el('b', 'num'), { textContent: part }) : document.createTextNode(part),
+    );
+}
+
+/** The largest font size from `max` down to `min` px at which `e` fits its box. */
+function fitText(e: HTMLElement, max: number, min: number) {
+  for (let px = max; px >= min; px--) {
+    e.style.fontSize = `${px}px`;
+    if (e.scrollHeight <= e.clientHeight && e.scrollWidth <= e.clientWidth) return;
   }
 }
 

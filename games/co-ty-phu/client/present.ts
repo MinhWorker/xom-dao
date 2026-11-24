@@ -3,8 +3,9 @@
  * Card drawn, the Lots and marks that changed, then the money that moved and who went bankrupt.
  * The board is then redrawn from the new view.
  */
-import { BOARD, JAIL_TILE } from '../server/game/board.js';
+import { BOARD, JAIL_TILE, setTiles } from '../server/game/board.js';
 import { type CardId, cardOf } from '../server/game/cards.js';
+import { isFullSet } from '../server/game/economy.js';
 import { DOUBLES_TO_JAIL, type Lot, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 
@@ -18,11 +19,18 @@ export type Change =
   | { kind: 'release'; seat: number }
   | { kind: 'card'; seat: number; id: CardId }
   | { kind: 'lot'; tile: number; before: Lot | null; after: Lot | null }
+  /** `seat` now owns the whole Colour set of `tiles`. */
+  | { kind: 'fullset'; seat: number; tiles: number[] }
   | { kind: 'festival'; tile: number | null }
   | { kind: 'blackout'; tile: number | null }
   | { kind: 'quiz'; seat: number; right: boolean }
+  /** Money from one player to another, `why`; `tile` is the Lot paid for (rent, a Takeover). */
+  | { kind: 'pay'; from: number; to: number; amount: number; why: PayReason; tile: number | null }
   | { kind: 'cash'; seat: number; delta: number }
-  | { kind: 'bankrupt'; seat: number };
+  /** `seat` is out, and `lots`, what they owned, go back to the bank with them. */
+  | { kind: 'bankrupt'; seat: number; lots: { tile: number; lot: Lot }[] };
+
+export type PayReason = 'rent' | 'takeover' | 'card' | 'debt';
 
 const TILES = BOARD.length;
 const ahead = (from: number, to: number) => (to - from + TILES) % TILES;
@@ -40,6 +48,16 @@ const forward = (id: CardId) => {
 /** How fast the moves into `view` play (1 is normal): 2× under Nhanh, faster while more wait. */
 export const pace = (view: View, waiting: number) =>
   (view.speed === 'fast' ? 0.5 : 1) * (waiting > 2 ? 0.4 : 1);
+
+/** Where a payment gets grander, as shares of the starting cash: a level-1 rent stays below the first. */
+const GRAND = [0.15, 0.4, 1] as const;
+
+/**
+ * How grand a payment of `amount` looks: 0 is a glimpse, 1 more coins, 2 the amount over the
+ * board, 3 the camera shaking too.
+ */
+export const grandeur = (amount: number) =>
+  GRAND.filter((share) => amount >= share * TUNING.startingCash).length;
 
 export function changes(before: View, after: View): Change[] {
   const out: Change[] = [];
@@ -83,23 +101,85 @@ export function changes(before: View, after: View): Change[] {
     }
   });
 
+  const broke = after.bankrupt.filter((seat) => !before.bankrupt.includes(seat));
+  /** A bankrupt player's Lots go with them, after the money. */
+  const lost = (tile: number) => {
+    const was = before.lots[tile];
+    return !!was && !after.lots[tile] && broke.includes(was.owner);
+  };
   after.lots.forEach((lot, tile) => {
     const was = before.lots[tile] ?? null;
-    if (JSON.stringify(was) !== JSON.stringify(lot))
+    if (JSON.stringify(was) !== JSON.stringify(lot) && !lost(tile))
       out.push({ kind: 'lot', tile, before: was, after: lot });
   });
-  if (after.festival !== before.festival) out.push({ kind: 'festival', tile: after.festival });
-  if (after.blackout?.tile !== before.blackout?.tile)
-    out.push({ kind: 'blackout', tile: after.blackout?.tile ?? null });
+  const sets = new Set(BOARD.flatMap((t) => (t.kind === 'city' ? [t.set] : [])));
+  for (const set of sets) {
+    const tiles = setTiles(set);
+    const [first] = tiles as [number];
+    const owner = after.lots[first]?.owner;
+    const was = before.lots[first]?.owner;
+    if (
+      owner !== undefined &&
+      isFullSet(after, first) &&
+      !(was === owner && isFullSet(before, first))
+    )
+      out.push({ kind: 'fullset', seat: owner, tiles });
+  }
+  const unmarked = (tile: number | null | undefined, now: number | null) =>
+    now === null && tile !== null && tile !== undefined && lost(tile);
+  if (after.festival !== before.festival && !unmarked(before.festival, after.festival))
+    out.push({ kind: 'festival', tile: after.festival });
+  const blackout = after.blackout?.tile ?? null;
+  if (blackout !== (before.blackout?.tile ?? null) && !unmarked(before.blackout?.tile, blackout))
+    out.push({ kind: 'blackout', tile: blackout });
   const quiz = after.quiz;
   if (quiz && quiz.answer !== null && before.quiz?.answer === null)
     out.push({ kind: 'quiz', seat: quiz.seat, right: quiz.picked === quiz.answer });
 
+  const paid = payment(before, after, drawn);
+  if (paid) out.push(paid);
   after.players.forEach((p, seat) => {
     const delta = p.cash - (before.players[seat]?.cash ?? p.cash);
     if (delta !== 0) out.push({ kind: 'cash', seat, delta });
   });
-  for (const seat of after.bankrupt)
-    if (!before.bankrupt.includes(seat)) out.push({ kind: 'bankrupt', seat });
+  for (const seat of broke) {
+    const lots = before.lots.flatMap((lot, tile) =>
+      lot && lost(tile) && lot.owner === seat ? [{ tile, lot }] : [],
+    );
+    out.push({ kind: 'bankrupt', seat, lots });
+  }
   return out;
 }
+
+/**
+ * The money one player paid another between two views; one move pays at most one player. A Debt
+ * paid names both. Otherwise the turn player paid the one other player who gained (rent, a
+ * Takeover), unless that player was Selling to pay the bank; or a Card that has the richest pay
+ * the poorest was drawn, and its amount moved between them (the turn player may also have passed
+ * Xuất phát).
+ */
+function payment(before: View, after: View, drawn: View['card']): Change | null {
+  const delta = after.players.map((p, seat) => p.cash - (before.players[seat]?.cash ?? p.cash));
+  const gained = (seat: number) => delta[seat] ?? 0;
+  const turn = before.turn;
+  const debt = before.debt;
+  if (debt && debt.to !== null && !after.debt && gained(debt.to) > 0)
+    return { ...paid(debt.from, debt.to, gained(debt.to), 'debt'), tile: null };
+  const action = drawn ? cardOf(TUNING, drawn.id).action : null;
+  if (action?.kind === 'rich-to-poor') {
+    const { amount } = action;
+    const to = delta.findIndex(
+      (d, seat) => d === amount || (seat === turn && d === amount + TUNING.startBonus),
+    );
+    const from = delta.findIndex((d, seat) => d === -amount && seat !== to);
+    return to >= 0 && from >= 0 ? { ...paid(from, to, amount, 'card'), tile: null } : null;
+  }
+  const to = delta.findIndex((d, seat) => seat !== turn && d > 0 && seat !== debt?.from);
+  if (to < 0) return null;
+  const tile = after.players[turn]?.tile ?? 0;
+  const took = before.lots[tile]?.owner === to && after.lots[tile]?.owner === turn;
+  return { ...paid(turn, to, gained(to), took ? 'takeover' : 'rent'), tile };
+}
+
+const paid = (from: number, to: number, amount: number, why: PayReason) =>
+  ({ kind: 'pay', from, to, amount, why }) as const;
