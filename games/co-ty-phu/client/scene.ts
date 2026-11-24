@@ -251,7 +251,7 @@ export class BoardView {
   private readonly tokens: Group[] = [];
   private readonly cages: ReturnType<typeof cage>[] = [];
   private readonly dice: Mesh[];
-  /** A soft dark patch under each die, darkest while it sits on the board, fading as it rises. */
+  /** The dice cast no shadow: a soft dark patch under each, darkest on the board, fading as it rises. */
   private readonly contacts: Mesh[];
   private readonly glow: Mesh[] = [];
   private readonly tick: (t?: number) => void;
@@ -417,6 +417,7 @@ export class BoardView {
 
     this.dice = DIE_REST.map((rest) => {
       const d = die();
+      d.castShadow = false;
       d.rotation.order = 'YXZ';
       d.position.set(rest.x, BOARD_H + DIE / 2, rest.z);
       this.world.add(d);
@@ -1413,7 +1414,7 @@ export class BoardView {
       if (!c) return;
       c.visible = d.visible;
       const k = MathUtils.clamp((d.position.y - BOARD_H - DIE / 2) / 1.4, 0, 1);
-      c.position.set(d.position.x + 0.14, BOARD_H + 0.003, d.position.z - 0.16);
+      c.position.set(d.position.x, BOARD_H + 0.003, d.position.z);
       c.scale.setScalar(1 + k * 0.6);
       (c.material as MeshBasicMaterial).opacity = 0.6 * (1 - k) ** 1.5;
     });
