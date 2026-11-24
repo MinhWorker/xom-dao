@@ -6,11 +6,11 @@ export default defineManifest({
   tagline: 'Mua đất, xây nhà, khiến đối thủ phá sản.',
   minPlayers: 2,
   maxPlayers: 4,
-  duration: { min: 20, max: 60 },
+  duration: { min: 25, max: 35 },
   status: 'wip',
   bots: true,
   island: 'xuc-xac',
-  focus: { x: 70, y: 50 },
+  focus: { x: 68, y: 50 },
   options: {
     speed: {
       type: 'choice',

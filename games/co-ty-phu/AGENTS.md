@@ -25,8 +25,9 @@ decisions in CI.
 
 The board look prototype (#351) is `prototype/`: a still Three.js scene with made-up state in an
 844×390 phone frame. Run `npm run prototype -w @xomdao/game-co-ty-phu` and open
-http://localhost:8041/ (`?pitch=<degrees>` tries another camera angle). It is not built or
-shipped; it draws with the client's `print.ts`, `special.ts`, `pieces.ts` and `ambience.ts`.
+http://localhost:8041/ (`?pitch=<degrees>` tries another camera angle). `?splash` draws the
+Hub's splash art from the same scene; `npm run splash -- co-ty-phu` renders it to
+`hub/key-art.png`. The prototype is not built or shipped; it draws with the client's `print.ts`, `special.ts`, `pieces.ts` and `ambience.ts`.
 
 Direction, reviewed by the owner on #351:
 
