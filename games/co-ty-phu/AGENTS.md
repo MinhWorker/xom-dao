@@ -18,10 +18,12 @@ Direction, reviewed by the owner on #351:
 - The camera looks straight at the board from 56° above it, with Xuất phát at the bottom right.
   The board fills the screen height, pieces included, and leaves the sides for the player cards;
   the Hub's 48×48 top-right corner stays empty. All Tile text reads upright.
-- Ownership in the owner's seat colour: a tint over the Tile and a strip on its outer edge. Levels
+- Ownership in the owner's seat colour: a tint over the Tile (not its band) and a strip on its outer edge. Levels
   1–4 are that many houses on the band; a Hotel is one larger building with white trim and a gold
   cap. A Full set has a gold rim round its three Tiles. Unowned Tiles show only the print.
 - Tokens are glossy pawns in the seat colour, smaller than a Tile is wide; the dice
   and the Cơ hội and Khí vận decks sit in the middle of the board.
-- Seat colours match Đặt Bom; icons avoid them (bến xe buses are grey). Colour set colours are in
-  `SET_COLORS` (`prototype/print.ts`), approved.
+- Seat colours match Đặt Bom (red, blue, yellow, green); nothing else on the board uses them:
+  bến xe buses are grey, the Sân bay plane slate, Khí vận teal, Cơ hội orange, and the Tp. HCM
+  set bronze. Card backs are the deck colour with its icon repeated small (`cardBack`). Vào tù is
+  handcuffs. Colour set colours are in `SET_COLORS` (`prototype/print.ts`), approved.

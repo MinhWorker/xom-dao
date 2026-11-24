@@ -23,7 +23,7 @@ import {
 } from 'three';
 import { BOARD } from '../server/game/board.js';
 import { die, hotel, house, token } from './pieces.js';
-import { BAND, bandRect, placement, printBoard, SIDE } from './print.js';
+import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from './print.js';
 
 const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
@@ -193,8 +193,13 @@ const buildPieces = () => {
     strip.position.copy(at(su, sv, 0.004));
     pieces.add(strip);
 
-    const tint = flat(p.w - 0.02, p.h - 0.02, color, 0.2);
-    tint.position.copy(at(p.x + p.w / 2, p.y + p.h / 2, 0.003));
+    const bare = tile?.kind === 'city' ? BAND : 0;
+    const tw = p.w - 0.02 - (horizontal ? 0 : bare);
+    const th = p.h - 0.02 - (horizontal ? bare : 0);
+    const tint = flat(tw, th, color, 0.2);
+    tint.position.copy(
+      at(p.x + p.w / 2 - (p.inward.x * bare) / 2, p.y + p.h / 2 - (p.inward.y * bare) / 2, 0.003),
+    );
     pieces.add(tint);
 
     if (FULL_SET.includes(i)) {
@@ -270,13 +275,16 @@ const buildPieces = () => {
   d2.rotation.set(0, -0.3, Math.PI / 2);
   pieces.add(d1, d2);
 
-  for (const [x, color, turn] of [
-    [-1.6, '#e2731c', 0.12],
-    [1.6, '#2f7fbf', -0.1],
+  for (const [x, kind, turn] of [
+    [-1.6, 'chance', 0.12],
+    [1.6, 'chest', -0.1],
   ] as const) {
+    const back = new CanvasTexture(cardBack(kind));
+    back.colorSpace = SRGBColorSpace;
+    back.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const deck = new Mesh(new BoxGeometry(1.5, 0.12, 1.0), [
       ...Array.from({ length: 2 }, () => new MeshStandardMaterial({ color: '#f5efe0' })),
-      new MeshStandardMaterial({ color, roughness: 0.5 }),
+      new MeshStandardMaterial({ map: back, roughness: 0.5 }),
       ...Array.from({ length: 3 }, () => new MeshStandardMaterial({ color: '#f5efe0' })),
     ]);
     deck.position.set(x, BOARD_H + 0.06, -2.4);

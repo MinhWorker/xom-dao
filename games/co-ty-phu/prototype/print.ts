@@ -18,7 +18,7 @@ export const SET_COLORS: Record<ColourSet, string> = {
   magenta: '#d43d97',
   'xam-bac': '#a4adb8',
   'tim-man': '#8c2f5c',
-  'xanh-dau': '#6d9e3a',
+  'xanh-dau': '#9a6233',
 };
 
 const PAPER = '#f4ecd8';
@@ -136,7 +136,11 @@ const wrap = (ctx: CanvasRenderingContext2D, name: string, maxW: number, size: n
   return [words.slice(0, bestSplit).join(' '), words.slice(bestSplit).join(' ')];
 };
 
-type Icon = (ctx: CanvasRenderingContext2D, s: number) => void;
+/** Draws an icon `s` pixels across, centred on the origin; `tint` paints it in one colour. */
+type Icon = (ctx: CanvasRenderingContext2D, s: number, tint?: string) => void;
+
+/** The colour of each deck: its Tile icon and its card back. */
+export const DECK_COLORS = { chance: '#e2731c', chest: '#138a84' } as const;
 
 const stroke = (ctx: CanvasRenderingContext2D, s: number, color = INK) => {
   ctx.strokeStyle = color;
@@ -171,22 +175,22 @@ const ICONS: Partial<Record<Tile['kind'], Icon>> = {
     ctx.textBaseline = 'middle';
     ctx.fillText('₫', 0, s * 0.03);
   },
-  chance: (ctx, s) => {
-    ctx.fillStyle = '#e2731c';
+  chance: (ctx, s, tint) => {
+    ctx.fillStyle = tint ?? DECK_COLORS.chance;
     ctx.font = `900 ${s * 1.1}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('?', 0, s * 0.04);
   },
-  chest: (ctx, s) => {
-    ctx.fillStyle = '#2f7fbf';
+  chest: (ctx, s, tint) => {
+    ctx.fillStyle = tint ?? DECK_COLORS.chest;
     ctx.beginPath();
     ctx.roundRect(-s * 0.48, -s * 0.2, s * 0.96, s * 0.58, s * 0.06);
     ctx.fill();
     ctx.beginPath();
     ctx.ellipse(0, -s * 0.2, s * 0.48, s * 0.24, 0, Math.PI, 0);
     ctx.fill();
-    ctx.fillStyle = '#f2c94c';
+    ctx.fillStyle = tint ? DECK_COLORS.chest : '#f2c94c';
     ctx.fillRect(-s * 0.08, -s * 0.12, s * 0.16, s * 0.2);
   },
 };
@@ -228,7 +232,7 @@ const bars: Icon = (ctx, s) => {
 };
 
 const plane: Icon = (ctx, s) => {
-  ctx.fillStyle = '#2f7fbf';
+  ctx.fillStyle = '#4b5266';
   ctx.beginPath();
   ctx.moveTo(s * 0.55, 0);
   ctx.quadraticCurveTo(s * 0.55, -s * 0.07, s * 0.4, -s * 0.07);
@@ -268,19 +272,25 @@ const arrow: Icon = (ctx, s) => {
   ctx.fill();
 };
 
-const whistle: Icon = (ctx, s) => {
-  ctx.fillStyle = '#2e4a8f';
-  ctx.beginPath();
-  ctx.arc(0, -s * 0.05, s * 0.42, Math.PI, 0);
-  ctx.lineTo(s * 0.42, s * 0.12);
-  ctx.lineTo(-s * 0.42, s * 0.12);
-  ctx.fill();
-  ctx.fillStyle = INK;
-  ctx.fillRect(-s * 0.55, s * 0.08, s * 1.1, s * 0.14);
-  ctx.fillStyle = '#f2c94c';
-  ctx.beginPath();
-  ctx.arc(0, -s * 0.18, s * 0.12, 0, Math.PI * 2);
-  ctx.fill();
+const handcuffs: Icon = (ctx, s) => {
+  ctx.lineCap = 'round';
+  for (const [color, width] of [
+    ['#3c424c', 0.12],
+    ['#aab3bf', 0.05],
+  ] as const) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = s * width;
+    for (const x of [-0.27, 0.27]) {
+      ctx.beginPath();
+      ctx.arc(s * x, s * 0.06, s * 0.21, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    for (const x of [-0.1, 0.1]) {
+      ctx.beginPath();
+      ctx.ellipse(s * x, -s * 0.2, s * 0.08, s * 0.045, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
 };
 
 const iconOf = (tile: Tile): Icon | undefined => {
@@ -288,7 +298,7 @@ const iconOf = (tile: Tile): Icon | undefined => {
   if (tile.kind === 'start') return arrow;
   if (tile.kind === 'jail') return bars;
   if (tile.kind === 'airport') return plane;
-  if (tile.kind === 'go-jail') return whistle;
+  if (tile.kind === 'go-jail') return handcuffs;
   return ICONS[tile.kind];
 };
 
@@ -436,5 +446,37 @@ export const printBoard = (px = 336): HTMLCanvasElement => {
   ctx.lineWidth = px * 0.05;
   ctx.strokeRect(0, 0, canvas.width, canvas.height);
   ctx.strokeRect(CORNER * px, CORNER * px, (SIDE - 2 * CORNER) * px, (SIDE - 2 * CORNER) * px);
+  return canvas;
+};
+
+/** The back of a Cơ hội or Khí vận card: the deck colour with its icon repeated small. */
+export const cardBack = (deck: keyof typeof DECK_COLORS): HTMLCanvasElement => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  ctx.fillStyle = DECK_COLORS[deck];
+  ctx.fillRect(0, 0, 600, 400);
+  const icon = ICONS[deck] as Icon;
+  const step = 92;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(28, 28, 544, 344, 18);
+  ctx.clip();
+  for (let row = 0; row * step < 400 + step; row++) {
+    for (let col = 0; col * step < 600 + step; col++) {
+      ctx.save();
+      ctx.translate(col * step + (row % 2 ? step / 2 : 0), row * step);
+      ctx.rotate(row % 2 ? -0.25 : 0.25);
+      icon(ctx, 52, 'rgba(255, 246, 225, 0.32)');
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#fff6e1';
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.roundRect(28, 28, 544, 344, 18);
+  ctx.stroke();
   return canvas;
 };
