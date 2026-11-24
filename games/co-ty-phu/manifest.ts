@@ -4,6 +4,11 @@ export default defineManifest({
   id: 'co-ty-phu',
   name: 'Cờ Tỷ Phú',
   tagline: 'Mua đất, xây nhà, khiến đối thủ phá sản.',
+  minPlayers: 2,
+  maxPlayers: 4,
+  duration: { min: 20, max: 60 },
+  status: 'wip',
+  bots: true,
   island: 'xuc-xac',
-  status: 'soon',
+  focus: { x: 70, y: 50 },
 });
