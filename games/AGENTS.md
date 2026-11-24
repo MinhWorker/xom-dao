@@ -68,7 +68,7 @@ addon below).
 1. Build the Game: `npx turbo run build --filter=@xomdao/game-<id>`.
 2. Start a server with no DB, on its own port: `PORT=8133 DATABASE_URL= npm run dev -w @xomdao/server`.
 3. `npm run harness -- serve --game <id> --server http://localhost:8133` (Harness on :8040;
-   `--port`, `--host`). It serves the built client at `/game/`; `--client <url>` points the debug
+   `--port`, `--host`). It serves the built client at `/game/` and the account pictures at `/avatars/<id>.webp`, as the Hub does; `--client <url>` points the debug
    page at a dev server instead (Caro: `npx vite --port 5173` in the Game's folder).
 
 The debug page at `http://localhost:8040/` has the Room buttons, one landscape phone frame
