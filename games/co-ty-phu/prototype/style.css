@@ -1,0 +1,158 @@
+:root {
+  --ink: #17110c;
+  --paper: #f4ecd8;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #0d0f14;
+  color: var(--paper);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 100vh;
+  padding: 32px 16px;
+}
+
+.stage {
+  height: calc(390px * var(--scale, 1));
+}
+
+.phone {
+  position: relative;
+  flex: none;
+  width: 844px;
+  height: 390px;
+  transform: scale(var(--scale, 1));
+  transform-origin: top center;
+  overflow: hidden;
+  border-radius: 28px;
+  outline: 10px solid #000;
+  box-shadow:
+    0 0 0 12px #2b2f3a,
+    0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+#view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.roster {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 128px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 999px;
+  background: rgba(23, 17, 12, 0.78);
+  border: 2px solid color-mix(in srgb, var(--seat) 70%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.card.turn {
+  border-color: var(--seat);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--seat) 35%, transparent),
+    0 0 18px var(--seat);
+}
+
+.seat-0 {
+  left: 14px;
+  bottom: 12px;
+}
+
+.seat-1 {
+  left: 14px;
+  top: 12px;
+}
+
+.seat-2 {
+  right: 14px;
+  top: 64px;
+}
+
+.seat-3 {
+  right: 14px;
+  bottom: 12px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--seat);
+  color: #fff;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.who {
+  display: grid;
+  line-height: 1.15;
+  font-size: 13px;
+}
+
+.cash {
+  color: #f6d77a;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.hub-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 48px;
+  height: 48px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+}
+
+.views {
+  display: flex;
+  gap: 8px;
+}
+
+.views button {
+  font: inherit;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #3a4258;
+  background: #1a1e28;
+  color: var(--paper);
+  cursor: pointer;
+}
+
+.views button.on {
+  background: #f6d77a;
+  color: var(--ink);
+  border-color: #f6d77a;
+}
