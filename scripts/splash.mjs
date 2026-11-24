@@ -1,9 +1,10 @@
 // Draws splash art (2560×1152, 20:9) in code, in the Game's own colours:
 //   node scripts/splash.mjs [caro|tien-len|co-ty-phu|islands]     (no argument: all of them)
 // Caro and Tiến Lên are drawn to match their clients (`games/caro/client/render.ts`,
-// `games/tien-len/godot/style.gd`). The Islands' art is a placeholder: the Island's Emblem on a
-// tinted backdrop, until the Games of that Island have a look of their own. Đặt Bom's
-// `hub/key-art.png` is not made here.
+// `games/tien-len/godot/style.gd`). Cờ Tỷ Phú's is its own Three.js board: the look prototype's
+// `?splash` page, rendered in headless Chromium, under the same dark left side. The Islands' art
+// is a placeholder: the Island's Emblem on a tinted backdrop, until the Games of that Island have
+// a look of their own. Đặt Bom's `hub/key-art.png` is not made here.
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -14,9 +15,25 @@ const H = 1152;
 
 const FOCUS = { caro: [70, 50], 'tien-len': [68, 50], island: [70, 50] };
 
+/** The vignette and the dark left 40% every splash ends with. */
+const SHADE_DEFS = `
+    <linearGradient id="left" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0b1018"/>
+      <stop offset="0.28" stop-color="#0d131c" stop-opacity="0.96"/>
+      <stop offset="0.36" stop-color="#14202b" stop-opacity="0.5"/>
+      <stop offset="0.42" stop-color="#14202b" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="50%" cy="45%" r="75%">
+      <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.45"/>
+    </radialGradient>`;
+const SHADE = `
+  <rect width="${W}" height="${H}" fill="url(#vignette)"/>
+  <rect width="${W}" height="${H}" fill="url(#left)"/>`;
+
 const px = (percent, whole) => (whole * percent) / 100;
 
-/** The frame every splash shares: a base, a glow behind the subject, and a calm dark left 40%. */
+/** The backdrop of a splash drawn in SVG: a base and a glow behind the subject. */
 function backdrop({ top, bottom, glow, focus, glowAlpha = 0.5 }) {
   const [fx, fy] = focus;
   return `
@@ -27,26 +44,14 @@ function backdrop({ top, bottom, glow, focus, glowAlpha = 0.5 }) {
     <radialGradient id="glow" cx="${fx}%" cy="${fy - 4}%" r="48%" gradientTransform="translate(${(fx / 100) * (1 - 1.4)} 0) scale(1.4 1)">
       <stop offset="0" stop-color="${glow}" stop-opacity="${glowAlpha}"/>
       <stop offset="1" stop-color="${glow}" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="left" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#0b1018"/>
-      <stop offset="0.28" stop-color="#0d131c" stop-opacity="0.96"/>
-      <stop offset="0.36" stop-color="#14202b" stop-opacity="0.5"/>
-      <stop offset="0.42" stop-color="#14202b" stop-opacity="0"/>
-    </linearGradient>
-    <radialGradient id="vignette" cx="50%" cy="45%" r="75%">
-      <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
-      <stop offset="1" stop-color="#000" stop-opacity="0.45"/>
-    </radialGradient>
+    </radialGradient>${SHADE_DEFS}
   </defs>
   <rect width="${W}" height="${H}" fill="url(#base)"/>
   <rect width="${W}" height="${H}" fill="url(#glow)"/>`;
 }
 
 const frame = (body) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${body}
-  <rect width="${W}" height="${H}" fill="url(#vignette)"/>
-  <rect width="${W}" height="${H}" fill="url(#left)"/>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${body}${SHADE}
 </svg>`;
 
 const INK = { X: '#b3372c', O: '#2c4f8a' };
@@ -431,10 +436,45 @@ function island(id) {
   <defs><filter id="sink" x="-5%" y="-5%" width="110%" height="110%"><feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.45"/></filter></defs>`);
 }
 
+/** Cờ Tỷ Phú's board, rendered by its look prototype (`games/co-ty-phu/prototype`) at full size. */
+async function coTyPhu() {
+  const game = resolve(ROOT, 'games/co-ty-phu');
+  const { createServer } = await import('vite');
+  const { chromium } = await import('playwright-core');
+  const vite = await createServer({
+    configFile: resolve(game, 'vite.config.ts'),
+    root: resolve(game, 'prototype'),
+    server: { port: 0, host: '127.0.0.1' },
+    logLevel: 'warn',
+  });
+  await vite.listen();
+  const browser = await chromium.launch({
+    args: [
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+      '--ignore-gpu-blocklist',
+    ],
+  });
+  try {
+    const page = await browser.newPage({ viewport: { width: W, height: H } });
+    await page.goto(`${vite.resolvedUrls.local[0]}?splash`);
+    await page.waitForSelector('body[data-ready]', { timeout: 60_000 });
+    const board = await page.locator('#view').screenshot();
+    return {
+      board,
+      svg: frame(`<defs>${SHADE_DEFS}</defs>`),
+    };
+  } finally {
+    await browser.close();
+    await vite.close();
+  }
+}
+
 const jobs = {
   caro: () => ['games/caro/hub/key-art.png', caro()],
   'tien-len': () => ['games/tien-len/hub/key-art.png', tienLen()],
-  'co-ty-phu': () => ['games/co-ty-phu/hub/key-art.png', island('xuc-xac')],
+  'co-ty-phu': async () => ['games/co-ty-phu/hub/key-art.png', await coTyPhu()],
   islands: () =>
     Object.keys(ISLANDS).map((id) => [`apps/hub/src/island-art/${id}.png`, island(id)]),
 };
@@ -442,9 +482,13 @@ const jobs = {
 const wanted = process.argv[2] ? [process.argv[2]] : Object.keys(jobs);
 for (const name of wanted) {
   if (!jobs[name]) throw new Error(`unknown splash "${name}"; use ${Object.keys(jobs).join(', ')}`);
-  const made = jobs[name]();
-  for (const [path, svg] of Array.isArray(made[0]) ? made : [made]) {
-    await sharp(Buffer.from(svg)).png().toFile(resolve(ROOT, path));
+  const made = await jobs[name]();
+  for (const [path, art] of Array.isArray(made[0]) ? made : [made]) {
+    const png =
+      typeof art === 'string'
+        ? sharp(Buffer.from(art))
+        : sharp(art.board).composite([{ input: Buffer.from(art.svg) }]);
+    await png.png().toFile(resolve(ROOT, path));
     console.log(`wrote ${path}`);
   }
 }

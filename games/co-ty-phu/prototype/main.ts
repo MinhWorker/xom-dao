@@ -54,11 +54,23 @@ const LOTS: Record<number, [number, number]> = {
 const FULL_SET = [6, 8, 9];
 
 const query = new URLSearchParams(location.search);
+/**
+ * `?splash` draws the Hub's splash art instead (`npm run splash -- co-ty-phu`): the whole window,
+ * no phone or player cards, the board in the right 60% and a fixed moment of the moving Tiles.
+ */
+const SPLASH = query.has('splash');
+if (SPLASH) document.body.classList.add('splash');
 /** Camera angle above the board; `?pitch=<degrees>` tries another. */
-const PITCH = MathUtils.degToRad(Number(query.get('pitch')) || 56);
+const PITCH = MathUtils.degToRad(Number(query.get('pitch')) || (SPLASH ? 50 : 56));
 const FOV = 30;
 /** How much of the screen the board may fill, per axis (NDC): the sides keep the player cards. */
-const FIT = [0.62, 0.98] as const;
+const FIT = SPLASH ? ([0.5, 0.9] as const) : ([0.62, 0.98] as const);
+/** How far right of the centre the splash puts the board, as a share of the width. */
+const SPLASH_SHIFT = 0.2;
+/** The splash turns the board a little so it reads as a model on a table. */
+const SPLASH_YAW = -0.32;
+/** The moment (s) of the moving Tiles the splash shows. */
+const SPLASH_MOMENT = 1.4;
 /** How high the tallest piece stands above the board. */
 const PIECE_TOP = 0.8;
 
@@ -71,8 +83,8 @@ window.addEventListener('resize', fitWindow);
 
 const frame = document.getElementById('phone') as HTMLDivElement;
 const canvas = document.getElementById('view') as HTMLCanvasElement;
-const renderer = new WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: SPLASH });
+renderer.setPixelRatio(SPLASH ? 1 : Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = PCFShadowMap;
 
@@ -137,6 +149,7 @@ scene.add(sun);
 
 const BOARD_H = 0.22;
 const world = new Group();
+if (SPLASH) world.rotation.y = SPLASH_YAW;
 scene.add(world);
 
 const base = new Mesh(
@@ -294,13 +307,16 @@ const buildPieces = () => {
   }
 };
 
+const UP = new Vector3(0, 1, 0);
+
 /** The board's outline, up to the height of its tallest piece. */
 const outline = () => {
   const pts: Vector3[] = [];
   const r = SIDE / 2 + 0.2;
   for (const x of [-r, r])
     for (const z of [-r, r])
-      for (const y of [0, BOARD_H + PIECE_TOP]) pts.push(new Vector3(x, y, z));
+      for (const y of [0, BOARD_H + PIECE_TOP])
+        pts.push(new Vector3(x, y, z).applyAxisAngle(UP, world.rotation.y));
   return pts;
 };
 
@@ -351,8 +367,9 @@ const resize = () => {
   const { clientWidth: w, clientHeight: h } = frame;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+  camera.clearViewOffset();
   frameCamera();
+  if (SPLASH) camera.setViewOffset(w, h, -SPLASH_SHIFT * w, 0, w, h);
 };
 
 const printed = new CanvasTexture(printBoard());
@@ -371,9 +388,16 @@ roster.innerHTML = PLAYERS.map(
 
 buildPieces();
 const tick = ambience(pieces, at, renderer.capabilities.getMaxAnisotropy());
-new ResizeObserver(resize).observe(frame);
-resize();
-renderer.setAnimationLoop((ms) => {
-  tick(ms / 1000);
+if (SPLASH) {
+  resize();
+  tick(SPLASH_MOMENT);
   renderer.render(scene, camera);
-});
+  document.body.dataset.ready = '';
+} else {
+  new ResizeObserver(resize).observe(frame);
+  resize();
+  renderer.setAnimationLoop((ms) => {
+    tick(ms / 1000);
+    renderer.render(scene, camera);
+  });
+}

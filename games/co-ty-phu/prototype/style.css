@@ -135,3 +135,26 @@ body {
   height: 48px;
   border: 1px dashed rgba(255, 255, 255, 0.35);
 }
+
+body.splash {
+  padding: 0;
+  overflow: hidden;
+}
+
+.splash .stage {
+  height: 100vh;
+}
+
+.splash .phone {
+  width: 100vw;
+  height: 100vh;
+  transform: none;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.splash .roster,
+.splash .hub-corner {
+  display: none;
+}
