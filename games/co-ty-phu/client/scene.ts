@@ -53,6 +53,10 @@ const FIT = [0.62, 0.98] as const;
 const PIECE_TOP = 0.8;
 const BOARD_H = 0.22;
 const GOLD = '#e6b422';
+const BULB_ON = '#fff1b8';
+const BULB_OFF = '#5a4310';
+/** About how far apart the bulbs stand along the rim. */
+const BULB_GAP = 0.34;
 /** How much nearer the camera comes to a token it follows (0 stays, 1 is on it). */
 const CLOSE = 0.32;
 
@@ -269,6 +273,21 @@ export class BoardView {
   private zoom = 0;
   private readonly look = new Vector3();
   private lastFrame = 0;
+  /** The marquee bulbs round the board's rim: every other one lit, swapping (`marquee`). */
+  private readonly bulbs = [
+    new MeshBasicMaterial({ color: BULB_ON }),
+    new MeshBasicMaterial({ color: BULB_OFF }),
+  ];
+  /** Each bulb's glow on the rim, lit with it. */
+  private readonly halos = [0, 1].map(
+    () =>
+      new MeshBasicMaterial({
+        map: halo(),
+        transparent: true,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      }),
+  );
   /** The middle of the board, where events are printed (`say`). */
   private readonly notice: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly noticeInk: CanvasRenderingContext2D;
@@ -342,7 +361,16 @@ export class BoardView {
     this.notice.rotation.x = -Math.PI / 2;
     this.notice.position.set(0, BOARD_H + 0.006, NOTICE.z);
     this.notice.renderOrder = 3;
-    this.world.add(base, top, this.notice, this.lots, this.marks, this.fx, this.aircraft);
+    this.world.add(
+      base,
+      top,
+      marquee(this.bulbs, this.halos),
+      this.notice,
+      this.lots,
+      this.marks,
+      this.fx,
+      this.aircraft,
+    );
 
     for (const [x, kind, turn] of [
       [-1.6, 'chance', 0.12],
@@ -1298,6 +1326,11 @@ export class BoardView {
       }
     }
     if (this.paused) return;
+    const swap = Math.floor(ms / 480) % 2 === 1;
+    this.bulbs[0]?.color.set(swap ? BULB_OFF : BULB_ON);
+    this.bulbs[1]?.color.set(swap ? BULB_ON : BULB_OFF);
+    if (this.halos[0]) this.halos[0].opacity = swap ? 0 : 0.9;
+    if (this.halos[1]) this.halos[1].opacity = swap ? 0.9 : 0;
     const pulse = this.low ? 0.28 : 0.22 + Math.sin(ms / 220) * 0.12;
     this.glow.forEach((g, i) => {
       (g.material as MeshBasicMaterial).opacity = this.picking.includes(i) ? pulse : 0;
@@ -1500,4 +1533,47 @@ function lotPieces(i: number, owner: number, level: number, full: boolean) {
     g.add(h);
   }
   return g;
+}
+
+/** A soft round glow, white in the middle. */
+function halo() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255, 236, 170, 1)');
+  r.addColorStop(0.35, 'rgba(255, 190, 70, 0.45)');
+  r.addColorStop(1, 'rgba(255, 160, 40, 0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
+  return new CanvasTexture(c);
+}
+
+/** Bulbs all round the rim of the board's base, alternately in `materials[0]` and `[1]`, each glowing in `halos`. */
+function marquee(materials: MeshBasicMaterial[], halos: MeshBasicMaterial[]) {
+  const group = new Group();
+  const half = SIDE / 2 + 0.1;
+  const per = Math.round((2 * half) / BULB_GAP);
+  const bulb = new SphereGeometry(0.06, 12, 8);
+  const glow = new PlaneGeometry(0.42, 0.42);
+  let n = 0;
+  for (let side = 0; side < 4; side++) {
+    for (let i = 0; i < per; i++) {
+      const t = -half + (i * 2 * half) / per;
+      const [x, z] = [
+        [t, half],
+        [half, -t],
+        [-t, -half],
+        [-half, t],
+      ][side] as [number, number];
+      const m = new Mesh(bulb, materials[n % 2]);
+      m.position.set(x, BOARD_H + 0.03, z);
+      const g = new Mesh(glow, halos[n % 2]);
+      g.rotation.x = -Math.PI / 2;
+      g.position.set(x, BOARD_H + 0.004, z);
+      group.add(m, g);
+      n++;
+    }
+  }
+  return group;
 }
