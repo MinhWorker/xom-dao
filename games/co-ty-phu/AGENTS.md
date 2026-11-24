@@ -18,14 +18,13 @@ tests built on real Matches (`server/game/test-match.ts`):
   of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
   the Quiz result, money and Bankruptcy.
 
-`scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the tier-2 effects
-(#354): `roll` throws the dice with bounces, `walk` hops Tile by Tile with the camera following,
-`jump` flies from Sân bay with a trail or drops the bars round a jailed token, `release` lifts
-them, `build` raises houses and Hotels and sinks those sold, `drawCard`/`putCard` turn the Card
-over in front of the camera. `setGraphics('low')` (the Hub's Đồ họa) drops shadows, dust,
-trails, moving icons and camera moves. `hud.ts` is the HTML over it (player cards, panel, Card,
-a Tile's details, the end). The tier-1 moments (rent, Takeover, Hotel, Full set, Bankruptcy) are
-still plain. `npm run smoke:web` plays its first decisions in CI.
+`scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the moves: `roll`
+throws the dice with bounces, `walk` hops Tile by Tile with the camera following, `jump` flies
+from Sân bay with a trail or drops the bars round a jailed token, `release` lifts them, `build`
+raises houses and Hotels and sinks those sold, `drawCard`/`putCard` turn the Card over in front
+of the camera. `setGraphics` follows the Hub's Đồ họa (its doc lists what `low` drops). `hud.ts`
+is the HTML over it (player cards, panel, Card, a Tile's details, the end). `npm run smoke:web`
+plays its first decisions in CI.
 
 ## Look
 

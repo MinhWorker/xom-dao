@@ -1,3 +1,4 @@
+import { BridgeGraphics } from '@xomdao/bridge';
 import { RoomOptions } from '@xomdao/shared/client';
 import { z } from 'zod';
 import type { Harness } from './harness.js';
@@ -58,11 +59,11 @@ const commands = {
       player,
       volume: z.number().min(0).max(1).optional(),
       muted: z.boolean().optional(),
-      graphics: z.enum(['high', 'low']).optional(),
+      graphics: BridgeGraphics.optional(),
     }),
     run: (
       h: Harness,
-      a: { player: number; volume?: number; muted?: boolean; graphics?: 'high' | 'low' },
+      a: { player: number; volume?: number; muted?: boolean; graphics?: BridgeGraphics },
     ) =>
       h.settings(a.player, {
         ...(a.volume !== undefined && { volume: a.volume }),

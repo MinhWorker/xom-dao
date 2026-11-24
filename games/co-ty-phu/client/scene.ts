@@ -3,8 +3,9 @@
  * space, the Lots in their owners' colours, the tokens, the dice and the decks. `show` puts
  * everything where a view says; `roll`, `walk`, `jump`, `release`, `build`, `drawCard` and
  * `putCard` play the moves between views, with the camera following the token that moves.
- * `setGraphics('low')` drops shadows, dust, trails, moving icons and camera moves.
  */
+
+import type { BridgeGraphics } from '@xomdao/bridge';
 import {
   AmbientLight,
   BoxGeometry,
@@ -37,6 +38,7 @@ import { type Deck, HOTEL, type Lot, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 import { ambience } from './ambience.js';
 import { cage, DIE, die, hotel, house, token } from './pieces.js';
+import type { Change } from './present.js';
 import { BAND, bandRect, cardBack, cardFace, placement, printBoard, SIDE } from './print.js';
 
 export const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
@@ -53,7 +55,7 @@ const CLOSE = 0.32;
 /** How far in front of the camera a drawn Card stops: about the size of the Card shown over it. */
 const CARD_AWAY = 4.2;
 
-export type Graphics = 'high' | 'low';
+type JumpHow = Extract<Change, { kind: 'jump' }>['how'];
 
 /** Deep space with stars, drawn in code. */
 function spaceTexture() {
@@ -191,6 +193,7 @@ const buildings = (lot: Lot | null) =>
 
 const DUST = new SphereGeometry(0.05, 8, 6);
 const CARD = new BoxGeometry(1.5, 0.02, 1.0);
+const CARD_SIDE = new MeshStandardMaterial({ color: '#f5efe0' });
 const X_AXIS = new Vector3(1, 0, 0);
 const Y_AXIS = new Vector3(0, 1, 0);
 
@@ -216,7 +219,7 @@ export class BoardView {
   private readonly sun: DirectionalLight;
   private readonly decks = {} as Record<Deck, Mesh>;
   private readonly tokens: Group[] = [];
-  private readonly cages: Group[] = [];
+  private readonly cages: ReturnType<typeof cage>[] = [];
   private readonly dice: Mesh[];
   private readonly glow: Mesh[] = [];
   private readonly tick: (t?: number) => void;
@@ -230,6 +233,8 @@ export class BoardView {
   /** Bumped by `stop`: a walk under way gives up. */
   private generation = 0;
   private low = false;
+  /** How fast moves play (1 is normal, lower is faster): the camera and dust keep up with it. */
+  private pace = 1;
   private size: [number, number] = [844, 390];
   /** The camera's place over the whole board, and what it looks at from there. */
   private readonly home = { pos: new Vector3(), target: new Vector3() };
@@ -344,8 +349,8 @@ export class BoardView {
   stop() {
     this.generation++;
     this.finish(false);
+    this.dropCard();
     clear(this.fx);
-    this.card = null;
     this.focus = null;
     this.zoom = 0;
     this.camera.position.copy(this.home.pos);
@@ -353,10 +358,10 @@ export class BoardView {
   }
 
   /**
-   * `low`: no shadows, a pixel ratio of 1, the special Tiles' icons at rest, no dust or trails and
-   * a camera that stays over the whole board.
+   * `low`: no shadows, a pixel ratio of 1, the special Tiles' icons at rest, no dust or trails, a
+   * still glow on the Tiles to pick and a camera that stays over the whole board.
    */
-  setGraphics(level: Graphics) {
+  setGraphics(level: BridgeGraphics) {
     const low = level === 'low';
     if (low === this.low) return;
     this.low = low;
@@ -364,6 +369,10 @@ export class BoardView {
     this.renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(this.size[0], this.size[1], false);
     if (low) this.tick();
+  }
+
+  setPace(pace: number) {
+    this.pace = pace;
   }
 
   /** The camera follows `seat`'s token, or goes back over the whole board. */
@@ -385,16 +394,16 @@ export class BoardView {
     while (this.tokens.length < view.players.length) {
       const t = token(SEAT_COLORS[this.tokens.length] as string);
       const bars = cage();
-      t.add(bars);
+      t.add(bars.group);
       this.tokens.push(t);
       this.cages.push(bars);
       this.world.add(t);
     }
-    this.cages.forEach((bars, seat) => {
+    this.cages.forEach(({ group, iron }, seat) => {
       const p = view.players[seat];
-      bars.visible = !!p?.jailed && !p.bankrupt;
-      bars.position.y = 0;
-      (bars.userData.iron as MeshStandardMaterial).opacity = 1;
+      group.visible = !!p?.jailed && !p.bankrupt;
+      group.position.y = 0;
+      iron.opacity = 1;
     });
     this.placeTokens(view.turn);
     if (view.dice) this.setDice(view.dice);
@@ -437,7 +446,8 @@ export class BoardView {
     const had = buildings(was);
     const has = buildings(now);
     if (g && !kept) jobs.push(this.popIn(g, Math.round(ms * 0.6)));
-    if (g && (kept || !was)) {
+    const grew = !was || (kept && (now?.level ?? 0) > was.level);
+    if (g && grew) {
       const rising = g.children.filter(
         (c) => has.includes(c.userData.building) && !(kept && had.includes(c.userData.building)),
       );
@@ -561,7 +571,7 @@ export class BoardView {
    * Takes a token straight to `to`: a hop for a Card's move, a flight from Sân bay that lifts off,
    * crosses the board high with a trail and lands, or into jail, where the bars come down on it.
    */
-  async jump(seat: number, to: number, ms = 560, how: 'jail' | 'flight' | 'move' = 'move') {
+  async jump(seat: number, to: number, ms = 560, how: JumpHow = 'move') {
     const t = this.tokens[seat];
     if (!t) return;
     const mine = this.generation;
@@ -602,27 +612,28 @@ export class BoardView {
   private lock(seat: number, ms: number) {
     const bars = this.cages[seat];
     if (!bars) return Promise.resolve();
-    bars.visible = true;
-    (bars.userData.iron as MeshStandardMaterial).opacity = 1;
+    const { group, iron } = bars;
+    group.visible = true;
+    iron.opacity = 1;
     return this.tween(ms, (u) => {
-      bars.position.y = (1 - bounceOut(u)) * 1.4;
+      group.position.y = (1 - bounceOut(u)) * 1.4;
     }).then(() => {
-      bars.position.y = 0;
+      group.position.y = 0;
     });
   }
 
   /** The bars round a jailed token lift away and fade. */
   release(seat: number, ms = 600) {
     const bars = this.cages[seat];
-    if (!bars?.visible) return Promise.resolve();
+    if (!bars?.group.visible) return Promise.resolve();
+    const { group, iron } = bars;
     this.focus = this.tokens[seat] ?? null;
-    const iron = bars.userData.iron as MeshStandardMaterial;
     return this.tween(ms, (u) => {
-      bars.position.y = ease(u) * 1.2;
+      group.position.y = ease(u) * 1.2;
       iron.opacity = 1 - u * u;
     }).then(() => {
-      bars.visible = false;
-      bars.position.y = 0;
+      group.visible = false;
+      group.position.y = 0;
       iron.opacity = 1;
     });
   }
@@ -637,9 +648,9 @@ export class BoardView {
     const pile = this.decks[deck];
     const map = new CanvasTexture(cardFace(deck, name));
     map.colorSpace = SRGBColorSpace;
-    const side = new MeshStandardMaterial({ color: '#f5efe0' });
     const back = (pile.material as MeshStandardMaterial[])[2] as MeshStandardMaterial;
-    const mesh = new Mesh(CARD, [side, side, back, new MeshBasicMaterial({ map }), side, side]);
+    const face = new MeshBasicMaterial({ map });
+    const mesh = new Mesh(CARD, [CARD_SIDE, CARD_SIDE, back, face, CARD_SIDE, CARD_SIDE]);
     mesh.position.copy(pile.position);
     mesh.position.y += 0.08;
     mesh.quaternion.copy(pile.quaternion);
@@ -707,6 +718,7 @@ export class BoardView {
   /** A few motes of dust kicking out from `where`; none on low graphics. */
   private puff(where: Vector3, n = 6, ms = 420) {
     if (this.low || this.paused) return;
+    ms *= this.pace;
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2 + Math.random() * 0.6;
       const out = new Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(
@@ -728,7 +740,7 @@ export class BoardView {
   /** One puff of a flight's trail, left where the token was; none on low graphics. */
   private mote(where: Vector3) {
     if (this.low || this.paused) return;
-    this.particle(650, '#ffffff', (m, u) => {
+    this.particle(650 * this.pace, '#ffffff', (m, u) => {
       m.position.copy(where);
       m.scale.setScalar(1.4 * (1 - u * 0.6));
       return 0.75 * (1 - u);
@@ -822,7 +834,7 @@ export class BoardView {
       }
     }
     if (this.paused) return;
-    const pulse = 0.22 + Math.sin(ms / 220) * 0.12;
+    const pulse = this.low ? 0.28 : 0.22 + Math.sin(ms / 220) * 0.12;
     this.glow.forEach((g, i) => {
       (g.material as MeshBasicMaterial).opacity = this.picking.includes(i) ? pulse : 0;
     });
@@ -844,9 +856,9 @@ export class BoardView {
     if (there) {
       there.y = BOARD_H;
       if (this.zoom < 0.01) this.look.copy(there);
-      else this.look.lerp(there, 1 - Math.exp(-dt * 6));
+      else this.look.lerp(there, 1 - Math.exp((-dt * 6) / this.pace));
     }
-    this.zoom += (want - this.zoom) * (1 - Math.exp(-dt * 3));
+    this.zoom += (want - this.zoom) * (1 - Math.exp((-dt * 3) / this.pace));
     if (want === 0 && this.zoom < 0.002) this.zoom = 0;
     const k = smooth(this.zoom);
     const target = this.home.target.clone().lerp(this.look, k * 0.7);

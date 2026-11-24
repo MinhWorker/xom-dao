@@ -63,6 +63,24 @@ describe('what a new view shows', () => {
     ]);
   });
 
+  it('locks up a token visiting Nhà tù that rolls a third double there', () => {
+    const game = open({
+      rolls: [
+        [1, 1],
+        [2, 2],
+        [3, 3],
+      ],
+      arrange: player(0, { tile: 4 }),
+    });
+    game.send('a', 'roll').send('a', 'pass').send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'roll');
+    expect(changes(before, viewOf(game, 'a'))).toEqual([
+      { kind: 'dice', dice: [3, 3] },
+      { kind: 'jump', seat: 0, to: 10, how: 'jail' },
+    ]);
+  });
+
   it('flies from Sân bay to the Tile picked', () => {
     const game = open({ rolls: [[1, 2]], arrange: player(0, { tile: 17 }) }).send('a', 'roll');
     const before = viewOf(game, 'a');

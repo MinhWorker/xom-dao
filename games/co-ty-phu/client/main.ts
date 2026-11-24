@@ -57,11 +57,11 @@ let hidden = false;
 
 const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
 
-const graphics = (settings: BridgeSettings) => board.setGraphics(settings.graphics ?? 'high');
+const applyGraphics = (settings: BridgeSettings) => board.setGraphics(settings.graphics ?? 'high');
 
 const bridge = createGameBridge({
   onInit(init) {
-    graphics(init.settings);
+    applyGraphics(init.settings);
     restart();
     myId = init.player.id;
     const seats: BridgeSeat[] = init.room.seats;
@@ -98,7 +98,7 @@ const bridge = createGameBridge({
     }
     if (push.status === 'over') finish(push.matchId);
   },
-  onSettings: graphics,
+  onSettings: applyGraphics,
   onVisibility(paused) {
     hidden = paused;
     board.pause(paused);
@@ -179,7 +179,9 @@ const wait = (ms: number) => new Promise((done) => setTimeout(done, hidden ? 0 :
  */
 async function animate(after: View, steps: Change[], pace: number, live: () => boolean) {
   const ms = (n: number) => Math.round(n * pace);
-  let landed = false;
+  board.setPace(pace);
+  /** Every Lot that changed builds at once, from the first Lot step on. */
+  let building: Promise<unknown> | null = null;
   for (const step of steps) {
     if (!live()) return;
     switch (step.kind) {
@@ -208,19 +210,18 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
       case 'lot':
       case 'festival':
       case 'blackout':
-        if (!landed) {
+        if (!building) {
           board.showLots(after);
-          landed = true;
+          building = Promise.all(
+            steps.map((s) => s.kind === 'lot' && board.build(s.tile, s.before, s.after, ms(800))),
+          );
         }
         if (step.kind === 'lot') announceLot(step);
         if (step.kind === 'festival' && step.tile !== null)
           hud.say(`Lễ hội ở ${BOARD[step.tile]?.name}`);
         if (step.kind === 'blackout' && step.tile !== null)
           hud.say(`Mất điện ở ${BOARD[step.tile]?.name}`);
-        await Promise.all([
-          wait(ms(420)),
-          step.kind === 'lot' && board.build(step.tile, step.before, step.after, ms(800)),
-        ]);
+        await wait(ms(420));
         break;
       case 'quiz':
         if (after.quiz) {
@@ -239,6 +240,7 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         break;
     }
   }
+  await building;
   board.follow(null);
   if (steps.some((s) => s.kind === 'cash')) await wait(ms(500));
 }

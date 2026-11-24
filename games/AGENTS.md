@@ -50,8 +50,8 @@ the whole screen from its `match` snapshot; after the Match is over that is its 
 draw how it ended at once (Caro: `games/caro/client/main.ts`). The message list and
 `BRIDGE_VERSION` are in the header of `packages/bridge/src/protocol.ts`; the Hub's side is
 `createGameHost`. `settings` (in `init` and `onSettings`) also carries the Hub's Đồ họa level,
-`graphics`: on `low` a Game drops costly or busy visuals (Cờ Tỷ Phú: shadows, dust, moving icons
-and camera moves); a missing one means `high`.
+`graphics`: on `low` a Game drops costly or busy visuals (Cờ Tỷ Phú: `BoardView.setGraphics`); a
+missing one means `high`.
 
 ## The Harness: running a Game without the Hub
 

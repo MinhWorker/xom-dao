@@ -134,7 +134,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
       festival: null,
       blackout: null,
     });
-    ctx.setTimer(CLOCK_MS[ctx.options.speed], 'timeout');
+    ctx.setTimer(CLOCK_MS[state.speed], 'timeout');
     return state;
   }
   onRoll(ctx: Move): State {
@@ -283,7 +283,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
       ctx.finish(places, { scores: state.players.map((p) => p.cash) });
       return state;
     }
-    ctx.setTimer(state.phase === 'quiz' ? QUIZ_MS : CLOCK_MS[ctx.options.speed], 'timeout');
+    ctx.setTimer(state.phase === 'quiz' ? QUIZ_MS : CLOCK_MS[state.speed], 'timeout');
     return state;
   }
   /** Two dice, or one under Kẹt xe. */

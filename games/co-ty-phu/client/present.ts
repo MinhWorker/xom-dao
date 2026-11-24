@@ -68,7 +68,8 @@ export function changes(before: View, after: View): Change[] {
   if (drawn) out.push({ kind: 'card', seat: drawn.seat, id: drawn.id });
   after.players.forEach((p, seat) => {
     const from = at[seat] as number;
-    if (p.tile === from) return;
+    const jailed = p.jailed && !before.players[seat]?.jailed;
+    if (p.tile === from && !jailed) return;
     if (drawn && drawn.seat === seat && forward(drawn.id) && p.tile !== JAIL_TILE)
       out.push({ kind: 'walk', seat, from, steps: ahead(from, p.tile) || TILES });
     else {

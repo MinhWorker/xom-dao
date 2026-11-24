@@ -167,10 +167,10 @@ const HOOP = new CylinderGeometry(0.25, 0.25, 0.03, 28, 1, true);
 
 /**
  * The bars round a jailed token, in its own space (a child of the token): eight iron bars between
- * two hoops. Its material is its own, so it can fade.
+ * two hoops. `iron` is its own material, so it can fade.
  */
 export const cage = () => {
-  const g = new Group();
+  const group = new Group();
   const iron = new MeshStandardMaterial({
     color: '#9aa0ad',
     roughness: 0.3,
@@ -181,13 +181,12 @@ export const cage = () => {
     const a = (k / 8) * Math.PI * 2;
     const bar = shadowed(new Mesh(BAR, iron));
     bar.position.set(Math.cos(a) * 0.24, 0.3, Math.sin(a) * 0.24);
-    g.add(bar);
+    group.add(bar);
   }
   for (const y of [0.03, 0.57]) {
     const hoop = shadowed(new Mesh(HOOP, iron));
     hoop.position.y = y;
-    g.add(hoop);
+    group.add(hoop);
   }
-  g.userData.iron = iron;
-  return g;
+  return { group, iron };
 };

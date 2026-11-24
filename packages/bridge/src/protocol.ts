@@ -55,18 +55,21 @@ export const BridgeRoom = z.object({
 });
 export type BridgeRoom = z.infer<typeof BridgeRoom>;
 
+/** The Hub's Đồ họa level: `low` asks for less motion and a lighter scene. */
+export const BridgeGraphics = z.enum(['high', 'low']);
+export type BridgeGraphics = z.infer<typeof BridgeGraphics>;
+
 /**
  * `volume` and `muted` are the master level. `music` and `effects` (0–1) are the player's split of
  * it for a Game with a channel of each; a Hub or Harness may leave them out, meaning 1.
- * `graphics` is the Hub's Đồ họa level; `low` asks for less motion and a lighter scene, and a
- * missing one means `high`.
+ * A missing `graphics` means `high`.
  */
 export const BridgeSettings = z.object({
   volume: z.number().min(0).max(1),
   muted: z.boolean(),
   music: z.number().min(0).max(1).optional(),
   effects: z.number().min(0).max(1).optional(),
-  graphics: z.enum(['high', 'low']).optional(),
+  graphics: BridgeGraphics.optional(),
 });
 export type BridgeSettings = z.infer<typeof BridgeSettings>;
 
