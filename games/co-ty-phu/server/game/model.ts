@@ -101,6 +101,8 @@ export interface Debt {
 }
 
 export interface State {
+  /** The Room's "Tốc độ", which the client also plays its moves by. */
+  speed: Options['speed'];
   players: Player[];
   /** Per Tile: its owner and Level, `null` while nobody owns it (or it is no Lot). */
   lots: (Lot | null)[];

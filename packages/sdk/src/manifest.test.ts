@@ -1,5 +1,12 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { defineManifest, type ManifestOptions, optionsSchema, parseManifest } from './manifest.js';
+import {
+  defineManifest,
+  type ManifestOptions,
+  type ManifestPreferences,
+  optionsSchema,
+  parseManifest,
+  preferenceValues,
+} from './manifest.js';
 
 const base = {
   id: 'tien-len',
@@ -113,6 +120,53 @@ describe('a Game manifest', () => {
         options: { 'so-vong': { type: 'toggle', label: 'x', default: true } },
       }),
     ).toThrow('options');
+  });
+});
+
+describe('player preferences', () => {
+  const withPrefs = defineManifest({
+    ...base,
+    preferences: {
+      follow: { type: 'toggle', label: 'Máy quay bám theo', default: true },
+      size: {
+        type: 'choice',
+        label: 'Cỡ bài',
+        choices: [
+          { value: 'small', label: 'Nhỏ' },
+          { value: 'big', label: 'Lớn' },
+        ],
+        default: 'small',
+      },
+    },
+  });
+
+  it('gives their types to the Game', () => {
+    expectTypeOf<ManifestPreferences<typeof withPrefs>>().toEqualTypeOf<{
+      follow: boolean;
+      size: 'small' | 'big';
+    }>();
+  });
+
+  it('fills what a player saved with the defaults, dropping what is not one of them', () => {
+    expect(preferenceValues(withPrefs, undefined)).toEqual({ follow: true, size: 'small' });
+    expect(preferenceValues(withPrefs, { follow: false, size: 'big' })).toEqual({
+      follow: false,
+      size: 'big',
+    });
+    expect(preferenceValues(withPrefs, { follow: 'no', size: 'huge', old: 1 })).toEqual({
+      follow: true,
+      size: 'small',
+    });
+    expect(preferenceValues(base as never, { follow: false })).toEqual({});
+  });
+
+  it('is checked like the Room options when it loads', () => {
+    expect(() =>
+      defineManifest({
+        ...base,
+        preferences: { 'bam-theo': { type: 'toggle', label: 'x', default: true } },
+      }),
+    ).toThrow('preferences');
   });
 });
 

@@ -197,9 +197,8 @@ body {
   }
 }
 
-/* The decision panel and the Card sit over the green middle of the board. */
+/* The decision panel sits over the green middle of the board. */
 .panel,
-.card-shown,
 .info,
 .end {
   position: fixed;
@@ -222,8 +221,7 @@ body {
   font-weight: 800;
 }
 
-#panel-text,
-#card-text {
+#panel-text {
   margin: 6px 0 0;
   font-size: 13px;
   line-height: 1.35;
@@ -319,30 +317,6 @@ body {
   height: 100%;
   background: var(--gold);
   transform-origin: left;
-}
-
-.card-shown {
-  width: min(34vw, 260px);
-  border: 3px solid var(--deck);
-  background: color-mix(in srgb, var(--deck) 30%, #120e1e);
-  animation: flip 0.35s ease-out;
-}
-
-.card-shown .deck {
-  margin: 0 0 4px;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--deck) 60%, #fff);
-}
-
-@keyframes flip {
-  from {
-    transform: translate(-50%, -50%) rotateY(90deg);
-  }
-  to {
-    transform: translate(-50%, -50%) rotateY(0);
-  }
 }
 
 .info {
@@ -460,4 +434,227 @@ body {
 
 html.paused * {
   animation-play-state: paused;
+}
+
+/* The Card drawn (cardshow.ts): the deck, its top card pulled off, then the Card turning over. */
+.cardshow {
+  --card-h: min(68vh, 270px);
+  --card-w: calc(var(--card-h) * 0.7);
+  --pace: 1;
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 5, 16, 0.55);
+  animation: fade-in calc(0.2s * var(--pace)) ease-out;
+}
+
+.cardshow[hidden] {
+  display: none;
+}
+
+.pile,
+.stage {
+  grid-area: 1 / 1;
+}
+
+.cardshow .back {
+  border-radius: 14px;
+  background: var(--back) center / cover;
+  border: 2px solid rgba(255, 246, 225, 0.55);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+/* The deck lies on the table, wide and backs up, seen from above at an angle. */
+.pile {
+  position: relative;
+  width: calc(var(--card-h) * 1.05);
+  height: calc(var(--card-h) * 0.7);
+  transform: perspective(800px) rotateX(48deg);
+  opacity: 0;
+  transition: opacity calc(0.25s * var(--pace)) ease-in;
+}
+
+.pile i {
+  position: absolute;
+  inset: 0;
+  background-image: var(--pile-back);
+}
+
+.pile i:nth-child(1) {
+  transform: translate(2px, 15px) rotate(-1.5deg);
+}
+.pile i:nth-child(2) {
+  transform: translate(-1px, 10px) rotate(1deg);
+}
+.pile i:nth-child(3) {
+  transform: translate(1px, 5px) rotate(-0.5deg);
+}
+.pile i:nth-child(4) {
+  transition: transform calc(0.45s * var(--pace)) cubic-bezier(0.3, 1.2, 0.5, 1);
+}
+
+[data-step="pile"] .pile,
+[data-step="pull"] .pile {
+  opacity: 1;
+}
+
+[data-step="pile"] .pile {
+  animation: pile-in calc(0.26s * var(--pace)) ease-out;
+}
+
+[data-step="pull"] .pile i:nth-child(4),
+[data-step="gone"] .pile i:nth-child(4) {
+  transform: translate(-82%, -6px) rotate(-6deg);
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  perspective: 900px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+[data-step="turn"] .stage,
+[data-step="face"] .stage {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+[data-step="face"] .stage {
+  animation: fade-in calc(0.2s * var(--pace)) ease-out;
+}
+
+.flip {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+
+[data-step="turn"] .flip {
+  animation: turn-over calc(0.6s * var(--pace)) cubic-bezier(0.25, 0.9, 0.35, 1.15);
+}
+
+.flip .face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.flip .back {
+  transform: rotateY(180deg);
+}
+
+.cardshow .front,
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 12px;
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 6px solid var(--deck);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.front .deck {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--deck) 80%, #000);
+}
+
+.front .icon {
+  width: calc(var(--card-h) * 0.26);
+  height: calc(var(--card-h) * 0.26);
+}
+
+.front .name {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.front .text {
+  font-size: 13px;
+  line-height: 1.35;
+  color: #4a3f33;
+}
+
+.choices {
+  display: flex;
+  gap: 12px;
+}
+
+.choices:empty {
+  display: none;
+}
+
+.choice {
+  position: relative;
+  width: calc(var(--card-w) * 0.72);
+  height: calc(var(--card-h) * 0.72);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  cursor: pointer;
+  animation: deal-in calc(0.3s * var(--pace)) ease-out both;
+  animation-delay: calc(var(--k) * 90ms * var(--pace));
+  transition: transform 0.15s;
+}
+
+.choice:hover:not(:disabled),
+.choice:focus-visible {
+  transform: translateY(-6px);
+}
+
+.choice:active:not(:disabled) {
+  transform: translateY(-2px) scale(0.97);
+}
+
+.choice:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@keyframes deal-in {
+  from {
+    transform: translateY(24px) scale(0.85);
+    opacity: 0;
+  }
+}
+
+@keyframes pile-in {
+  from {
+    transform: perspective(800px) rotateX(48deg) translateY(30px) scale(0.85);
+    opacity: 0;
+  }
+}
+
+@keyframes turn-over {
+  from {
+    transform: rotateY(180deg) scale(0.9);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }

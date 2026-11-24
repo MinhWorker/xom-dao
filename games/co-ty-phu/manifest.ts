@@ -22,4 +22,7 @@ export default defineManifest({
       ],
     },
   },
+  preferences: {
+    follow: { type: 'toggle', label: 'Máy quay bám theo', default: true },
+  },
 });

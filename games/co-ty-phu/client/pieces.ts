@@ -161,3 +161,83 @@ const DIE_SHAPE = roundedCube(DIE, DIE_ROUND);
 
 /** A die with 1 up. */
 export const die = () => shadowed(new Mesh(DIE_SHAPE, DIE_FACES));
+
+const BAR = new CylinderGeometry(0.017, 0.017, 0.56, 6);
+const HOOP = new CylinderGeometry(0.25, 0.25, 0.03, 28, 1, true);
+
+/**
+ * The bars round a jailed token, in its own space (a child of the token): eight iron bars between
+ * two hoops. `iron` is its own material, so it can fade.
+ */
+export const cage = () => {
+  const group = new Group();
+  const iron = new MeshStandardMaterial({
+    color: '#9aa0ad',
+    roughness: 0.3,
+    metalness: 0.75,
+    transparent: true,
+  });
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    const bar = shadowed(new Mesh(BAR, iron));
+    bar.position.set(Math.cos(a) * 0.24, 0.3, Math.sin(a) * 0.24);
+    group.add(bar);
+  }
+  for (const y of [0.03, 0.57]) {
+    const hoop = shadowed(new Mesh(HOOP, iron));
+    hoop.position.y = y;
+    group.add(hoop);
+  }
+  return { group, iron };
+};
+
+const BLOB = new SphereGeometry(1, 24, 12);
+const linear = (r: number, g: number, b: number) => new Color().setRGB(r, g, b);
+const IVORY = new MeshStandardMaterial({ color: linear(0.92, 0.84, 0.63), roughness: 0.3 });
+const TEAL = new MeshStandardMaterial({ color: linear(0.015, 0.14, 0.17), roughness: 0.3 });
+const BRASS = new MeshStandardMaterial({
+  color: linear(0.65, 0.4, 0.1),
+  roughness: 0.3,
+  metalness: 0.55,
+});
+const GLASS = new MeshStandardMaterial({
+  color: linear(0.025, 0.07, 0.11),
+  roughness: 0.3,
+  metalness: 0.25,
+});
+
+/** Where the plane's wingtips are, in its own space: its trails start there. */
+export const WINGTIPS = [new Vector3(-0.495, -0.015, -0.015), new Vector3(0.495, -0.015, -0.015)];
+
+/**
+ * The plane that flies from Sân bay: a small ivory and teal transport with brass trim, the one the
+ * legacy Classic table made in Blender (`render_aircraft.py` at tag `legacy-godot`), rebuilt from
+ * the same ellipsoids. Its nose points along −z.
+ */
+export const plane = () => {
+  const g = new Group();
+  /** An ellipsoid at Blender's (x, y, z) with its radii there, turned to y-up. */
+  const blob = (
+    [x, y, z]: [number, number, number],
+    [sx, sy, sz]: [number, number, number],
+    material: MeshStandardMaterial,
+  ) => {
+    const m = shadowed(new Mesh(BLOB, material));
+    m.position.set(x, z, -y);
+    m.scale.set(sx, sz, sy);
+    g.add(m);
+  };
+  blob([0, 0, 0], [0.1, 0.43, 0.1], IVORY);
+  blob([0, 0.25, 0.073], [0.075, 0.12, 0.048], GLASS);
+  blob([0, 0.015, -0.015], [0.52, 0.095, 0.023], TEAL);
+  blob([0, -0.32, 0.025], [0.2, 0.055, 0.016], TEAL);
+  blob([0, -0.32, 0.09], [0.017, 0.075, 0.12], TEAL);
+  for (const x of [-0.22, 0.22]) {
+    blob([x, 0.055, -0.055], [0.045, 0.115, 0.045], IVORY);
+    blob([x, 0.155, -0.055], [0.043, 0.015, 0.043], BRASS);
+    blob([x * 2.25, 0.015, -0.015], [0.025, 0.082, 0.025], BRASS);
+  }
+  for (const y of [-0.16, -0.06, 0.04, 0.14])
+    for (const x of [-0.096, 0.096]) blob([x, y, 0.025], [0.008, 0.019, 0.021], GLASS);
+  return g;
+};

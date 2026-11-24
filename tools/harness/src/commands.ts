@@ -1,3 +1,4 @@
+import { BridgeSettings } from '@xomdao/bridge';
 import { RoomOptions } from '@xomdao/shared/client';
 import { z } from 'zod';
 import type { Harness } from './harness.js';
@@ -54,16 +55,11 @@ const commands = {
     run: (h: Harness, a: { player: number; hidden: boolean }) => h.visibility(a.player, a.hidden),
   },
   settings: {
-    args: z.object({
-      player,
-      volume: z.number().min(0).max(1).optional(),
-      muted: z.boolean().optional(),
-    }),
-    run: (h: Harness, a: { player: number; volume?: number; muted?: boolean }) =>
-      h.settings(a.player, {
-        ...(a.volume !== undefined && { volume: a.volume }),
-        ...(a.muted !== undefined && { muted: a.muted }),
-      }),
+    args: BridgeSettings.partial().extend({ player }),
+    run: (
+      h: Harness,
+      { player: seat, ...settings }: { player: number } & Partial<BridgeSettings>,
+    ) => h.settings(seat, settings),
   },
   net: {
     args: z.object({

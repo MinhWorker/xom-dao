@@ -101,6 +101,13 @@ describe('the decision panel', () => {
     ]);
   });
 
+  it('names the Card it is about, so its choices show as cards to tap', () => {
+    const game = draw('chance-bonus');
+    expect(decide(viewOf(game, 'a'), 0, NAMES).card).toBe('chance-bonus');
+    expect(decide(viewOf(game, 'b'), 1, NAMES).card).toBe('chance-bonus');
+    expect(decide(viewOf(open(), 'a'), 0, NAMES).card).toBeUndefined();
+  });
+
   it('names the Quiz choice', () => {
     const labels = decide(viewOf(draw('chance-quiz'), 'a'), 0, NAMES).buttons.map((b) => b.label);
     expect(labels).toEqual(['Nhận 100', 'Giải đố']);

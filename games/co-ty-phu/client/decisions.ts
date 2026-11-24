@@ -4,7 +4,7 @@
  * deciding and no buttons (a Quiz shows them its question and answers).
  */
 import { AIRPORT_TILE, BOARD } from '../server/game/board.js';
-import { type CardAction, cardOf, picksOf } from '../server/game/cards.js';
+import { type CardAction, type CardId, cardOf, picksOf } from '../server/game/cards.js';
 import { landPrice, takeoverPrice, upgradeCost } from '../server/game/economy.js';
 import { HOTEL, JAIL_TRIES, type Player, type View } from '../server/game/model.js';
 import { levelValue, lotValue } from '../server/game/selling.js';
@@ -29,6 +29,8 @@ export interface Panel {
   text?: string;
   buttons: Button[];
   pick?: Pick;
+  /** The Card the decision is about: its buttons show as cards to tap. */
+  card?: CardId;
 }
 
 /** How players read a City's Level: "2 nhà", or Khách sạn. */
@@ -151,10 +153,13 @@ export function decide(view: View, me: number, names: readonly string[]): Panel 
         offer || action.kind === 'swap'
           ? undefined
           : { tiles: picks, event: 'pick', payload: (tile) => ({ pick: tile }) };
-      return ask(card.name, `rút thẻ ${card.name}`, buttons, {
-        text: card.text,
-        ...(pick && { pick }),
-      });
+      return {
+        ...ask(card.name, `rút thẻ ${card.name}`, buttons, {
+          text: card.text,
+          ...(pick && { pick }),
+        }),
+        card: view.card.id,
+      };
     }
   }
   if (!player.jailed) return ask('Lượt của bạn', 'đang gieo', [{ label: 'Gieo', event: 'roll' }]);

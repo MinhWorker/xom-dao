@@ -1,20 +1,23 @@
 /**
  * Cờ Tỷ Phú's client: plays each `match:state` push on the board one after another (the
- * computer's moves arrive at once), then shows the decision of the newest view. Every `init`
- * redraws everything from its view, and a Match already over is drawn ended at once.
+ * computer's moves arrive at once; 2× under "Tốc độ" Nhanh), then shows the decision of the
+ * newest view. Every `init` redraws everything from its view, and a Match already over is drawn
+ * ended at once. The Hub's Đồ họa level picks the board's graphics.
  */
 import {
   BRIDGE_RESET,
   BRIDGE_UNAVAILABLE,
   BridgeError,
   type BridgeSeat,
+  type BridgeSettings,
   createGameBridge,
 } from '@xomdao/bridge';
 import { BOARD } from '../server/game/board.js';
 import type { View } from '../server/game/model.js';
+import { CardShow } from './cardshow.js';
 import { type Button, decide, decider, levelName, type Panel } from './decisions.js';
 import { Hud } from './hud.js';
-import { type Change, changes } from './present.js';
+import { type Change, changes, pace } from './present.js';
 import { BoardView } from './scene.js';
 
 /** How long the end of the Match shows before the Hub is told. */
@@ -32,6 +35,7 @@ interface MatchPush {
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const board = new BoardView(canvas);
 const hud = new Hud();
+const cards = new CardShow();
 
 let myId = '';
 let me = -1;
@@ -52,11 +56,20 @@ let endedAt: number | null = null;
 let doneFor: string | null = null;
 let doneTimer = 0;
 let hidden = false;
+let low = false;
 
 const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
 
+/** The Hub's graphics level and the player's preferences (`manifest.ts`). */
+const applySettings = (settings: BridgeSettings) => {
+  low = settings.graphics === 'low';
+  board.setGraphics(low ? 'low' : 'high');
+  board.setFollowing(settings.preferences?.follow !== false);
+};
+
 const bridge = createGameBridge({
   onInit(init) {
+    applySettings(init.settings);
     restart();
     myId = init.player.id;
     const seats: BridgeSeat[] = init.room.seats;
@@ -93,6 +106,7 @@ const bridge = createGameBridge({
     }
     if (push.status === 'over') finish(push.matchId);
   },
+  onSettings: applySettings,
   onVisibility(paused) {
     hidden = paused;
     board.pause(paused);
@@ -107,15 +121,15 @@ function restart() {
   playing = false;
   sending = false;
   board.stop();
-  hud.hideCard();
+  cards.hide();
 }
 
 /** Redraws everything from `view` at once. */
 function present(view: View | null) {
   shown = view;
-  hud.hideCard();
   if (!view || isOver(view)) {
     panel = null;
+    cards.hide();
     board.highlight([]);
   }
   if (!view) {
@@ -139,7 +153,16 @@ function ask(view: View) {
   panel = decide(view, me, names);
   sending = false;
   const mine = panel.buttons.some((b) => !b.disabled) || !!panel.pick;
-  hud.show(panel, mine);
+  if (panel.card && mine && panel.buttons.length > 0) {
+    hud.show(null, false);
+    cards.choose(panel.card, names[view.card?.seat ?? view.turn] ?? '', panel.buttons, (b) => {
+      cards.busy(true);
+      send(b.event, b.payload);
+    });
+  } else {
+    cards.hide();
+    hud.show(panel, mine);
+  }
   board.highlight(panel.pick?.tiles ?? []);
 }
 
@@ -157,7 +180,7 @@ async function play() {
     }
     hud.show(null, false);
     board.highlight([]);
-    await animate(next, changes(before, next), queue.length > 2 ? 0.4 : 1, () => mine === epoch);
+    await animate(next, changes(before, next), pace(next, queue.length), () => mine === epoch);
     if (mine !== epoch) break;
     if (isOver(next) && endedAt === null) endedAt = performance.now();
     present(next);
@@ -173,36 +196,47 @@ const wait = (ms: number) => new Promise((done) => setTimeout(done, hidden ? 0 :
  */
 async function animate(after: View, steps: Change[], pace: number, live: () => boolean) {
   const ms = (n: number) => Math.round(n * pace);
-  let landed = false;
+  board.setPace(pace);
+  /** Every Lot that changed builds at once, from the first Lot step on. */
+  let building: Promise<unknown> | null = null;
   for (const step of steps) {
     if (!live()) return;
     switch (step.kind) {
       case 'dice':
-        await board.roll(step.dice, ms(650));
+        await board.roll(step.dice, ms(900));
         break;
       case 'walk':
-        await board.walk(step.seat, step.from, step.steps, ms(140));
+        await board.walk(step.seat, step.from, step.steps, ms(170));
+        break;
+      case 'release':
+        hud.say(`${names[step.seat] ?? ''} ra tù`);
+        await board.release(step.seat, ms(650));
         break;
       case 'jump':
-        if (after.players[step.seat]?.jailed) hud.say(`${names[step.seat] ?? ''} vào tù`);
-        await board.jump(step.seat, step.to, ms(520));
+        if (step.how === 'jail') hud.say(`${names[step.seat] ?? ''} vào tù`);
+        await board.jump(step.seat, step.to, ms(step.how === 'flight' ? 1400 : 560), step.how);
         break;
-      case 'card':
-        hud.drawn(step.id, names[step.seat] ?? '');
-        await wait(ms(1500));
-        hud.hideCard();
+      case 'card': {
+        board.follow(null);
+        const speed = hidden ? 0 : pace;
+        await cards.draw(step.id, names[step.seat] ?? '', speed, low);
+        const choosing =
+          after.phase === 'card' &&
+          after.card?.seat === me &&
+          decide(after, me, names).buttons.length > 0;
+        if (!choosing && live()) await cards.hold(Math.round(1800 * speed));
         break;
+      }
       case 'lot':
       case 'festival':
       case 'blackout':
-        if (!landed) {
+        if (!building) {
           board.showLots(after);
-          landed = true;
+          building = Promise.all(
+            steps.map((s) => s.kind === 'lot' && board.build(s.tile, s.before, s.after, ms(800))),
+          );
         }
-        if (step.kind === 'lot') {
-          if (step.after) board.pop(step.tile, ms(380));
-          announceLot(step);
-        }
+        if (step.kind === 'lot') announceLot(step);
         if (step.kind === 'festival' && step.tile !== null)
           hud.say(`Lễ hội ở ${BOARD[step.tile]?.name}`);
         if (step.kind === 'blackout' && step.tile !== null)
@@ -226,6 +260,8 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         break;
     }
   }
+  await building;
+  board.follow(null);
   if (steps.some((s) => s.kind === 'cash')) await wait(ms(500));
 }
 

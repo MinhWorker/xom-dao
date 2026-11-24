@@ -13,13 +13,14 @@ import { homeward } from '../homeward/homeward.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import screen from '../Screen.module.css';
 import { focusPosition } from '../sea/summary.js';
+import { SettingsOverlay } from '../settings/SettingsOverlay.js';
 import { GameFrame } from './GameFrame.js';
 import { type Table, tableNotices } from './notices.js';
 import { Peek } from './Peek.js';
 import { PlayerSlot } from './PlayerSlot.js';
 import { Results } from './Results.js';
 import styles from './Room.module.css';
-import { RoomOptions } from './RoomOptions.js';
+import { MyPreferences, RoomOptions } from './RoomOptions.js';
 
 /** How long the Hub waits for the Game's `done` before showing the results anyway. */
 const DONE_FALLBACK_MS = 4000;
@@ -40,6 +41,7 @@ export function Room({ code }: { code: string }) {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [peeking, setPeeking] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const here = room?.code === code ? room : null;
   const game = here ? gameById(here.gameId) : undefined;
@@ -243,6 +245,7 @@ export function Room({ code }: { code: string }) {
             onChange={(options) => void run(() => hub.request('room:options', { options }))}
           />
         )}
+        {game && <MyPreferences manifest={game.manifest} />}
         {isHost ? (
           <Button
             variant="primary"
@@ -291,6 +294,7 @@ export function Room({ code }: { code: string }) {
                   ...(game.rules.length > 0
                     ? [{ label: 'Luật chơi', onSelect: () => setRulesOpen(true) }]
                     : []),
+                  { label: 'Cài đặt', onSelect: () => setSettingsOpen(true) },
                   {
                     label: playing ? 'Rời ván' : 'Về phòng chờ',
                     danger: playing,
@@ -327,6 +331,11 @@ export function Room({ code }: { code: string }) {
       />
 
       {rulesOpen && game && <RulesPager game={game} onClose={() => setRulesOpen(false)} />}
+      <SettingsOverlay
+        open={settingsOpen}
+        game={game?.manifest}
+        onClose={() => setSettingsOpen(false)}
+      />
 
       <Dialog
         open={leaving}

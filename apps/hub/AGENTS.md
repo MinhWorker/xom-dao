@@ -28,7 +28,7 @@ src/screens/       offline/ (OfflineOverlay, after 1 s without the server), logi
 src/display/       Phone screen: fullscreen + landscape lock (`fullscreen.ts`, `FullscreenToggle`), `RotateNotice`
 src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `index.ts` wires the files from
                    `assets/app/audio/`), `SoundToggle` = the mute button
-src/settings/      Graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, level, HUD scale, margin, frame: `frame.ts` has the screen shapes and `fitFrame`) and the Bến's character and backdrop (`harbour`, `useHarbourLook`), kept in localStorage
+src/settings/      Each Game's preferences (`preferences`, `usePreferences`), graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, level, HUD scale, margin, frame: `frame.ts` has the screen shapes and `fitFrame`) and the Bến's character and backdrop (`harbour`, `useHarbourLook`), kept in localStorage
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`, `.glass`, `data-loop`), base.css (hand cursor), fonts.ts (@fontsource)
 public/            `manifest.webmanifest` and `icons/` (PWA), copied to the build root
 vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
@@ -116,7 +116,12 @@ goes back to the waiting room, so playing again reuses it.
   waiting room's "Luật chơi" button and from the corner menu during a Match (the Match keeps
   running under it). It is a scroll-snap track, one slide per page of `HubGame.rules`; mount it to
   open it. It never opens by itself.
-- `settings` carries the Hub's volume, mute, `music` and `effects` levels and is resent when any changes.
+- `settings` carries the Hub's volume, mute, `music` and `effects` levels, its `graphics` level
+  (`high`/`low`) and the player's `preferences` for the Game, and is resent when any changes.
+- A Game's `preferences` (manifest) are the player's own: `settings/preferences.ts` keeps them per
+  Game in localStorage. The waiting room shows them under "Tuỳ chọn của bạn" (`MyPreferences`, beside
+  `RoomOptions`; both draw each option with `OptionField`), and during a Match the corner menu's
+  "Cài đặt" opens the SettingsOverlay with a first tab named after the Game.
 - Not built yet: emotes in the corner.
 
 ## Phone screen

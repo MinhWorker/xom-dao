@@ -6,19 +6,28 @@ Rules: `server/game/model.ts` first, words in `GLOSSARY.md`, numbers in `server/
 ## Client
 
 `client/` is a Vite + Three.js client (`games/AGENTS.md`). `main.ts` queues each `match:state`
-push and plays it on the board one after another (the computer's moves arrive at once, faster
-while more wait), then shows the newest view's decision. Two pure modules carry the logic, with
+push and plays it on the board one after another (the computer's moves arrive at once; `pace`
+plays them 2× under "Tốc độ" Nhanh, which the `View` carries as `speed`, and faster while more
+wait), then shows the newest view's decision. Two pure modules carry the logic, with
 tests built on real Matches (`server/game/test-match.ts`):
 
 - `decisions.ts`: `decide(view, seat, names)` is the panel a seat sees: title, text, buttons
-  and the Tiles a tap may pick (Sân bay, a Card's Lot). Prices come from `economy.ts`, so they
-  match the server.
-- `present.ts`: `changes(before, after)` lists what to play between two views: dice, walks and
-  jumps, the Card drawn, Lots and marks, the Quiz result, money and Bankruptcy.
+  and the Tiles a tap may pick (Sân bay, a Card's Lot), and the Card it is about. Prices come
+  from `economy.ts`, so they match the server.
+- `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
+  of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
+  the Quiz result, money and Bankruptcy.
 
-`scene.ts` is the board (`show` places everything; `roll`, `walk`, `jump`, `pop` animate;
-`tileAt` picks), `hud.ts` the HTML over it (player cards, panel, Card, a Tile's details, the
-end). Effects are minimal for now (M11 does the real ones). `npm run smoke:web` plays its first
+`scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the moves: `roll`
+throws the dice with bounces, `walk` hops Tile by Tile with the camera following, `jump` drops
+the bars round a jailed token or sends the plane (`plane()` in `pieces.ts`, the legacy Blender
+model rebuilt from its ellipsoids) to pick the token up at Sân bay, turn over the board and drop
+it with an impact, `release` lifts the bars, `build` raises houses and Hotels and sinks those
+sold. `setGraphics` follows the Hub's Đồ họa (its doc lists what `low` drops) and `setFollowing`
+the player's "Máy quay bám theo" preference (`manifest.ts`). `cardshow.ts` is the Card drawn, in
+2D over the board: the deck and its top card pulled off, then the Card turning over; tapped to
+close, or its choices dealt beside it as cards to tap. `hud.ts` is the rest of the HTML over the
+board (player cards, panel, a Tile's details, the end). `npm run smoke:web` plays its first
 decisions in CI.
 
 ## Look
