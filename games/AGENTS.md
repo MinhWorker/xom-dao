@@ -90,7 +90,7 @@ a refusal exits with 1:
 
 `npm run smoke:web` runs the web smoke test: a real server, the Harness and headless Chromium
 (`npx playwright-core install chromium` once), where Đặt Bom's client must draw the arena, walk
-and place a bomb on key presses, and Cờ Tỷ Phú's must roll, answer its next decision and show a
+and place a bomb on key presses, and Cờ Tỷ Phú's must roll on its dice, answer its next decision and show a
 Tile on a tap (`npm run smoke:web -- co-ty-phu` runs one). It saves `smoke-web/<game>.png`, and
 CI runs it and uploads those screenshots. Each Game is a scenario in `scripts/smoke-web.mjs`. Look at a client yourself the same way: `playwright-core` on the Harness'
 `/game/?harness=ws://<harness>/bridge?player=0`, with `--use-angle=swiftshader` for WebGL.
