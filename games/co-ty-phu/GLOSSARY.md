@@ -28,7 +28,8 @@ _Avoid_: Monopoly
 ## Owning
 
 **Level**:
-How far a City is built, from 1 to 5: Nhà 1–4, then Khách sạn. Buying a City builds Level 1.
+How far a City is built, from 1 to 5: Levels 1–4 are one to four houses (players see "2 nhà",
+not "Nhà 2"), then Khách sạn. Buying a City builds Level 1.
 _Avoid_: House count, building, upgrade (for the state)
 
 **Hotel**:
