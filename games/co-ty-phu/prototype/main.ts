@@ -6,7 +6,6 @@ import {
   AmbientLight,
   BoxGeometry,
   CanvasTexture,
-  Color,
   DirectionalLight,
   Group,
   HemisphereLight,
@@ -17,7 +16,6 @@ import {
   PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
-  RepeatWrapping,
   Scene,
   SRGBColorSpace,
   Vector3,
@@ -55,30 +53,14 @@ const LOTS: Record<number, [number, number]> = {
 };
 const FULL_SET = [6, 8, 9];
 
-interface View {
-  label: string;
-  /** How far the board is turned on screen, clockwise. */
-  yaw: number;
-  /** Camera angle above the table. */
-  pitch: number;
-  fov: number;
-  /** How much of the screen the board may fill, per axis (NDC). */
-  fit: [number, number];
-}
-
-const VIEWS: Record<string, View> = {
-  diamond: {
-    label: 'Chéo 45°',
-    yaw: MathUtils.degToRad(45),
-    pitch: MathUtils.degToRad(40),
-    fov: 30,
-    fit: [0.99, 0.99],
-  },
-  square: { label: 'Thẳng', yaw: 0, pitch: MathUtils.degToRad(50), fov: 30, fit: [0.62, 0.99] },
-};
-
-const pitchParam = Number(new URLSearchParams(location.search).get('pitch'));
-if (pitchParam) for (const v of Object.values(VIEWS)) v.pitch = MathUtils.degToRad(pitchParam);
+const query = new URLSearchParams(location.search);
+/** Camera angle above the board; `?pitch=<degrees>` tries another. */
+const PITCH = MathUtils.degToRad(Number(query.get('pitch')) || 56);
+const FOV = 30;
+/** How much of the screen the board may fill, per axis (NDC): the sides keep the player cards. */
+const FIT = [0.62, 0.98] as const;
+/** How high the tallest piece stands above the board. */
+const PIECE_TOP = 0.8;
 
 const fitWindow = () => {
   const scale = Math.min(1, (window.innerWidth - 32) / 868, (window.innerHeight - 120) / 414);
@@ -94,11 +76,54 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = PCFShadowMap;
 
+/** Deep space with stars, drawn in code. */
+function spaceTexture() {
+  const c = document.createElement('canvas');
+  c.width = 1688;
+  c.height = 780;
+  const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+  const sky = ctx.createRadialGradient(844, 420, 60, 844, 420, 1000);
+  sky.addColorStop(0, '#1b1838');
+  sky.addColorStop(0.55, '#0c0b1e');
+  sky.addColorStop(1, '#04040b');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, c.width, c.height);
+  for (const [x, y, r, color] of [
+    [380, 180, 420, 'rgba(90, 60, 160, 0.16)'],
+    [1350, 600, 380, 'rgba(40, 90, 150, 0.14)'],
+  ] as const) {
+    const haze = ctx.createRadialGradient(x, y, 0, x, y, r);
+    haze.addColorStop(0, color);
+    haze.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, 0, c.width, c.height);
+  }
+  for (let i = 0; i < 700; i++) {
+    const x = Math.random() * c.width;
+    const y = Math.random() * c.height;
+    const big = Math.random() < 0.06;
+    const r = big ? 1.4 + Math.random() * 1.4 : 0.4 + Math.random() * 0.9;
+    const hue = [210, 45, 0, 260][Math.floor(Math.random() * 4)];
+    ctx.fillStyle = `hsla(${hue} 80% 92% / ${0.35 + Math.random() * 0.65})`;
+    if (big) {
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 8;
+    }
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
+
 const scene = new Scene();
-scene.background = new Color('#2a1b12');
+scene.background = spaceTexture();
 const camera = new PerspectiveCamera(30, 844 / 390, 0.5, 200);
 
-scene.add(new HemisphereLight('#fff4e0', '#4a3020', 0.9));
+scene.add(new HemisphereLight('#f2f0ff', '#2a2450', 1.0));
 scene.add(new AmbientLight('#ffffff', 0.15));
 const sun = new DirectionalLight('#ffe8c8', 2.4);
 sun.position.set(-6, 14, 8);
@@ -110,60 +135,13 @@ sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.02;
 scene.add(sun);
 
-/** Wood grain for the table, drawn in code. */
-const woodTexture = () => {
-  const c = document.createElement('canvas');
-  c.width = 1024;
-  c.height = 1024;
-  const ctx = c.getContext('2d') as CanvasRenderingContext2D;
-  ctx.fillStyle = '#7a4a2a';
-  ctx.fillRect(0, 0, 1024, 1024);
-  for (let plank = 0; plank < 4; plank++) {
-    const y0 = plank * 256;
-    ctx.fillStyle = `hsl(24 ${42 + plank * 3}% ${28 + (plank % 2) * 4}%)`;
-    ctx.fillRect(0, y0, 1024, 256);
-    for (let i = 0; i < 70; i++) {
-      const y = y0 + Math.random() * 256;
-      const a = 0.04 + Math.random() * 0.1;
-      ctx.strokeStyle = Math.random() < 0.5 ? `rgba(30,14,6,${a})` : `rgba(255,210,160,${a * 0.6})`;
-      ctx.lineWidth = 1 + Math.random() * 3;
-      ctx.beginPath();
-      const amp = 2 + Math.random() * 6;
-      const freq = 0.004 + Math.random() * 0.01;
-      const phase = Math.random() * 10;
-      for (let x = 0; x <= 1024; x += 16) {
-        const yy = y + Math.sin(x * freq + phase) * amp;
-        if (x === 0) ctx.moveTo(x, yy);
-        else ctx.lineTo(x, yy);
-      }
-      ctx.stroke();
-    }
-    ctx.fillStyle = 'rgba(20,8,2,0.55)';
-    ctx.fillRect(0, y0, 1024, 3);
-  }
-  const t = new CanvasTexture(c);
-  t.colorSpace = SRGBColorSpace;
-  t.wrapS = t.wrapT = RepeatWrapping;
-  t.repeat.set(5, 5);
-  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  return t;
-};
-
-const table = new Mesh(
-  new PlaneGeometry(80, 80),
-  new MeshStandardMaterial({ map: woodTexture(), roughness: 0.75 }),
-);
-table.rotation.x = -Math.PI / 2;
-table.receiveShadow = true;
-scene.add(table);
-
 const BOARD_H = 0.22;
 const world = new Group();
 scene.add(world);
 
 const base = new Mesh(
   new BoxGeometry(SIDE + 0.4, BOARD_H, SIDE + 0.4),
-  new MeshStandardMaterial({ color: '#3b2316', roughness: 0.45 }),
+  new MeshStandardMaterial({ color: '#232036', roughness: 0.4, metalness: 0.3 }),
 );
 base.position.y = BOARD_H / 2;
 base.castShadow = true;
@@ -182,9 +160,6 @@ const at = (u: number, v: number, y = 0) => new Vector3(u - SIDE / 2, BOARD_H + 
 
 const pieces = new Group();
 world.add(pieces);
-/** The dice and decks keep their place on screen whichever way the board is turned. */
-const centre = new Group();
-scene.add(centre);
 
 const flat = (w: number, h: number, color: string, opacity = 1) => {
   const m = new Mesh(
@@ -280,9 +255,9 @@ const buildPieces = () => {
     const cv = p.y + p.h / 2 - p.inward.y * out;
     seats.forEach((seat, k) => {
       const t = token(SEAT_COLORS[seat] as string);
-      const spread = (k - (seats.length - 1) / 2) * 0.42;
+      const spread = (k - (seats.length - 1) / 2) * 0.24;
       t.position.copy(p.inward.x === 0 ? at(cu + spread, cv) : at(cu, cv + spread));
-      t.scale.setScalar(seat === TURN ? 1.7 : 1.5);
+      t.scale.setScalar(seat === TURN ? 0.85 : 0.75);
       pieces.add(t);
     });
   }
@@ -293,7 +268,7 @@ const buildPieces = () => {
   const d2 = die();
   d2.position.set(0.6, BOARD_H + 0.25, 2.2);
   d2.rotation.set(0, -0.3, Math.PI / 2);
-  centre.add(d1, d2);
+  pieces.add(d1, d2);
 
   for (const [x, color, turn] of [
     [-1.6, '#e2731c', 0.12],
@@ -307,68 +282,61 @@ const buildPieces = () => {
     deck.position.set(x, BOARD_H + 0.06, -2.4);
     deck.rotation.y = turn;
     deck.castShadow = true;
-    centre.add(deck);
+    pieces.add(deck);
   }
 };
 
-const corners = () => {
+/** The board's outline, up to the height of its tallest piece. */
+const outline = () => {
   const pts: Vector3[] = [];
   const r = SIDE / 2 + 0.2;
   for (const x of [-r, r])
-    for (const z of [-r, r]) for (const y of [0, BOARD_H]) pts.push(new Vector3(x, y, z));
+    for (const z of [-r, r])
+      for (const y of [0, BOARD_H + PIECE_TOP]) pts.push(new Vector3(x, y, z));
   return pts;
 };
 
-/** Puts the camera at `view`'s angle, as close as it can while the board stays in the fit box. */
-const frameCamera = (view: View) => {
-  camera.fov = view.fov;
+/**
+ * Puts the camera at PITCH as close as it can while the board stays inside FIT, with the board
+ * centred on screen from top to bottom.
+ */
+const frameCamera = () => {
+  camera.fov = FOV;
   camera.updateProjectionMatrix();
-  const dir = new Vector3(0, Math.sin(view.pitch), Math.cos(view.pitch));
-  const pts = corners().map((p) => p.applyAxisAngle(new Vector3(0, 1, 0), -view.yaw));
+  const dir = new Vector3(0, Math.sin(PITCH), Math.cos(PITCH));
+  const pts = outline();
   const place = (d: number, tz: number) => {
-    camera.position
-      .copy(dir)
-      .multiplyScalar(d)
-      .setZ(camera.position.z + tz);
+    camera.position.copy(dir).multiplyScalar(d);
+    camera.position.z += tz;
     camera.lookAt(0, 0, tz);
     camera.updateMatrixWorld();
   };
-  const closest = (tz: number) => {
+  const extent = () => {
+    const qs = pts.map((p) => p.clone().project(camera));
+    return {
+      x: Math.max(...qs.map((q) => Math.abs(q.x))),
+      top: Math.max(...qs.map((q) => q.y)),
+      bottom: Math.min(...qs.map((q) => q.y)),
+    };
+  };
+  let tz = 0;
+  let d = 40;
+  for (let pass = 0; pass < 8; pass++) {
     let lo = 5;
     let hi = 120;
     for (let n = 0; n < 30; n++) {
-      const d = (lo + hi) / 2;
+      d = (lo + hi) / 2;
       place(d, tz);
-      const fits = pts.every((p) => {
-        const q = p.clone().project(camera);
-        return Math.abs(q.x) <= view.fit[0] && Math.abs(q.y) <= view.fit[1];
-      });
-      if (fits) hi = d;
+      const e = extent();
+      if (e.x <= FIT[0] && e.top <= FIT[1] && e.bottom >= -FIT[1]) hi = d;
       else lo = d;
     }
-    return hi;
-  };
-  let best = { d: Number.POSITIVE_INFINITY, tz: 0 };
-  for (let tz = -3; tz <= 3; tz += 0.05) {
-    const d = closest(tz);
-    if (d < best.d) best = { d, tz };
+    d = hi;
+    place(d, tz);
+    const e = extent();
+    tz -= ((e.top + e.bottom) / 2) * d * 0.2;
   }
-  place(best.d, best.tz);
-};
-
-let current: View = VIEWS.diamond as View;
-
-const show = (view: View) => {
-  current = view;
-  world.rotation.y = -view.yaw;
-  const texture = new CanvasTexture(printBoard(view.yaw));
-  texture.colorSpace = SRGBColorSpace;
-  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  topMaterial.map?.dispose();
-  topMaterial.map = texture;
-  topMaterial.needsUpdate = true;
-  frameCamera(view);
-  render();
+  place(d, tz);
 };
 
 const render = () => {
@@ -376,9 +344,14 @@ const render = () => {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  frameCamera(current);
+  frameCamera();
   renderer.render(scene, camera);
 };
+
+const printed = new CanvasTexture(printBoard());
+printed.colorSpace = SRGBColorSpace;
+printed.anisotropy = renderer.capabilities.getMaxAnisotropy();
+topMaterial.map = printed;
 
 const roster = document.getElementById('roster') as HTMLOListElement;
 roster.innerHTML = PLAYERS.map(
@@ -389,21 +362,5 @@ roster.innerHTML = PLAYERS.map(
   </li>`,
 ).join('');
 
-const controls = document.getElementById('views') as HTMLDivElement;
-for (const [id, view] of Object.entries(VIEWS)) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.textContent = view.label;
-  button.dataset.view = id;
-  button.addEventListener('click', () => {
-    for (const b of controls.querySelectorAll('button')) b.classList.toggle('on', b === button);
-    document.body.dataset.view = id;
-    show(view);
-  });
-  controls.append(button);
-}
-
 buildPieces();
-const initial = new URLSearchParams(location.search).get('view') ?? 'diamond';
-(controls.querySelector(`[data-view="${initial}"]`) as HTMLButtonElement | null)?.click();
 new ResizeObserver(render).observe(frame);

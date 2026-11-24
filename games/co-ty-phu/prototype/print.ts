@@ -101,28 +101,6 @@ export const bandRect = (p: Placement): Rect => {
   return { x: p.x, y: p.y, w: BAND, h: p.h };
 };
 
-const QUARTER = Math.PI / 2;
-
-/**
- * The text turn (a multiple of 90°, on the board) that reads closest to upright once the board
- * is turned `yaw` on screen; at a tie, text runs along the board's edge.
- */
-const textTurn = (p: Placement, yaw: number) => {
-  const alongX = p.corner || p.inward.x === 0;
-  let best = 0;
-  let bestScore = Number.POSITIVE_INFINITY;
-  for (let q = 0; q < 4; q++) {
-    const screen = Math.atan2(Math.sin(q * QUARTER + yaw), Math.cos(q * QUARTER + yaw));
-    const parallel = q % 2 === 0 ? alongX : !alongX;
-    const score = Math.abs(screen) - (parallel ? 1e-3 : 0);
-    if (score < bestScore) {
-      bestScore = score;
-      best = q;
-    }
-  }
-  return best * QUARTER;
-};
-
 const fitFont = (
   ctx: CanvasRenderingContext2D,
   lines: string[],
@@ -169,11 +147,11 @@ const stroke = (ctx: CanvasRenderingContext2D, s: number, color = INK) => {
 
 const ICONS: Partial<Record<Tile['kind'], Icon>> = {
   station: (ctx, s) => {
-    ctx.fillStyle = '#c8452f';
+    ctx.fillStyle = '#5d6675';
     ctx.beginPath();
     ctx.roundRect(-s * 0.5, -s * 0.38, s, s * 0.62, s * 0.12);
     ctx.fill();
-    ctx.fillStyle = '#dff2ff';
+    ctx.fillStyle = '#e6eef5';
     for (const x of [-0.36, -0.06, 0.24]) ctx.fillRect(s * x, -s * 0.28, s * 0.22, s * 0.2);
     ctx.fillStyle = INK;
     for (const x of [-0.27, 0.27]) {
@@ -274,8 +252,10 @@ const plane: Icon = (ctx, s) => {
   ctx.fill();
 };
 
+/** Points left: play runs left along the bottom from Xuất phát. */
 const arrow: Icon = (ctx, s) => {
   ctx.fillStyle = '#c8452f';
+  ctx.scale(-1, 1);
   ctx.beginPath();
   ctx.moveTo(-s * 0.55, -s * 0.16);
   ctx.lineTo(s * 0.1, -s * 0.16);
@@ -400,7 +380,7 @@ const drawFace = (
   }
 };
 
-const drawCentre = (ctx: CanvasRenderingContext2D, px: number, yaw: number) => {
+const drawCentre = (ctx: CanvasRenderingContext2D, px: number) => {
   const inner = CORNER * px;
   const size = (SIDE - 2 * CORNER) * px;
   const g = ctx.createRadialGradient(
@@ -421,7 +401,6 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number, yaw: number) => {
   ctx.strokeStyle = 'rgba(255, 236, 180, 0.35)';
   ctx.lineWidth = px * 0.03;
   ctx.strokeRect(-size / 2 + px * 0.25, -size / 2 + px * 0.25, size - px * 0.5, size - px * 0.5);
-  ctx.rotate(-yaw);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#f6d77a';
@@ -433,34 +412,22 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number, yaw: number) => {
   ctx.restore();
 };
 
-/** The whole printed board, for a board turned `yaw` radians on screen. */
-export const printBoard = (yaw: number, px = 336): HTMLCanvasElement => {
+/** The whole printed board; all text reads upright from the bottom side. */
+export const printBoard = (px = 336): HTMLCanvasElement => {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = Math.round(SIDE * px);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawCentre(ctx, px, yaw);
+  drawCentre(ctx, px);
 
   BOARD.forEach((tile, i) => {
     const p = placement(i);
     ctx.fillStyle = PAPER;
     ctx.fillRect(p.x * px, p.y * px, p.w * px, p.h * px);
-    const turn = textTurn(p, yaw);
-    const quarter = Math.round(turn / QUARTER) % 4;
-    const [w, h] = quarter % 2 ? [p.h * px, p.w * px] : [p.w * px, p.h * px];
-    const c = Math.cos(-turn);
-    const s = Math.sin(-turn);
-    const band = p.corner
-      ? undefined
-      : {
-          x: Math.round(p.inward.x * c - p.inward.y * s),
-          y: Math.round(p.inward.x * s + p.inward.y * c),
-        };
     ctx.save();
     ctx.translate((p.x + p.w / 2) * px, (p.y + p.h / 2) * px);
-    ctx.rotate(turn);
-    drawFace(ctx, tile, w, h, band, px);
+    drawFace(ctx, tile, p.w * px, p.h * px, p.corner ? undefined : p.inward, px);
     ctx.restore();
     ctx.strokeStyle = LINE;
     ctx.lineWidth = px * 0.02;

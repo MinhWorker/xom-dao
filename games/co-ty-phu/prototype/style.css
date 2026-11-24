@@ -135,24 +135,3 @@ body {
   height: 48px;
   border: 1px dashed rgba(255, 255, 255, 0.35);
 }
-
-.views {
-  display: flex;
-  gap: 8px;
-}
-
-.views button {
-  font: inherit;
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid #3a4258;
-  background: #1a1e28;
-  color: var(--paper);
-  cursor: pointer;
-}
-
-.views button.on {
-  background: #f6d77a;
-  color: var(--ink);
-  border-color: #f6d77a;
-}
