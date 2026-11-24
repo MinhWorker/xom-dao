@@ -329,7 +329,7 @@ describe('Bankruptcy', () => {
       arrange: all(own(1, [3], 5, 360), player(0, { cash: 100 }), own(0, [5], 0)),
     }).send('a', 'roll');
     expect(game.state.players[0]).toMatchObject({ bankrupt: true, cash: 0 });
-    expect(game.state.players[1]?.cash).toBe(1100);
+    expect(game.state.players[1]?.cash).toBe(1200);
     expect(game.state.lots[5]).toBeNull();
     expect(game.result?.seats.map((s) => s.place)).toEqual([2, 1]);
   });
@@ -350,6 +350,162 @@ describe('Bankruptcy', () => {
     game.send('b', 'roll');
     game.send('c', 'roll');
     expect(game.result?.seats.map((s) => s.place)).toEqual([3, 1, 2]);
+  });
+});
+
+/** a has 100 and lands on b's Việt Trì (Nhà 2, rent 198): 98 short. */
+const short = (...steps: ((s: State) => State)[]) =>
+  open({ rolls: [[1, 2]], arrange: all(own(1, [3], 2, 90), player(0, { cash: 100 }), ...steps) });
+
+describe('Debt', () => {
+  it('waits for the debtor to Sell, with a suggested sale in the view', () => {
+    const game = short(own(0, [1], 3, 200)).send('a', 'roll');
+    expect(game.state).toMatchObject({ turn: 0, phase: 'debt' });
+    expect((game.view('b') as State).debt).toEqual({
+      from: 0,
+      to: 1,
+      amount: 198,
+      suggested: [{ tile: 1, levels: 2 }],
+    });
+    expect(cash(game)).toEqual([100, 1000]);
+  });
+
+  it('is covered by Selling Levels for half their price, before any Lot', () => {
+    const game = short(own(0, [1], 3, 200), own(0, [15], 0)).send('a', 'roll');
+    expect(game.state.debt?.suggested).toEqual([{ tile: 1, levels: 2 }]);
+    game.send('a', 'sell', { sale: game.state.debt?.suggested });
+    expect(cash(game)).toEqual([2, 1198]);
+    expect(game.state.lots[1]).toEqual({ owner: 0, level: 1, built: 0 });
+    expect(game.state.lots[15]?.owner).toBe(0);
+    expect(game.state).toMatchObject({ turn: 1, phase: 'roll', debt: null });
+  });
+
+  it('Sells a whole Lot for half its land and Levels, which then has no owner', () => {
+    const game = short(own(0, [1], 3, 200)).send('a', 'roll');
+    game.send('a', 'sell', { sale: [{ tile: 1 }] });
+    expect(cash(game)).toEqual([100 + 200 - 198, 1198]);
+    expect(game.state.lots[1]).toBeNull();
+  });
+
+  it('suggests the cheapest Lot that covers it and keeps the Full set', () => {
+    const game = short(own(0, [11, 13, 14]), own(0, [15], 0), own(0, [19])).send('a', 'roll');
+    expect(game.state.debt?.suggested).toEqual([{ tile: 15 }]);
+    const small = short(
+      own(0, [11, 13, 14]),
+      own(0, [15], 0),
+      own(0, [19]),
+      player(0, { cash: 150 }),
+    );
+    expect(small.send('a', 'roll').state.debt?.suggested).toEqual([{ tile: 19 }]);
+  });
+
+  it('Sells from a Full set only when the rest is not enough', () => {
+    const game = short(own(0, [11, 13, 14]), own(0, [19]), player(0, { cash: 0 })).send(
+      'a',
+      'roll',
+    );
+    expect(game.state.debt?.suggested).toEqual([{ tile: 14 }, { tile: 19 }]);
+  });
+
+  it('keeps the Levels of a Full set until the lone Lots are sold', () => {
+    const game = short(own(0, [11, 13, 14]), own(0, [11], 3, 220), own(0, [15], 0));
+    expect(game.send('a', 'roll').state.debt?.suggested).toEqual([{ tile: 15 }]);
+  });
+
+  it('leaves out Levels the Lot it had to Sell makes needless', () => {
+    const game = short(own(0, [9], 2, 175), own(0, [15], 0)).send('a', 'roll');
+    expect(game.state.debt?.suggested).toEqual([{ tile: 15 }]);
+  });
+
+  it('still offers the Takeover once the rent is paid', () => {
+    const game = short(own(0, [9], 5, 700)).send('a', 'roll');
+    game.send('a', 'sell', { sale: [{ tile: 9 }] });
+    expect(cash(game)).toEqual([100 + 525 - 198, 1198]);
+    expect(game.state.phase).toBe('takeover');
+  });
+
+  it('refuses a sale that is short, or not the debtor’s to make', () => {
+    const game = short(own(0, [1], 3, 200), own(1, [5], 0)).send('a', 'roll');
+    expect(game.error('a', 'sell', { sale: [{ tile: 1, levels: 1 }] })).toBe(
+      'Bán chưa đủ để trả nợ',
+    );
+    expect(game.error('a', 'sell', { sale: [{ tile: 5 }] })).toBe('Bạn không có đất này');
+    expect(game.error('a', 'sell', { sale: [{ tile: 1, levels: 3 }] })).toBe(
+      'Không bán được chừng ấy cấp',
+    );
+    expect(game.error('a', 'sell', { sale: [{ tile: 1 }, { tile: 1 }] })).toBe(
+      'Mỗi ô chỉ bán một lần',
+    );
+    expect(game.error('b', 'sell', { sale: [{ tile: 5 }] })).toBe('Bạn không có nợ');
+    expect(game.error('a', 'pass')).toBe('Hãy bán đất để trả nợ');
+    expect(open().error('a', 'sell', { sale: [] })).toBe('Chưa thể làm việc này lúc này');
+  });
+
+  it('makes the suggested sale when the clock runs out', () => {
+    const game = short(own(0, [1], 3, 200))
+      .send('a', 'roll')
+      .fireTimer();
+    expect(cash(game)).toEqual([2, 1198]);
+    expect(game.state).toMatchObject({ turn: 1, phase: 'roll' });
+  });
+
+  it('rolls again after a double once the Debt is paid', () => {
+    const game = open({
+      rolls: [[1, 1]],
+      arrange: all(own(1, [2]), own(0, [15], 0), player(0, { cash: 50 })),
+    }).send('a', 'roll');
+    game.send('a', 'sell', { sale: [{ tile: 15 }] });
+    expect(cash(game)).toEqual([90, 1060]);
+    expect(game.state).toMatchObject({ turn: 0, phase: 'roll' });
+  });
+
+  it('is a tax owed to the bank too', () => {
+    const game = open({
+      rolls: [[1, 3]],
+      arrange: all(own(0, [15], 0), player(0, { cash: 50 })),
+    }).send('a', 'roll');
+    expect(game.state.debt).toMatchObject({ from: 0, to: null, amount: 100 });
+    game.send('a', 'sell', { sale: [{ tile: 15 }] });
+    expect(cash(game)).toEqual([50, 1000]);
+  });
+});
+
+describe('Bankruptcy after Selling', () => {
+  it('Sells everything, the creditor gets the cash up to the Debt, the Cards are lost', () => {
+    const game = open({
+      players: ['a', 'b', 'c'],
+      rolls: [[1, 2]],
+      arrange: all(
+        own(1, [3], 5, 360),
+        own(0, [1], 3, 200),
+        player(0, { cash: 100, jailCards: 1 }),
+      ),
+    });
+    game.send('a', 'roll');
+    expect(game.state.players[0]).toMatchObject({ bankrupt: true, cash: 0, jailCards: 0 });
+    expect(cash(game)).toEqual([0, 1000 + 100 + 200, 1000]);
+    expect(game.state.lots[1]).toBeNull();
+    expect(game.state.phase).toBe('roll');
+    expect(game.state.turn).toBe(1);
+  });
+
+  it('ends the Match on a tax nobody can pay', () => {
+    const broke = open({ rolls: [[1, 3]], arrange: player(0, { cash: 40 }) }).send('a', 'roll');
+    expect(broke.state.players[0]).toMatchObject({ bankrupt: true, cash: 0 });
+    expect(broke.result?.seats.map((s) => s.place)).toEqual([2, 1]);
+  });
+});
+
+describe('the computer', () => {
+  it('rolls, passes every offer and makes the suggested sale', () => {
+    const game = short(own(0, [1], 3, 200));
+    expect(game.bot('a')).toEqual({ event: 'roll' });
+    expect(game.bot('b')).toBeNull();
+    game.send('a', 'roll');
+    expect(game.bot('a')).toEqual({ event: 'sell', payload: { sale: [{ tile: 1, levels: 2 }] } });
+    expect(game.bot('b')).toBeNull();
+    const offer = open({ rolls: [[1, 2]] }).send('a', 'roll');
+    expect(offer.bot('a')).toEqual({ event: 'pass' });
   });
 });
 

@@ -4,7 +4,9 @@
  *
  * A turn is a roll, the move, then what the Tile offers. An offer the player may take (buy,
  * upgrade, Takeover, a flight) is a decision with a clock; everything else (rent, tax, jail)
- * happens at once. Doubles roll again; the Match goes on until one player is not bankrupt.
+ * happens at once, unless the payer's cash is short: then it is a Debt, settled by Selling
+ * (selling.ts) or ending in Bankruptcy. Doubles roll again; the Match goes on until one player
+ * is not bankrupt.
  */
 import type { ManifestOptions } from '@xomdao/sdk';
 import type manifest from '../../manifest.js';
@@ -39,9 +41,25 @@ export interface Lot {
 
 /**
  * roll: the turn player rolls (or, in jail, pays or uses a Card first);
- * buy / upgrade / takeover / fly: the turn player takes or passes the offer of their Tile.
+ * buy / upgrade / takeover / fly: the turn player takes or passes the offer of their Tile;
+ * debt: the debtor picks what to Sell.
  */
-export type Phase = 'roll' | 'buy' | 'upgrade' | 'takeover' | 'fly';
+export type Phase = 'roll' | 'buy' | 'upgrade' | 'takeover' | 'fly' | 'debt';
+
+/** One part of a sale to the bank: `levels` Levels off a City, or the whole Lot without it. */
+export interface Sale {
+  tile: number;
+  levels?: number;
+}
+
+/** A payment waiting until `from` Sells enough; `to` is the creditor (`null` = the bank). */
+export interface Debt {
+  from: number;
+  to: number | null;
+  amount: number;
+  /** The sale the server suggests: the least lost that covers `amount`. */
+  suggested: Sale[];
+}
 
 export interface State {
   players: Player[];
@@ -59,6 +77,8 @@ export interface State {
   again: boolean;
   /** Seats in the order they went bankrupt. */
   bankrupt: number[];
+  /** Set while the phase is `debt`. */
+  debt: Debt | null;
 }
 
 /** Picked in the waiting room: "Tốc độ". */
