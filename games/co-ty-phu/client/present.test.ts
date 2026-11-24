@@ -23,7 +23,7 @@ describe('what a new view shows', () => {
   it('sends the rent from the payer to the owner after the token lands', () => {
     const steps = roll([1, 2], own(1, [3], 1));
     expect(steps.slice(2)).toEqual([
-      { kind: 'pay', from: 0, to: 1, amount: 72 },
+      { kind: 'pay', from: 0, to: 1, amount: 72, why: 'rent', tile: 3 },
       { kind: 'cash', seat: 0, delta: -72 },
       { kind: 'cash', seat: 1, delta: 72 },
     ]);
@@ -32,7 +32,7 @@ describe('what a new view shows', () => {
   it('sends money to the turn player from the one who pays them', () => {
     const steps = roll([3, 4], player(1, { cash: 2000 }), ['chance-charity']);
     expect(steps.filter((s) => s.kind === 'pay')).toEqual([
-      { kind: 'pay', from: 1, to: 0, amount: 150 },
+      { kind: 'pay', from: 1, to: 0, amount: 150, why: 'card', tile: null },
     ]);
   });
 
@@ -54,7 +54,17 @@ describe('what a new view shows', () => {
     game.send('b', 'sell', { sale: owing.debt?.suggested });
     const steps = changes(owing, viewOf(game, 'a'));
     expect(steps.filter((s) => s.kind === 'pay')).toEqual([
-      { kind: 'pay', from: 1, to: 0, amount: 150 },
+      { kind: 'pay', from: 1, to: 0, amount: 150, why: 'debt', tile: null },
+    ]);
+  });
+
+  it('bills a Takeover to the owner who lost the Lot', () => {
+    const game = open({ rolls: [[2, 4]], arrange: own(1, [6], 2, 140) }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'takeover');
+    const steps = changes(before, viewOf(game, 'a'));
+    expect(steps.filter((s) => s.kind === 'pay')).toEqual([
+      { kind: 'pay', from: 0, to: 1, amount: 630, why: 'takeover', tile: 6 },
     ]);
   });
 

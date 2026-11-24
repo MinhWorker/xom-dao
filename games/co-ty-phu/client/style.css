@@ -274,7 +274,7 @@ body {
   }
 }
 
-/* The decision panel sits over the green middle of the board. */
+/* The decision's buttons sit at the bottom between the player cards; what it is about is printed on the board. */
 .panel,
 .info,
 .end {
@@ -291,6 +291,14 @@ body {
   text-align: center;
 }
 
+.panel {
+  top: auto;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: min(46vw, 360px);
+  padding: 8px 12px 10px;
+}
+
 .title {
   margin: 0;
   font-size: 17px;
@@ -298,44 +306,11 @@ body {
   font-weight: 800;
 }
 
-#panel-text {
-  margin: 6px 0 0;
-  font-size: 13px;
-  line-height: 1.35;
-  color: #e9dfc7;
-}
-
-#panel-text:empty {
-  display: none;
-}
-
-.panel.picking {
-  width: min(30vw, 240px);
-  padding: 8px 12px 10px;
-}
-
-.panel.watch {
-  top: 30%;
-  width: auto;
-  max-width: min(42vw, 330px);
-  padding: 6px 14px;
-  border-radius: 999px;
-}
-
-.panel.watch .title {
-  font-size: 14px;
-}
-
-.panel.watch #panel-text {
-  display: none;
-}
-
 .buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
-  margin-top: 10px;
 }
 
 .buttons:empty {
@@ -364,21 +339,6 @@ body {
 .buttons button:disabled {
   opacity: 0.45;
   cursor: default;
-}
-
-.panel.quiz .buttons button {
-  min-height: 52px;
-  font-size: 20px;
-}
-
-.panel.quiz .buttons button.right {
-  background: #58b368;
-  opacity: 1;
-}
-
-.panel.quiz .buttons button.wrong {
-  background: #e0553d;
-  opacity: 1;
 }
 
 .clock {
@@ -431,20 +391,6 @@ body {
 
 .info .owner {
   color: #cfc4ad;
-}
-
-.banner {
-  position: fixed;
-  left: 50%;
-  top: 14px;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 6px 16px;
-  border-radius: 999px;
-  background: var(--panel);
-  font-weight: 800;
-  font-size: 15px;
-  white-space: nowrap;
 }
 
 .toast {
@@ -736,7 +682,7 @@ html.paused * {
   }
 }
 
-/* The moments (moments.ts): coins between player cards, the amount, headlines and confetti. */
+/* The moments (moments.ts): a payment's bill and its coins between player cards, and confetti. */
 .moments {
   position: fixed;
   inset: 0;
@@ -781,184 +727,295 @@ html.paused * {
   border-radius: 2px;
 }
 
-.amount {
+/* A bill, warmer the larger it is, stamped paid before it flies off. */
+.bill {
+  --paper: #fbf6e9;
+  --ink: #5b4a39;
   position: absolute;
   left: 50%;
-  top: 60%;
+  top: 47%;
   display: grid;
-  justify-items: center;
-  color: #f6d77a;
-  font-size: 46px;
-  font-weight: 900;
-  -webkit-text-stroke: 2px #5a3a00;
-  paint-order: stroke fill;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  transform: translate(-50%, -50%);
+  gap: 4px;
+  width: min(34vw, 230px);
+  padding: 12px 16px 18px;
+  background: var(--paper);
+  color: #2f261d;
+  border-top: 6px solid var(--ink);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  transform: translate(-50%, -50%) rotate(-2deg);
+  font-size: 13px;
+  animation: bill-in calc(0.38s * var(--pace, 1)) cubic-bezier(0.3, 1.4, 0.5, 1) both;
 }
 
-.amount.shown {
-  animation: amount var(--ms, 1500ms) ease-out both;
+.bill::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -9px;
+  height: 10px;
+  background:
+    linear-gradient(-45deg, transparent 6px, var(--paper) 0) 0 0 / 12px 10px repeat-x,
+    linear-gradient(45deg, transparent 6px, var(--paper) 0) 0 0 / 12px 10px repeat-x;
 }
 
-.amount span {
-  padding: 2px 12px;
-  border-radius: 999px;
-  background: var(--panel);
-  color: var(--paper);
-  font-size: 14px;
-  font-weight: 700;
-  -webkit-text-stroke: 0;
+.bill[data-tier="1"] {
+  --paper: #fdf0c4;
+  --ink: #b07d12;
 }
 
-.amount span:empty {
-  display: none;
+.bill[data-tier="2"] {
+  --paper: #ffd9a8;
+  --ink: #c2561b;
 }
 
-.amount.huge {
-  color: #ffd25a;
-  font-size: 68px;
-  -webkit-text-stroke: 3px #7a1a10;
+.bill[data-tier="3"] {
+  --paper: #ffc9c0;
+  --ink: #b0271e;
+  outline: 3px solid #e0553d;
+  outline-offset: -8px;
 }
 
-.amount.huge.shown {
+.bill[data-tier="2"],
+.bill[data-tier="3"] {
   animation:
-    amount var(--ms, 1500ms) ease-out both,
-    shudder 0.3s 4;
+    bill-in calc(0.38s * var(--pace, 1)) cubic-bezier(0.3, 1.4, 0.5, 1) both,
+    shudder calc(0.3s * var(--pace, 1)) calc(0.3s * var(--pace, 1)) 2;
 }
 
-@keyframes amount {
-  0% {
-    opacity: 0;
-    scale: 0.3;
-  }
-  12% {
-    opacity: 1;
-    scale: 1.25;
-  }
-  22% {
-    scale: 1;
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    translate: 0 -20px;
-  }
-}
-
-.headline {
-  --tint: #f6d77a;
-  position: absolute;
-  left: 50%;
-  top: 20%;
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  padding: 10px 48px;
-  background: radial-gradient(closest-side, rgba(6, 5, 16, 0.72), transparent);
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
+.bill .head {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   text-align: center;
 }
 
-.headline b {
-  font-size: 44px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  color: var(--tint, #f6d77a);
-  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.55);
-  paint-order: stroke fill;
-  text-shadow:
-    0 0 24px color-mix(in srgb, var(--tint, #f6d77a) 70%, transparent),
-    0 4px 10px rgba(0, 0, 0, 0.6);
+.bill .what {
+  font-weight: 800;
+  text-align: center;
 }
 
-.headline[data-tone="gold"] b {
-  color: #f6d77a;
+.bill dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 4px 0 0;
+  padding-top: 6px;
+  border-top: 1px dashed color-mix(in srgb, var(--ink) 60%, transparent);
 }
 
-.headline[data-tone="good"] b {
-  --tint: #8fe39e;
-  color: #8fe39e;
+.bill dt {
+  color: #6b5a48;
 }
 
-.headline[data-tone="bad"] b {
-  --tint: #ff6a4f;
-  color: #ff6a4f;
-}
-
-.headline.bottom {
-  top: 84%;
-}
-
-.headline span {
-  padding: 3px 14px;
-  border-radius: 999px;
-  background: var(--panel);
-  font-size: 15px;
+.bill dd {
+  margin: 0;
+  text-align: right;
   font-weight: 700;
 }
 
-.headline span:empty {
+.bill .total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 2px solid var(--ink);
+}
+
+.bill .total b {
+  color: var(--ink);
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.bill[data-tier="3"] .total b {
+  font-size: 32px;
+}
+
+.bill .seal {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  padding: 4px 12px;
+  border: 4px double #c0262d;
+  border-radius: 10px;
+  color: #c0262d;
+  font-style: normal;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-14deg);
+  mix-blend-mode: multiply;
+}
+
+.bill.paid .seal {
+  animation: seal calc(0.32s * var(--pace, 1)) cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+.bill.gone {
+  animation: bill-out calc(0.45s * var(--pace, 1)) ease-in forwards;
+}
+
+@keyframes bill-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-2deg) scale(0.5);
+  }
+}
+
+@keyframes bill-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -140%) rotate(8deg);
+  }
+}
+
+@keyframes seal {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-30deg) scale(2.6);
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+
+/* A large bill: the screen's edge glows red and the player cards shake with the board. */
+.alarm {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  box-shadow:
+    inset 0 0 0 4px rgba(224, 85, 61, 0.9),
+    inset 0 0 70px rgba(224, 85, 61, 0.65);
+}
+
+.alarm.shown {
+  animation: alarm 1.6s ease-out;
+}
+
+.alarm.huge {
+  box-shadow:
+    inset 0 0 0 6px #ff3b2a,
+    inset 0 0 120px rgba(255, 59, 42, 0.8);
+}
+
+.alarm.huge.shown {
+  animation: alarm 0.4s ease-in-out 4 alternate;
+}
+
+body.quake .roster {
+  animation: quake 0.45s;
+}
+
+@keyframes alarm {
+  20% {
+    opacity: 1;
+  }
+}
+
+@keyframes quake {
+  20%,
+  60% {
+    translate: -6px 3px;
+  }
+  40%,
+  80% {
+    translate: 6px -3px;
+  }
+}
+
+/* The Quiz on its Card, its four answers dealt two each side. */
+.cardshow[data-quiz] .stage {
+  display: grid;
+  grid-template-columns: auto var(--card-w) auto;
+  grid-template-rows: 1fr 1fr;
+  gap: 14px 22px;
+  align-items: center;
+}
+
+.cardshow[data-quiz] .flip {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.cardshow[data-quiz] .choices {
   display: none;
 }
 
-.headline.shown {
-  animation: headline var(--ms, 2000ms) both;
+.quiz-clock {
+  align-self: stretch;
+  height: 4px;
+  margin-top: auto;
+  border-radius: 2px;
+  background: var(--deck);
+  transform-origin: left;
 }
 
-.headline[data-tone="bad"].shown b {
-  animation: shudder 0.35s 0.15s 2;
+.answer {
+  width: calc(var(--card-w) * 0.78);
+  height: calc(var(--card-h) * 0.4);
+  font-size: 22px;
 }
 
-@keyframes headline {
-  0% {
-    opacity: 0;
-    scale: 2.4;
-    filter: blur(6px);
-  }
-  10% {
-    opacity: 1;
-    scale: 0.94;
-    filter: blur(0);
-  }
-  16% {
-    scale: 1;
-  }
-  85% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    scale: 1.05;
-  }
+.answer.a0,
+.answer.a2 {
+  grid-column: 1;
 }
 
-/* The Quiz's answer: the pick pulses while the others dim, then the right one pops. */
-.panel.waiting .buttons button {
+.answer.a1,
+.answer.a3 {
+  grid-column: 3;
+}
+
+.answer.a0,
+.answer.a1 {
+  grid-row: 1;
+  align-self: end;
+}
+
+.answer.a2,
+.answer.a3 {
+  grid-row: 2;
+  align-self: start;
+}
+
+.answer:disabled {
+  opacity: 1;
+}
+
+[data-waiting] .answer:not(.picked) {
   opacity: 0.35;
 }
 
-.panel.waiting .buttons button.picked {
-  opacity: 1;
-  background: #f6d77a;
+.answer.picked {
   animation: suspense 0.36s ease-in-out infinite alternate;
 }
 
-.panel.quiz .buttons button.right {
+.answer.right {
+  background: #58b368;
+  color: #fff;
+  border-color: #2f7a3d;
   animation: right 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
-  box-shadow: 0 0 22px rgba(88, 179, 104, 0.9);
+  box-shadow: 0 0 26px rgba(88, 179, 104, 0.95);
 }
 
-.panel.quiz .buttons button.wrong {
+.answer.wrong {
+  background: #e0553d;
+  color: #fff;
+  border-color: #8f2a1c;
   animation: shudder 0.4s 2;
 }
 
 @keyframes suspense {
   to {
     scale: 1.07;
-    box-shadow: 0 0 18px rgba(246, 215, 122, 0.9);
+    box-shadow: 0 0 22px rgba(246, 215, 122, 0.95);
   }
 }
 
@@ -1016,4 +1073,113 @@ html.paused * {
     opacity: 0;
     transform: translateX(-24px);
   }
+}
+
+/* The dice: tapping round them rolls, wider than they are drawn. */
+.roll {
+  position: fixed;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: none;
+  cursor: pointer;
+}
+
+.roll:focus-visible {
+  outline: 3px solid var(--gold);
+}
+
+/* A player's cash counting up or down as money moves. */
+.cash.counting {
+  color: #b9f5c4;
+  scale: 1.12;
+  transition: scale 0.15s;
+}
+
+.cash.counting.falling {
+  color: #ffb3a3;
+}
+
+/* The payer pays their bill with a tap; the bar runs out over the 5 s it waits. */
+.bill {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.settle {
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.settle i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.75);
+  transform-origin: left;
+  animation: run-out var(--limit, 5000ms) linear forwards;
+}
+
+.bill.paid .settle {
+  visibility: hidden;
+}
+
+@keyframes run-out {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* The Quiz's Card: the title stays at the top, the question fills the rest with its numbers in colour. */
+.cardshow[data-quiz] {
+  --card-h: min(82vh, 320px);
+}
+
+.cardshow[data-quiz] .front {
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 12px 14px 10px;
+}
+
+.quiz-head {
+  display: grid;
+  justify-items: center;
+  gap: 0;
+}
+
+.quiz-head .name {
+  font-size: 22px;
+}
+
+.question {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.question .num {
+  color: color-mix(in srgb, var(--deck) 80%, #000);
+  font-weight: 900;
+  font-size: 1.15em;
 }

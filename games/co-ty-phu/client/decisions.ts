@@ -162,7 +162,8 @@ export function decide(view: View, me: number, names: readonly string[]): Panel 
       };
     }
   }
-  if (!player.jailed) return ask('Lượt của bạn', 'đang gieo', [{ label: 'Gieo', event: 'roll' }]);
+  if (!player.jailed)
+    return ask('Lượt của bạn', 'đang gieo', [{ label: 'Gieo xúc xắc', event: 'roll' }]);
   const buttons: Button[] = [{ label: 'Gieo ra đôi', event: 'roll' }];
   if (player.jailTries < JAIL_TRIES - 1) {
     buttons.push({

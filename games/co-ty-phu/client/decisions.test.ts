@@ -14,7 +14,7 @@ describe('the decision panel', () => {
   it('asks the turn player to roll and tells the others who is rolling', () => {
     const game = open();
     const mine = decide(viewOf(game, 'a'), 0, NAMES);
-    expect(mine.buttons.map((b) => [b.label, b.event])).toEqual([['Gieo', 'roll']]);
+    expect(mine.buttons.map((b) => [b.label, b.event])).toEqual([['Gieo xúc xắc', 'roll']]);
     const theirs = decide(viewOf(game, 'b'), 1, NAMES);
     expect(theirs.buttons).toEqual([]);
     expect(theirs.title).toBe('An đang gieo');

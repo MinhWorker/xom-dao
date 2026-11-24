@@ -17,8 +17,8 @@ tests built on real Matches (`server/game/test-match.ts`):
 - `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
   of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
   a Full set made, the Quiz result, money paid from one player to another (`pay`, worked out from
-  the cash: rent, a Takeover, a Card or a Debt), each player's cash, and Bankruptcy with the Lots
-  it takes down. `grandeur(amount)` is how grand a payment looks (0–3).
+  the cash, with `why`: rent, a Takeover, a Card or a Debt), each player's cash, and Bankruptcy
+  with the Lots it takes down. `grandeur(amount)` is how grand a payment looks (0–3).
 
 `scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the moves: `roll`
 throws the dice with bounces, `walk` hops Tile by Tile with the camera following, `jump` drops
@@ -28,16 +28,17 @@ it with an impact, `release` lifts the bars, `build` raises houses and Hotels an
 sold. The tier-1 moments (#355) are there too: `build` snatches a Lot Taken over (houses yanked up,
 spun, slammed down in the taker's colour) and puts a new Hotel in a beam of light, `fullSet` lights
 the set's Tiles one after another, `fall` topples a bankrupt token and crumbles its Lots, `victory`
-throws sparks round the winner, and `shake` shakes the camera. `setGraphics` follows the Hub's
+throws sparks round the winner, and `shake` shakes the camera. `say` prints every event's text in
+the middle of the board, which is otherwise left blank in a Match. `setGraphics` follows the Hub's
 Đồ họa (its doc lists what `low` drops) and `setFollowing`
 the player's "Máy quay bám theo" preference (`manifest.ts`). `cardshow.ts` is the Card drawn, in
 2D over the board: the deck and its top card pulled off, then the Card turning over; tapped to
-close, or its choices dealt beside it as cards to tap. `moments.ts` is the HTML side of the
-moments: coins and notes flying from the payer's card to the payee's (more, and the amount over
-the board, as `grandeur` grows), the headline ("Mua lại!", "Khách sạn!", "Đủ bộ màu!", "Phá
-sản!", the Quiz result) and confetti. `hud.ts` is the rest of the HTML over the board (player
-cards and their "Phá sản" stamp, panel and the Quiz's reveal, a Tile's details, the end with its
-fanfare). `npm run smoke:web` plays its first decisions in CI.
+close, or its choices dealt beside it as cards to tap; a Quiz is printed on its Card with the
+four answers dealt round it, two each side, where the answer is revealed. `moments.ts` is the HTML
+side of a payment: its bill (warmer paper as `grandeur` grows; from 2 the screen shakes and its
+edge glows red) stamped "Đã thanh toán", then coins and notes flying from the payer's card to the
+payee's; and confetti. `hud.ts` is the rest of the HTML over the board (player cards and their
+"Phá sản" stamp, panel, a Tile's details, the end with its fanfare). `npm run smoke:web` plays its first decisions in CI.
 
 ## Look
 

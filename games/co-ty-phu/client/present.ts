@@ -24,11 +24,13 @@ export type Change =
   | { kind: 'festival'; tile: number | null }
   | { kind: 'blackout'; tile: number | null }
   | { kind: 'quiz'; seat: number; right: boolean }
-  /** Money from one player to another: rent, a Takeover, a Card or a Debt. */
-  | { kind: 'pay'; from: number; to: number; amount: number }
+  /** Money from one player to another, `why`; `tile` is the Lot paid for (rent, a Takeover). */
+  | { kind: 'pay'; from: number; to: number; amount: number; why: PayReason; tile: number | null }
   | { kind: 'cash'; seat: number; delta: number }
   /** `seat` is out, and `lots`, what they owned, go back to the bank with them. */
   | { kind: 'bankrupt'; seat: number; lots: { tile: number; lot: Lot }[] };
+
+export type PayReason = 'rent' | 'takeover' | 'card' | 'debt';
 
 const TILES = BOARD.length;
 const ahead = (from: number, to: number) => (to - from + TILES) % TILES;
@@ -162,7 +164,7 @@ function payment(before: View, after: View, drawn: View['card']): Change | null 
   const turn = before.turn;
   const debt = before.debt;
   if (debt && debt.to !== null && !after.debt && gained(debt.to) > 0)
-    return { kind: 'pay', from: debt.from, to: debt.to, amount: gained(debt.to) };
+    return { ...paid(debt.from, debt.to, gained(debt.to), 'debt'), tile: null };
   const action = drawn ? cardOf(TUNING, drawn.id).action : null;
   if (action?.kind === 'rich-to-poor') {
     const { amount } = action;
@@ -170,8 +172,14 @@ function payment(before: View, after: View, drawn: View['card']): Change | null 
       (d, seat) => d === amount || (seat === turn && d === amount + TUNING.startBonus),
     );
     const from = delta.findIndex((d, seat) => d === -amount && seat !== to);
-    return to >= 0 && from >= 0 ? { kind: 'pay', from, to, amount } : null;
+    return to >= 0 && from >= 0 ? { ...paid(from, to, amount, 'card'), tile: null } : null;
   }
   const to = delta.findIndex((d, seat) => seat !== turn && d > 0 && seat !== debt?.from);
-  return to >= 0 ? { kind: 'pay', from: turn, to, amount: gained(to) } : null;
+  if (to < 0) return null;
+  const tile = after.players[turn]?.tile ?? 0;
+  const took = before.lots[tile]?.owner === to && after.lots[tile]?.owner === turn;
+  return { ...paid(turn, to, gained(to), took ? 'takeover' : 'rent'), tile };
 }
+
+const paid = (from: number, to: number, amount: number, why: PayReason) =>
+  ({ kind: 'pay', from, to, amount, why }) as const;

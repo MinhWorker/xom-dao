@@ -1,7 +1,7 @@
 /**
- * The moments the whole table shouts at (#355), drawn in HTML over the board: money flying from
- * one player card to another, grander as it grows (`grandeur`), a headline across the middle and
- * confetti. Every `pace` below 1 plays faster; 0 skips the show.
+ * The moments the whole table shouts at (#355), drawn in HTML over the board: a payment's bill,
+ * stamped paid, then its money flying from one player card to the other, grander as it grows
+ * (`grandeur`), and confetti. Every `pace` below 1 plays faster; 0 skips the show.
  */
 import { money } from './decisions.js';
 
@@ -11,8 +11,18 @@ const LOW_COINS = [2, 3, 4, 6] as const;
 const FLIGHT_MS = [620, 820, 1000, 1200] as const;
 /** Ms between one coin leaving and the next. */
 const STAGGER = [70, 55, 45, 38] as const;
+/** How long a player who watches reads a bill before it is stamped, per `grandeur`. */
+const READ_MS = [1000, 1250, 1600, 1900] as const;
+/** How long a bill waits for its payer's tap before it is paid anyway. */
+const PAYER_MS = 5000;
 
-type Tone = 'gold' | 'good' | 'bad';
+/** What a bill says: why, who pays whom, and how much. */
+export interface Bill {
+  title: string;
+  from: string;
+  to: string;
+  amount: number;
+}
 
 const el = (tag: string, className: string) => {
   const e = document.createElement(tag);
@@ -26,52 +36,108 @@ const centre = (e: Element) => {
 };
 
 /** Restarts a CSS animation on `e` by toggling `className` off and on. */
-const replay = (e: HTMLElement, className: string) => {
+const replay = (e: Element, className: string) => {
   e.classList.remove(className);
-  void e.offsetWidth;
+  void (e as HTMLElement).offsetWidth;
   e.classList.add(className);
 };
 
 export class Moments {
   private readonly layer = el('div', 'moments');
-  private readonly headline = el('div', 'headline');
-  private readonly amount = el('div', 'amount');
-  private headlineTimer = 0;
-  private amountTimer = 0;
+  /** A red glow round the screen while a large bill is up. */
+  private readonly alarm = el('div', 'alarm');
+  /** Bumped by `clear`: a bill under way stops. */
+  private run = 0;
 
   constructor() {
-    this.headline.innerHTML = '<b></b><span></span>';
-    this.headline.hidden = true;
-    this.amount.innerHTML = '<b></b><span></span>';
-    this.amount.hidden = true;
-    this.layer.append(this.amount, this.headline);
+    this.layer.append(this.alarm);
     document.body.append(this.layer);
   }
 
   /**
-   * Coins (and notes, once it is more) fly in an arc from card `from` to card `to`; the payer's
-   * card shudders and the payee's glows as they land. From `grandeur` 2 the amount shows over the
-   * board with `caption` under it, from 3 it shakes. `grand` is `grandeur(amount)`, 0 to 3. Resolves when the last coin lands.
+   * A bill for `bill` drops onto the board, its paper warmer the larger it is (`grand` is
+   * `grandeur(amount)`, 0 to 3); from 2 the screen shakes and its edge glows red. The `payer`
+   * taps "Thanh toán" (or it pays itself after 5 s); for the others it shows a moment, or until a
+   * tap. Then it is stamped "Đã thanh toán" as the payer's card shudders, and flies off while its
+   * money flies from card `from` to card `to`; `onFly` is told how long that takes. Resolves when
+   * the last coin lands.
    */
   async pay(
     from: HTMLElement | undefined,
     to: HTMLElement | undefined,
-    amount: number,
+    bill: Bill,
     grand: number,
     pace: number,
-    low: boolean,
-    caption = '',
+    { low, payer, onFly }: { low: boolean; payer: boolean; onFly: (ms: number) => void },
   ) {
-    if (!from || !to || pace <= 0) return;
+    if (!from || !to || pace <= 0) {
+      onFly(0);
+      return;
+    }
+    const run = ++this.run;
     const tier = grand as 0 | 1 | 2 | 3;
+    const paper = this.paper(bill, tier, pace, payer);
+    if (tier >= 2) {
+      this.alarm.classList.toggle('huge', tier >= 3);
+      replay(this.alarm, 'shown');
+      replay(document.body, 'quake');
+      window.setTimeout(() => document.body.classList.remove('quake'), 500);
+    }
+    const limit = payer ? PAYER_MS : READ_MS[tier] * pace;
+    paper.style.setProperty('--limit', `${limit}ms`);
+    const tapped = new Promise<void>((done) =>
+      paper.addEventListener('pointerdown', () => done(), { once: true }),
+    );
+    await Promise.race([tapped, this.sleep(run, limit)]);
+    if (run !== this.run) return;
+    paper.classList.add('paid');
+    replay(from, 'paying');
+    if (!(await this.sleep(run, 520 * pace))) return;
+    paper.classList.add('gone');
+    await this.fly(from, to, tier, pace, low, onFly);
+    paper.remove();
+  }
+
+  /** The bill itself, dropping in. */
+  private paper(bill: Bill, tier: number, pace: number, payer: boolean) {
+    const paper = el('div', 'bill');
+    paper.dataset.tier = String(tier);
+    paper.style.setProperty('--pace', String(pace));
+    paper.innerHTML =
+      '<b class="head">Hóa đơn</b><span class="what"></span><dl><dt>Người trả</dt><dd class="from"></dd><dt>Người nhận</dt><dd class="to"></dd></dl><div class="total"><span>Tổng</span><b></b></div><i class="seal">Đã thanh toán</i>';
+    if (payer) {
+      const button = el('button', 'settle');
+      (button as HTMLButtonElement).type = 'button';
+      button.innerHTML = 'Thanh toán<i></i>';
+      paper.append(button);
+    }
+    const put = (selector: string, text: string) => {
+      (paper.querySelector(selector) as HTMLElement).textContent = text;
+    };
+    put('.what', bill.title);
+    put('.from', bill.from);
+    put('.to', bill.to);
+    put('.total b', money(bill.amount));
+    this.layer.append(paper);
+    return paper;
+  }
+
+  /** Coins (and notes, once it is more) fly in an arc from card `from` to card `to`. */
+  private async fly(
+    from: HTMLElement,
+    to: HTMLElement,
+    tier: 0 | 1 | 2 | 3,
+    pace: number,
+    low: boolean,
+    onFly: (ms: number) => void,
+  ) {
     const stagger = STAGGER[tier] * pace;
     const a = centre(from);
     const b = centre(to);
     const mid = { x: innerWidth / 2, y: innerHeight / 2 };
     const ms = FLIGHT_MS[tier] * pace;
     const n = (low ? LOW_COINS : COINS)[tier];
-    replay(from, 'paying');
-    if (tier >= 2) this.showAmount(amount, caption, tier, ms + n * stagger + 500 * pace);
+    onFly(ms + (n - 1) * stagger);
     const flights: Promise<unknown>[] = [];
     for (let k = 0; k < n; k++) {
       const coin = el('i', tier >= 1 && k % 3 === 2 ? 'coin note' : 'coin');
@@ -112,45 +178,6 @@ export class Moments {
     await Promise.all(flights);
   }
 
-  /** The amount of a large payment over the board. */
-  private showAmount(amount: number, caption: string, grand: number, ms: number) {
-    this.fill(this.amount, money(amount), caption);
-    this.amount.classList.toggle('huge', grand >= 3);
-    this.amount.hidden = false;
-    this.amount.style.setProperty('--ms', `${ms}ms`);
-    replay(this.amount, 'shown');
-    clearTimeout(this.amountTimer);
-    this.amountTimer = window.setTimeout(() => {
-      this.amount.hidden = true;
-    }, ms);
-  }
-
-  /**
-   * A big line over the board, with a smaller one under it, for `ms` at `pace`: near the top, or
-   * near the bottom when a panel fills the middle.
-   */
-  announce(
-    title: string,
-    sub: string,
-    tone: Tone,
-    ms: number,
-    pace: number,
-    { color, bottom = false }: { color?: string; bottom?: boolean } = {},
-  ) {
-    if (pace <= 0) return;
-    this.fill(this.headline, title, sub);
-    this.headline.dataset.tone = tone;
-    this.headline.classList.toggle('bottom', bottom);
-    this.headline.style.setProperty('--tint', color ?? '');
-    this.headline.style.setProperty('--ms', `${ms * pace}ms`);
-    this.headline.hidden = false;
-    replay(this.headline, 'shown');
-    clearTimeout(this.headlineTimer);
-    this.headlineTimer = window.setTimeout(() => {
-      this.headline.hidden = true;
-    }, ms * pace);
-  }
-
   /** Confetti in `colors` falling over the whole screen; none on low graphics. */
   confetti(colors: readonly string[], pace: number, low: boolean, n = 90) {
     if (low || pace <= 0) return;
@@ -183,12 +210,6 @@ export class Moments {
     }
   }
 
-  /** Puts `big` and `small` in the `<b>` and `<span>` of `e`. */
-  private fill(e: HTMLElement, big: string, small: string) {
-    (e.querySelector('b') as HTMLElement).textContent = big;
-    (e.querySelector('span') as HTMLElement).textContent = small;
-  }
-
   /** The tab was hidden: whatever is flying lands at once. */
   land() {
     for (const e of this.layer.querySelectorAll('.coin, .confetti'))
@@ -197,8 +218,14 @@ export class Moments {
 
   /** Drops what is showing: a redraw took over. */
   clear() {
-    for (const e of this.layer.querySelectorAll('.coin, .confetti')) e.remove();
-    this.headline.hidden = true;
-    this.amount.hidden = true;
+    this.run++;
+    for (const e of this.layer.querySelectorAll('.coin, .confetti, .bill')) e.remove();
+    this.alarm.classList.remove('shown');
+  }
+
+  /** Waits `ms`; false when `clear` took over meanwhile. */
+  private async sleep(run: number, ms: number) {
+    await new Promise((done) => setTimeout(done, ms));
+    return run === this.run;
   }
 }

@@ -279,7 +279,7 @@ const drawFace = (
   }
 };
 
-const drawCentre = (ctx: CanvasRenderingContext2D, px: number) => {
+const drawCentre = (ctx: CanvasRenderingContext2D, px: number, title: boolean) => {
   const inner = CORNER * px;
   const size = (SIDE - 2 * CORNER) * px;
   const g = ctx.createRadialGradient(
@@ -307,7 +307,7 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number) => {
   ctx.shadowBlur = px * 0.1;
   ctx.shadowOffsetY = px * 0.04;
   ctx.font = `900 ${px * 1.15}px system-ui, "Segoe UI", Roboto, sans-serif`;
-  ctx.fillText('CỜ TỶ PHÚ', 0, 0);
+  if (title) ctx.fillText('CỜ TỶ PHÚ', 0, 0);
   ctx.restore();
 };
 
@@ -325,14 +325,17 @@ export const paintTile = (ctx: CanvasRenderingContext2D, i: number, px: number, 
   ctx.strokeRect(0, 0, p.w * px, p.h * px);
 };
 
-/** The whole printed board; all text reads upright from the bottom side. */
-export const printBoard = (px = 336): HTMLCanvasElement => {
+/**
+ * The whole printed board; all text reads upright from the bottom side. Without `title` the
+ * middle stays clear for what the client prints there in a Match.
+ */
+export const printBoard = (px = 336, title = true): HTMLCanvasElement => {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = Math.round(SIDE * px);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawCentre(ctx, px);
+  drawCentre(ctx, px, title);
 
   BOARD.forEach((_, i) => {
     const p = placement(i);

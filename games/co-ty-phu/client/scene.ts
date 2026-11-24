@@ -58,6 +58,17 @@ const CLOSE = 0.32;
 
 type JumpHow = Extract<Change, { kind: 'jump' }>['how'];
 
+/** The colour of a line printed in the middle of the board. */
+export type Tone = 'plain' | 'gold' | 'good' | 'bad';
+const TONES: Record<Tone, string> = {
+  plain: '#f4ecd8',
+  gold: '#f6d77a',
+  good: '#8fe39e',
+  bad: '#ff6a4f',
+};
+/** The printed middle: between the decks and the dice, in board units and canvas pixels. */
+const NOTICE = { w: 7.2, h: 2.9, z: -0.45, px: 200 } as const;
+
 /** Deep space with stars, drawn in code. */
 function spaceTexture() {
   const c = document.createElement('canvas');
@@ -192,6 +203,18 @@ const smooth = (k: number) => k * k * (3 - 2 * k);
 const buildings = (lot: Lot | null) =>
   !lot ? [] : lot.level >= HOTEL ? [HOTEL] : Array.from({ length: lot.level }, (_, k) => k + 1);
 
+/** A line printed in the middle of the board: `big` for the moments the table shouts at. */
+export interface Line {
+  title: string;
+  sub?: string;
+  tone?: Tone;
+  big?: boolean;
+  blink?: boolean;
+}
+
+/** How long a `say` shows, besides the line. */
+type Say = Omit<Line, 'title' | 'blink'> & { ms?: number };
+
 const DUST = new SphereGeometry(0.05, 8, 6);
 const RING = new RingGeometry(0.32, 0.42, 40);
 const SPARK = new PlaneGeometry(0.07, 0.11);
@@ -246,6 +269,17 @@ export class BoardView {
   private zoom = 0;
   private readonly look = new Vector3();
   private lastFrame = 0;
+  /** The middle of the board, where events are printed (`say`). */
+  private readonly notice: Mesh<PlaneGeometry, MeshBasicMaterial>;
+  private readonly noticeInk: CanvasRenderingContext2D;
+  /** Bumped by every `say`: an older line stops fading itself. */
+  private saying = 0;
+  /** A `say` is showing. */
+  private speaking = false;
+  /** What `status` keeps printed between `say`s. */
+  private standing: Line | null = null;
+  /** The dice hop, waiting for a tap. */
+  private inviting = false;
   /** The plane that flies from Sân bay, hidden between flights. */
   private readonly aircraft = plane();
   /** The camera shakes until `until` (performance.now ms), fading over its last `ms`. */
@@ -282,7 +316,7 @@ export class BoardView {
     );
     base.position.y = BOARD_H / 2;
     base.castShadow = base.receiveShadow = true;
-    const printed = new CanvasTexture(printBoard());
+    const printed = new CanvasTexture(printBoard(336, false));
     printed.colorSpace = SRGBColorSpace;
     printed.anisotropy = anisotropy;
     const top = new Mesh(
@@ -294,7 +328,21 @@ export class BoardView {
     top.receiveShadow = true;
     this.aircraft.scale.setScalar(1.6);
     this.aircraft.visible = false;
-    this.world.add(base, top, this.lots, this.marks, this.fx, this.aircraft);
+    const ink = document.createElement('canvas');
+    ink.width = NOTICE.w * NOTICE.px;
+    ink.height = NOTICE.h * NOTICE.px;
+    this.noticeInk = ink.getContext('2d') as CanvasRenderingContext2D;
+    const inkMap = new CanvasTexture(ink);
+    inkMap.colorSpace = SRGBColorSpace;
+    inkMap.anisotropy = anisotropy;
+    this.notice = new Mesh(
+      new PlaneGeometry(NOTICE.w, NOTICE.h),
+      new MeshBasicMaterial({ map: inkMap, transparent: true, depthWrite: false, opacity: 0 }),
+    );
+    this.notice.rotation.x = -Math.PI / 2;
+    this.notice.position.set(0, BOARD_H + 0.006, NOTICE.z);
+    this.notice.renderOrder = 3;
+    this.world.add(base, top, this.notice, this.lots, this.marks, this.fx, this.aircraft);
 
     for (const [x, kind, turn] of [
       [-1.6, 'chance', 0.12],
@@ -360,6 +408,10 @@ export class BoardView {
     clear(this.fx);
     this.aircraft.visible = false;
     this.shaking.until = 0;
+    this.saying++;
+    this.speaking = false;
+    this.standing = null;
+    this.notice.material.opacity = 0;
     this.focus = null;
     this.zoom = 0;
     this.camera.position.copy(this.home.pos);
@@ -792,6 +844,7 @@ export class BoardView {
 
   /** Throws the dice from the far side: they bounce twice and settle on `values`. One die shows under Kẹt xe. */
   roll(values: number[], ms = 900) {
+    this.inviteRoll(false);
     const throws = this.dice.map((_, i) => {
       const rest = DIE_REST[i] as Vector3;
       const sign = Math.random() < 0.5 ? -1 : 1;
@@ -982,6 +1035,113 @@ export class BoardView {
     this.shake(0.09, 320);
   }
 
+  /**
+   * Prints `title` (and `sub` under it) in the middle of the board for `ms`: it comes in a little
+   * large, settles and fades, then what `status` holds shows again. A new line replaces the one
+   * showing.
+   */
+  say(title: string, { sub = '', tone = 'plain', big = false, ms = 1700 }: Say = {}) {
+    this.ink({ title, sub, tone, big });
+    const run = ++this.saying;
+    this.speaking = true;
+    const material = this.notice.material;
+    this.tween(ms * this.pace, (u) => {
+      if (run !== this.saying) return;
+      const into = Math.min(1, u / 0.12);
+      const out = u > 0.8 ? (1 - u) / 0.2 : 1;
+      material.opacity = into * out;
+      this.notice.scale.setScalar(1 + (1 - ease(into)) * (big ? 0.35 : 0.15));
+    }).then(() => {
+      if (run !== this.saying) return;
+      this.speaking = false;
+      this.stand();
+    });
+  }
+
+  /**
+   * What stays printed in the middle of the board while nothing happens (who is deciding, or the
+   * roll waiting for a tap, blinking); `null` leaves it blank. A `say` shows over it.
+   */
+  status(line: Line | null) {
+    this.standing = line;
+    if (!this.speaking) this.stand();
+  }
+
+  private stand() {
+    const material = this.notice.material;
+    this.notice.scale.setScalar(1);
+    if (!this.standing) {
+      material.opacity = 0;
+      return;
+    }
+    this.ink(this.standing);
+    material.opacity = 1;
+  }
+
+  /** Draws `line` on the middle of the board. */
+  private ink({ title, sub = '', tone = 'plain', big = false }: Line) {
+    const ctx = this.noticeInk;
+    const { width, height } = ctx.canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const sizeTo = (text: string, size: number, weight: number) => {
+      let px = size;
+      do {
+        ctx.font = `${weight} ${px}px system-ui, "Segoe UI", Roboto, sans-serif`;
+        px -= 6;
+      } while (ctx.measureText(text).width > width * 0.94 && px > 24);
+    };
+    const y = sub ? height * 0.4 : height / 2;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 8;
+    sizeTo(title, big ? 230 : 150, 900);
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = 'rgba(10, 40, 26, 0.55)';
+    ctx.strokeText(title, width / 2, y);
+    ctx.fillStyle = TONES[tone];
+    ctx.fillText(title, width / 2, y);
+    if (sub) {
+      sizeTo(sub, 86, 700);
+      ctx.fillStyle = '#f4ecd8';
+      ctx.fillText(sub, width / 2, height * 0.8);
+    }
+    (this.notice.material.map as CanvasTexture).needsUpdate = true;
+  }
+
+  /** The dice hop in place while a roll waits for a tap on them; never on low graphics. */
+  inviteRoll(on: boolean) {
+    this.inviting = on;
+    if (!on) for (const d of this.dice) d.position.y = BOARD_H + DIE / 2;
+  }
+
+  /** Where the dice are on the canvas, in CSS pixels from its top-left, with room round them. */
+  diceRect(margin = 18) {
+    const [w, h] = [this.canvas.clientWidth, this.canvas.clientHeight];
+    const xs: number[] = [];
+    const ys: number[] = [];
+    const p = new Vector3();
+    for (const d of this.dice) {
+      if (!d.visible) continue;
+      for (const dx of [-0.5, 0.5])
+        for (const dz of [-0.5, 0.5])
+          for (const y of [BOARD_H, BOARD_H + DIE + 0.2]) {
+            p.set(d.position.x + dx, y, d.position.z + dz).project(this.camera);
+            xs.push(((p.x + 1) / 2) * w);
+            ys.push(((1 - p.y) / 2) * h);
+          }
+    }
+    const left = Math.min(...xs) - margin;
+    const top = Math.min(...ys) - margin;
+    return {
+      left,
+      top,
+      width: Math.max(...xs) + margin - left,
+      height: Math.max(...ys) + margin - top,
+    };
+  }
+
   /** Shakes the camera for `ms` at `strength` (board units); never on low graphics. */
   shake(strength: number, ms: number) {
     if (this.low || this.paused) return;
@@ -1143,6 +1303,12 @@ export class BoardView {
       (g.material as MeshBasicMaterial).opacity = this.picking.includes(i) ? pulse : 0;
     });
     if (!this.low) this.tick(ms / 1000);
+    if (!this.speaking && this.standing?.blink)
+      this.notice.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(ms / 170));
+    if (this.inviting && !this.low)
+      this.dice.forEach((d, i) => {
+        d.position.y = BOARD_H + DIE / 2 + Math.abs(Math.sin(ms / 240 + i * 0.9)) * 0.16;
+      });
     this.steer(dt);
     this.renderer.render(this.scene, this.camera);
   }

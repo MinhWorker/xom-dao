@@ -14,6 +14,7 @@ import {
   createGameBridge,
 } from '@xomdao/bridge';
 import { BOARD } from '../server/game/board.js';
+import { cardOf } from '../server/game/cards.js';
 import { HOTEL, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 import { CardShow } from './cardshow.js';
@@ -60,6 +61,9 @@ let endedAt: number | null = null;
 let doneFor: string | null = null;
 let doneTimer = 0;
 let hidden = false;
+/** The player may tap the dice to roll. */
+let rolling = false;
+const rollButton = document.getElementById('roll') as HTMLButtonElement;
 let low = false;
 
 const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
@@ -138,8 +142,8 @@ function present(view: View | null, fanfare = false) {
     cards.hide();
     board.highlight([]);
   }
+  if (!view || isOver(view)) idle();
   if (!view) {
-    hud.show(null, false);
     hud.over(null, names, me);
     return;
   }
@@ -155,20 +159,50 @@ function present(view: View | null, fanfare = false) {
   ask(view);
 }
 
-/** Shows the decision of `view`: buttons for the player who decides, who is deciding to the rest. */
+/** Clears the decision on screen while moves play: its buttons, the roll and its line on the board. */
+function idle() {
+  hud.show([]);
+  board.status(null);
+  rolling = false;
+  board.inviteRoll(false);
+}
+
+/**
+ * Shows the decision of `view`. What it is about is printed on the board (who is deciding, for the
+ * others); the player deciding gets its buttons, or the dice to tap and a blinking line for a roll.
+ */
 function ask(view: View) {
   panel = decide(view, me, names);
   sending = false;
   const mine = panel.buttons.some((b) => !b.disabled) || !!panel.pick;
-  if (panel.card && mine && panel.buttons.length > 0) {
-    hud.show(null, false);
+  idle();
+  if (view.phase === 'quiz' && view.quiz) {
+    showQuiz(
+      view,
+      panel,
+      mine
+        ? (b) => {
+            cards.busy(true);
+            send(b.event, b.payload);
+          }
+        : null,
+    );
+  } else if (panel.card && mine && panel.buttons.length > 0) {
     cards.choose(panel.card, names[view.card?.seat ?? view.turn] ?? '', panel.buttons, (b) => {
       cards.busy(true);
       send(b.event, b.payload);
     });
   } else {
     cards.hide();
-    hud.show(panel, mine);
+    const roll = mine ? panel.buttons.find((b) => b.event === 'roll' && !b.disabled) : undefined;
+    rolling = !!roll;
+    board.inviteRoll(rolling);
+    board.status(
+      roll
+        ? { title: roll.label, sub: panel.title, tone: 'gold', blink: true }
+        : { title: panel.title, ...(panel.text && { sub: panel.text }) },
+    );
+    hud.show(mine ? panel.buttons.filter((b) => b.event !== 'roll') : []);
   }
   board.highlight(panel.pick?.tiles ?? []);
 }
@@ -193,7 +227,7 @@ async function play() {
       present(next);
       continue;
     }
-    hud.show(null, false);
+    idle();
     board.highlight([]);
     await animate(next, changes(before, next), pace(next, queue.length), () => mine === epoch);
     if (mine !== epoch) break;
@@ -217,6 +251,8 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
   board.setPace(pace);
   /** Every Lot that changed builds at once, from the first Lot step on. */
   let building: Promise<unknown> | null = null;
+  /** Per seat, the cash a payment already counted on its card. */
+  const counted: number[] = [];
   for (const step of steps) {
     if (!live()) return;
     switch (step.kind) {
@@ -227,11 +263,11 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         await board.walk(step.seat, step.from, step.steps, ms(170));
         break;
       case 'release':
-        hud.say(`${names[step.seat] ?? ''} ra tù`);
+        board.say(`${names[step.seat] ?? ''} ra tù`);
         await board.release(step.seat, ms(650));
         break;
       case 'jump':
-        if (step.how === 'jail') hud.say(`${names[step.seat] ?? ''} vào tù`);
+        if (step.how === 'jail') board.say(`${names[step.seat] ?? ''} vào tù`, { tone: 'bad' });
         await board.jump(step.seat, step.to, ms(step.how === 'flight' ? 1400 : 560), step.how);
         break;
       case 'card': {
@@ -254,24 +290,22 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
             steps.map((s) => s.kind === 'lot' && board.build(s.tile, s.before, s.after, ms(800))),
           );
         }
-        if (step.kind === 'lot') announceLot(step, show);
+        if (step.kind === 'lot') announceLot(step);
         if (step.kind === 'festival' && step.tile !== null)
-          hud.say(`Lễ hội ở ${BOARD[step.tile]?.name}`);
+          board.say('Lễ hội', { sub: BOARD[step.tile]?.name, tone: 'gold' });
         if (step.kind === 'blackout' && step.tile !== null)
-          hud.say(`Mất điện ở ${BOARD[step.tile]?.name}`);
+          board.say('Mất điện', { sub: BOARD[step.tile]?.name, tone: 'bad' });
         await wait(ms(420));
         break;
       case 'fullset':
         await building;
         if (!live()) return;
-        moments.announce(
-          'Đủ bộ màu!',
-          `${names[step.seat] ?? ''} · thuê ×${TUNING.fullSet}`,
-          'gold',
-          2000,
-          show,
-          { color: SEAT_COLORS[step.seat] },
-        );
+        board.say('Đủ bộ màu!', {
+          sub: `${names[step.seat] ?? ''} · thuê ×${TUNING.fullSet}`,
+          tone: 'gold',
+          big: true,
+          ms: 2200,
+        });
         await board.fullSet(step.tiles, step.seat, ms(1400));
         break;
       case 'quiz':
@@ -279,25 +313,40 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         break;
       case 'pay': {
         const grand = grandeur(step.amount);
-        const caption = `${names[step.from] ?? ''} → ${names[step.to] ?? ''}`;
         await building;
         if (!live()) return;
         board.follow(null);
-        if (grand >= 3) board.shake(0.16, 900);
-        const [from, to] = [hud.card(step.from), hud.card(step.to)];
-        await moments.pay(from, to, step.amount, grand, show, low, caption);
-        if (grand >= 3 && live()) board.shake(0.1, 400);
+        if (grand >= 2) board.shake(grand >= 3 ? 0.18 : 0.08, grand >= 3 ? 900 : 500);
+        const bill = {
+          title: billTitle(step, after),
+          from: names[step.from] ?? '',
+          to: names[step.to] ?? '',
+          amount: step.amount,
+        };
+        const { from, to, amount } = step;
+        await moments.pay(hud.card(from), hud.card(to), bill, grand, show, {
+          low,
+          payer: from === me,
+          onFly: (flight) => {
+            hud.delta(from, -amount, flight);
+            hud.delta(to, amount, flight);
+            counted[from] = (counted[from] ?? 0) - amount;
+            counted[to] = (counted[to] ?? 0) + amount;
+          },
+        });
         break;
       }
-      case 'cash':
-        hud.delta(step.seat, step.delta);
+      case 'cash': {
+        const rest = step.delta - (counted[step.seat] ?? 0);
+        if (rest !== 0) hud.delta(step.seat, rest, ms(600));
         break;
+      }
       case 'bankrupt':
         await building;
         if (!live()) return;
         board.showLots(after);
         hud.broke(step.seat);
-        moments.announce('Phá sản!', names[step.seat] ?? '', 'bad', 2200, show);
+        board.say('Phá sản!', { sub: names[step.seat], tone: 'bad', big: true, ms: 2400 });
         await board.fall(step.seat, step.lots, ms(2000));
         await wait(ms(400));
         break;
@@ -308,32 +357,43 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
   if (steps.some((s) => s.kind === 'cash')) await wait(ms(500));
 }
 
-/** Names what happened to a Lot: a Takeover or a new Hotel across the middle, the rest in the banner. */
-function announceLot(step: Extract<Change, { kind: 'lot' }>, pace: number) {
+/** Prints what happened to a Lot in the middle of the board; a Takeover or a new Hotel big. */
+function announceLot(step: Extract<Change, { kind: 'lot' }>) {
   const name = BOARD[step.tile]?.name ?? '';
   const who = (seat: number) => names[seat] ?? '';
   const { before: was, after: now } = step;
-  if (!now) hud.say(`${name} về ngân hàng`);
-  else if (!was) hud.say(`${who(now.owner)} mua ${name}`);
+  if (!now) board.say(`${name} về ngân hàng`);
+  else if (!was) board.say(`${who(now.owner)} mua ${name}`);
   else if (was.owner !== now.owner)
-    moments.announce(
-      'Mua lại!',
-      `${who(now.owner)} lấy ${name} của ${who(was.owner)}`,
-      'bad',
-      2200,
-      pace,
-    );
-  else if (now.level >= HOTEL && was.level < HOTEL)
-    moments.announce('Khách sạn!', `${who(now.owner)} · ${name}`, 'gold', 2200, pace, {
-      color: SEAT_COLORS[now.owner],
+    board.say('Mua lại!', {
+      sub: `${who(now.owner)} lấy ${name} của ${who(was.owner)}`,
+      tone: 'bad',
+      big: true,
+      ms: 2400,
     });
-  else if (now.level > was.level) hud.say(`${name} lên ${levelName(now.level)}`);
-  else hud.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
+  else if (now.level >= HOTEL && was.level < HOTEL)
+    board.say('Khách sạn!', {
+      sub: `${who(now.owner)} · ${name}`,
+      tone: 'gold',
+      big: true,
+      ms: 2400,
+    });
+  else if (now.level > was.level) board.say(`${name} lên ${levelName(now.level)}`);
+  else board.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
+}
+
+/** What a bill is for: the rent or Takeover of a Lot, the Card drawn, or a Debt. */
+function billTitle(step: Extract<Change, { kind: 'pay' }>, after: View) {
+  const lot = step.tile === null ? '' : (BOARD[step.tile]?.name ?? '');
+  if (step.why === 'rent') return `Tiền thuê · ${lot}`;
+  if (step.why === 'takeover') return `Mua lại · ${lot}`;
+  if (step.why === 'card' && after.card) return cardOf(TUNING, after.card.id).name;
+  return 'Trả nợ';
 }
 
 /**
- * The Quiz's answer: the panel shows the Quiz again with the pick pulsing, then the right answer
- * lights up (the pick shakes when wrong) and the result goes across the middle.
+ * The Quiz's answer: the Quiz's Card shows with the pick pulsing, then the right answer lights up
+ * (the pick shakes when wrong); the Card goes and the result is printed on the board.
  */
 async function revealQuiz(
   after: View,
@@ -345,26 +405,35 @@ async function revealQuiz(
   const quiz = after.quiz;
   if (!quiz) return;
   const asked = decide({ ...after, phase: 'quiz', turn: quiz.seat }, me, names);
-  hud.show(asked, false);
-  hud.quizWait(quiz.picked);
+  showQuiz(after, asked, null);
+  cards.quizWait(quiz.picked);
   await wait(ms(quiz.picked === null ? 500 : 1100));
   if (!live()) return;
-  hud.quizResult(quiz.answer ?? 0, quiz.picked);
+  cards.quizResult(quiz.answer ?? 0, quiz.picked);
+  await wait(ms(1100));
+  if (!live()) return;
+  cards.hide();
   const won = TUNING.quiz.safe * TUNING.quiz.times;
   const answer = asked.buttons[quiz.answer ?? 0]?.label ?? '';
   if (right) {
-    moments.announce('Đúng rồi!', `+${money(won)}`, 'good', 1800, pace, { bottom: true });
+    board.say('Đúng rồi!', { sub: `+${money(won)}`, tone: 'good', big: true, ms: 2000 });
     moments.confetti(['#58b368', '#f6d77a', '#fff2c2'], pace, low, 45);
   } else
-    moments.announce(
-      quiz.picked === null ? 'Hết giờ!' : 'Sai mất rồi',
-      `Đáp án: ${answer}`,
-      'bad',
-      1800,
-      pace,
-      { bottom: true },
-    );
-  await wait(ms(1700));
+    board.say(quiz.picked === null ? 'Hết giờ!' : 'Sai mất rồi', {
+      sub: `Đáp án: ${answer}`,
+      tone: 'bad',
+      big: true,
+      ms: 2000,
+    });
+  await wait(ms(1800));
+}
+
+/** The Quiz of `view` on its Card, `panel`'s answers round it; `onPick` for the player answering. */
+function showQuiz(view: View, panel: Panel, onPick: ((b: Button) => void) | null) {
+  const quiz = view.quiz;
+  if (!quiz) return;
+  const deck = view.card ? cardOf(TUNING, view.card.id).deck : 'chance';
+  cards.quiz(deck, names[quiz.seat] ?? '', quiz.text, panel.buttons, onPick);
 }
 
 /** The Match is over: once its end has shown, tells the Hub, once per Match. */
@@ -388,6 +457,8 @@ function send(event: string, payload?: Record<string, unknown>) {
   if (sending) return;
   sending = true;
   hud.busy(true);
+  rolling = false;
+  board.inviteRoll(false);
   board.highlight([]);
   bridge.send(event, payload ?? {}).catch((error: unknown) => {
     sending = false;
@@ -398,6 +469,9 @@ function send(event: string, payload?: Record<string, unknown>) {
 }
 
 hud.onButton = (button: Button) => send(button.event, button.payload);
+rollButton.addEventListener('click', () => {
+  if (rolling && !playing) send('roll');
+});
 
 canvas.addEventListener('pointerdown', (event) => {
   const rect = canvas.getBoundingClientRect();
@@ -414,12 +488,24 @@ canvas.addEventListener('pointerdown', (event) => {
 /** The turn clock, from the last push's timer. */
 function clock() {
   requestAnimationFrame(clock);
+  rollButton.hidden = !rolling || playing || sending;
+  if (!rollButton.hidden) {
+    const r = board.diceRect();
+    Object.assign(rollButton.style, {
+      left: `${r.left}px`,
+      top: `${r.top}px`,
+      width: `${r.width}px`,
+      height: `${r.height}px`,
+    });
+  }
   if (!timer || !shown || isOver(shown) || playing) {
     hud.timer(null, -1);
+    cards.timer(null);
     return;
   }
   const left = Math.max(0, timer.ms - (Date.now() - timer.at)) / timer.ms;
   hud.timer(left, decider(shown));
+  cards.timer(shown.phase === 'quiz' ? left : null);
 }
 clock();
 
