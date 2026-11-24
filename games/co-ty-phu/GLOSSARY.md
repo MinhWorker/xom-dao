@@ -65,6 +65,15 @@ _Avoid_: Buff, debuff, status
 A mark on one Lot that doubles its rent until the next Festival is placed.
 _Avoid_: Event tile, boost
 
+**Blackout**:
+A mark on one Lot that stops its rent until the turn of the player who placed it comes again.
+Players see "Mất điện".
+_Avoid_: Outage, freeze
+
+**Planning**:
+A Card's free Level on a City of the drawer's. Players see "Quy hoạch".
+_Avoid_: Free upgrade, zoning
+
 **Quiz**:
 A grade-5 maths problem with fresh numbers and four answers, which the drawer may take on
 instead of a safe reward, for a bigger one if answered right in time. Players see "Đố".

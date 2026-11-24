@@ -45,7 +45,17 @@ export function sell(t: Tuning, state: State, seat: number, sale: readonly Sale[
   const players = state.players.map((p, s) =>
     s === seat ? { ...p, cash: p.cash + raised } : p,
   ) as Player[];
-  return { ...state, players, lots };
+  return unmark({ ...state, players, lots });
+}
+
+/** A Festival or Blackout on a Lot that went back to the bank ends. */
+export function unmark(state: State): State {
+  const owned = (tile: number | undefined) => tile !== undefined && state.lots[tile] !== null;
+  return {
+    ...state,
+    festival: owned(state.festival ?? undefined) ? state.festival : null,
+    blackout: owned(state.blackout?.tile) ? state.blackout : null,
+  };
 }
 
 /** Every Lot `seat` owns, sold whole. */

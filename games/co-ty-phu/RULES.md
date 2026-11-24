@@ -2,11 +2,7 @@
 
 Gieo xúc xắc, đi quanh bàn 40 ô, mua đất, xây nhà và khiến đối thủ phá sản. Mỗi người bắt đầu ở Xuất phát với 1.000.
 
-## Lượt chơi
-
-Gieo hai xúc xắc và đi theo tổng. Đi qua hoặc dừng ở Xuất phát nhận 200. Ra đôi được gieo tiếp; ba lần đôi trong một lượt thì vào tù ngay.
-
-Mỗi lựa chọn có 15 giây (Nhanh: 10 giây). Hết giờ thì xúc xắc tự gieo và lời mời bị bỏ qua.
+Gieo hai xúc xắc và đi theo tổng. Đi qua hoặc dừng ở Xuất phát nhận 200. Ra đôi được gieo tiếp; ba lần đôi trong một lượt thì vào tù ngay. Mỗi lựa chọn có 15 giây (Nhanh: 10 giây); hết giờ thì tự gieo, lời mời bị bỏ qua.
 
 ## Mua đất
 
@@ -14,26 +10,44 @@ Dừng ở ô chưa có chủ thì được mua. Mua một thành phố là có 
 
 Mỗi lần dừng ở thành phố của mình được nâng một cấp với giá bằng nửa giá đất: Nhà 1 tới Nhà 4, rồi **Khách sạn**.
 
-## Tiền thuê
+## Tiền thuê và mua lại
 
-Dừng ở đất người khác thì trả tiền thuê. Thành phố thu theo cấp; đủ ba ô cùng màu thì tiền thuê gấp đôi.
+Dừng ở đất người khác thì trả tiền thuê theo cấp; đủ ba ô cùng màu thì gấp đôi. Bến xe thu 50 mỗi bến chủ có. Điện lực, Cấp nước thu xúc xắc ×4, ×10 nếu chủ có cả hai. Chủ ở tù không thu.
 
-Bến xe thu 50 cho mỗi bến chủ có. Điện lực, Cấp nước thu tổng xúc xắc ×4, hoặc ×10 nếu chủ có cả hai. Chủ đang ở tù không thu tiền.
-
-## Mua lại
-
-Trả tiền thuê xong, bạn được mua lại ô đó với giá 1,5 × (giá đất + tiền đã xây), trả cho chủ. Chủ không được từ chối, nhà đi kèm đất, và bạn được nâng ngay một cấp. Khách sạn không mua lại được.
+Trả xong, bạn được mua lại ô đó với giá 1,5 × (giá đất + tiền đã xây), kèm nhà, chủ không được từ chối. Bạn được nâng ngay một cấp. Khách sạn không mua lại được.
 
 ## Ô đặc biệt
 
 - **Sân bay**: trả 100 để bay tới ô bất kỳ.
-- **Thuế**: nộp 10% tiền mặt, ít nhất 100 (thu nhập) hoặc 200 (xa xỉ).
+- **Thuế**: nộp 10% tiền mặt, ít nhất 100 hoặc 200.
 - **Vào tù**: tới Nhà tù ngay.
-- **Cơ hội, Khí vận**: chưa có thẻ.
+- **Cơ hội, Khí vận**: rút một thẻ.
 
-## Nhà tù
+Ở tù, mỗi lượt gieo thử: ra đôi thì ra tù và đi, không gieo tiếp. Hai lần đầu có thể trả 50 hoặc dùng vé ra tù trước khi gieo. Lần thứ ba thì ra dù không ra đôi.
 
-Ở tù, mỗi lượt gieo thử ra đôi. Ra đôi thì ra tù và đi, nhưng không gieo tiếp. Hai lần đầu có thể trả 50 hoặc dùng vé ra tù trước khi gieo. Lần thứ ba ra tù dù không ra đôi.
+## Thẻ
+
+Mỗi bộ có 16 thẻ, xáo đầu ván. Thẻ dùng ngay rồi xuống cuối bộ; vé ra tù thì giữ lại.
+
+Thẻ tính tiền theo tiền mặt, số ô hay số cấp nhà; bắt người giàu nhất đưa tiền người nghèo nhất; thu thuế người nhiều Khách sạn nhất; hoặc đưa bạn đi. Thẻ cho chọn nhận tiền hay gieo thêm, về Xuất phát hay đổi chỗ; hết giờ thì nhận tiền.
+
+## Lễ hội, Mất điện, Quy hoạch
+
+- **Lễ hội**: một ô đất của bạn thu tiền thuê gấp đôi, tới Lễ hội sau.
+- **Mất điện**: một ô đất của người khác không thu tiền thuê, tới lượt sau của bạn.
+- **Quy hoạch**: một thành phố của bạn được nâng một cấp miễn phí.
+
+**Đố**: nhận 100, hoặc giải một bài toán để nhận 400. Có 4 đáp án và 20 giây; sai hoặc hết giờ thì không nhận gì.
+
+## Hiệu ứng
+
+Kéo dài theo lượt của chính bạn. Giữ tối đa 2; có thêm thì mất cái cũ nhất, rút lại thì tính lại từ đầu.
+
+- **Thần tài**: thu tiền thuê gấp đôi, 2 lượt.
+- **Kẹt xe**: gieo một xúc xắc, 2 lượt.
+- **Miễn thuê**: không trả lần tiền thuê tới.
+- **Ốm**: bỏ lượt tới.
+- **Khởi nghiệp**: nâng cấp nửa giá, 3 lượt.
 
 ## Nợ và phá sản
 

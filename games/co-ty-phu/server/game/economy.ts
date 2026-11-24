@@ -23,8 +23,21 @@ export function isFullSet(state: State, tile: number) {
   return owner !== undefined && setTiles(city.set).every((i) => state.lots[i]?.owner === owner);
 }
 
-/** What landing on an owned Lot costs; `diceSum` prices a utility. 0 when nobody owns it. */
+/**
+ * What landing on an owned Lot costs; `diceSum` prices a utility. 0 when nobody owns it or it is
+ * in a Blackout; doubled by a Festival and by its owner's Thần tài.
+ */
 export function rent(t: Tuning, state: State, tile: number, diceSum: number) {
+  const lot = state.lots[tile];
+  if (!lot || state.blackout?.tile === tile) return 0;
+  const owner = state.players[lot.owner];
+  const times =
+    (state.festival === tile ? t.festivalRent : 1) *
+    (owner?.effects.some((e) => e.id === 'lucky') ? t.luckyRent : 1);
+  return Math.round(baseRent(t, state, tile, diceSum) * times);
+}
+
+function baseRent(t: Tuning, state: State, tile: number, diceSum: number) {
   const lot = state.lots[tile];
   const kind = BOARD[tile]?.kind;
   if (!lot) return 0;
