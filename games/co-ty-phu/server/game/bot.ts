@@ -6,15 +6,13 @@
  */
 import { type GameEvent, int, type Rng } from '@xomdao/sdk';
 import { AIRPORT_TILE, BOARD, isLot, setTiles } from './board.js';
-import { botPick, cardOf, picksOf } from './cards.js';
+import { AVERAGE_ROLL, botPick, cardOf, picksOf } from './cards.js';
 import { landPrice, rent, takeoverPrice, upgradeCost } from './economy.js';
 import { HOTEL, JAIL_TRIES, type Player, type State } from './model.js';
 import type { Tuning } from './tuning.js';
 
 /** The least cash the computer keeps after buying or building. */
 const MIN_RESERVE = 150;
-/** The dice sum the computer prices a utility's rent with. */
-const AVERAGE_ROLL = 7;
 
 /** What the computer plays for `seat` now, or `null` when it is not theirs to play. */
 export function botMove(t: Tuning, state: State, seat: number, rng: Rng): GameEvent | null {

@@ -302,7 +302,7 @@ export const asks = (action: CardAction) => ASKS[action.kind] !== undefined;
 export const offers = (action: CardAction) => ASKS[action.kind] === 'offer';
 
 /** The dice sum the computer prices a utility's rent with. */
-const AVERAGE_ROLL = 7;
+export const AVERAGE_ROLL = 7;
 
 /** The pick the computer makes, from `picks` (not empty). */
 export function botPick(
