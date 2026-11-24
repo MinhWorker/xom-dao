@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs && node ../../tools/hub-assets/dist/cli.js",
-    "dev": "vite build --watch",
+    "dev": "vite build --watch --emptyOutDir false",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
