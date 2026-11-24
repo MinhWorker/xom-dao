@@ -22,6 +22,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { BOARD } from '../server/game/board.js';
+import { ambience } from './ambience.js';
 import { die, hotel, house, token } from './pieces.js';
 import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from './print.js';
 
@@ -347,13 +348,12 @@ const frameCamera = () => {
   place(d, tz);
 };
 
-const render = () => {
+const resize = () => {
   const { clientWidth: w, clientHeight: h } = frame;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   frameCamera();
-  renderer.render(scene, camera);
 };
 
 const printed = new CanvasTexture(printBoard());
@@ -371,4 +371,10 @@ roster.innerHTML = PLAYERS.map(
 ).join('');
 
 buildPieces();
-new ResizeObserver(render).observe(frame);
+const tick = ambience(pieces, at);
+new ResizeObserver(resize).observe(frame);
+resize();
+renderer.setAnimationLoop((ms) => {
+  tick(ms / 1000);
+  renderer.render(scene, camera);
+});

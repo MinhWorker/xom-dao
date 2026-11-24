@@ -136,11 +136,26 @@ const wrap = (ctx: CanvasRenderingContext2D, name: string, maxW: number, size: n
   return [words.slice(0, bestSplit).join(' '), words.slice(bestSplit).join(' ')];
 };
 
-/** Draws an icon `s` pixels across, centred on the origin; `tint` paints it in one colour. */
-type Icon = (ctx: CanvasRenderingContext2D, s: number, tint?: string) => void;
+/** Draws an icon `s` pixels across, centred on the origin. */
+type Icon = (ctx: CanvasRenderingContext2D, s: number) => void;
 
-/** The colour of each deck: its Tile icon and its card back. */
+/** The colour of each deck: its Tiles and its card back. */
 export const DECK_COLORS = { chance: '#e2731c', chest: '#138a84' } as const;
+
+/**
+ * The Tiles that cannot be owned are filled with their own colour and print their name and
+ * icon in CREAM. None of these is a seat colour.
+ */
+export const SPECIAL_COLORS: Partial<Record<Tile['kind'], string>> = {
+  start: '#9e2b3a',
+  jail: '#5a4632',
+  airport: '#4b5266',
+  'go-jail': '#3c424c',
+  chance: DECK_COLORS.chance,
+  chest: DECK_COLORS.chest,
+  tax: '#a07a12',
+};
+const CREAM = '#fff6e1';
 
 const stroke = (ctx: CanvasRenderingContext2D, s: number, color = INK) => {
   ctx.strokeStyle = color;
@@ -165,33 +180,33 @@ const ICONS: Partial<Record<Tile['kind'], Icon>> = {
     }
   },
   tax: (ctx, s) => {
-    ctx.fillStyle = '#b8860b';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = s * 0.08;
     ctx.beginPath();
-    ctx.arc(0, 0, s * 0.45, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff6d8';
+    ctx.arc(0, 0, s * 0.42, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = INK;
     ctx.font = `900 ${s * 0.6}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('₫', 0, s * 0.03);
   },
-  chance: (ctx, s, tint) => {
-    ctx.fillStyle = tint ?? DECK_COLORS.chance;
+  chance: (ctx, s) => {
+    ctx.fillStyle = INK;
     ctx.font = `900 ${s * 1.1}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('?', 0, s * 0.04);
   },
-  chest: (ctx, s, tint) => {
-    ctx.fillStyle = tint ?? DECK_COLORS.chest;
+  chest: (ctx, s) => {
+    ctx.fillStyle = INK;
     ctx.beginPath();
     ctx.roundRect(-s * 0.48, -s * 0.2, s * 0.96, s * 0.58, s * 0.06);
     ctx.fill();
     ctx.beginPath();
     ctx.ellipse(0, -s * 0.2, s * 0.48, s * 0.24, 0, Math.PI, 0);
     ctx.fill();
-    ctx.fillStyle = tint ? DECK_COLORS.chest : '#f2c94c';
-    ctx.fillRect(-s * 0.08, -s * 0.12, s * 0.16, s * 0.2);
+    ctx.clearRect(-s * 0.08, -s * 0.12, s * 0.16, s * 0.2);
   },
 };
 
@@ -219,8 +234,6 @@ const drop: Icon = (ctx, s) => {
 };
 
 const bars: Icon = (ctx, s) => {
-  ctx.fillStyle = '#e8a33a';
-  ctx.fillRect(-s * 0.5, -s * 0.5, s, s);
   stroke(ctx, s);
   ctx.strokeRect(-s * 0.5, -s * 0.5, s, s);
   for (const x of [-0.25, 0, 0.25]) {
@@ -302,6 +315,21 @@ const iconOf = (tile: Tile): Icon | undefined => {
   return ICONS[tile.kind];
 };
 
+/** An icon as a canvas `s` pixels square, painted all in `tint` (a silhouette). */
+export const tintedIcon = (kind: Tile['kind'], s: number, tint: string) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = Math.ceil(s * 1.25);
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  const icon = iconOf({ kind, name: '' } as Tile);
+  icon?.(ctx, s);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  return canvas;
+};
+
 const priceOf = (tile: Tile) => {
   if (tile.kind === 'city') return tile.price;
   if (tile.kind === 'station') return 200;
@@ -319,6 +347,11 @@ const drawFace = (
   px: number,
 ) => {
   let area = { x: -w / 2, y: -h / 2, w, h };
+  const special = SPECIAL_COLORS[tile.kind];
+  if (special) {
+    ctx.fillStyle = special;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+  }
   if (tile.kind === 'city' && band) {
     const b = BAND * px;
     ctx.fillStyle = SET_COLORS[tile.set];
@@ -367,7 +400,7 @@ const drawFace = (
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.fillStyle = INK;
+  ctx.fillStyle = special ? CREAM : INK;
   ctx.font = `800 ${size}px system-ui, "Segoe UI", Roboto, sans-serif`;
   for (const line of lines) {
     ctx.fillText(line, cx, y);
@@ -375,10 +408,15 @@ const drawFace = (
   }
   if (icon) {
     y += px * 0.04;
-    ctx.save();
-    ctx.translate(cx, y + iconS / 2);
-    icon(ctx, iconS);
-    ctx.restore();
+    if (special) {
+      const art = tintedIcon(tile.kind, iconS, CREAM);
+      ctx.drawImage(art, cx - art.width / 2, y + iconS / 2 - art.height / 2);
+    } else {
+      ctx.save();
+      ctx.translate(cx, y + iconS / 2);
+      icon(ctx, iconS);
+      ctx.restore();
+    }
     y += iconS + px * 0.04;
   }
   if (price) {
@@ -457,7 +495,7 @@ export const cardBack = (deck: keyof typeof DECK_COLORS): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   ctx.fillStyle = DECK_COLORS[deck];
   ctx.fillRect(0, 0, 600, 400);
-  const icon = ICONS[deck] as Icon;
+  const art = tintedIcon(deck, 52, 'rgba(255, 246, 225, 0.32)');
   const step = 92;
   ctx.save();
   ctx.beginPath();
@@ -468,12 +506,12 @@ export const cardBack = (deck: keyof typeof DECK_COLORS): HTMLCanvasElement => {
       ctx.save();
       ctx.translate(col * step + (row % 2 ? step / 2 : 0), row * step);
       ctx.rotate(row % 2 ? -0.25 : 0.25);
-      icon(ctx, 52, 'rgba(255, 246, 225, 0.32)');
+      ctx.drawImage(art, -art.width / 2, -art.height / 2);
       ctx.restore();
     }
   }
   ctx.restore();
-  ctx.strokeStyle = '#fff6e1';
+  ctx.strokeStyle = CREAM;
   ctx.lineWidth = 8;
   ctx.beginPath();
   ctx.roundRect(28, 28, 544, 344, 18);
