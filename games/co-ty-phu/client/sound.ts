@@ -88,9 +88,14 @@ export class Sounds {
       void this.ctx?.resume();
       return;
     }
+    this.stop();
+    void this.ctx?.suspend();
+  }
+
+  /** Stops the effects playing and those still due: what they went with was cut short. */
+  stop() {
     for (const source of this.playing) source.stop();
     this.playing.clear();
-    void this.ctx?.suspend();
   }
 
   /**
@@ -105,6 +110,7 @@ export class Sounds {
     const { ctx, effects } = this;
     const buffer = this.buffers.get(sound);
     if (!ctx || !effects || !buffer || this.hidden || this.levels.effects === 0) return;
+    if (ctx.state !== 'running') return;
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.playbackRate.value = rate;

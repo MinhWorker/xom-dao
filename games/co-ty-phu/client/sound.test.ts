@@ -126,6 +126,33 @@ describe('Sounds', () => {
   });
 });
 
+describe('Sounds, cut short', () => {
+  beforeEach(() => {
+    vi.stubGlobal('window', { addEventListener() {} });
+    vi.stubGlobal('AudioContext', FakeAudioContext);
+    vi.stubGlobal('fetch', () => Promise.resolve({ arrayBuffer: () => new ArrayBuffer(0) }));
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('stops effects still due when what they went with is cut short', async () => {
+    const sounds = new Sounds([]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const ctx = FakeAudioContext.last;
+    sounds.play('slam', { at: 700 });
+    sounds.stop();
+    expect(ctx.sources[0]?.stopped).toBe(true);
+  });
+
+  it('plays nothing before the first tap unlocks audio, so none pile up', async () => {
+    const sounds = new Sounds([]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const ctx = FakeAudioContext.last;
+    ctx.state = 'suspended';
+    sounds.play('step');
+    expect(ctx.sources).toHaveLength(0);
+  });
+});
+
 describe('ticks', () => {
   it('ticks once as each of the last five seconds begins', () => {
     expect(ticks(6200, 5900)).toBe(false);

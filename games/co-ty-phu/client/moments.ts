@@ -59,9 +59,8 @@ export class Moments {
    * `grandeur(amount)`, 0 to 3); from 2 the screen shakes and its edge glows red. The `payer`
    * taps "Thanh toán" (or it pays itself after 5 s); for the others it shows a moment, or until a
    * tap. Then it is stamped "Đã thanh toán" as the payer's card shudders, and flies off while its
-   * money flies from card `from` to card `to`; `onPaid` is told at the stamp, `onCoin` as each coin lands
-   * and `onFly` how long the flight takes. Resolves when
-   * the last coin lands.
+   * money flies from card `from` to card `to`. `onPaid` is told at the stamp, `onCoin` as each
+   * coin lands and `onFly` how long the flight takes. Resolves when the last coin lands.
    */
   async pay(
     from: HTMLElement | undefined,

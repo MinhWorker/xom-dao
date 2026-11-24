@@ -48,7 +48,8 @@ its fanfare). `sound.ts` plays the effects in `assets/` (ElevenLabs, see `assets
 at the Hub's effects level and loops one background track at its music level: any
 `assets/music-*.mp3` the owner adds (none yet). `main.ts` times each effect to its animation's
 beats in `scene.ts`, `cardshow.ts` and `moments.ts` (the dice's three bounces, a clink per coin
-landing, a chime per Tile of a Full set), so change those numbers together. `npm run smoke:web` rolls on the dice and plays the next decision in CI.
+landing, a chime per Tile of a Full set), so change those numbers together.
+`npm run smoke:web` rolls on the dice and plays the next decision in CI.
 
 ## Look
 

@@ -136,6 +136,7 @@ function restart() {
   playing = false;
   sending = false;
   board.stop();
+  sounds.stop();
   cards.hide();
   moments.clear();
 }
@@ -289,7 +290,7 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         board.follow(null);
         const speed = hidden ? 0 : pace;
         if (!low) sounds.play('card-slide', { at: 260 * speed });
-        sounds.play('card', { at: low ? 0 : 1030 * speed });
+        sounds.play('card', { at: low ? 0 : 1230 * speed });
         await cards.draw(step.id, names[step.seat] ?? '', speed, low);
         const choosing =
           after.phase === 'card' &&
@@ -306,8 +307,9 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           building = Promise.all(
             steps.map((s) => s.kind === 'lot' && board.build(s.tile, s.before, s.after, ms(800))),
           );
+          for (const s of steps) if (s.kind === 'lot') lotSounds(s, ms);
         }
-        if (step.kind === 'lot') announceLot(step, ms);
+        if (step.kind === 'lot') announceLot(step);
         if (step.kind === 'festival' && step.tile !== null)
           board.say('Lễ hội', { sub: BOARD[step.tile]?.name, tone: 'gold' });
         if (step.kind === 'blackout' && step.tile !== null)
@@ -317,9 +319,7 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
       case 'fullset':
         await building;
         if (!live()) return;
-        for (const [k, rate] of [1, 1.26, 1.5].entries())
-          sounds.play('chime', { at: ms(252 * k), rate });
-        sounds.play('fullset', { at: ms(1134) });
+        fullSetBeats(step.tiles.length, ms);
         board.say('Đủ bộ màu!', {
           sub: `${names[step.seat] ?? ''} · thuê ×${TUNING.fullSet}`,
           tone: 'gold',
@@ -375,12 +375,7 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         sounds.play('slam', { at: ms(257), gain: 0.8 });
         for (let k = 0; k < step.lots.length; k++)
           sounds.play('crumble', { at: ms(700 + k * 300), gain: 0.8 });
-        board.say('Phá sản!', {
-          sub: names[step.seat],
-          tone: 'bad',
-          big: true,
-          ms: 2400,
-        });
+        board.say('Phá sản!', { sub: names[step.seat], tone: 'bad', big: true, ms: 2400 });
         await board.fall(step.seat, step.lots, ms(2000));
         await wait(ms(400));
         break;
@@ -410,36 +405,49 @@ function rollBeats(dice: number, ms: (n: number) => number) {
       });
 }
 
+/** A Lot's sounds as `board.build` plays it: bought, Taken over (yanked up, slammed down), a new Hotel, or each house rising. */
+function lotSounds(step: Extract<Change, { kind: 'lot' }>, ms: (n: number) => number) {
+  const { before: was, after: now } = step;
+  if (!now) return;
+  if (!was) sounds.play('buy');
+  else if (was.owner !== now.owner) {
+    sounds.play('takeover');
+    sounds.play('slam', { at: ms(752) });
+  } else if (now.level >= HOTEL && was.level < HOTEL) sounds.play('hotel');
+  else for (let k = 0; k < now.level - was.level; k++) sounds.play('build', { at: ms(144 * k) });
+}
+
+/** A rising chime as each of a Full set's `tiles` Tiles lights, then its gold sparkle. */
+function fullSetBeats(tiles: number, ms: (n: number) => number) {
+  const steps = [1, 1.26, 1.5, 2];
+  for (let k = 0; k < tiles; k++)
+    sounds.play('chime', { at: ms(252 * k), rate: steps[k % steps.length] });
+  sounds.play('fullset', { at: ms(252 * (tiles - 1) + 630) });
+}
+
 /** Prints what happened to a Lot in the middle of the board; a Takeover or a new Hotel big. */
-function announceLot(step: Extract<Change, { kind: 'lot' }>, ms: (n: number) => number) {
+function announceLot(step: Extract<Change, { kind: 'lot' }>) {
   const name = BOARD[step.tile]?.name ?? '';
   const who = (seat: number) => names[seat] ?? '';
   const { before: was, after: now } = step;
   if (!now) board.say(`${name} về ngân hàng`);
-  else if (!was) {
-    sounds.play('buy');
-    board.say(`${who(now.owner)} mua ${name}`);
-  } else if (was.owner !== now.owner) {
-    sounds.play('takeover');
-    sounds.play('slam', { at: ms(752) });
+  else if (!was) board.say(`${who(now.owner)} mua ${name}`);
+  else if (was.owner !== now.owner)
     board.say('Mua lại!', {
       sub: `${who(now.owner)} lấy ${name} của ${who(was.owner)}`,
       tone: 'bad',
       big: true,
       ms: 2400,
     });
-  } else if (now.level >= HOTEL && was.level < HOTEL) {
-    sounds.play('hotel');
+  else if (now.level >= HOTEL && was.level < HOTEL)
     board.say('Khách sạn!', {
       sub: `${who(now.owner)} · ${name}`,
       tone: 'gold',
       big: true,
       ms: 2400,
     });
-  } else if (now.level > was.level) {
-    for (let k = 0; k < now.level - was.level; k++) sounds.play('build', { at: ms(144 * k) });
-    board.say(`${name} lên ${levelName(now.level)}`);
-  } else board.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
+  else if (now.level > was.level) board.say(`${name} lên ${levelName(now.level)}`);
+  else board.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
 }
 
 /** What a bill is for: the rent or Takeover of a Lot, the Card drawn, or a Debt. */
@@ -477,12 +485,7 @@ async function revealQuiz(
   const won = TUNING.quiz.safe * TUNING.quiz.times;
   const answer = asked.buttons[quiz.answer ?? 0]?.label ?? '';
   if (right) {
-    board.say('Đúng rồi!', {
-      sub: `+${money(won)}`,
-      tone: 'good',
-      big: true,
-      ms: 2000,
-    });
+    board.say('Đúng rồi!', { sub: `+${money(won)}`, tone: 'good', big: true, ms: 2000 });
     moments.confetti(['#58b368', '#f6d77a', '#fff2c2'], pace, low, 45);
   } else
     board.say(quiz.picked === null ? 'Hết giờ!' : 'Sai mất rồi', {
