@@ -35,6 +35,8 @@ Trả tiền thuê xong, bạn được mua lại ô đó với giá 1,5 × (gi�
 
 Ở tù, mỗi lượt gieo thử ra đôi. Ra đôi thì ra tù và đi, nhưng không gieo tiếp. Hai lần đầu có thể trả 50 hoặc dùng vé ra tù trước khi gieo. Lần thứ ba ra tù dù không ra đôi.
 
-## Thắng ván
+## Nợ và phá sản
 
-Hết tiền là phá sản: đất trả về ngân hàng. Người cuối cùng chưa phá sản là người thắng.
+Thiếu tiền trả thì bán cho ngân hàng: bớt cấp nhà (nửa giá cấp đó) hoặc cả ô (nửa giá đất và nhà, ô thành vô chủ). Gợi ý bán cấp trước, rồi ô lẻ, giữ bộ đủ màu tới cuối; hết giờ thì bán theo gợi ý.
+
+Bán hết vẫn thiếu là phá sản: chủ nợ nhận tiền bạn còn, đất về ngân hàng, mất vé ra tù. Người rời ván do máy chơi thay, xếp chót. Người cuối cùng chưa phá sản thắng.

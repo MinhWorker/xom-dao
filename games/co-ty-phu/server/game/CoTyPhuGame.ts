@@ -4,18 +4,23 @@
  * `use-card` before rolling. Every decision runs the clock of the Room's "Tốc độ"; when it runs
  * out the safe choice is made (`timeout`): roll, or pass the offer.
  *
- * Debt and Selling are not in yet: a player whose cash goes below zero is bankrupt at once and
- * their Lots go back to the bank.
+ * A payment larger than the payer's cash is a Debt (phase `debt`): the debtor `sell`s Levels or
+ * Lots to the bank (debt.ts) until it is covered, or the suggested sale is made when the clock
+ * runs out. When even Selling everything is not enough the payer is bankrupt at once. A seat
+ * whose person left is played by `bot`, which makes the safe choice too.
  */
 import {
+  type BotContext,
   type EventContext,
   Game,
   type GameContext,
+  type GameEvent,
   type Rng,
   type StartContext,
 } from '@xomdao/sdk';
 import { z } from 'zod';
 import { AIRPORT_TILE, BOARD, isLot, JAIL_TILE } from './board.js';
+import { everything, saleProblem, sell, suggestSale } from './debt.js';
 import { landPrice, levelCost, rent, takeoverPrice, taxOf } from './economy.js';
 import {
   CLOCK_MS,
@@ -31,12 +36,14 @@ import { TUNING, type Tuning } from './tuning.js';
 type Ctx = GameContext<State, Options>;
 type Move<P = Record<string, never>> = EventContext<State, P, Options>;
 
-const fly = z.object({
-  to: z
-    .number()
-    .int()
-    .min(0)
-    .max(BOARD.length - 1),
+const tile = z
+  .number()
+  .int()
+  .min(0)
+  .max(BOARD.length - 1);
+const fly = z.object({ to: tile });
+const sale = z.object({
+  sale: z.array(z.object({ tile, levels: z.number().int().min(1).optional() })).max(BOARD.length),
 });
 
 export interface CoTyPhuSetup {
@@ -59,6 +66,7 @@ export class CoTyPhuGame extends Game<State, Options> {
     pass: z.object({}),
     'pay-bail': z.object({}),
     'use-card': z.object({}),
+    sell: sale,
   };
 
   private readonly t: Tuning;
@@ -91,6 +99,7 @@ export class CoTyPhuGame extends Game<State, Options> {
       doubles: 0,
       again: false,
       bankrupt: [],
+      debt: null,
     });
     ctx.setTimer(CLOCK_MS[ctx.options.speed], 'timeout');
     return state;
@@ -104,14 +113,24 @@ export class CoTyPhuGame extends Game<State, Options> {
   onPayBail(ctx: Move): State {
     const me = this.checkJailed(ctx);
     if (me.cash < this.t.jailFine) ctx.reject('Không đủ tiền');
-    const free = { ...me, cash: me.cash - this.t.jailFine, jailed: false, jailTries: 0 };
+    const free = {
+      ...me,
+      cash: me.cash - this.t.jailFine,
+      jailed: false,
+      jailTries: 0,
+    };
     return this.settle(ctx, withPlayer(ctx.state, ctx.player.seat, free));
   }
 
   onUseCard(ctx: Move): State {
     const me = this.checkJailed(ctx);
     if (me.jailCards < 1) ctx.reject('Bạn không có vé ra tù');
-    const free = { ...me, jailCards: me.jailCards - 1, jailed: false, jailTries: 0 };
+    const free = {
+      ...me,
+      jailCards: me.jailCards - 1,
+      jailed: false,
+      jailTries: 0,
+    };
     return this.settle(ctx, withPlayer(ctx.state, ctx.player.seat, free));
   }
 
@@ -120,7 +139,10 @@ export class CoTyPhuGame extends Game<State, Options> {
     const price = landPrice(this.t, me.tile);
     if (me.cash < price) ctx.reject('Không đủ tiền');
     const level = BOARD[me.tile]?.kind === 'city' ? 1 : 0;
-    const state = withPlayer(ctx.state, ctx.player.seat, { ...me, cash: me.cash - price });
+    const state = withPlayer(ctx.state, ctx.player.seat, {
+      ...me,
+      cash: me.cash - price,
+    });
     return this.settle(
       ctx,
       this.next(withLot(state, me.tile, { owner: ctx.player.seat, level, built: 0 })),
@@ -133,7 +155,10 @@ export class CoTyPhuGame extends Game<State, Options> {
     const lot = ctx.state.lots[me.tile];
     if (!lot) ctx.reject('Chưa thể làm việc này lúc này');
     if (me.cash < cost) ctx.reject('Không đủ tiền');
-    const state = withPlayer(ctx.state, ctx.player.seat, { ...me, cash: me.cash - cost });
+    const state = withPlayer(ctx.state, ctx.player.seat, {
+      ...me,
+      cash: me.cash - cost,
+    });
     const built = { ...lot, level: lot.level + 1, built: lot.built + cost };
     return this.settle(ctx, this.next(withLot(state, me.tile, built)));
   }
@@ -144,7 +169,7 @@ export class CoTyPhuGame extends Game<State, Options> {
     const lot = ctx.state.lots[me.tile];
     if (!lot || price === null) ctx.reject('Chưa thể làm việc này lúc này');
     if (me.cash < price) ctx.reject('Không đủ tiền');
-    let state = pay(ctx.state, ctx.player.seat, lot.owner, price);
+    let state = transfer(ctx.state, ctx.player.seat, lot.owner, price);
     state = withLot(state, me.tile, { ...lot, owner: ctx.player.seat });
     return this.settle(ctx, this.offerUpgrade(state, ctx.player.seat) ?? this.next(state));
   }
@@ -164,13 +189,38 @@ export class CoTyPhuGame extends Game<State, Options> {
   onPass(ctx: Move): State {
     if (ctx.state.turn !== ctx.player.seat) ctx.reject('Chưa tới lượt bạn');
     if (ctx.state.phase === 'roll') ctx.reject('Hãy gieo xúc xắc');
+    if (ctx.state.phase === 'debt') ctx.reject('Hãy bán đất để trả nợ');
     return this.settle(ctx, this.next(ctx.state));
+  }
+
+  onSell(ctx: Move<z.infer<typeof sale>>): State {
+    const { debt } = ctx.state;
+    if (ctx.state.phase !== 'debt' || !debt) ctx.reject('Chưa thể làm việc này lúc này');
+    if (debt.from !== ctx.player.seat) ctx.reject('Bạn không có nợ');
+    const problem = saleProblem(ctx.state, debt.from, ctx.payload.sale);
+    if (problem) ctx.reject(problem);
+    const sold = sell(this.t, ctx.state, debt.from, ctx.payload.sale);
+    if ((sold.players[debt.from] as Player).cash < debt.amount) ctx.reject('Bán chưa đủ để trả nợ');
+    return this.settle(ctx, this.next(this.charge(sold, debt.from, debt.to, debt.amount)));
   }
 
   /** The clock ran out: the safe choice. */
   onTimeout(ctx: Ctx): State {
-    const state = ctx.state.phase === 'roll' ? this.roll(ctx, ctx.state) : this.next(ctx.state);
-    return this.settle(ctx, state);
+    const { state } = ctx;
+    if (state.phase === 'roll') return this.settle(ctx, this.roll(ctx, state));
+    if (state.phase === 'debt' && state.debt) return this.settle(ctx, this.sellSuggested(state));
+    return this.settle(ctx, this.next(state));
+  }
+
+  /** The safe choice for a computer seat (#349 makes it play): roll, pass, or the suggested sale. */
+  bot(ctx: BotContext<State, Options>): GameEvent | null {
+    const { state, player } = ctx;
+    if (state.phase === 'debt')
+      return state.debt?.from === player.seat
+        ? { event: 'sell', payload: { sale: state.debt.suggested } }
+        : null;
+    if (state.turn !== player.seat) return null;
+    return { event: state.phase === 'roll' ? 'roll' : 'pass' };
   }
 
   /** Refuses a move out of turn or out of `phase`; the turn player otherwise. */
@@ -215,7 +265,11 @@ export class CoTyPhuGame extends Game<State, Options> {
       if (!double && tries < JAIL_TRIES) {
         return this.endTurn(withPlayer(rolled, seat, { ...me, jailTries: tries }));
       }
-      const free = withPlayer(rolled, seat, { ...me, jailed: false, jailTries: 0 });
+      const free = withPlayer(rolled, seat, {
+        ...me,
+        jailed: false,
+        jailTries: 0,
+      });
       return this.move({ ...free, again: false }, seat, steps);
     }
     const doubles = state.doubles + (double ? 1 : 0);
@@ -245,15 +299,18 @@ export class CoTyPhuGame extends Game<State, Options> {
       const owner = state.players[lot.owner] as Player;
       const sum = (state.dice?.[0] ?? 0) + (state.dice?.[1] ?? 0);
       const due = owner.jailed ? 0 : rent(this.t, state, me.tile, sum);
-      const paid = pay(state, seat, lot.owner, due);
+      const paid = this.charge(state, seat, lot.owner, due);
+      if (paid.phase === 'debt') return paid;
       const after = paid.players[seat] as Player;
       const price = takeoverPrice(this.t, paid, me.tile);
       if (!after.bankrupt && price !== null && after.cash >= price)
         return { ...paid, phase: 'takeover' };
       return this.next(paid);
     }
-    if (tile?.kind === 'tax')
-      return this.next(pay(state, seat, null, taxOf(this.t, tile.tax, me.cash)));
+    if (tile?.kind === 'tax') {
+      const paid = this.charge(state, seat, null, taxOf(this.t, tile.tax, me.cash));
+      return paid.phase === 'debt' ? paid : this.next(paid);
+    }
     if (tile?.kind === 'go-jail') return this.endTurn(toJail(state, seat));
     if (tile?.kind === 'airport' && me.cash >= this.t.airportFee) return { ...state, phase: 'fly' };
     return this.next(state);
@@ -265,6 +322,26 @@ export class CoTyPhuGame extends Game<State, Options> {
     const lot = state.lots[me.tile];
     if (BOARD[me.tile]?.kind !== 'city' || !lot || lot.level >= HOTEL) return undefined;
     return me.cash >= levelCost(this.t, me.tile) ? { ...state, phase: 'upgrade' } : undefined;
+  }
+
+  /**
+   * `from` pays `amount` to `to` (`null` = the bank). Short of cash, it becomes a Debt; when
+   * even Selling everything is short, `from` Sells it all and is bankrupt.
+   */
+  private charge(state: State, from: number, to: number | null, amount: number): State {
+    const payer = state.players[from] as Player;
+    if (payer.cash >= amount) return transfer(state, from, to, amount);
+    const suggested = suggestSale(this.t, state, from, amount - payer.cash);
+    const raised = (sell(this.t, state, from, suggested).players[from] as Player).cash;
+    if (raised >= amount) return { ...state, phase: 'debt', debt: { from, to, amount, suggested } };
+    return bankrupt(sell(this.t, state, from, everything(state, from)), from, to, amount);
+  }
+
+  private sellSuggested(state: State): State {
+    const debt = state.debt as NonNullable<State['debt']>;
+    return this.next(
+      this.charge(sell(this.t, state, debt.from, debt.suggested), debt.from, debt.to, debt.amount),
+    );
   }
 
   /** The offer is settled: a double rolls again, else the next seat's turn. */
@@ -281,7 +358,14 @@ export class CoTyPhuGame extends Game<State, Options> {
       turn = (state.turn + k) % n;
       if (!state.players[turn]?.bankrupt) break;
     }
-    return { ...state, turn, phase: 'roll', doubles: 0, again: false };
+    return {
+      ...state,
+      turn,
+      phase: 'roll',
+      doubles: 0,
+      again: false,
+      debt: null,
+    };
   }
 }
 
@@ -303,23 +387,34 @@ const toJail = (state: State, seat: number): State =>
     jailTries: 0,
   });
 
-/**
- * `from` pays `amount` to `to` (`null` = the bank). The creditor gets at most what the payer
- * had; a payer left below zero is bankrupt and their Lots go back to the bank.
- */
-function pay(state: State, from: number, to: number | null, amount: number): State {
+/** `from` pays `amount` they have to `to` (`null` = the bank). */
+function transfer(state: State, from: number, to: number | null, amount: number): State {
   const payer = state.players[from] as Player;
-  const received = Math.min(amount, Math.max(0, payer.cash));
-  const cash = payer.cash - amount;
-  let next = withPlayer(state, from, { ...payer, cash });
-  if (to !== null) {
-    const creditor = next.players[to] as Player;
-    next = withPlayer(next, to, { ...creditor, cash: creditor.cash + received });
-  }
-  if (cash >= 0) return next;
+  const paid = withPlayer({ ...state, debt: null }, from, {
+    ...payer,
+    cash: payer.cash - amount,
+  });
+  if (to === null) return paid;
+  const creditor = paid.players[to] as Player;
+  return withPlayer(paid, to, { ...creditor, cash: creditor.cash + amount });
+}
+
+/**
+ * `from` cannot pay `amount`: the creditor gets their cash (at most `amount`), their Lots go
+ * back to the bank and their jail-free Cards are lost.
+ */
+function bankrupt(state: State, from: number, to: number | null, amount: number): State {
+  const payer = state.players[from] as Player;
+  const paid = transfer(state, from, to, Math.min(amount, Math.max(0, payer.cash)));
   return {
-    ...withPlayer(next, from, { ...payer, cash: 0, bankrupt: true, jailed: false }),
-    lots: next.lots.map((l) => (l?.owner === from ? null : l)),
-    bankrupt: [...next.bankrupt, from],
+    ...withPlayer(paid, from, {
+      ...payer,
+      cash: 0,
+      bankrupt: true,
+      jailed: false,
+      jailCards: 0,
+    }),
+    lots: paid.lots.map((l) => (l?.owner === from ? null : l)),
+    bankrupt: [...paid.bankrupt, from],
   };
 }
