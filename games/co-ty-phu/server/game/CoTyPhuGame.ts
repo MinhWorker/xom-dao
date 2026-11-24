@@ -1,11 +1,11 @@
-import { Game, type StartContext } from '@xomdao/sdk';
+import { Game } from '@xomdao/sdk';
 import type { State } from './model.js';
 
-/** Cờ Tỷ Phú: for now a Match that starts and has no moves. */
+/** Cờ Tỷ Phú's rules. */
 export class CoTyPhuGame extends Game<State> {
   readonly events = {};
 
-  onStart(_ctx: StartContext): State {
+  onStart(): State {
     return { turn: 0 };
   }
 }
