@@ -38,6 +38,7 @@ import {
   deckOf,
   JAIL_CARD,
   nearest,
+  offers,
   picksOf,
 } from './cards.js';
 import { landPrice, levelCost, rent, takeoverPrice, taxOf } from './economy.js';
@@ -56,7 +57,7 @@ import {
   type View,
 } from './model.js';
 import { makeQuiz } from './quiz.js';
-import { saleProblem, sell, suggestSale, wholeLots } from './selling.js';
+import { saleProblem, sell, suggestSale, unmark, wholeLots } from './selling.js';
 import { TUNING, type Tuning } from './tuning.js';
 
 type Ctx = GameContext<State, Options>;
@@ -237,8 +238,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
     if (state.phase === 'card') {
       const action = this.pending(state);
       const picks = picksOf(state, state.turn, action);
-      const safe = action.kind.includes('-or-') || action.kind === 'quiz';
-      const choice = safe ? 0 : botPick(this.t, state, action, picks);
+      const choice = offers(action) ? 0 : botPick(this.t, state, action, picks);
       return this.settle(ctx, this.pickCard(ctx, state, action, choice));
     }
     if (state.phase === 'quiz') return this.settle(ctx, this.answerQuiz(state, null));
@@ -315,7 +315,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
     const me = state.players[seat] as Player;
     const dice = this.rollDice(ctx, state, seat);
     const double = dice.length === 2 && dice[0] === dice[1];
-    const steps = sum(dice);
+    const walk = sum(dice);
     const rolled = { ...state, dice, rolls: state.rolls + 1 };
     if (me.jailed) {
       const tries = me.jailTries + 1;
@@ -323,11 +323,11 @@ export class CoTyPhuGame extends Game<State, Options, View> {
         return this.endTurn(withPlayer(rolled, seat, { ...me, jailTries: tries }));
       }
       const free = withPlayer(rolled, seat, { ...me, jailed: false, jailTries: 0 });
-      return this.move({ ...free, again: false }, seat, steps);
+      return this.move({ ...free, again: false }, seat, walk);
     }
     const doubles = state.doubles + (double ? 1 : 0);
     if (doubles >= DOUBLES_TO_JAIL) return this.endTurn(toJail({ ...rolled, doubles }, seat));
-    return this.move({ ...rolled, doubles, again: double }, seat, steps);
+    return this.move({ ...rolled, doubles, again: double }, seat, walk);
   }
   /** Walks `steps` Tiles, paid on passing Xuất phát, then lands. */
   private move(state: State, seat: number, steps: number): State {
@@ -600,7 +600,7 @@ const loseEffect = (state: State, seat: number, id: EffectId): State => {
 function countDown(state: State, seat: number): State {
   const me = state.players[seat] as Player;
   const effects = me.effects.flatMap((e) => {
-    if (e.fresh) return [{ ...e, fresh: false }];
+    if (e.fresh || e.id === 'exempt') return [{ ...e, fresh: false }];
     return e.turns > 1 ? [{ ...e, turns: e.turns - 1 }] : [];
   });
   return withPlayer(state, seat, { ...me, effects });
@@ -654,16 +654,17 @@ function bankrupt(state: State, from: number, to: number | null, amount: number)
     transfer(state, from, to, Math.min(amount, Math.max(0, payer.cash))),
     payer.jailCards,
   );
-  return {
-    ...withPlayer(paid, from, {
-      ...payer,
-      cash: 0,
-      bankrupt: true,
-      jailed: false,
-      jailCards: 0,
-      effects: [],
-    }),
-    lots: paid.lots.map((l) => (l?.owner === from ? null : l)),
-    bankrupt: [...paid.bankrupt, from],
-  };
+  const out = withPlayer(paid, from, {
+    ...payer,
+    cash: 0,
+    bankrupt: true,
+    jailed: false,
+    jailCards: 0,
+    effects: [],
+  });
+  return unmark({
+    ...out,
+    lots: out.lots.map((l) => (l?.owner === from ? null : l)),
+    bankrupt: [...out.bankrupt, from],
+  });
 }

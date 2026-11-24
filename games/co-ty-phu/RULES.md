@@ -23,13 +23,13 @@ Trả xong, bạn được mua lại ô đó với giá 1,5 × (giá đất + ti
 - **Vào tù**: tới Nhà tù ngay.
 - **Cơ hội, Khí vận**: rút một thẻ.
 
-Ở tù, mỗi lượt gieo thử ra đôi để ra. Hai lần đầu có thể trả 50 hoặc dùng vé ra tù trước khi gieo. Lần thứ ba thì ra dù không ra đôi.
+Ở tù, mỗi lượt gieo thử: ra đôi thì ra tù và đi, không gieo tiếp. Hai lần đầu có thể trả 50 hoặc dùng vé ra tù trước khi gieo. Lần thứ ba thì ra dù không ra đôi.
 
 ## Thẻ
 
 Mỗi bộ có 16 thẻ, xáo đầu ván. Thẻ dùng ngay rồi xuống cuối bộ; vé ra tù thì giữ lại.
 
-Thẻ tính tiền theo tiền mặt, số ô hay số cấp nhà; bắt người giàu nhất đưa tiền người nghèo nhất; thu thuế người nhiều Khách sạn nhất; hoặc đưa bạn đi. Thẻ cho chọn (nhận tiền hay gieo thêm, đổi chỗ với ai…) thì hết giờ là nhận tiền.
+Thẻ tính tiền theo tiền mặt, số ô hay số cấp nhà; bắt người giàu nhất đưa tiền người nghèo nhất; thu thuế người nhiều Khách sạn nhất; hoặc đưa bạn đi. Thẻ cho chọn nhận tiền hay gieo thêm, về Xuất phát hay đổi chỗ; hết giờ thì nhận tiền.
 
 ## Lễ hội, Mất điện, Quy hoạch
 
@@ -43,9 +43,9 @@ Thẻ tính tiền theo tiền mặt, số ô hay số cấp nhà; bắt ngườ
 
 Kéo dài theo lượt của chính bạn. Giữ tối đa 2; có thêm thì mất cái cũ nhất, rút lại thì tính lại từ đầu.
 
-- **Thần tài**: thu thuê gấp đôi, 2 lượt.
+- **Thần tài**: thu tiền thuê gấp đôi, 2 lượt.
 - **Kẹt xe**: gieo một xúc xắc, 2 lượt.
-- **Miễn thuê**: không trả lần thuê tới, trong 3 lượt.
+- **Miễn thuê**: không trả lần tiền thuê tới.
 - **Ốm**: bỏ lượt tới.
 - **Khởi nghiệp**: nâng cấp nửa giá, 3 lượt.
 

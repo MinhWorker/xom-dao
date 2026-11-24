@@ -174,7 +174,7 @@ describe('Cards that ask', () => {
   });
 
   it('takes the cash, or goes to Xuất phát (chest-gift)', () => {
-    expect(cash(draw('chest-gift').send('a', 'pick', { pick: 0 }))).toEqual([1120, 1000]);
+    expect(cash(draw('chest-gift').send('a', 'pick', { pick: 0 }))).toEqual([1250, 1000]);
     const home = draw('chest-gift').send('a', 'pick', { pick: 1 });
     expect(home.state.players[0]).toMatchObject({ tile: 0, cash: 1200 });
   });
@@ -210,6 +210,16 @@ describe('Festival', () => {
     expect(game.state.festival).toBe(9);
     game.send('b', 'roll');
     expect(cash(game)).toEqual([1280, 720]);
+  });
+
+  it('ends when its Lot goes back to the bank', () => {
+    const game = open({
+      rolls: [[1, 3]],
+      arrange: all(own(0, [9]), player(0, { cash: 50 }), (s) => ({ ...s, festival: 9 })),
+    }).send('a', 'roll');
+    game.send('a', 'sell', { sale: [{ tile: 9 }] });
+    expect(game.state).toMatchObject({ festival: null, lots: expect.arrayContaining([null]) });
+    expect(game.state.lots[9]).toBeNull();
   });
 
   it('moves to the Lot of the next Festival', () => {
@@ -328,6 +338,19 @@ describe('Effects', () => {
     });
     game.send('b', 'roll').send('a', 'roll');
     expect(game.state.players[0]).toMatchObject({ tile: 19, cash: 1000, effects: [] });
+  });
+
+  it('Miễn thuê waits for that rent however many turns it takes', () => {
+    const lap = Array.from({ length: 6 }, (): [number, number] => [3, 4]);
+    const game = open({
+      rolls: lap,
+      arrange: all(
+        player(0, { cash: 50, effects: [effect('exempt', 1)] }),
+        player(1, { cash: 50 }),
+      ),
+    });
+    for (let k = 0; k < 3; k++) game.send('a', 'roll').send('b', 'roll');
+    expect(game.state.players[0]?.effects).toEqual([effect('exempt', 1)]);
   });
 
   it('Ốm skips its holder’s next turn (chest-sick)', () => {

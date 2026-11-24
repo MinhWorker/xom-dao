@@ -57,7 +57,7 @@ export const TUNING: Tuning = {
   airportFee: 100,
   jailFine: 50,
   taxes: { income: { min: 100, rate: 0.1 }, luxury: { min: 200, rate: 0.1 } },
-  effects: { lucky: 2, traffic: 2, exempt: 3, sick: 1, startup: 3 },
+  effects: { lucky: 2, traffic: 2, exempt: 1, sick: 1, startup: 3 },
   festivalRent: 2,
   luckyRent: 2,
   startupCost: 0.5,

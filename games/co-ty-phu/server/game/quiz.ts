@@ -41,11 +41,14 @@ const PROBLEMS: Record<QuizTemplate, (rng: Rng) => Problem> = {
     const p = pick(rng, [10, 20, 25, 30, 40, 50, 75]);
     const x = 20 * int(rng, 2, 25);
     const right = (p * x) / 100;
-    return { text: `${p}% của ${x} là bao nhiêu?`, right, slips: [x - right, p * 2, right * 10] };
+    return {
+      text: `${p}% của ${x} là bao nhiêu?`,
+      right,
+      slips: [x - right, right * 10, right * 2],
+    };
   },
   fraction: (rng) => {
-    const b = int(rng, 3, 9);
-    const a = int(rng, 2, b - 1);
+    const [a, b] = fraction(rng, 2, 3, 9);
     const x = b * int(rng, 3, 15);
     const right = (x / b) * a;
     return { text: `${a}/${b} của ${x} là bao nhiêu?`, right, slips: [x / b, x - right, x * a] };
@@ -114,12 +117,11 @@ const PROBLEMS: Record<QuizTemplate, (rng: Rng) => Problem> = {
     return {
       text: `Tổng của hai số là ${big + small}, hiệu của chúng là ${big - small}. Số lớn là bao nhiêu?`,
       right: big,
-      slips: [small, big + small - (big - small), 2 * big],
+      slips: [small, 2 * small, 2 * big],
     };
   },
   ratio: (rng) => {
-    const b = int(rng, 2, 7);
-    const a = int(rng, 1, b - 1);
+    const [a, b] = fraction(rng, 1, 2, 7);
     const part = int(rng, 3, 15);
     const sum = (a + b) * part;
     return {
@@ -139,6 +141,15 @@ const PROBLEMS: Record<QuizTemplate, (rng: Rng) => Problem> = {
     };
   },
 };
+
+/** A reduced fraction a/b below 1, with `minA` ≤ a and `minB` ≤ b ≤ `maxB`. */
+function fraction(rng: Rng, minA: number, minB: number, maxB: number): [number, number] {
+  const gcd = (m: number, n: number): number => (n === 0 ? m : gcd(n, m % n));
+  const all: [number, number][] = [];
+  for (let b = minB; b <= maxB; b++)
+    for (let a = minA; a < b; a++) if (gcd(a, b) === 1) all.push([a, b]);
+  return pick(rng, all);
+}
 
 /** A Quiz from `template`, or from a random one. */
 export function makeQuiz(rng: Rng, template: QuizTemplate = pick(rng, QUIZ_TEMPLATES)): Quiz {

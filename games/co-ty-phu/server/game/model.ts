@@ -41,14 +41,14 @@ export interface Player {
 
 /**
  * lucky (Thần tài): rent collected ×2; traffic (Kẹt xe): one die; exempt (Miễn thuê): the next
- * rent is free, once; sick (Ốm): the next turn is skipped; startup (Khởi nghiệp): Levels at a
+ * rent is free, once, however long that takes; sick (Ốm): the next turn is skipped; startup (Khởi nghiệp): Levels at a
  * discount.
  */
 export type EffectId = 'lucky' | 'traffic' | 'exempt' | 'sick' | 'startup';
 
 export interface Effect {
   id: EffectId;
-  /** The holder's turns left, counted down at the end of each. */
+  /** The holder's turns left, counted down at the end of each (Miễn thuê: always 1). */
   turns: number;
   /** Gained in the holder's current turn, which does not count. */
   fresh: boolean;

@@ -17,6 +17,8 @@ const SOLVE: Record<QuizTemplate, (n: number[]) => number> = {
   box: ([l, w, h]) => (l as number) * (w as number) * (h as number),
 };
 
+const gcd = (m: number, n: number): number => (n === 0 ? m : gcd(n, m % n));
+
 const numbers = (text: string) => [...text.matchAll(/\d+/g)].map((m) => Number(m[0]));
 
 describe('a Quiz', () => {
@@ -41,6 +43,8 @@ describe('a Quiz', () => {
         expect(Number.isInteger(right)).toBe(true);
         expect(quiz.choices[quiz.answer]).toBe(right);
         for (const n of numbers(quiz.text)) expect(Number.isInteger(n) && n > 0).toBe(true);
+        for (const [, a, b] of quiz.text.matchAll(/(\d+)\/(\d+)/g))
+          expect(gcd(Number(a), Number(b))).toBe(1);
       }
     });
   }

@@ -184,8 +184,8 @@ export const CARDS = {
   'chest-gift': {
     deck: 'chest',
     name: 'Quà quê',
-    text: 'Nhận 120, hoặc về Xuất phát.',
-    action: { kind: 'cash-or-start', amount: 120 },
+    text: 'Nhận 250, hoặc về Xuất phát.',
+    action: { kind: 'cash-or-start', amount: 250 },
   },
   'chest-festival': {
     deck: 'chest',
@@ -281,11 +281,28 @@ export function picksOf(state: State, seat: number, action: CardAction): number[
   }
 }
 
+/**
+ * What a Card that asks is picked from: one of two offers (`offer`, the first being the safe one
+ * a timeout takes), a Lot or a player (the computer's pick on a timeout).
+ */
+const ASKS: Partial<Record<CardAction['kind'], 'offer' | 'lot' | 'player'>> = {
+  'cash-or-roll': 'offer',
+  'cash-or-start': 'offer',
+  quiz: 'offer',
+  festival: 'lot',
+  blackout: 'lot',
+  planning: 'lot',
+  swap: 'player',
+};
+
 /** Whether a Card asks the drawer to pick. */
-export const asks = (action: CardAction) =>
-  ['cash-or-roll', 'cash-or-start', 'quiz', 'festival', 'blackout', 'planning', 'swap'].includes(
-    action.kind,
-  );
+export const asks = (action: CardAction) => ASKS[action.kind] !== undefined;
+
+/** Whether a Card offers two choices, the first one safe. */
+export const offers = (action: CardAction) => ASKS[action.kind] === 'offer';
+
+/** The dice sum the computer prices a utility's rent with. */
+const AVERAGE_ROLL = 7;
 
 /** The pick the computer makes, from `picks` (not empty). */
 export function botPick(
@@ -296,7 +313,7 @@ export function botPick(
 ): number {
   const best = (score: (n: number) => number) =>
     picks.reduce((a, b) => (score(b) > score(a) ? b : a));
-  const rentOf = (s: State, tile: number) => rent(t, s, tile, 7);
+  const rentOf = (s: State, tile: number) => rent(t, s, tile, AVERAGE_ROLL);
   switch (action.kind) {
     case 'cash-or-start':
       return t.startBonus > action.amount ? 1 : 0;
