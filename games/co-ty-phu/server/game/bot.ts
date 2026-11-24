@@ -11,9 +11,6 @@ import { landPrice, rent, takeoverPrice, upgradeCost } from './economy.js';
 import { HOTEL, JAIL_TRIES, type Player, type State } from './model.js';
 import type { Tuning } from './tuning.js';
 
-/** The least cash the computer keeps after buying or building. */
-const MIN_RESERVE = 150;
-
 /** What the computer plays for `seat` now, or `null` when it is not theirs to play. */
 export function botMove(t: Tuning, state: State, seat: number, rng: Rng): GameEvent | null {
   if (state.phase === 'debt')
@@ -34,7 +31,7 @@ export function botMove(t: Tuning, state: State, seat: number, rng: Rng): GameEv
     case 'buy': {
       const price = landPrice(t, me.tile);
       const wanted = completes(state, seat, me.tile) || blocks(state, seat, me.tile);
-      return affords(price, wanted ? MIN_RESERVE : keep) ? { event: 'buy' } : { event: 'pass' };
+      return affords(price, wanted ? t.bot.reserve : keep) ? { event: 'buy' } : { event: 'pass' };
     }
     case 'upgrade':
       return affords(upgradeCost(t, state, seat, me.tile))
@@ -52,7 +49,7 @@ export function botMove(t: Tuning, state: State, seat: number, rng: Rng): GameEv
       return to === null ? { event: 'pass' } : { event: 'fly', payload: { to } };
     }
     case 'card': {
-      const { action } = cardOf(state.card?.id as NonNullable<State['card']>['id']);
+      const { action } = cardOf(t, state.card?.id as NonNullable<State['card']>['id']);
       return {
         event: 'pick',
         payload: { pick: botPick(t, state, action, picksOf(state, seat, action)) },
@@ -72,14 +69,14 @@ export function botMove(t: Tuning, state: State, seat: number, rng: Rng): GameEv
 const LOTS = BOARD.filter(isLot).length;
 const unowned = (state: State) => BOARD.filter((tile, i) => isLot(tile) && !state.lots[i]).length;
 
-/** Half the dearest rent one of the others' Lots charges now, and at least `MIN_RESERVE`. */
+/** A share of the dearest rent one of the others' Lots charges now, and at least `Tuning.bot.reserve`. */
 function reserve(t: Tuning, state: State, seat: number) {
   const dearest = state.lots.reduce(
     (most, lot, tile) =>
       lot && lot.owner !== seat ? Math.max(most, rent(t, state, tile, AVERAGE_ROLL)) : most,
     0,
   );
-  return Math.max(MIN_RESERVE, Math.round(dearest / 2));
+  return Math.max(t.bot.reserve, Math.round(dearest * t.bot.rentShare));
 }
 
 /** The other Cities of the Colour set of `tile`, or `[]` for a Tile that is no City. */
@@ -131,5 +128,5 @@ function flight(t: Tuning, state: State, seat: number): number | null {
     const value = worth(tile);
     if (value > most) [best, most] = [tile, value];
   }
-  return cash >= MIN_RESERVE ? best : null;
+  return cash >= t.bot.reserve ? best : null;
 }

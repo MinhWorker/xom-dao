@@ -1,8 +1,8 @@
 /**
  * The Cơ hội and Khí vận decks. A Card does one thing (`CardAction`) when drawn; the jail-free
  * Card is kept instead. Some Cards ask the drawer to pick: one of two offers (the first is the
- * safe one), a Lot or a player. Card amounts are tuned here; Effect lengths and the Quiz's
- * rewards are in tuning.ts. Applying a Card is CoTyPhuGame.ts.
+ * safe one), a Lot or a player. Every number on a Card, and in its text, comes from
+ * `Tuning.cards` and the rest of tuning.ts. Applying a Card is CoTyPhuGame.ts.
  */
 import { BOARD, tilesOf } from './board.js';
 import { rent } from './economy.js';
@@ -48,204 +48,177 @@ export interface Card {
   action: CardAction;
 }
 
-export const CARDS = {
-  'chance-jail': {
-    deck: 'chance',
-    name: 'Vé ra tù',
-    text: 'Giữ lại, dùng khi ở tù.',
-    action: { kind: 'jail-free' },
-  },
+/** A Card before the numbers of a `Tuning` are put in. */
+interface CardDef {
+  deck: Deck;
+  name: string;
+  text: (t: Tuning) => string;
+  action: (t: Tuning) => CardAction;
+}
+
+const money = (n: number) => n.toLocaleString('vi-VN');
+const percent = (share: number) => `${Math.round(share * 100)}%`;
+const TIMES: Record<number, string> = { 2: 'gấp đôi', 3: 'gấp ba', 4: 'gấp bốn' };
+const times = (n: number) => TIMES[n] ?? `gấp ${n} lần`;
+const discount = (share: number) => (share === 0.5 ? 'giảm nửa giá' : `giảm ${percent(1 - share)}`);
+
+/** A Card whose text and action do not depend on the numbers. */
+const fixed = (deck: Deck, name: string, text: string, action: CardAction): CardDef => ({
+  deck,
+  name,
+  text: () => text,
+  action: () => action,
+});
+
+const festival = (deck: Deck): CardDef => ({
+  deck,
+  name: 'Lễ hội',
+  text: (t) => `Chọn một ô đất của bạn: tiền thuê ${times(t.festivalRent)} tới Lễ hội sau.`,
+  action: () => ({ kind: 'festival' }),
+});
+const quiz = (deck: Deck): CardDef => ({
+  deck,
+  name: 'Đố',
+  text: (t) => `Nhận ${money(t.quiz.safe)}, hoặc giải đố để nhận ${times(t.quiz.times)}.`,
+  action: () => ({ kind: 'quiz' }),
+});
+const planning = (deck: Deck) =>
+  fixed(deck, 'Quy hoạch', 'Chọn một thành phố của bạn: nâng một cấp miễn phí.', {
+    kind: 'planning',
+  });
+const jailFree = (deck: Deck) =>
+  fixed(deck, 'Vé ra tù', 'Giữ lại, dùng khi ở tù.', { kind: 'jail-free' });
+const traffic = (deck: Deck) =>
+  fixed(deck, 'Kẹt xe', 'Chỉ gieo một xúc xắc.', { kind: 'effect', effect: 'traffic' });
+
+const DEFS = {
+  'chance-jail': jailFree('chance'),
   'chance-interest': {
     deck: 'chance',
     name: 'Lãi tiết kiệm',
-    text: 'Nhận 10% tiền mặt.',
-    action: { kind: 'cash-share', share: 0.1 },
+    text: (t) => `Nhận ${percent(t.cards.interest)} tiền mặt.`,
+    action: (t) => ({ kind: 'cash-share', share: t.cards.interest }),
   },
   'chance-upkeep': {
     deck: 'chance',
     name: 'Phí bảo trì',
-    text: 'Trả 25 cho mỗi ô đất.',
-    action: { kind: 'per-lot', amount: -25 },
+    text: (t) => `Trả ${money(t.cards.upkeep)} cho mỗi ô đất.`,
+    action: (t) => ({ kind: 'per-lot', amount: -t.cards.upkeep }),
   },
   'chance-repairs': {
     deck: 'chance',
     name: 'Sửa nhà',
-    text: 'Trả 20 cho mỗi cấp nhà.',
-    action: { kind: 'per-level', amount: -20 },
+    text: (t) => `Trả ${money(t.cards.repairs)} cho mỗi cấp nhà.`,
+    action: (t) => ({ kind: 'per-level', amount: -t.cards.repairs }),
   },
   'chance-charity': {
     deck: 'chance',
     name: 'Từ thiện',
-    text: 'Người giàu nhất đưa người nghèo nhất 150.',
-    action: { kind: 'rich-to-poor', amount: 150 },
+    text: (t) => `Người giàu nhất đưa người nghèo nhất ${money(t.cards.charity)}.`,
+    action: (t) => ({ kind: 'rich-to-poor', amount: t.cards.charity }),
   },
   'chance-hotel-tax': {
     deck: 'chance',
     name: 'Thuế Khách sạn',
-    text: 'Người có nhiều Khách sạn nhất nộp 100 cho mỗi Khách sạn.',
-    action: { kind: 'hotel-tax', amount: 100 },
+    text: (t) => `Người có nhiều Khách sạn nhất nộp ${money(t.cards.hotelTax)} cho mỗi Khách sạn.`,
+    action: (t) => ({ kind: 'hotel-tax', amount: t.cards.hotelTax }),
   },
   'chance-bonus': {
     deck: 'chance',
     name: 'Thưởng nóng',
-    text: 'Nhận 150, hoặc gieo thêm một lần.',
-    action: { kind: 'cash-or-roll', amount: 150 },
+    text: (t) => `Nhận ${money(t.cards.bonus)}, hoặc gieo thêm một lần.`,
+    action: (t) => ({ kind: 'cash-or-roll', amount: t.cards.bonus }),
   },
-  'chance-quiz': {
-    deck: 'chance',
-    name: 'Đố',
-    text: 'Nhận tiền ngay, hoặc giải đố để nhận gấp bốn.',
-    action: { kind: 'quiz' },
-  },
-  'chance-festival': {
-    deck: 'chance',
-    name: 'Lễ hội',
-    text: 'Chọn một ô đất của bạn: tiền thuê gấp đôi tới Lễ hội sau.',
-    action: { kind: 'festival' },
-  },
-  'chance-blackout': {
-    deck: 'chance',
-    name: 'Mất điện',
-    text: 'Chọn một ô đất của người khác: không thu tiền thuê tới lượt sau của bạn.',
-    action: { kind: 'blackout' },
-  },
-  'chance-planning': {
-    deck: 'chance',
-    name: 'Quy hoạch',
-    text: 'Chọn một thành phố của bạn: nâng một cấp miễn phí.',
-    action: { kind: 'planning' },
-  },
-  'chance-station': {
-    deck: 'chance',
-    name: 'Về bến',
-    text: 'Đi tới bến xe gần nhất.',
-    action: { kind: 'nearest', tile: 'station' },
-  },
-  'chance-swap': {
-    deck: 'chance',
-    name: 'Đổi chỗ',
-    text: 'Chọn một người để đổi chỗ.',
-    action: { kind: 'swap' },
-  },
+  'chance-quiz': quiz('chance'),
+  'chance-festival': festival('chance'),
+  'chance-blackout': fixed(
+    'chance',
+    'Mất điện',
+    'Chọn một ô đất của người khác: không thu tiền thuê tới lượt sau của bạn.',
+    { kind: 'blackout' },
+  ),
+  'chance-planning': planning('chance'),
+  'chance-station': fixed('chance', 'Về bến', 'Đi tới bến xe gần nhất.', {
+    kind: 'nearest',
+    tile: 'station',
+  }),
+  'chance-swap': fixed('chance', 'Đổi chỗ', 'Chọn một người để đổi chỗ.', { kind: 'swap' }),
   'chance-back': {
     deck: 'chance',
     name: 'Quên đồ',
-    text: 'Lùi 3 ô.',
-    action: { kind: 'back', steps: 3 },
+    text: (t) => `Lùi ${t.cards.back} ô.`,
+    action: (t) => ({ kind: 'back', steps: t.cards.back }),
   },
   'chance-lucky': {
     deck: 'chance',
     name: 'Thần tài',
-    text: 'Thu tiền thuê gấp đôi.',
-    action: { kind: 'effect', effect: 'lucky' },
+    text: (t) => `Thu tiền thuê ${times(t.luckyRent)}.`,
+    action: () => ({ kind: 'effect', effect: 'lucky' }),
   },
-  'chance-traffic': {
-    deck: 'chance',
-    name: 'Kẹt xe',
-    text: 'Chỉ gieo một xúc xắc.',
-    action: { kind: 'effect', effect: 'traffic' },
-  },
-  'chest-jail': {
-    deck: 'chest',
-    name: 'Vé ra tù',
-    text: 'Giữ lại, dùng khi ở tù.',
-    action: { kind: 'jail-free' },
-  },
-  'chest-quiz': {
-    deck: 'chest',
-    name: 'Đố',
-    text: 'Nhận tiền ngay, hoặc giải đố để nhận gấp bốn.',
-    action: { kind: 'quiz' },
-  },
+  'chance-traffic': traffic('chance'),
+  'chest-jail': jailFree('chest'),
+  'chest-quiz': quiz('chest'),
   'chest-harvest': {
     deck: 'chest',
     name: 'Được mùa',
-    text: 'Nhận 30 cho mỗi ô đất.',
-    action: { kind: 'per-lot', amount: 30 },
+    text: (t) => `Nhận ${money(t.cards.harvest)} cho mỗi ô đất.`,
+    action: (t) => ({ kind: 'per-lot', amount: t.cards.harvest }),
   },
   'chest-wallet': {
     deck: 'chest',
     name: 'Mất ví',
-    text: 'Mất 10% tiền mặt.',
-    action: { kind: 'cash-share', share: -0.1 },
+    text: (t) => `Mất ${percent(t.cards.wallet)} tiền mặt.`,
+    action: (t) => ({ kind: 'cash-share', share: -t.cards.wallet }),
   },
   'chest-tourism': {
     deck: 'chest',
     name: 'Du lịch',
-    text: 'Nhận 15 cho mỗi cấp nhà.',
-    action: { kind: 'per-level', amount: 15 },
+    text: (t) => `Nhận ${money(t.cards.tourism)} cho mỗi cấp nhà.`,
+    action: (t) => ({ kind: 'per-level', amount: t.cards.tourism }),
   },
   'chest-share': {
     deck: 'chest',
     name: 'San sẻ',
-    text: 'Người giàu nhất đưa người nghèo nhất 100.',
-    action: { kind: 'rich-to-poor', amount: 100 },
+    text: (t) => `Người giàu nhất đưa người nghèo nhất ${money(t.cards.share)}.`,
+    action: (t) => ({ kind: 'rich-to-poor', amount: t.cards.share }),
   },
   'chest-gift': {
     deck: 'chest',
     name: 'Quà quê',
-    text: 'Nhận 250, hoặc về Xuất phát.',
-    action: { kind: 'cash-or-start', amount: 250 },
+    text: (t) => `Nhận ${money(t.cards.gift)}, hoặc về Xuất phát.`,
+    action: (t) => ({ kind: 'cash-or-start', amount: t.cards.gift }),
   },
-  'chest-festival': {
-    deck: 'chest',
-    name: 'Lễ hội',
-    text: 'Chọn một ô đất của bạn: tiền thuê gấp đôi tới Lễ hội sau.',
-    action: { kind: 'festival' },
-  },
-  'chest-planning': {
-    deck: 'chest',
-    name: 'Quy hoạch',
-    text: 'Chọn một thành phố của bạn: nâng một cấp miễn phí.',
-    action: { kind: 'planning' },
-  },
-  'chest-utility': {
-    deck: 'chest',
-    name: 'Đóng tiền điện nước',
-    text: 'Đi tới Điện lực hoặc Cấp nước gần nhất.',
-    action: { kind: 'nearest', tile: 'utility' },
-  },
-  'chest-start': {
-    deck: 'chest',
-    name: 'Về quê',
-    text: 'Đi tới Xuất phát.',
-    action: { kind: 'go', to: 'start' },
-  },
-  'chest-jailed': {
-    deck: 'chest',
-    name: 'Bị bắt',
-    text: 'Vào tù ngay.',
-    action: { kind: 'go', to: 'jail' },
-  },
-  'chest-exempt': {
-    deck: 'chest',
-    name: 'Miễn thuê',
-    text: 'Lần trả tiền thuê tới được miễn.',
-    action: { kind: 'effect', effect: 'exempt' },
-  },
-  'chest-sick': {
-    deck: 'chest',
-    name: 'Ốm',
-    text: 'Bỏ lượt tới.',
-    action: { kind: 'effect', effect: 'sick' },
-  },
+  'chest-festival': festival('chest'),
+  'chest-planning': planning('chest'),
+  'chest-utility': fixed(
+    'chest',
+    'Đóng tiền điện nước',
+    'Đi tới Điện lực hoặc Cấp nước gần nhất.',
+    { kind: 'nearest', tile: 'utility' },
+  ),
+  'chest-start': fixed('chest', 'Về quê', 'Đi tới Xuất phát.', { kind: 'go', to: 'start' }),
+  'chest-jailed': fixed('chest', 'Bị bắt', 'Vào tù ngay.', { kind: 'go', to: 'jail' }),
+  'chest-exempt': fixed('chest', 'Miễn thuê', 'Lần trả tiền thuê tới được miễn.', {
+    kind: 'effect',
+    effect: 'exempt',
+  }),
+  'chest-sick': fixed('chest', 'Ốm', 'Bỏ lượt tới.', { kind: 'effect', effect: 'sick' }),
   'chest-startup': {
     deck: 'chest',
     name: 'Khởi nghiệp',
-    text: 'Nâng cấp nhà giảm nửa giá.',
-    action: { kind: 'effect', effect: 'startup' },
+    text: (t) => `Nâng cấp nhà ${discount(t.startupCost)}.`,
+    action: () => ({ kind: 'effect', effect: 'startup' }),
   },
-  'chest-traffic': {
-    deck: 'chest',
-    name: 'Kẹt xe',
-    text: 'Chỉ gieo một xúc xắc.',
-    action: { kind: 'effect', effect: 'traffic' },
-  },
-} as const satisfies Record<string, Card>;
+  'chest-traffic': traffic('chest'),
+} as const satisfies Record<string, CardDef>;
 
-export type CardId = keyof typeof CARDS;
+export type CardId = keyof typeof DEFS;
 
-export const cardOf = (id: CardId): Card => CARDS[id];
+/** Card `id` with the numbers of `t`. */
+export function cardOf(t: Tuning, id: CardId): Card {
+  const def: CardDef = DEFS[id];
+  return { deck: def.deck, name: def.name, text: def.text(t), action: def.action(t) };
+}
 
 /** The jail-free Card of each deck. */
 export const JAIL_CARD = { chance: 'chance-jail', chest: 'chest-jail' } as const satisfies Record<
@@ -255,7 +228,7 @@ export const JAIL_CARD = { chance: 'chance-jail', chest: 'chest-jail' } as const
 
 /** Every Card of `deck`, in the order above. */
 export const deckOf = (deck: Deck) =>
-  (Object.keys(CARDS) as CardId[]).filter((id) => CARDS[id].deck === deck);
+  (Object.keys(DEFS) as CardId[]).filter((id) => DEFS[id].deck === deck);
 
 /** What `seat` may pick for a Card that asks; an empty list means the Card does nothing. */
 export function picksOf(state: State, seat: number, action: CardAction): number[] {

@@ -358,7 +358,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
   private draw(state: State, seat: number, deck: Deck): State {
     const [id, ...rest] = state.decks[deck];
     if (!id) return this.next(state);
-    const { action } = cardOf(id);
+    const { action } = cardOf(this.t, id);
     const kept = action.kind === 'jail-free';
     const drawn: State = {
       ...state,
@@ -371,7 +371,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
 
   /** The action of the Card waiting in phase `card`. */
   private pending(state: State): CardAction {
-    return cardOf(state.card?.id as CardId).action;
+    return cardOf(this.t, state.card?.id as CardId).action;
   }
 
   /** What a Card that does not ask does to its drawer `seat`. */
