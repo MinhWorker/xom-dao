@@ -1183,3 +1183,53 @@ body.quake .roster {
   font-weight: 900;
   font-size: 1.15em;
 }
+
+/* Pausing a Match against the computer: the button at the top middle, the card over the board. */
+.pause {
+  position: fixed;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(246, 215, 122, 0.35);
+  border-radius: 12px;
+  background: rgba(23, 17, 12, 0.8);
+  color: var(--paper);
+  cursor: pointer;
+  z-index: 7;
+}
+
+.pause svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.pause[hidden],
+.halt[hidden] {
+  display: none;
+}
+
+.halt {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  background: rgba(4, 4, 11, 0.6);
+  text-align: center;
+  z-index: 8;
+}
+
+.halt .title {
+  font-size: 28px;
+  letter-spacing: 0.04em;
+}
+
+.halt .buttons button {
+  min-width: 160px;
+}

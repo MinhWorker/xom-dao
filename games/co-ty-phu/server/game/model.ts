@@ -130,6 +130,8 @@ export interface State {
   festival: number | null;
   /** A Lot charging no rent until the turn of `by` comes again. */
   blackout: { tile: number; by: number } | null;
+  /** The only person at a table of computers paused: no clock, the computer waits. */
+  paused: boolean;
 }
 
 /** What prices and rents depend on: a `State` or a `View`. */

@@ -462,3 +462,22 @@ describe('tuning', () => {
     expect(game.state.players[0]?.cash).toBe(640);
   });
 });
+
+describe('pausing', () => {
+  it('lets the only person at a table of computers stop the clock and the computer', () => {
+    const game = open({ rolls: [[3, 4]], bots: ['b'] }).send('a', 'pause');
+    expect(game.state.paused).toBe(true);
+    expect(game.timer).toBeNull();
+    expect(game.error('a', 'roll')).toBe('Ván đang tạm dừng');
+    game.send('a', 'resume').send('a', 'roll');
+    expect(game.state.paused).toBe(false);
+    expect(game.timer?.event).toBe('timeout');
+    expect(game.bot('b')).not.toBeNull();
+    game.send('a', 'pause');
+    expect(game.bot('b')).toBeNull();
+  });
+
+  it('refuses a pause with another person at the table', () => {
+    expect(open().error('a', 'pause')).toBe('Chỉ tạm dừng được khi chơi với máy');
+  });
+});

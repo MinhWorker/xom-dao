@@ -50,6 +50,9 @@ at the Hub's effects level and loops one background track at its music level: an
 "Waiting for the Next Turn", its fading tail cut at 175.5 s so the loop restarts at once). `main.ts` times each effect to its animation's
 beats in `scene.ts`, `cardshow.ts` and `moments.ts` (the dice's three bounces, a clink per coin
 landing, a chime per Tile of a Full set), so change those numbers together.
+The only person at a table of computers gets a pause button (top middle, clear of the Hub's
+corner buttons): `pause` stops the server's clock and the computer (`State.paused`), the client
+finishes the move playing and holds the rest until `resume`.
 `npm run smoke:web` rolls on the dice and plays the next decision in CI.
 
 ## Look

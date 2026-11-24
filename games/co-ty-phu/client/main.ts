@@ -3,7 +3,8 @@
  * computer's moves arrive at once; 2× under "Tốc độ" Nhanh), then shows the decision of the
  * newest view. Every `init` redraws everything from its view, and a Match already over is drawn
  * ended at once (one that ends while playing gets its fanfare). The Hub's Đồ họa level picks the
- * board's graphics.
+ * board's graphics. The only person at a table of computers may pause: what is playing ends, the
+ * rest waits, and the server stops the clock and the computer.
  */
 import {
   BRIDGE_RESET,
@@ -68,7 +69,14 @@ let hidden = false;
 /** The player may tap the dice to roll. */
 let rolling = false;
 const rollButton = document.getElementById('roll') as HTMLButtonElement;
+const pauseButton = document.getElementById('pause') as HTMLButtonElement;
+const halt = document.getElementById('halt') as HTMLElement;
 let low = false;
+/** Everyone else at the table is the computer. */
+let solo = false;
+/** Paused: the queued views wait and no decision shows. */
+let held = false;
+let release: (() => void) | null = null;
 
 const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
 
@@ -88,6 +96,7 @@ const bridge = createGameBridge({
     const seats: BridgeSeat[] = init.room.seats;
     names = seats.map((s) => s.name);
     me = seats.findIndex((s) => s.id === myId);
+    solo = seats.every((s) => s.bot || s.id === myId);
     matchId = null;
     timer = null;
     clearTimeout(doneTimer);
@@ -95,6 +104,8 @@ const bridge = createGameBridge({
     endedAt = null;
     hud.tile(null, null, names);
     const view = (init.match as View | null) ?? null;
+    held = !!view?.paused;
+    halt.hidden = !held;
     hud.seats(view ? names.slice(0, view.players.length) : names);
     present(view);
   },
@@ -132,6 +143,10 @@ const bridge = createGameBridge({
 /** Stops what is playing and drops the queued views: an `init` or a new Match redraws. */
 function restart() {
   epoch++;
+  held = false;
+  halt.hidden = true;
+  release?.();
+  release = null;
   queue.length = 0;
   playing = false;
   sending = false;
@@ -181,6 +196,12 @@ function idle() {
 function ask(view: View) {
   panel = decide(view, me, names);
   sending = false;
+  if (held) {
+    idle();
+    cards.hide();
+    board.highlight([]);
+    return;
+  }
   const mine = panel.buttons.some((b) => !b.disabled) || !!panel.pick;
   idle();
   if (view.phase === 'quiz' && view.quiz) {
@@ -229,6 +250,8 @@ async function play() {
   playing = true;
   const mine = epoch;
   while (queue.length > 0 && mine === epoch) {
+    if (held) await new Promise<void>((go) => (release = go));
+    if (mine !== epoch) break;
     const next = queue.shift() as View;
     const before = shown;
     if (!before) {
@@ -540,6 +563,29 @@ function send(event: string, payload?: Record<string, unknown>) {
   });
 }
 
+/** Shows the pause, or takes it away and plays on. */
+function hold(on: boolean) {
+  held = on;
+  halt.hidden = !on;
+  if (on) return;
+  release?.();
+  release = null;
+  if (shown && !playing && queue.length === 0 && !isOver(shown)) ask(shown);
+}
+
+pauseButton.addEventListener('click', () => {
+  hold(true);
+  if (shown && !playing) ask(shown);
+  bridge.send('pause', {}).catch((error: unknown) => {
+    hold(false);
+    if (error instanceof BridgeError) hud.refuse(error.code);
+  });
+});
+(document.getElementById('resume') as HTMLButtonElement).addEventListener('click', () => {
+  hold(false);
+  bridge.send('resume', {}).catch(() => {});
+});
+
 hud.onButton = (button: Button) => send(button.event, button.payload);
 rollButton.addEventListener('click', () => {
   if (rolling && !playing) send('roll');
@@ -560,7 +606,8 @@ canvas.addEventListener('pointerdown', (event) => {
 /** The turn clock, from the last push's timer. */
 function clock() {
   requestAnimationFrame(clock);
-  rollButton.hidden = !rolling || playing || sending;
+  rollButton.hidden = !rolling || playing || sending || held;
+  pauseButton.hidden = !solo || held || !shown || isOver(shown);
   if (!rollButton.hidden) {
     const r = board.diceRect();
     Object.assign(rollButton.style, {
@@ -570,7 +617,7 @@ function clock() {
       height: `${r.height}px`,
     });
   }
-  if (!timer || !shown || isOver(shown) || playing) {
+  if (!timer || !shown || isOver(shown) || playing || held) {
     clockLeft = Infinity;
     hud.timer(null, -1);
     cards.timer(null);
