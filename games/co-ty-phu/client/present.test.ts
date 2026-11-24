@@ -36,6 +36,16 @@ describe('what a new view shows', () => {
     ]);
   });
 
+  it('sends nothing between players when one pays the bank as the other passes Xuất phát', () => {
+    const arrange = all(player(0, { tile: 38 }), own(1, [1, 3], 5, 500));
+    const steps = roll([4, 5], arrange, ['chance-hotel-tax']);
+    expect(steps.filter((s) => s.kind === 'cash')).toEqual([
+      { kind: 'cash', seat: 0, delta: 200 },
+      { kind: 'cash', seat: 1, delta: -200 },
+    ]);
+    expect(steps.filter((s) => s.kind === 'pay')).toEqual([]);
+  });
+
   it('sends a Debt to its creditor once the debtor has Sold', () => {
     const arrange = all(player(0, { cash: 50 }), player(1, { cash: 100 }), own(1, [39], 3, 400));
     const game = open({ rolls: [[3, 4]], arrange, chance: ['chance-charity'] }).send('a', 'roll');

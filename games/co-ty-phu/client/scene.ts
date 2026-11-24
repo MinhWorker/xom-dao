@@ -451,12 +451,13 @@ export class BoardView {
   /**
    * Plays a Lot's change once `showLots` drew how it ends: the houses or Hotel it gained rise, the
    * ones it lost sink, a bought Lot pops in, and one given back shrinks away. A Lot Taken over is
-   * snatched (`steal`); a new Hotel rises slower in a beam of light. The camera comes nearer while
+   * snatched (`takeOver`); a new Hotel rises slower in a beam of light. The camera comes nearer while
    * a building rises.
    */
   build(tile: number, was: Lot | null, now: Lot | null, ms = 600) {
     const g = this.lots.children.find((c) => c.userData.tile === tile);
-    if (g && was && now && was.owner !== now.owner) return this.steal(g, tile, was, now, ms * 1.6);
+    if (g && was && now && was.owner !== now.owner)
+      return this.takeOver(g, tile, was, now, ms * 1.6);
     const jobs: Promise<void>[] = [];
     const kept = !!was && !!now && was.owner === now.owner;
     const had = buildings(was);
@@ -496,7 +497,7 @@ export class BoardView {
    * A Takeover: the old owner's houses are yanked up off the Tile and spun round, and come down in
    * the taker's colour with a flash of it over the Tile; the tint and strip spread out under them.
    */
-  private async steal(g: Object3D, tile: number, was: Lot, now: Lot, ms: number) {
+  private async takeOver(g: Object3D, tile: number, was: Lot, now: Lot, ms: number) {
     const mine = this.generation;
     const ghost = lotPieces(tile, was.owner, was.level, false);
     this.fx.add(ghost);
@@ -639,10 +640,16 @@ export class BoardView {
     marker.position.copy(at(p.x + p.w / 2, p.y + p.h / 2));
     this.fx.add(marker);
     this.focus = marker;
+    const mine = this.generation;
     const step = ms * 0.18;
     await Promise.all(
-      tiles.map((tile, k) => this.wait(step * k).then(() => this.flash(tile, color, ms * 0.45))),
+      tiles.map((tile, k) =>
+        this.wait(step * k).then(() =>
+          mine === this.generation ? this.flash(tile, color, ms * 0.45) : undefined,
+        ),
+      ),
     );
+    if (mine !== this.generation) return;
     await Promise.all(
       tiles.map((tile) => {
         const q = placement(tile);
@@ -663,12 +670,14 @@ export class BoardView {
     const bars = this.cages[seat];
     if (bars) bars.group.visible = false;
     this.focus = null;
-    const at = this.spots[seat];
-    if (at !== null && at !== undefined) this.flash(at, '#e0553d', ms * 0.5);
+    const mine = this.generation;
+    const stood = this.spots[seat];
+    if (stood !== null && stood !== undefined) this.flash(stood, '#e0553d', ms * 0.5);
     const ruins = lots.map(({ tile, lot }, k) => {
       const ghost = lotPieces(tile, lot.owner, lot.level, false);
       this.fx.add(ghost);
       return this.wait(ms * 0.35 + k * ms * 0.15).then(() => {
+        if (mine !== this.generation) return;
         this.flash(tile, '#e0553d', ms * 0.4);
         return this.crumble(ghost, ms * 0.55);
       });
@@ -688,9 +697,10 @@ export class BoardView {
           this.shake(0.12, 520);
         }
       });
-      t.visible = false;
       t.rotation.z = 0;
       t.scale.setScalar(base);
+      if (mine !== this.generation) return;
+      t.visible = false;
     }
     this.spots[seat] = null;
     await Promise.all(ruins);
@@ -736,7 +746,10 @@ export class BoardView {
     const color = SEAT_COLORS[seat] as string;
     this.celebrate(where, color, ms);
     this.sparks(where, 40, CONFETTI, ms * 1.4, 3);
-    this.wait(ms * 0.6).then(() => this.sparks(where, 30, CONFETTI, ms * 1.4, 2.6));
+    const mine = this.generation;
+    this.wait(ms * 0.6).then(() => {
+      if (mine === this.generation) this.sparks(where, 30, CONFETTI, ms * 1.4, 2.6);
+    });
   }
 
   private wait(ms: number) {

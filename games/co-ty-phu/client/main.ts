@@ -114,6 +114,7 @@ const bridge = createGameBridge({
   onVisibility(paused) {
     hidden = paused;
     board.pause(paused);
+    if (paused) moments.land();
     document.documentElement.classList.toggle('paused', paused);
   },
 });
@@ -262,6 +263,7 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         break;
       case 'fullset':
         await building;
+        if (!live()) return;
         moments.announce(
           'Đủ bộ màu!',
           `${names[step.seat] ?? ''} · thuê ×${TUNING.fullSet}`,
@@ -273,17 +275,18 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         await board.fullSet(step.tiles, step.seat, ms(1400));
         break;
       case 'quiz':
-        if (after.quiz) await revealQuiz(after, step.right, ms, show);
+        if (after.quiz) await revealQuiz(after, step.right, ms, show, live);
         break;
       case 'pay': {
         const grand = grandeur(step.amount);
         const caption = `${names[step.from] ?? ''} → ${names[step.to] ?? ''}`;
         await building;
+        if (!live()) return;
         board.follow(null);
         if (grand >= 3) board.shake(0.16, 900);
         const [from, to] = [hud.card(step.from), hud.card(step.to)];
         await moments.pay(from, to, step.amount, grand, show, low, caption);
-        if (grand >= 3) board.shake(0.1, 400);
+        if (grand >= 3 && live()) board.shake(0.1, 400);
         break;
       }
       case 'cash':
@@ -291,6 +294,7 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         break;
       case 'bankrupt':
         await building;
+        if (!live()) return;
         board.showLots(after);
         hud.broke(step.seat);
         moments.announce('Phá sản!', names[step.seat] ?? '', 'bad', 2200, show);
@@ -331,18 +335,25 @@ function announceLot(step: Extract<Change, { kind: 'lot' }>, pace: number) {
  * The Quiz's answer: the panel shows the Quiz again with the pick pulsing, then the right answer
  * lights up (the pick shakes when wrong) and the result goes across the middle.
  */
-async function revealQuiz(after: View, right: boolean, ms: (n: number) => number, pace: number) {
+async function revealQuiz(
+  after: View,
+  right: boolean,
+  ms: (n: number) => number,
+  pace: number,
+  live: () => boolean,
+) {
   const quiz = after.quiz;
   if (!quiz) return;
   const asked = decide({ ...after, phase: 'quiz', turn: quiz.seat }, me, names);
   hud.show(asked, false);
   hud.quizWait(quiz.picked);
   await wait(ms(quiz.picked === null ? 500 : 1100));
+  if (!live()) return;
   hud.quizResult(quiz.answer ?? 0, quiz.picked);
   const won = TUNING.quiz.safe * TUNING.quiz.times;
   const answer = asked.buttons[quiz.answer ?? 0]?.label ?? '';
   if (right) {
-    moments.announce('Đúng rồi!', `+${money(won)}`, 'good', 1800, pace, { low: true });
+    moments.announce('Đúng rồi!', `+${money(won)}`, 'good', 1800, pace, { bottom: true });
     moments.confetti(['#58b368', '#f6d77a', '#fff2c2'], pace, low, 45);
   } else
     moments.announce(
@@ -351,7 +362,7 @@ async function revealQuiz(after: View, right: boolean, ms: (n: number) => number
       'bad',
       1800,
       pace,
-      { low: true },
+      { bottom: true },
     );
   await wait(ms(1700));
 }

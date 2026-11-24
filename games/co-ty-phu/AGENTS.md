@@ -28,7 +28,8 @@ it with an impact, `release` lifts the bars, `build` raises houses and Hotels an
 sold. The tier-1 moments (#355) are there too: `build` snatches a Lot Taken over (houses yanked up,
 spun, slammed down in the taker's colour) and puts a new Hotel in a beam of light, `fullSet` lights
 the set's Tiles one after another, `fall` topples a bankrupt token and crumbles its Lots, `victory`
-throws sparks round the winner, and `shake` shakes the camera. `setGraphics` follows the Hub's Đồ họa (its doc lists what `low` drops) and `setFollowing`
+throws sparks round the winner, and `shake` shakes the camera. `setGraphics` follows the Hub's
+Đồ họa (its doc lists what `low` drops) and `setFollowing`
 the player's "Máy quay bám theo" preference (`manifest.ts`). `cardshow.ts` is the Card drawn, in
 2D over the board: the deck and its top card pulled off, then the Card turning over; tapped to
 close, or its choices dealt beside it as cards to tap. `moments.ts` is the HTML side of the
@@ -36,8 +37,7 @@ moments: coins and notes flying from the payer's card to the payee's (more, and 
 the board, as `grandeur` grows), the headline ("Mua lại!", "Khách sạn!", "Đủ bộ màu!", "Phá
 sản!", the Quiz result) and confetti. `hud.ts` is the rest of the HTML over the board (player
 cards and their "Phá sản" stamp, panel and the Quiz's reveal, a Tile's details, the end with its
-fanfare). `npm run smoke:web` plays its first
-decisions in CI.
+fanfare). `npm run smoke:web` plays its first decisions in CI.
 
 ## Look
 

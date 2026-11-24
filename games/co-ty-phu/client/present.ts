@@ -134,7 +134,7 @@ export function changes(before: View, after: View): Change[] {
   if (quiz && quiz.answer !== null && before.quiz?.answer === null)
     out.push({ kind: 'quiz', seat: quiz.seat, right: quiz.picked === quiz.answer });
 
-  const paid = payment(before, after);
+  const paid = payment(before, after, drawn);
   if (paid) out.push(paid);
   after.players.forEach((p, seat) => {
     const delta = p.cash - (before.players[seat]?.cash ?? p.cash);
@@ -151,29 +151,27 @@ export function changes(before: View, after: View): Change[] {
 
 /**
  * The money one player paid another between two views; one move pays at most one player. A Debt
- * paid names both. Otherwise a player besides the turn player who gained was paid, by the one
- * other who lost or else by the turn player; or the turn player gained what one other lost.
+ * paid names both. Otherwise the turn player paid the one other player who gained (rent, a
+ * Takeover), unless that player was Selling to pay the bank; or a Card that has the richest pay
+ * the poorest was drawn, and its amount moved between them (the turn player may also have passed
+ * Xuất phát).
  */
-function payment(before: View, after: View): Change | null {
+function payment(before: View, after: View, drawn: View['card']): Change | null {
   const delta = after.players.map((p, seat) => p.cash - (before.players[seat]?.cash ?? p.cash));
   const gained = (seat: number) => delta[seat] ?? 0;
   const turn = before.turn;
   const debt = before.debt;
   if (debt && debt.to !== null && !after.debt && gained(debt.to) > 0)
     return { kind: 'pay', from: debt.from, to: debt.to, amount: gained(debt.to) };
-  const losers = (but: number) => delta.flatMap((d, seat) => (d < 0 && seat !== but ? [seat] : []));
-  const to = delta.findIndex((d, seat) => seat !== turn && d > 0);
-  if (to >= 0) {
-    const from = losers(to);
-    return {
-      kind: 'pay',
-      from: from.length === 1 ? (from[0] as number) : turn,
-      to,
-      amount: gained(to),
-    };
+  const action = drawn ? cardOf(TUNING, drawn.id).action : null;
+  if (action?.kind === 'rich-to-poor') {
+    const { amount } = action;
+    const to = delta.findIndex(
+      (d, seat) => d === amount || (seat === turn && d === amount + TUNING.startBonus),
+    );
+    const from = delta.findIndex((d, seat) => d === -amount && seat !== to);
+    return to >= 0 && from >= 0 ? { kind: 'pay', from, to, amount } : null;
   }
-  const from = losers(turn);
-  if (gained(turn) <= 0 || from.length !== 1) return null;
-  const payer = from[0] as number;
-  return { kind: 'pay', from: payer, to: turn, amount: Math.min(-gained(payer), gained(turn)) };
+  const to = delta.findIndex((d, seat) => seat !== turn && d > 0 && seat !== debt?.from);
+  return to >= 0 ? { kind: 'pay', from: turn, to, amount: gained(to) } : null;
 }

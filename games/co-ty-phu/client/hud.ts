@@ -119,7 +119,6 @@ export class Hud {
     });
   }
 
-  /** A seat's player card. */
   card(seat: number): HTMLElement | undefined {
     return this.cards[seat];
   }

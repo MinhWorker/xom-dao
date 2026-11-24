@@ -12,7 +12,7 @@ const FLIGHT_MS = [620, 820, 1000, 1200] as const;
 /** Ms between one coin leaving and the next. */
 const STAGGER = [70, 55, 45, 38] as const;
 
-export type Tone = 'gold' | 'good' | 'bad';
+type Tone = 'gold' | 'good' | 'bad';
 
 const el = (tag: string, className: string) => {
   const e = document.createElement(tag);
@@ -51,7 +51,7 @@ export class Moments {
   /**
    * Coins (and notes, once it is more) fly in an arc from card `from` to card `to`; the payer's
    * card shudders and the payee's glows as they land. From `grandeur` 2 the amount shows over the
-   * board with `caption` under it, from 3 it shakes. Resolves when the last coin lands.
+   * board with `caption` under it, from 3 it shakes. `grand` is `grandeur(amount)`, 0 to 3. Resolves when the last coin lands.
    */
   async pay(
     from: HTMLElement | undefined,
@@ -63,7 +63,7 @@ export class Moments {
     caption = '',
   ) {
     if (!from || !to || pace <= 0) return;
-    const tier = Math.min(3, Math.max(0, grand)) as 0 | 1 | 2 | 3;
+    const tier = grand as 0 | 1 | 2 | 3;
     const stagger = STAGGER[tier] * pace;
     const a = centre(from);
     const b = centre(to);
@@ -114,9 +114,7 @@ export class Moments {
 
   /** The amount of a large payment over the board. */
   private showAmount(amount: number, caption: string, grand: number, ms: number) {
-    const [b, span] = this.amount.children as unknown as [HTMLElement, HTMLElement];
-    b.textContent = money(amount);
-    span.textContent = caption;
+    this.fill(this.amount, money(amount), caption);
     this.amount.classList.toggle('huge', grand >= 3);
     this.amount.hidden = false;
     this.amount.style.setProperty('--ms', `${ms}ms`);
@@ -137,14 +135,12 @@ export class Moments {
     tone: Tone,
     ms: number,
     pace: number,
-    { color, low = false }: { color?: string; low?: boolean } = {},
+    { color, bottom = false }: { color?: string; bottom?: boolean } = {},
   ) {
     if (pace <= 0) return;
-    const [b, span] = this.headline.children as unknown as [HTMLElement, HTMLElement];
-    b.textContent = title;
-    span.textContent = sub;
+    this.fill(this.headline, title, sub);
     this.headline.dataset.tone = tone;
-    this.headline.classList.toggle('low', low);
+    this.headline.classList.toggle('bottom', bottom);
     this.headline.style.setProperty('--tint', color ?? '');
     this.headline.style.setProperty('--ms', `${ms * pace}ms`);
     this.headline.hidden = false;
@@ -185,6 +181,18 @@ export class Moments {
         .finished.catch(() => {})
         .finally(() => bit.remove());
     }
+  }
+
+  /** Puts `big` and `small` in the `<b>` and `<span>` of `e`. */
+  private fill(e: HTMLElement, big: string, small: string) {
+    (e.querySelector('b') as HTMLElement).textContent = big;
+    (e.querySelector('span') as HTMLElement).textContent = small;
+  }
+
+  /** The tab was hidden: whatever is flying lands at once. */
+  land() {
+    for (const e of this.layer.querySelectorAll('.coin, .confetti'))
+      for (const a of e.getAnimations()) a.finish();
   }
 
   /** Drops what is showing: a redraw took over. */
