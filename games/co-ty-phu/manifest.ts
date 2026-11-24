@@ -11,4 +11,15 @@ export default defineManifest({
   bots: true,
   island: 'xuc-xac',
   focus: { x: 70, y: 50 },
+  options: {
+    speed: {
+      type: 'choice',
+      label: 'Tốc độ',
+      default: 'normal',
+      choices: [
+        { value: 'normal', label: 'Thường' },
+        { value: 'fast', label: 'Nhanh' },
+      ],
+    },
+  },
 });

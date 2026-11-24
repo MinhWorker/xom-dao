@@ -1,0 +1,45 @@
+/**
+ * The numbers the balance simulator turns: every price, rent and fee that is not a land price
+ * (those are in board.ts). The legacy Classic table is the starting point.
+ */
+export interface Tuning {
+  startingCash: number;
+  /** Paid for passing or landing on Xuất phát. */
+  startBonus: number;
+  /** A City's rent at Level 1 to 5, as a share of its land price. */
+  levelRent: readonly number[];
+  /** What one Level costs to build, as a share of the land price (Level 1 comes with the City). */
+  levelCost: number;
+  /** Rent multiplier of a City in a Full set. */
+  fullSet: number;
+  /** A Takeover costs this × (land price + what was paid for its Levels). */
+  takeover: number;
+  stationPrice: number;
+  /** A station's rent per station its owner has. */
+  stationRent: number;
+  utilityPrice: number;
+  /** Rent per point of the dice: owner with one utility, with both. */
+  utilityRent: readonly [number, number];
+  /** What a flight from Sân bay costs. */
+  airportFee: number;
+  /** What paying out of jail costs. */
+  jailFine: number;
+  /** A tax is `max(min, floor(rate × cash))`. */
+  taxes: Record<'income' | 'luxury', { min: number; rate: number }>;
+}
+
+export const TUNING: Tuning = {
+  startingCash: 1000,
+  startBonus: 200,
+  levelRent: [0.4, 1.1, 3, 4, 5],
+  levelCost: 0.5,
+  fullSet: 2,
+  takeover: 1.5,
+  stationPrice: 200,
+  stationRent: 50,
+  utilityPrice: 150,
+  utilityRent: [4, 10],
+  airportFee: 100,
+  jailFine: 50,
+  taxes: { income: { min: 100, rate: 0.1 }, luxury: { min: 200, rate: 0.1 } },
+};
