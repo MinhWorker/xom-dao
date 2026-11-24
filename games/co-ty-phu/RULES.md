@@ -14,12 +14,12 @@ Mỗi lần dừng ở thành phố của mình được nâng một cấp với
 
 Dừng ở đất người khác thì trả tiền thuê theo cấp; đủ ba ô cùng màu thì gấp đôi. Bến xe thu 50 mỗi bến chủ có. Điện lực, Cấp nước thu xúc xắc ×4, ×10 nếu chủ có cả hai. Chủ ở tù không thu.
 
-Trả xong, bạn được mua lại ô đó với giá 1,5 × (giá đất + tiền đã xây), kèm nhà, chủ không được từ chối. Bạn được nâng ngay một cấp. Khách sạn không mua lại được.
+Trả xong (hay khi không phải trả), bạn được mua lại ô đó với giá 1,5 × (giá đất + tiền đã xây), kèm nhà, chủ không được từ chối. Bạn được nâng ngay một cấp. Khách sạn không mua lại được.
 
 ## Ô đặc biệt
 
 - **Sân bay**: trả 100 để bay tới ô bất kỳ.
-- **Thuế**: nộp 10% tiền mặt, ít nhất 100 hoặc 200.
+- **Thuế thu nhập, Thuế xa xỉ**: nộp 10% tiền mặt, ít nhất 100 và 200.
 - **Vào tù**: tới Nhà tù ngay.
 - **Cơ hội, Khí vận**: rút một thẻ.
 
@@ -29,15 +29,14 @@ Trả xong, bạn được mua lại ô đó với giá 1,5 × (giá đất + ti
 
 Mỗi bộ có 16 thẻ, xáo đầu ván. Thẻ dùng ngay rồi xuống cuối bộ; vé ra tù thì giữ lại.
 
-Thẻ tính tiền theo tiền mặt, số ô hay số cấp nhà; bắt người giàu nhất đưa tiền người nghèo nhất; thu thuế người nhiều Khách sạn nhất; hoặc đưa bạn đi. Thẻ cho chọn nhận tiền hay gieo thêm, về Xuất phát hay đổi chỗ; hết giờ thì nhận tiền.
+Thẻ tính tiền theo tiền mặt, số ô hay số cấp nhà; bắt người giàu nhất đưa tiền người nghèo nhất; thu thuế người nhiều Khách sạn nhất; hoặc đưa bạn đi, kể cả đổi chỗ với người khác. Có thẻ cho chọn nhận tiền hay gieo thêm, nhận tiền hay về Xuất phát; hết giờ thì nhận tiền.
 
-## Lễ hội, Mất điện, Quy hoạch
+## Thẻ đổi bàn và Đố
 
 - **Lễ hội**: một ô đất của bạn thu tiền thuê gấp đôi, tới Lễ hội sau.
 - **Mất điện**: một ô đất của người khác không thu tiền thuê, tới lượt sau của bạn.
 - **Quy hoạch**: một thành phố của bạn được nâng một cấp miễn phí.
-
-**Đố**: nhận 100, hoặc giải một bài toán để nhận 400. Có 4 đáp án và 20 giây; sai hoặc hết giờ thì không nhận gì.
+- **Đố**: nhận 100, hoặc giải một bài toán 4 đáp án trong 20 giây để nhận 400; sai hoặc hết giờ thì không nhận gì.
 
 ## Hiệu ứng
 
@@ -47,7 +46,7 @@ Kéo dài theo lượt của chính bạn. Giữ tối đa 2; có thêm thì m�
 - **Kẹt xe**: gieo một xúc xắc, 2 lượt.
 - **Miễn thuê**: không trả lần tiền thuê tới.
 - **Ốm**: bỏ lượt tới.
-- **Khởi nghiệp**: nâng cấp nửa giá, 3 lượt.
+- **Khởi nghiệp**: nâng cấp nhà nửa giá, 3 lượt.
 
 ## Nợ và phá sản
 
