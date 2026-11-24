@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs && node ../../tools/hub-assets/dist/cli.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "simulate": "tsx --conditions=xomdao-source sim/simulate.ts"
   },
   "dependencies": {
     "@xomdao/sdk": "*",

@@ -15,6 +15,10 @@ Where to look:
   cards, plates and boards are drawn in code, `main.gd` presents each `match:state` push paced
   one after another and sounds come from `assets/`. `assets/*.webp` and `sources/` are the legacy
   AI-made art, which the client does not use.
+  `games/co-ty-phu` (Cờ Tỷ Phú) has a balance simulator: `npm run simulate -w
+  @xomdao/game-co-ty-phu -- [--games 500] [--seats 2,3,4] [--tuning '<json>']` plays computer
+  Matches with no server and prints their length, first Bankruptcy and Takeovers. Its numbers
+  are in `server/game/tuning.ts`; run it after changing one.
 - **Soon Games**: every other folder (`co-vua`, `bai-cao`, `hai-chien`, ...) is a Game not made
   yet (below).
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a

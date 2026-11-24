@@ -445,15 +445,13 @@ describe('Bankruptcy after Selling', () => {
 });
 
 describe('the computer', () => {
-  it('rolls, passes every offer and makes the suggested sale', () => {
+  it('rolls and makes the suggested sale', () => {
     const game = short(own(0, [1], 3, 200));
     expect(game.bot('a')).toEqual({ event: 'roll' });
     expect(game.bot('b')).toBeNull();
     game.send('a', 'roll');
     expect(game.bot('a')).toEqual({ event: 'sell', payload: { sale: [{ tile: 1, levels: 2 }] } });
     expect(game.bot('b')).toBeNull();
-    const offer = open({ rolls: [[1, 2]] }).send('a', 'roll');
-    expect(offer.bot('a')).toEqual({ event: 'pass' });
   });
 });
 

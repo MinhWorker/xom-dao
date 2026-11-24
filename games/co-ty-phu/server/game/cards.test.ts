@@ -2,9 +2,10 @@ import { optionsSchema, testGame } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
 import manifest from '../../manifest.js';
 import { CoTyPhuGame } from './CoTyPhuGame.js';
-import { CARDS, type CardId, deckOf } from './cards.js';
+import { type CardId, cardOf, deckOf } from './cards.js';
 import type { Effect, State, View } from './model.js';
-import { all, cash, open, own, PLAYERS, player } from './test-match.js';
+import { all, cash, open, own, PLAYERS, player, RULES_TUNING } from './test-match.js';
+import { TUNING } from './tuning.js';
 
 /** `a` draws `id`: from Xuất phát onto Cơ hội (7), or from Nhà tù onto Khí vận (17). */
 function draw(
@@ -15,14 +16,16 @@ function draw(
     players = PLAYERS.slice(0, 2),
     bots = [] as string[],
     seed = 1,
+    tuning = RULES_TUNING,
   } = {},
 ) {
-  const chest = CARDS[id].deck === 'chest';
+  const chest = cardOf(TUNING, id).deck === 'chest';
   return open({
     rolls: [[3, 4], ...rolls],
     players,
     bots,
     seed,
+    tuning,
     chance: chest ? [] : [id, 'chance-interest'],
     chest: chest ? [id, 'chest-harvest'] : [],
     arrange: all(player(0, { tile: chest ? 10 : 0 }), arrange),
@@ -37,7 +40,7 @@ describe('the decks', () => {
       const ids = deckOf(deck);
       expect(ids.length).toBeGreaterThanOrEqual(15);
       expect(ids.length).toBeLessThanOrEqual(17);
-      expect(ids.filter((id) => CARDS[id].action.kind === 'jail-free')).toHaveLength(1);
+      expect(ids.filter((id) => cardOf(TUNING, id).action.kind === 'jail-free')).toHaveLength(1);
     }
   });
 
@@ -65,6 +68,18 @@ describe('the decks', () => {
 });
 
 describe('Cards paid at once', () => {
+  it('takes its amounts and its text from the tuning', () => {
+    const cards = { ...TUNING.cards, upkeep: 40, bonus: 1500 };
+    const tuning = { ...RULES_TUNING, cards, festivalRent: 3 };
+    expect(cardOf(tuning, 'chance-upkeep').text).toBe('Trả 40 cho mỗi ô đất.');
+    expect(cardOf(tuning, 'chance-bonus').text).toBe('Nhận 1.500, hoặc gieo thêm một lần.');
+    expect(cardOf(tuning, 'chest-festival').text).toBe(
+      'Chọn một ô đất của bạn: tiền thuê gấp ba tới Lễ hội sau.',
+    );
+    const game = draw('chance-upkeep', { arrange: own(0, [1, 3]), tuning });
+    expect(game.state.players[0]?.cash).toBe(920);
+  });
+
   const lots = all(own(0, [1], 3), own(0, [5], 0));
   const cases: [CardId, (s: State) => State, number][] = [
     ['chance-interest', player(0, { cash: 800 }), 880],
@@ -75,7 +90,7 @@ describe('Cards paid at once', () => {
     ['chest-tourism', lots, 1045],
   ];
   for (const [id, arrange, expected] of cases) {
-    it(`${id}: ${CARDS[id].text}`, () => {
+    it(`${id}: ${cardOf(TUNING, id).text}`, () => {
       const game = draw(id, { arrange });
       expect(game.state.players[0]?.cash).toBe(expected);
       expect(game.state).toMatchObject({ turn: 1, phase: 'roll' });
@@ -464,6 +479,9 @@ describe('the computer', () => {
       }
     }
     expect(seen).toContain('quiz');
-    expect([...seen].filter((s) => s in CARDS).length).toBeGreaterThan(28);
+    expect(
+      [...seen].filter((s) => (deckOf('chance') as string[]).concat(deckOf('chest')).includes(s))
+        .length,
+    ).toBeGreaterThan(28);
   });
 });
