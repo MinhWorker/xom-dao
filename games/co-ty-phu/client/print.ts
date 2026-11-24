@@ -139,8 +139,8 @@ const wrap = (ctx: CanvasRenderingContext2D, name: string, maxW: number, size: n
   return [words.slice(0, bestSplit).join(' '), words.slice(bestSplit).join(' ')];
 };
 
-/** Draws an icon `s` pixels across, centred on the origin. */
-type Icon = (ctx: CanvasRenderingContext2D, s: number) => void;
+/** Draws an icon `s` pixels across, centred on the origin; `t` seconds in moves it, if it moves. */
+type Icon = (ctx: CanvasRenderingContext2D, s: number, t?: number) => void;
 
 const ICONS: Partial<Record<Tile['kind'], Icon>> = {
   station: (ctx, s) => {
@@ -159,8 +159,7 @@ const ICONS: Partial<Record<Tile['kind'], Icon>> = {
   },
 };
 
-const bolt: Icon = (ctx, s) => {
-  ctx.fillStyle = '#f2b705';
+const boltPath = (ctx: CanvasRenderingContext2D, s: number) => {
   ctx.beginPath();
   ctx.moveTo(s * 0.1, -s * 0.5);
   ctx.lineTo(-s * 0.3, s * 0.06);
@@ -169,17 +168,88 @@ const bolt: Icon = (ctx, s) => {
   ctx.lineTo(s * 0.32, -s * 0.08);
   ctx.lineTo(s * 0.04, -s * 0.08);
   ctx.closePath();
-  ctx.fill();
 };
 
-const drop: Icon = (ctx, s) => {
-  ctx.fillStyle = '#2b8fd6';
+/** Seconds between the bolt's flashes. */
+const ZAP = 2.2;
+
+/** Điện lực: the bolt flashes now and then, flickering, with sparks flying off it. */
+const bolt: Icon = (ctx, s, t) => {
+  const k = t === undefined ? 1 : (t % ZAP) / ZAP;
+  const flash = t === undefined ? 0 : k < 0.18 ? Math.abs(Math.sin(k * 60)) * (1 - k / 0.18) : 0;
+  ctx.save();
+  if (flash > 0) {
+    ctx.shadowColor = '#fff3a0';
+    ctx.shadowBlur = s * 0.5 * flash;
+    ctx.scale(1 + flash * 0.12, 1 + flash * 0.12);
+  }
+  ctx.fillStyle = flash > 0.5 ? '#fff3a0' : '#f2b705';
+  boltPath(ctx, s);
+  ctx.fill();
+  ctx.restore();
+  if (t === undefined || k > 0.35) return;
+  const u = k / 0.35;
+  ctx.fillStyle = '#ffd23a';
+  for (const [n, a] of [-2.4, -0.6, 0.5, 2.1, 2.9].entries()) {
+    const r = s * (0.3 + u * 0.35 + n * 0.02);
+    ctx.globalAlpha = 1 - u;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * r, Math.sin(a) * r, s * 0.045 * (1 - u * 0.5), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+};
+
+const dropPath = (ctx: CanvasRenderingContext2D, s: number) => {
   ctx.beginPath();
   ctx.moveTo(0, -s * 0.5);
   ctx.bezierCurveTo(s * 0.2, -s * 0.2, s * 0.38, 0, s * 0.38, s * 0.14);
   ctx.arc(0, s * 0.14, s * 0.38, 0, Math.PI);
   ctx.bezierCurveTo(-s * 0.38, 0, -s * 0.2, -s * 0.2, 0, -s * 0.5);
+};
+
+/** Seconds a drip takes from the tap to its ripple fading. */
+const DRIP = 2.4;
+
+/** Cấp nước: the drop wobbles as a small drip falls from it into widening ripples. */
+const drop: Icon = (ctx, s, t) => {
+  const k = t === undefined ? 1 : (t % DRIP) / DRIP;
+  ctx.save();
+  ctx.translate(0, -s * 0.12);
+  ctx.scale(0.78, 0.78);
+  if (t !== undefined) ctx.scale(1 + Math.sin(t * 5) * 0.03, 1 - Math.sin(t * 5) * 0.03);
+  ctx.fillStyle = '#2b8fd6';
+  dropPath(ctx, s);
   ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.14, s * 0.06, s * 0.07, s * 0.13, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  if (t === undefined) return;
+  const tip = s * 0.29;
+  const floor = s * 0.44;
+  if (k < 0.45) {
+    const u = k / 0.45;
+    const y = tip + (floor - tip) * u * u;
+    ctx.fillStyle = '#2b8fd6';
+    ctx.beginPath();
+    ctx.ellipse(0, y, s * 0.04, s * 0.055, 0, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  const u = (k - 0.45) / 0.55;
+  ctx.strokeStyle = '#2b8fd6';
+  ctx.lineWidth = s * 0.035;
+  for (const lag of [0, 0.3]) {
+    const v = u - lag;
+    if (v <= 0) continue;
+    ctx.globalAlpha = 1 - v;
+    ctx.beginPath();
+    ctx.ellipse(0, floor, s * (0.08 + v * 0.4), s * (0.02 + v * 0.05), 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 };
 
 const iconOf = (tile: Tile): Icon | undefined => {
@@ -266,7 +336,7 @@ const drawFace = (
     ctx.save();
     ctx.translate(cx, y + iconS / 2);
     if (special) drawSpecial(ctx, tile.kind, iconS, CREAM, special, t);
-    else icon?.(ctx, iconS);
+    else icon?.(ctx, iconS, t);
     ctx.restore();
     y += iconS + px * 0.04;
   }
@@ -311,7 +381,7 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number, title: boolean) =
   ctx.restore();
 };
 
-/** Paints Tile `i` with its top-left corner at the origin; `t` sets a special icon moving. */
+/** Paints Tile `i` with its top-left corner at the origin; `t` sets its icon moving, if it moves. */
 export const paintTile = (ctx: CanvasRenderingContext2D, i: number, px: number, t?: number) => {
   const p = placement(i);
   ctx.fillStyle = PAPER;

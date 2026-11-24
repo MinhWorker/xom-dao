@@ -1,5 +1,5 @@
 /**
- * Moves the icons of the special Tiles: each gets a canvas laid flat over its printed face,
+ * Moves the icons of the special Tiles and the two utilities: each gets a canvas laid flat over its printed face,
  * repainted a few dozen times a second with `paintTile` at the current time.
  */
 import {
@@ -28,7 +28,7 @@ const FPS = 30;
  */
 export const ambience = (parent: Object3D, at: At, anisotropy: number) => {
   const faces = BOARD.flatMap((tile, i) => {
-    if (!isSpecial(tile.kind)) return [];
+    if (!isSpecial(tile.kind) && tile.kind !== 'utility') return [];
     const p = placement(i);
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(p.w * PX);

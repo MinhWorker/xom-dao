@@ -81,7 +81,8 @@ Direction, reviewed by the owner on #351:
 - The Tiles that cannot be owned (corners, Cơ hội, Khí vận, Thuế) are filled with their own
   colour with name and icon in cream, and their icon itself moves, flat on the Tile: nothing
   rises off the board. `special.ts` draws each icon at a time (at rest without one) and
-  `client/ambience.ts` repaints a canvas laid over each such Tile at 30 fps. Two lights run from the
+  `client/ambience.ts` repaints a canvas laid over each such Tile, and over Điện lực and Cấp nước
+  (whose icons `print.ts` moves: the bolt flashes with sparks, a drip falls into ripples), at 30 fps. Two lights run from the
   Xuất phát arrow's tip round to its tail; the plane bobs with a trail from each wingtip; the "?"
   sways and hops; the chest's lid lifts and lets out sparkles; Thuế is a chart that draws itself
   climbing; a glint runs across Nhà tù's bars; the Vào tù cuffs swing.
