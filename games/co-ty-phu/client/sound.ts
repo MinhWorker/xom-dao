@@ -12,6 +12,7 @@ const FILES = {
   stamp: file('stamp'),
   buy: file('buy'),
   build: file('build'),
+  sell: file('sell'),
   takeover: file('takeover'),
   hotel: file('hotel'),
   chime: file('chime'),

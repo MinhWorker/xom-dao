@@ -405,11 +405,14 @@ function rollBeats(dice: number, ms: (n: number) => number) {
       });
 }
 
-/** A Lot's sounds as `board.build` plays it: bought, Taken over (yanked up, slammed down), a new Hotel, or each house rising. */
+/**
+ * A Lot's sounds as `board.build` plays it: bought, Taken over (yanked up, slammed down), a new
+ * Hotel, each house rising, or houses sold or the Lot given back sinking.
+ */
 function lotSounds(step: Extract<Change, { kind: 'lot' }>, ms: (n: number) => number) {
   const { before: was, after: now } = step;
-  if (!now) return;
-  if (!was) sounds.play('buy');
+  if (!now || (was && was.owner === now.owner && now.level < was.level)) sounds.play('sell');
+  else if (!was) sounds.play('buy');
   else if (was.owner !== now.owner) {
     sounds.play('takeover');
     sounds.play('slam', { at: ms(752) });
