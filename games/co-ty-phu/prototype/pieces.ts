@@ -96,8 +96,8 @@ export const token = (color: string) => {
   return g;
 };
 
-const DIE = 0.5;
-const DIE_ROUND = 0.075;
+export const DIE = 0.8;
+const DIE_ROUND = 0.12;
 
 /** A cube of side `size` with its edges and corners rounded to `radius`. */
 const roundedCube = (size: number, radius: number, segments = 16) => {

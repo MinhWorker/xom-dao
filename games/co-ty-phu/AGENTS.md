@@ -32,5 +32,6 @@ Direction, reviewed by the owner on #351:
   sways and hops; the chest's lid lifts and lets out sparkles; Thuế is a chart that draws itself
   climbing; a glint runs across Nhà tù's bars; the Vào tù cuffs swing.
 - Seat colours match Đặt Bom (red, blue, yellow, green); nothing else on the board uses them:
-  bến xe buses are grey, Xuất phát royal purple, Khí vận teal, Cơ hội orange, and the Tp. HCM set bronze. Card backs are the deck colour with its icon repeated small (`cardBack`). Vào tù is
+  bến xe buses are grey, Xuất phát royal purple, Khí vận teal, Cơ hội orange, and the Tp. HCM
+  set bronze. Card backs are the deck colour with its icon repeated small (`cardBack`). Vào tù is
   handcuffs. Colour set colours are in `SET_COLORS` (`prototype/print.ts`), approved.

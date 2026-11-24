@@ -23,7 +23,7 @@ import {
 } from 'three';
 import { BOARD } from '../server/game/board.js';
 import { ambience } from './ambience.js';
-import { die, hotel, house, token } from './pieces.js';
+import { DIE, die, hotel, house, token } from './pieces.js';
 import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from './print.js';
 
 const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
@@ -269,10 +269,10 @@ const buildPieces = () => {
   }
 
   const d1 = die();
-  d1.position.set(-0.55, BOARD_H + 0.25, 1.9);
+  d1.position.set(-0.75, BOARD_H + DIE / 2, 1.9);
   d1.rotation.y = 0.4;
   const d2 = die();
-  d2.position.set(0.6, BOARD_H + 0.25, 2.2);
+  d2.position.set(0.8, BOARD_H + DIE / 2, 2.25);
   d2.rotation.set(0, -0.3, Math.PI / 2);
   pieces.add(d1, d2);
 
