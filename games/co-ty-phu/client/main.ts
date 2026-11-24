@@ -2,7 +2,8 @@
  * Cờ Tỷ Phú's client: plays each `match:state` push on the board one after another (the
  * computer's moves arrive at once; 2× under "Tốc độ" Nhanh), then shows the decision of the
  * newest view. Every `init` redraws everything from its view, and a Match already over is drawn
- * ended at once. The Hub's Đồ họa level picks the board's graphics.
+ * ended at once (one that ends while playing gets its fanfare). The Hub's Đồ họa level picks the
+ * board's graphics.
  */
 import {
   BRIDGE_RESET,
@@ -13,15 +14,17 @@ import {
   createGameBridge,
 } from '@xomdao/bridge';
 import { BOARD } from '../server/game/board.js';
-import type { View } from '../server/game/model.js';
+import { HOTEL, type View } from '../server/game/model.js';
+import { TUNING } from '../server/game/tuning.js';
 import { CardShow } from './cardshow.js';
-import { type Button, decide, decider, levelName, type Panel } from './decisions.js';
+import { type Button, decide, decider, levelName, money, type Panel } from './decisions.js';
 import { Hud } from './hud.js';
-import { type Change, changes, pace } from './present.js';
-import { BoardView } from './scene.js';
+import { Moments } from './moments.js';
+import { type Change, changes, grandeur, pace } from './present.js';
+import { BoardView, SEAT_COLORS } from './scene.js';
 
 /** How long the end of the Match shows before the Hub is told. */
-const END_MS = 3500;
+const END_MS = 5000;
 /** How soon a Match stopped without an end hands over to the Hub. */
 const ABORT_MS = 400;
 
@@ -36,6 +39,7 @@ const canvas = document.getElementById('view') as HTMLCanvasElement;
 const board = new BoardView(canvas);
 const hud = new Hud();
 const cards = new CardShow();
+const moments = new Moments();
 
 let myId = '';
 let me = -1;
@@ -122,10 +126,11 @@ function restart() {
   sending = false;
   board.stop();
   cards.hide();
+  moments.clear();
 }
 
-/** Redraws everything from `view` at once. */
-function present(view: View | null) {
+/** Redraws everything from `view` at once; `fanfare` when the Match just ended on screen. */
+function present(view: View | null, fanfare = false) {
   shown = view;
   if (!view || isOver(view)) {
     panel = null;
@@ -141,7 +146,8 @@ function present(view: View | null) {
   hud.players(view);
   if (isOver(view)) {
     endedAt ??= performance.now() - END_MS;
-    hud.over(view, names, me);
+    hud.over(view, names, me, fanfare);
+    if (fanfare) celebrate(view);
     return;
   }
   hud.over(null, names, me);
@@ -166,6 +172,14 @@ function ask(view: View) {
   board.highlight(panel.pick?.tiles ?? []);
 }
 
+/** The winner's token in a beam of light, and confetti over everything. */
+function celebrate(view: View) {
+  const winner = view.players.findIndex((p) => !p.bankrupt);
+  if (winner < 0 || hidden) return;
+  board.victory(winner);
+  moments.confetti([SEAT_COLORS[winner] ?? '#e8c04a', '#f6d77a', '#fff2c2', '#e6b422'], 1, low);
+}
+
 /** Plays the queued views one after another, faster while more are waiting. */
 async function play() {
   if (playing) return;
@@ -182,8 +196,9 @@ async function play() {
     board.highlight([]);
     await animate(next, changes(before, next), pace(next, queue.length), () => mine === epoch);
     if (mine !== epoch) break;
-    if (isOver(next) && endedAt === null) endedAt = performance.now();
-    present(next);
+    const ended = isOver(next) && endedAt === null;
+    if (ended) endedAt = performance.now();
+    present(next, ended);
   }
   if (mine === epoch) playing = false;
 }
@@ -196,6 +211,8 @@ const wait = (ms: number) => new Promise((done) => setTimeout(done, hidden ? 0 :
  */
 async function animate(after: View, steps: Change[], pace: number, live: () => boolean) {
   const ms = (n: number) => Math.round(n * pace);
+  /** The pace of the HTML moments: 0 while the tab is hidden skips them. */
+  const show = hidden ? 0 : pace;
   board.setPace(pace);
   /** Every Lot that changed builds at once, from the first Lot step on. */
   let building: Promise<unknown> | null = null;
@@ -236,27 +253,49 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
             steps.map((s) => s.kind === 'lot' && board.build(s.tile, s.before, s.after, ms(800))),
           );
         }
-        if (step.kind === 'lot') announceLot(step);
+        if (step.kind === 'lot') announceLot(step, show);
         if (step.kind === 'festival' && step.tile !== null)
           hud.say(`Lễ hội ở ${BOARD[step.tile]?.name}`);
         if (step.kind === 'blackout' && step.tile !== null)
           hud.say(`Mất điện ở ${BOARD[step.tile]?.name}`);
         await wait(ms(420));
         break;
-      case 'quiz':
-        if (after.quiz) {
-          hud.show(decide({ ...after, phase: 'quiz', turn: after.quiz.seat }, me, names), false);
-          hud.quizResult(after.quiz.answer ?? 0, after.quiz.picked);
-          hud.say(step.right ? 'Đúng rồi!' : 'Sai mất rồi');
-          await wait(ms(1600));
-        }
+      case 'fullset':
+        await building;
+        moments.announce(
+          'Đủ bộ màu!',
+          `${names[step.seat] ?? ''} · thuê ×${TUNING.fullSet}`,
+          'gold',
+          2000,
+          show,
+          { color: SEAT_COLORS[step.seat] },
+        );
+        await board.fullSet(step.tiles, step.seat, ms(1400));
         break;
+      case 'quiz':
+        if (after.quiz) await revealQuiz(after, step.right, ms, show);
+        break;
+      case 'pay': {
+        const grand = grandeur(step.amount);
+        const caption = `${names[step.from] ?? ''} → ${names[step.to] ?? ''}`;
+        await building;
+        board.follow(null);
+        if (grand >= 3) board.shake(0.16, 900);
+        const [from, to] = [hud.card(step.from), hud.card(step.to)];
+        await moments.pay(from, to, step.amount, grand, show, low, caption);
+        if (grand >= 3) board.shake(0.1, 400);
+        break;
+      }
       case 'cash':
         hud.delta(step.seat, step.delta);
         break;
       case 'bankrupt':
-        hud.say(`${names[step.seat] ?? ''} phá sản`, 2200);
-        await wait(ms(1400));
+        await building;
+        board.showLots(after);
+        hud.broke(step.seat);
+        moments.announce('Phá sản!', names[step.seat] ?? '', 'bad', 2200, show);
+        await board.fall(step.seat, step.lots, ms(2000));
+        await wait(ms(400));
         break;
     }
   }
@@ -265,16 +304,56 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
   if (steps.some((s) => s.kind === 'cash')) await wait(ms(500));
 }
 
-/** Names what happened to a Lot in the banner. */
-function announceLot(step: Extract<Change, { kind: 'lot' }>) {
+/** Names what happened to a Lot: a Takeover or a new Hotel across the middle, the rest in the banner. */
+function announceLot(step: Extract<Change, { kind: 'lot' }>, pace: number) {
   const name = BOARD[step.tile]?.name ?? '';
   const who = (seat: number) => names[seat] ?? '';
   const { before: was, after: now } = step;
   if (!now) hud.say(`${name} về ngân hàng`);
   else if (!was) hud.say(`${who(now.owner)} mua ${name}`);
-  else if (was.owner !== now.owner) hud.say(`${who(now.owner)} mua lại ${name}`);
+  else if (was.owner !== now.owner)
+    moments.announce(
+      'Mua lại!',
+      `${who(now.owner)} lấy ${name} của ${who(was.owner)}`,
+      'bad',
+      2200,
+      pace,
+    );
+  else if (now.level >= HOTEL && was.level < HOTEL)
+    moments.announce('Khách sạn!', `${who(now.owner)} · ${name}`, 'gold', 2200, pace, {
+      color: SEAT_COLORS[now.owner],
+    });
   else if (now.level > was.level) hud.say(`${name} lên ${levelName(now.level)}`);
   else hud.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
+}
+
+/**
+ * The Quiz's answer: the panel shows the Quiz again with the pick pulsing, then the right answer
+ * lights up (the pick shakes when wrong) and the result goes across the middle.
+ */
+async function revealQuiz(after: View, right: boolean, ms: (n: number) => number, pace: number) {
+  const quiz = after.quiz;
+  if (!quiz) return;
+  const asked = decide({ ...after, phase: 'quiz', turn: quiz.seat }, me, names);
+  hud.show(asked, false);
+  hud.quizWait(quiz.picked);
+  await wait(ms(quiz.picked === null ? 500 : 1100));
+  hud.quizResult(quiz.answer ?? 0, quiz.picked);
+  const won = TUNING.quiz.safe * TUNING.quiz.times;
+  const answer = asked.buttons[quiz.answer ?? 0]?.label ?? '';
+  if (right) {
+    moments.announce('Đúng rồi!', `+${money(won)}`, 'good', 1800, pace, { low: true });
+    moments.confetti(['#58b368', '#f6d77a', '#fff2c2'], pace, low, 45);
+  } else
+    moments.announce(
+      quiz.picked === null ? 'Hết giờ!' : 'Sai mất rồi',
+      `Đáp án: ${answer}`,
+      'bad',
+      1800,
+      pace,
+      { low: true },
+    );
+  await wait(ms(1700));
 }
 
 /** The Match is over: once its end has shown, tells the Hub, once per Match. */

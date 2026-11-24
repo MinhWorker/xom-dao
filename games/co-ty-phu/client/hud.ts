@@ -84,7 +84,7 @@ export class Hud {
       const li = document.createElement('li');
       li.className = `seat seat-${seat}`;
       li.style.setProperty('--seat', SEAT_COLORS[seat] ?? '#888');
-      li.innerHTML = `<span class="avatar"></span><span class="who"><b></b></span><span class="cash"></span><span class="tags"></span><span class="timer" hidden></span>`;
+      li.innerHTML = `<span class="avatar"></span><span class="who"><b></b></span><span class="cash"></span><span class="tags"></span><span class="timer" hidden></span><span class="stamp">Phá sản</span>`;
       (li.querySelector('.avatar') as HTMLElement).textContent = (name[0] ?? '?').toUpperCase();
       (li.querySelector('b') as HTMLElement).textContent = name;
       this.roster.append(li);
@@ -119,6 +119,24 @@ export class Hud {
     });
   }
 
+  /** A seat's player card. */
+  card(seat: number): HTMLElement | undefined {
+    return this.cards[seat];
+  }
+
+  /** "Phá sản" is stamped on `seat`'s card. */
+  broke(seat: number) {
+    const li = this.cards[seat];
+    if (!li) return;
+    li.classList.add('out', 'stamping');
+    (li.querySelector('.cash') as HTMLElement).textContent = 'Phá sản';
+    li.querySelector('.stamp')?.addEventListener(
+      'animationend',
+      () => li.classList.remove('stamping'),
+      { once: true },
+    );
+  }
+
   /** A "+200" or "−72" rising from a player's card. */
   delta(seat: number, amount: number) {
     const li = this.cards[seat];
@@ -140,6 +158,7 @@ export class Hud {
     this.panel.classList.toggle('picking', !!panel.pick && panel.buttons.length <= 1);
     const quiz = panel.buttons.some((b) => b.event === 'answer');
     this.panel.classList.toggle('quiz', quiz);
+    this.panel.classList.remove('waiting');
     this.panel.classList.toggle('watch', !mine && !quiz);
     $('panel-title').textContent = panel.title;
     $('panel-text').textContent = panel.text ?? '';
@@ -166,10 +185,20 @@ export class Hud {
     }
   }
 
+  /** Before the Quiz's answer shows: the answer picked pulses, the others dim. */
+  quizWait(picked: number | null) {
+    this.panel.classList.add('waiting');
+    [...$('panel-buttons').querySelectorAll('button')].forEach((b, i) => {
+      b.classList.toggle('picked', i === picked);
+    });
+  }
+
   /** Marks the Quiz's right answer, and the one picked when it was wrong. */
   quizResult(answer: number, picked: number | null) {
+    this.panel.classList.remove('waiting');
     const buttons = [...$('panel-buttons').querySelectorAll('button')];
     buttons.forEach((b, i) => {
+      b.classList.remove('picked');
       b.classList.toggle('right', i === answer);
       b.classList.toggle('wrong', i === picked && i !== answer);
     });
@@ -274,9 +303,13 @@ export class Hud {
       .join(' · ');
   }
 
-  /** The end of the Match: the winner and every place, at once or after the last move. */
-  over(view: View | null, names: readonly string[], me: number) {
+  /**
+   * The end of the Match: the winner and every place, at once or, with `fanfare`, coming in one
+   * after another under a crown after the last move.
+   */
+  over(view: View | null, names: readonly string[], me: number, fanfare = false) {
     this.end.hidden = !view;
+    this.end.classList.toggle('fanfare', fanfare);
     if (!view) return;
     this.show(null, false);
     const n = view.players.length;
@@ -291,7 +324,7 @@ export class Hud {
     $('end-places').innerHTML = places
       .map(
         (p) =>
-          `<li style="--seat:${SEAT_COLORS[p.seat]}"><span class="place">${p.place}</span><span class="dot"></span><span class="name"></span><span class="cash">${p.place === 1 ? money(p.cash) : 'Phá sản'}</span></li>`,
+          `<li style="--seat:${SEAT_COLORS[p.seat]};--k:${p.place}"><span class="place">${p.place}</span><span class="dot"></span><span class="name"></span><span class="cash">${p.place === 1 ? money(p.cash) : 'Phá sản'}</span></li>`,
       )
       .join('');
     $('end-places')
