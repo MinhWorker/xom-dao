@@ -225,73 +225,106 @@ export class Hud {
     this.toastTimer = window.setTimeout(() => this.toast.classList.remove('shown'), 2200);
   }
 
-  /** What one Tile costs and charges, and whose it is; `null` hides it. */
+  /**
+   * A Tile's details as a land deed in two halves either side of the board: on the left what it
+   * is and whose, with its Colour set; on the right what it charges, the row in force lit.
+   * `null` hides them.
+   */
   tile(view: View | null, tile: number | null, names: readonly string[]) {
     this.info.hidden = tile === null || !view;
     if (tile === null || !view) return;
     const board = BOARD[tile];
     if (!board) return;
     const lot = view.lots[tile];
-    const rows: [string, string][] = [];
-    let band = '';
+    const ownable = board.kind === 'city' || board.kind === 'station' || board.kind === 'utility';
+    const owned = (kind: string) =>
+      lot
+        ? view.lots.filter((l, i) => l?.owner === lot.owner && BOARD[i]?.kind === kind).length
+        : 0;
+    /** The rows of what the Tile charges; `now` marks the one in force. */
+    const rows: { label: string; value: string; now?: boolean }[] = [];
+    const facts: [string, string][] = [];
+    let band = '#5b4a34';
+    let kind = '';
     if (board.kind === 'city') {
       band = SET_COLORS[board.set];
-      const price = landPrice(t, tile);
+      kind = 'Đất';
       const full = isFullSet(view, tile);
-      rows.push(['Giá đất', money(price)]);
+      facts.push(['Giá đất', money(landPrice(t, tile))]);
       t.levelRent.forEach((_, i) => {
-        rows.push([`Thuê ${levelName(i + 1)}`, money(cityRent(t, tile, i + 1, full))]);
+        rows.push({
+          label: levelName(i + 1),
+          value: money(cityRent(t, tile, i + 1, full)),
+          now: lot?.level === i + 1,
+        });
       });
-      rows.push(['Nâng một cấp', money(levelCost(t, tile))]);
-      if (full) rows.push(['Đủ bộ màu', `×${t.fullSet}`]);
     } else if (board.kind === 'station') {
-      rows.push(['Giá', money(t.stationPrice)]);
-      for (let n = 1; n <= 4; n++) rows.push([`Chủ có ${n} bến`, money(stationRent(t, n))]);
+      kind = 'Bến xe';
+      facts.push(['Giá', money(t.stationPrice)]);
+      for (let n = 1; n <= 4; n++)
+        rows.push({
+          label: `Chủ có ${n} bến`,
+          value: money(stationRent(t, n)),
+          now: owned('station') === n,
+        });
     } else if (board.kind === 'utility') {
-      rows.push(['Giá', money(t.utilityPrice)]);
-      rows.push(['Chủ có 1 ô', `xúc xắc ×${t.utilityRent[0]}`]);
-      rows.push(['Chủ có cả 2', `xúc xắc ×${t.utilityRent[1]}`]);
+      kind = 'Công ty';
+      facts.push(['Giá', money(t.utilityPrice)]);
+      const n = owned('utility');
+      rows.push({ label: 'Chủ có 1 ô', value: `xúc xắc ×${t.utilityRent[0]}`, now: n === 1 });
+      rows.push({ label: 'Chủ có cả 2', value: `xúc xắc ×${t.utilityRent[1]}`, now: n >= 2 });
     } else if (board.kind === 'tax') {
       const tax = t.taxes[board.tax];
-      rows.push(['Nộp', `${Math.round(tax.rate * 100)}% tiền mặt`]);
-      rows.push(['Ít nhất', money(tax.min)]);
-    } else if (board.kind === 'airport') {
-      rows.push(['Phí bay', money(t.airportFee)]);
-    } else if (board.kind === 'jail') {
-      rows.push(['Trả để ra', money(t.jailFine)]);
-    } else if (board.kind === 'start') {
-      rows.push(['Đi qua nhận', money(t.startBonus)]);
-    }
+      facts.push(['Nộp', `${Math.round(tax.rate * 100)}% tiền mặt`], ['Ít nhất', money(tax.min)]);
+    } else if (board.kind === 'airport') facts.push(['Phí bay', money(t.airportFee)]);
+    else if (board.kind === 'jail') facts.push(['Trả để ra', money(t.jailFine)]);
+    else if (board.kind === 'start') facts.push(['Đi qua nhận', money(t.startBonus)]);
+    const extra: [string, string][] = [];
+    if (board.kind === 'city') extra.push(['Nâng một cấp', money(levelCost(t, tile))]);
+    if (board.kind === 'city' && isFullSet(view, tile))
+      extra.push(['Đủ bộ màu', `thuê ×${t.fullSet}`]);
     const takeover = lot ? takeoverPrice(t, view, tile) : null;
-    if (takeover !== null) rows.push(['Mua lại', money(takeover)]);
-    const owner = lot
-      ? `${names[lot.owner] ?? ''}${board.kind === 'city' ? ` · ${levelName(lot.level)}` : ''}`
-      : board.kind === 'city' || board.kind === 'station' || board.kind === 'utility'
-        ? 'Chưa có chủ'
-        : '';
+    if (takeover !== null) extra.push(['Mua lại', money(takeover)]);
     const marks = [
-      view.festival === tile ? `Lễ hội: thuê ×${t.festivalRent}` : '',
+      view.festival === tile ? `Lễ hội · thuê ×${t.festivalRent}` : '',
       view.blackout?.tile === tile ? 'Mất điện' : '',
       lot?.level === HOTEL ? 'Khách sạn không mua lại được' : '',
     ].filter(Boolean);
+    const esc = (text: string) =>
+      text.replace(
+        /[&<>"]/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c,
+      );
+    const dl = (pairs: [string, string][]) =>
+      pairs.length
+        ? `<dl class="facts">${pairs.map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join('')}</dl>`
+        : '';
+    const seal = !ownable
+      ? ''
+      : lot
+        ? `<div class="seal" style="--seat:${SEAT_COLORS[lot.owner]}"><span>Chủ sở hữu</span><b>${esc(names[lot.owner] ?? '')}</b>${board.kind === 'city' ? `<i>${esc(levelName(lot.level))}</i>` : ''}</div>`
+        : '<div class="seal free"><span>Chủ sở hữu</span><b>Chưa có chủ</b></div>';
     const set =
       board.kind === 'city'
-        ? setTiles(board.set)
-            .filter((i) => i !== tile)
-            .map((i) => BOARD[i]?.name)
-            .join(', ')
+        ? `<ul class="set">${setTiles(board.set)
+            .map((i) => {
+              const l = view.lots[i];
+              const color = l ? SEAT_COLORS[l.owner] : 'transparent';
+              return `<li${i === tile ? ' class="me"' : ''}><i style="--seat:${color}"></i>${esc(BOARD[i]?.name ?? '')}</li>`;
+            })
+            .join('')}</ul>`
         : '';
-    this.info.innerHTML = `${band ? `<div class="band" style="background:${band}"></div>` : ''}<h2></h2><div class="owner"></div><table>${rows
-      .map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`)
-      .join('')}</table>`;
-    (this.info.querySelector('h2') as HTMLElement).textContent = board.name;
-    (this.info.querySelector('.owner') as HTMLElement).textContent = [
-      owner,
-      set && `Cùng màu: ${set}`,
-      ...marks,
-    ]
-      .filter(Boolean)
-      .join(' · ');
+    const left = `<article class="deed left" style="--band:${band}"><header>${kind ? `<span>Giấy chứng nhận · ${kind}</span>` : ''}<h2>${esc(board.name)}</h2></header>${dl(facts)}${seal}${set}${marks.map((m) => `<p class="mark">${esc(m)}</p>`).join('')}</article>`;
+    const right =
+      rows.length > 0
+        ? `<article class="deed right" style="--band:${band}"><header><span>Tiền thuê</span><h2>${esc(board.name)}</h2></header><table>${rows
+            .map(
+              (r) =>
+                `<tr${r.now ? ' class="now"' : ''}><td>${esc(r.label)}</td><td>${esc(r.value)}</td></tr>`,
+            )
+            .join('')}</table>${dl(extra)}</article>`
+        : '';
+    this.info.innerHTML = left + right;
   }
 
   /**

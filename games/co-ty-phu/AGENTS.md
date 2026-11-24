@@ -43,7 +43,7 @@ side of a payment: its bill (warmer paper as `grandeur` grows; from 2 the screen
 edge glows red), which its payer taps "Thanh toán" on or which pays itself after 5 s, stamped
 "Đã thanh toán", then coins and notes flying from the payer's card to the payee's while both
 cards' cash counts; and confetti. `hud.ts` is the rest of the HTML over the board (player cards,
-their counting cash and "Phá sản" stamp, the decision's buttons, a Tile's details, the end with
+their counting cash and "Phá sản" stamp, the decision's buttons, a Tile's details as a land deed in two halves either side of the board, leaning in: what it is and whose on the left, its rents on the right with the row in force lit, the end with
 its fanfare). `sound.ts` plays the effects in `assets/` (ElevenLabs, see `assets/AGENTS.md`)
 at the Hub's effects level and loops one background track at its music level: any
 `assets/music-*.mp3` the owner adds (one picked per page load; `music-co-ty-phu-a.mp3` is

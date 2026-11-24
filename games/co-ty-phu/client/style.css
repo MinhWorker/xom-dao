@@ -453,7 +453,6 @@ body {
 
 /* The decision's buttons sit at the bottom between the player cards; what it is about is printed on the board. */
 .panel,
-.info,
 .end {
   position: fixed;
   left: 50%;
@@ -580,41 +579,234 @@ body {
   transform-origin: left;
 }
 
+/* A Tile's details: a land deed torn in two, each half on its side of the board, leaning in. */
 .info {
-  width: min(40vw, 300px);
-  text-align: left;
-  font-size: 13px;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  perspective: 1000px;
 }
 
-.info h2 {
-  margin: 0 0 2px;
+.info[hidden] {
+  display: none;
+}
+
+.deed {
+  position: absolute;
+  top: 50%;
+  width: min(22vw, 236px);
+  max-height: calc(100% - 150px);
+  overflow: hidden;
+  padding: 0 0 10px;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.5), transparent 60%),
+    linear-gradient(180deg, #f8f0dc, #ead9b2);
+  color: #2b1f12;
+  outline: 1.5px solid rgba(120, 88, 40, 0.55);
+  outline-offset: -6px;
+  box-shadow:
+    0 0 0 1px #8a6d3b,
+    0 3px 0 #6b5330,
+    0 18px 34px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+  font-size: 12px;
+  animation: deal 0.25s ease-out;
+}
+
+.deed.left {
+  left: max(24px, calc(env(safe-area-inset-left) + 14px));
+  transform: translateY(-50%) rotateY(16deg);
+  transform-origin: left center;
+}
+
+/* Lower than the left one: the top right player card sits below the Hub's corner. */
+.deed.right {
+  top: calc(50% + 24px);
+  right: max(24px, calc(env(safe-area-inset-right) + 14px));
+  transform: translateY(-50%) rotateY(-16deg);
+  transform-origin: right center;
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+.deed header {
+  margin: 0 0 8px;
+  padding: 8px 12px 7px;
+  background: var(--band);
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.25);
+}
+
+.deed header span {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.deed h2 {
+  margin: 1px 0 0;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.deed dl {
+  margin: 0 14px;
+}
+
+.facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dotted rgba(90, 64, 30, 0.35);
+}
+
+.deed dt {
+  color: #6b5330;
+}
+
+.deed dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+/* The owner's seal, in their seat's colour; a dashed blank while nobody owns it. */
+.seal {
+  margin: 8px 14px 0;
+  padding: 5px 8px;
+  border: 2px solid var(--seat);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--seat) 16%, transparent);
+  text-align: center;
+  rotate: -2deg;
+}
+
+.deed .seal span {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b5330;
+}
+
+.seal b {
+  display: block;
+  font-family: var(--display);
   font-size: 16px;
+  font-weight: 900;
+  color: color-mix(in srgb, var(--seat) 70%, #000);
 }
 
-.info .band {
-  height: 6px;
-  margin: -12px -14px 10px;
-  border-radius: 16px 16px 0 0;
+.seal i {
+  font-style: normal;
+  font-weight: 800;
 }
 
-.info table {
-  width: 100%;
-  margin-top: 6px;
+.seal.free {
+  border-style: dashed;
+  border-color: rgba(90, 64, 30, 0.45);
+  background: none;
+}
+
+.seal.free b {
+  color: #8a7350;
+}
+
+.set {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  margin: 8px 14px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  color: #6b5330;
+}
+
+.set li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.set li.me {
+  color: #2b1f12;
+  font-weight: 800;
+}
+
+.set i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--seat);
+  border: 1px solid rgba(60, 40, 15, 0.6);
+}
+
+.deed .mark {
+  margin: 6px 14px 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(176, 39, 30, 0.12);
+  color: #8a2418;
+  font-weight: 800;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* What the Tile charges; the row in force lit gold with a marker. */
+.deed table {
+  width: calc(100% - 20px);
+  margin: 0 10px 4px;
   border-collapse: collapse;
 }
 
-.info td {
-  padding: 1px 0;
+.deed td {
+  padding: 3px 6px;
+  border-bottom: 1px dotted rgba(90, 64, 30, 0.35);
 }
 
-.info td:last-child {
+.deed td:last-child {
   text-align: right;
-  color: var(--gold);
-  font-weight: 700;
+  font-weight: 800;
 }
 
-.info .owner {
-  color: #cfc4ad;
+.deed tr.now td {
+  background: linear-gradient(180deg, #ffe58e, #f2bd2c);
+  font-weight: 900;
+  border-bottom-color: transparent;
+}
+
+.deed tr.now td:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.deed tr.now td:first-child::before {
+  content: "▶ ";
+  font-size: 9px;
+}
+
+.deed tr.now td:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.deed table + .facts {
+  margin-top: 6px;
 }
 
 .toast {
@@ -1553,5 +1745,64 @@ body.quake .roster {
   .pause svg {
     width: 14px;
     height: 14px;
+  }
+}
+
+@media (max-height: 480px) {
+  .deed {
+    width: min(20vw, 180px);
+    max-height: calc(100% - 136px);
+    padding-bottom: 6px;
+    font-size: 10px;
+  }
+
+  .deed.left {
+    left: max(10px, env(safe-area-inset-left));
+  }
+
+  .deed.right {
+    right: max(10px, env(safe-area-inset-right));
+  }
+
+  .deed h2 {
+    font-size: 13px;
+  }
+
+  .deed header span {
+    font-size: 8px;
+  }
+
+  .deed dl,
+  .seal,
+  .set,
+  .deed .mark {
+    margin-inline: 10px;
+  }
+
+  .set {
+    margin-top: 5px;
+    font-size: 10px;
+  }
+
+  .deed td {
+    padding: 1px 4px;
+  }
+
+  .deed header {
+    padding: 5px 10px 4px;
+    margin-bottom: 5px;
+  }
+
+  .facts > div {
+    padding-block: 1px;
+  }
+
+  .seal {
+    margin-top: 5px;
+    padding: 3px 6px;
+  }
+
+  .seal b {
+    font-size: 13px;
   }
 }
