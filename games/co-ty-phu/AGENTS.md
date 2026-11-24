@@ -8,7 +8,7 @@ Rules: `server/game/model.ts` first, words in `GLOSSARY.md`, numbers in `server/
 The board look prototype (#351) is `prototype/`: a still Three.js scene with made-up state in an
 844×390 phone frame. Run `npm run prototype -w @xomdao/game-co-ty-phu` and open
 http://localhost:8041/ (`?pitch=<degrees>` tries another camera angle). It is not built or
-shipped; the client will reuse `prototype/print.ts`, `prototype/pieces.ts` and `prototype/ambience.ts`.
+shipped; the client will reuse `print.ts`, `special.ts`, `pieces.ts` and `ambience.ts` from it.
 
 Direction, reviewed by the owner on #351:
 
@@ -24,10 +24,12 @@ Direction, reviewed by the owner on #351:
 - Tokens are glossy pawns in the seat colour, smaller than a Tile is wide; the dice
   and the Cơ hội and Khí vận decks sit in the middle of the board.
 - The Tiles that cannot be owned (corners, Cơ hội, Khí vận, Thuế) are filled with their own
-  colour (`SPECIAL_COLORS`) with name and icon in cream, and each has a looping touch after what
-  it means (`ambience.ts`): arrows run left over Xuất phát, a "?" floats over Cơ hội, sparkles
-  rise from Khí vận, a coin spins over Thuế, a plane circles Sân bay, a searchlight sweeps Nhà tù
-  and a beacon turns on Vào tù.
+  colour with name and icon in cream, and their icon itself moves, flat on the Tile: nothing
+  rises off the board. `special.ts` draws each icon at a time (at rest without one) and
+  `ambience.ts` repaints a canvas laid over each such Tile at 30 fps. Two lights run from the
+  Xuất phát arrow's tip round to its tail; the plane bobs with a trail from each wingtip; the "?"
+  sways and hops; the chest's lid lifts and lets out sparkles; Thuế is a chart that draws itself
+  climbing; a glint runs across Nhà tù's bars; the Vào tù cuffs swing.
 - Seat colours match Đặt Bom (red, blue, yellow, green); nothing else on the board uses them:
   bến xe buses are grey, Khí vận teal, Cơ hội orange, and the Tp. HCM set bronze. Card backs are the deck colour with its icon repeated small (`cardBack`). Vào tù is
   handcuffs. Colour set colours are in `SET_COLORS` (`prototype/print.ts`), approved.

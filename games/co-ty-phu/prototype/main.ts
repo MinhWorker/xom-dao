@@ -371,7 +371,7 @@ roster.innerHTML = PLAYERS.map(
 ).join('');
 
 buildPieces();
-const tick = ambience(pieces, at);
+const tick = ambience(pieces, at, renderer.capabilities.getMaxAnisotropy());
 new ResizeObserver(resize).observe(frame);
 resize();
 renderer.setAnimationLoop((ms) => {

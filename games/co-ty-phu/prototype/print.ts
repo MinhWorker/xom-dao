@@ -4,6 +4,7 @@
  * top-left corner is (0, 0) and v grows towards the camera.
  */
 import { BOARD, type ColourSet, type Tile } from '../server/game/board.js';
+import { CREAM, DECK_COLORS, drawSpecial, SPECIAL_COLORS } from './special.js';
 
 export const TILE_W = 1;
 export const CORNER = 1.6;
@@ -139,31 +140,6 @@ const wrap = (ctx: CanvasRenderingContext2D, name: string, maxW: number, size: n
 /** Draws an icon `s` pixels across, centred on the origin. */
 type Icon = (ctx: CanvasRenderingContext2D, s: number) => void;
 
-/** The colour of each deck: its Tiles and its card back. */
-export const DECK_COLORS = { chance: '#e2731c', chest: '#138a84' } as const;
-
-/**
- * The Tiles that cannot be owned are filled with their own colour and print their name and
- * icon in CREAM. None of these is a seat colour.
- */
-export const SPECIAL_COLORS: Partial<Record<Tile['kind'], string>> = {
-  start: '#9e2b3a',
-  jail: '#5a4632',
-  airport: '#4b5266',
-  'go-jail': '#3c424c',
-  chance: DECK_COLORS.chance,
-  chest: DECK_COLORS.chest,
-  tax: '#a07a12',
-};
-const CREAM = '#fff6e1';
-
-const stroke = (ctx: CanvasRenderingContext2D, s: number, color = INK) => {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = s * 0.09;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-};
-
 const ICONS: Partial<Record<Tile['kind'], Icon>> = {
   station: (ctx, s) => {
     ctx.fillStyle = '#5d6675';
@@ -178,35 +154,6 @@ const ICONS: Partial<Record<Tile['kind'], Icon>> = {
       ctx.arc(s * x, s * 0.26, s * 0.12, 0, Math.PI * 2);
       ctx.fill();
     }
-  },
-  tax: (ctx, s) => {
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = s * 0.08;
-    ctx.beginPath();
-    ctx.arc(0, 0, s * 0.42, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = INK;
-    ctx.font = `900 ${s * 0.6}px system-ui, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('₫', 0, s * 0.03);
-  },
-  chance: (ctx, s) => {
-    ctx.fillStyle = INK;
-    ctx.font = `900 ${s * 1.1}px system-ui, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('?', 0, s * 0.04);
-  },
-  chest: (ctx, s) => {
-    ctx.fillStyle = INK;
-    ctx.beginPath();
-    ctx.roundRect(-s * 0.48, -s * 0.2, s * 0.96, s * 0.58, s * 0.06);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(0, -s * 0.2, s * 0.48, s * 0.24, 0, Math.PI, 0);
-    ctx.fill();
-    ctx.clearRect(-s * 0.08, -s * 0.12, s * 0.16, s * 0.2);
   },
 };
 
@@ -233,101 +180,9 @@ const drop: Icon = (ctx, s) => {
   ctx.fill();
 };
 
-const bars: Icon = (ctx, s) => {
-  stroke(ctx, s);
-  ctx.strokeRect(-s * 0.5, -s * 0.5, s, s);
-  for (const x of [-0.25, 0, 0.25]) {
-    ctx.beginPath();
-    ctx.moveTo(s * x, -s * 0.5);
-    ctx.lineTo(s * x, s * 0.5);
-    ctx.stroke();
-  }
-};
-
-const plane: Icon = (ctx, s) => {
-  ctx.fillStyle = '#4b5266';
-  ctx.beginPath();
-  ctx.moveTo(s * 0.55, 0);
-  ctx.quadraticCurveTo(s * 0.55, -s * 0.07, s * 0.4, -s * 0.07);
-  ctx.lineTo(s * 0.1, -s * 0.07);
-  ctx.lineTo(-s * 0.12, -s * 0.48);
-  ctx.lineTo(-s * 0.24, -s * 0.48);
-  ctx.lineTo(-s * 0.1, -s * 0.07);
-  ctx.lineTo(-s * 0.36, -s * 0.07);
-  ctx.lineTo(-s * 0.46, -s * 0.22);
-  ctx.lineTo(-s * 0.54, -s * 0.22);
-  ctx.lineTo(-s * 0.48, 0);
-  ctx.lineTo(-s * 0.54, s * 0.22);
-  ctx.lineTo(-s * 0.46, s * 0.22);
-  ctx.lineTo(-s * 0.36, s * 0.07);
-  ctx.lineTo(-s * 0.1, s * 0.07);
-  ctx.lineTo(-s * 0.24, s * 0.48);
-  ctx.lineTo(-s * 0.12, s * 0.48);
-  ctx.lineTo(s * 0.1, s * 0.07);
-  ctx.lineTo(s * 0.4, s * 0.07);
-  ctx.quadraticCurveTo(s * 0.55, s * 0.07, s * 0.55, 0);
-  ctx.fill();
-};
-
-/** Points left: play runs left along the bottom from Xuất phát. */
-const arrow: Icon = (ctx, s) => {
-  ctx.fillStyle = '#c8452f';
-  ctx.scale(-1, 1);
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.55, -s * 0.16);
-  ctx.lineTo(s * 0.1, -s * 0.16);
-  ctx.lineTo(s * 0.1, -s * 0.4);
-  ctx.lineTo(s * 0.6, 0);
-  ctx.lineTo(s * 0.1, s * 0.4);
-  ctx.lineTo(s * 0.1, s * 0.16);
-  ctx.lineTo(-s * 0.55, s * 0.16);
-  ctx.closePath();
-  ctx.fill();
-};
-
-const handcuffs: Icon = (ctx, s) => {
-  ctx.lineCap = 'round';
-  for (const [color, width] of [
-    ['#3c424c', 0.12],
-    ['#aab3bf', 0.05],
-  ] as const) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = s * width;
-    for (const x of [-0.27, 0.27]) {
-      ctx.beginPath();
-      ctx.arc(s * x, s * 0.06, s * 0.21, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    for (const x of [-0.1, 0.1]) {
-      ctx.beginPath();
-      ctx.ellipse(s * x, -s * 0.2, s * 0.08, s * 0.045, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-  }
-};
-
 const iconOf = (tile: Tile): Icon | undefined => {
   if (tile.kind === 'utility') return tile.name === 'Điện lực' ? bolt : drop;
-  if (tile.kind === 'start') return arrow;
-  if (tile.kind === 'jail') return bars;
-  if (tile.kind === 'airport') return plane;
-  if (tile.kind === 'go-jail') return handcuffs;
   return ICONS[tile.kind];
-};
-
-/** An icon as a canvas `s` pixels square, painted all in `tint` (a silhouette). */
-export const tintedIcon = (kind: Tile['kind'], s: number, tint: string) => {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = Math.ceil(s * 1.25);
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  const icon = iconOf({ kind, name: '' } as Tile);
-  icon?.(ctx, s);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalCompositeOperation = 'source-in';
-  ctx.fillStyle = tint;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  return canvas;
 };
 
 const priceOf = (tile: Tile) => {
@@ -345,6 +200,7 @@ const drawFace = (
   h: number,
   band: { x: number; y: number } | undefined,
   px: number,
+  t?: number,
 ) => {
   let area = { x: -w / 2, y: -h / 2, w, h };
   const special = SPECIAL_COLORS[tile.kind];
@@ -386,16 +242,17 @@ const drawFace = (
     tile.kind === 'jail' ||
     tile.kind === 'airport' ||
     tile.kind === 'go-jail';
-  const icon = iconOf(tile);
+  const icon = special ? undefined : iconOf(tile);
+  const hasIcon = Boolean(special || icon);
   const price = priceOf(tile);
   const nameSize = corner ? px * 0.24 : px * 0.2;
   const lines = wrap(ctx, tile.name.toUpperCase(), maxW, nameSize);
   const size = fitFont(ctx, lines, maxW, nameSize);
   const lineH = size * 1.08;
-  const iconS = icon ? Math.min(area.w, area.h) * (corner ? 0.5 : 0.36) : 0;
+  const iconS = hasIcon ? Math.min(area.w, area.h) * (corner ? 0.5 : 0.36) : 0;
   const priceSize = px * 0.16;
   const blockH =
-    lines.length * lineH + (icon ? iconS + px * 0.08 : 0) + (price ? priceSize * 1.3 : 0);
+    lines.length * lineH + (hasIcon ? iconS + px * 0.08 : 0) + (price ? priceSize * 1.3 : 0);
   let y = area.y + (area.h - blockH) / 2;
 
   ctx.textAlign = 'center';
@@ -406,17 +263,13 @@ const drawFace = (
     ctx.fillText(line, cx, y);
     y += lineH;
   }
-  if (icon) {
+  if (hasIcon) {
     y += px * 0.04;
-    if (special) {
-      const art = tintedIcon(tile.kind, iconS, CREAM);
-      ctx.drawImage(art, cx - art.width / 2, y + iconS / 2 - art.height / 2);
-    } else {
-      ctx.save();
-      ctx.translate(cx, y + iconS / 2);
-      icon(ctx, iconS);
-      ctx.restore();
-    }
+    ctx.save();
+    ctx.translate(cx, y + iconS / 2);
+    if (special) drawSpecial(ctx, tile.kind, iconS, CREAM, special, t);
+    else icon?.(ctx, iconS);
+    ctx.restore();
     y += iconS + px * 0.04;
   }
   if (price) {
@@ -460,6 +313,21 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number) => {
   ctx.restore();
 };
 
+/** Paints Tile `i` with its top-left corner at the origin; `t` sets a special icon moving. */
+export const paintTile = (ctx: CanvasRenderingContext2D, i: number, px: number, t?: number) => {
+  const tile = BOARD[i] as Tile;
+  const p = placement(i);
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, p.w * px, p.h * px);
+  ctx.save();
+  ctx.translate((p.w / 2) * px, (p.h / 2) * px);
+  drawFace(ctx, tile, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t);
+  ctx.restore();
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = px * 0.02;
+  ctx.strokeRect(0, 0, p.w * px, p.h * px);
+};
+
 /** The whole printed board; all text reads upright from the bottom side. */
 export const printBoard = (px = 336): HTMLCanvasElement => {
   const canvas = document.createElement('canvas');
@@ -469,17 +337,12 @@ export const printBoard = (px = 336): HTMLCanvasElement => {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawCentre(ctx, px);
 
-  BOARD.forEach((tile, i) => {
+  BOARD.forEach((_, i) => {
     const p = placement(i);
-    ctx.fillStyle = PAPER;
-    ctx.fillRect(p.x * px, p.y * px, p.w * px, p.h * px);
     ctx.save();
-    ctx.translate((p.x + p.w / 2) * px, (p.y + p.h / 2) * px);
-    drawFace(ctx, tile, p.w * px, p.h * px, p.corner ? undefined : p.inward, px);
+    ctx.translate(p.x * px, p.y * px);
+    paintTile(ctx, i, px);
     ctx.restore();
-    ctx.strokeStyle = LINE;
-    ctx.lineWidth = px * 0.02;
-    ctx.strokeRect(p.x * px, p.y * px, p.w * px, p.h * px);
   });
   ctx.lineWidth = px * 0.05;
   ctx.strokeRect(0, 0, canvas.width, canvas.height);
@@ -495,7 +358,6 @@ export const cardBack = (deck: keyof typeof DECK_COLORS): HTMLCanvasElement => {
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   ctx.fillStyle = DECK_COLORS[deck];
   ctx.fillRect(0, 0, 600, 400);
-  const art = tintedIcon(deck, 52, 'rgba(255, 246, 225, 0.32)');
   const step = 92;
   ctx.save();
   ctx.beginPath();
@@ -506,7 +368,7 @@ export const cardBack = (deck: keyof typeof DECK_COLORS): HTMLCanvasElement => {
       ctx.save();
       ctx.translate(col * step + (row % 2 ? step / 2 : 0), row * step);
       ctx.rotate(row % 2 ? -0.25 : 0.25);
-      ctx.drawImage(art, -art.width / 2, -art.height / 2);
+      drawSpecial(ctx, deck, 52, 'rgba(255, 246, 225, 0.32)', DECK_COLORS[deck]);
       ctx.restore();
     }
   }
