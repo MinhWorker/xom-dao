@@ -31,6 +31,8 @@ import {
   RingGeometry,
   Scene,
   SphereGeometry,
+  Sprite,
+  SpriteMaterial,
   SRGBColorSpace,
   Vector2,
   Vector3,
@@ -257,6 +259,11 @@ export class BoardView {
   /** Where each seat's token stands, `null` when it is off the board. */
   private spots: (number | null)[] = [];
   private picking: number[] = [];
+  /** Tiles picked for a sale: a steady gold glow and their tags. */
+  private chosen: number[] = [];
+  /** The arrows bobbing over the Tiles to pick for a sale, and the tags over those picked. */
+  private readonly pointers = new Group();
+  private arrows: Sprite[] = [];
   private paused = false;
   /** Bumped by `stop`: a walk under way gives up. */
   private generation = 0;
@@ -365,6 +372,7 @@ export class BoardView {
       base,
       top,
       marquee(this.bulbs, this.halos),
+      this.pointers,
       this.notice,
       this.lots,
       this.marks,
@@ -1252,6 +1260,31 @@ export class BoardView {
     });
   }
 
+  /**
+   * A sale being chosen: an arrow bobbing over each Tile in `tiles` not yet picked, and over each
+   * one in `picked` a gold tag with what it is and fetches. No `tiles` clears them.
+   */
+  selling(tiles: number[], picked: { tile: number; label: string; value: string }[] = []) {
+    clear(this.pointers);
+    this.arrows = [];
+    this.chosen = picked.map((p) => p.tile);
+    for (const tile of tiles) {
+      const p = placement(tile);
+      const where = at(p.x + p.w / 2, p.y + p.h / 2);
+      const tag = picked.find((q) => q.tile === tile);
+      if (tag) {
+        const sprite = saleTag(tag.label, tag.value);
+        sprite.position.set(where.x, BOARD_H + 0.6, where.z);
+        this.pointers.add(sprite);
+      } else {
+        const arrow = pointer();
+        arrow.position.set(where.x, BOARD_H + 0.55, where.z);
+        this.arrows.push(arrow);
+        this.pointers.add(arrow);
+      }
+    }
+  }
+
   /** Lights up the Tiles a tap may pick; none clears them. */
   highlight(tiles: number[]) {
     this.picking = tiles;
@@ -1333,8 +1366,13 @@ export class BoardView {
     if (this.halos[1]) this.halos[1].opacity = swap ? 0.9 : 0;
     const pulse = this.low ? 0.28 : 0.22 + Math.sin(ms / 220) * 0.12;
     this.glow.forEach((g, i) => {
-      (g.material as MeshBasicMaterial).opacity = this.picking.includes(i) ? pulse : 0;
+      const material = g.material as MeshBasicMaterial;
+      const chosen = this.chosen.includes(i);
+      material.color.set(chosen ? GOLD : '#ffffff');
+      material.opacity = chosen ? 0.55 : this.picking.includes(i) ? pulse : 0;
     });
+    for (const [k, a] of this.arrows.entries())
+      a.position.y = BOARD_H + 0.45 + Math.abs(Math.sin(ms / 260 + k * 0.5)) * 0.25;
     if (!this.low) this.tick(ms / 1000);
     if (!this.speaking && this.standing?.blink)
       this.notice.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(ms / 170));
@@ -1576,4 +1614,72 @@ function marquee(materials: MeshBasicMaterial[], halos: MeshBasicMaterial[]) {
     }
   }
   return group;
+}
+
+/** A gold arrow pointing down at a Tile, always facing the camera. */
+function pointer() {
+  const c = document.createElement('canvas');
+  c.width = 96;
+  c.height = 128;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  const shape = () => {
+    g.beginPath();
+    g.moveTo(30, 8);
+    g.lineTo(66, 8);
+    g.lineTo(66, 62);
+    g.lineTo(90, 62);
+    g.lineTo(48, 120);
+    g.lineTo(6, 62);
+    g.lineTo(30, 62);
+    g.closePath();
+  };
+  shape();
+  g.lineJoin = 'round';
+  g.lineWidth = 10;
+  g.strokeStyle = '#3a2507';
+  g.stroke();
+  const face = g.createLinearGradient(0, 8, 0, 120);
+  face.addColorStop(0, '#fff2b0');
+  face.addColorStop(0.5, '#f5c232');
+  face.addColorStop(1, '#c98a0c');
+  g.fillStyle = face;
+  shape();
+  g.fill();
+  const map = new CanvasTexture(c);
+  map.colorSpace = SRGBColorSpace;
+  const sprite = new Sprite(new SpriteMaterial({ map, depthTest: false }));
+  sprite.scale.set(0.34, 0.45, 1);
+  sprite.renderOrder = 5;
+  return sprite;
+}
+
+/** A gold tag standing over a Tile picked for a sale: what is Sold and what it fetches. */
+function saleTag(label: string, value: string) {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 112;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  g.fillStyle = '#3a2507';
+  g.beginPath();
+  g.roundRect(4, 4, 248, 104, 22);
+  g.fill();
+  const face = g.createLinearGradient(0, 8, 0, 100);
+  face.addColorStop(0, '#ffe58e');
+  face.addColorStop(1, '#dc9c12');
+  g.fillStyle = face;
+  g.beginPath();
+  g.roundRect(10, 10, 236, 88, 18);
+  g.fill();
+  g.fillStyle = '#3b2300';
+  g.textAlign = 'center';
+  g.font = '900 34px "Be Vietnam Pro", system-ui, sans-serif';
+  g.fillText(label.toUpperCase(), 128, 50);
+  g.font = '900 30px "Be Vietnam Pro", system-ui, sans-serif';
+  g.fillText(value, 128, 86);
+  const map = new CanvasTexture(c);
+  map.colorSpace = SRGBColorSpace;
+  const sprite = new Sprite(new SpriteMaterial({ map, depthTest: false }));
+  sprite.scale.set(1.45, 0.64, 1);
+  sprite.renderOrder = 5;
+  return sprite;
 }

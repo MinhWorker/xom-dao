@@ -16,10 +16,21 @@ import {
 } from '@xomdao/bridge';
 import { BOARD } from '../server/game/board.js';
 import { cardOf } from '../server/game/cards.js';
-import { HOTEL, type View } from '../server/game/model.js';
+import { HOTEL, type Sale, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 import { CardShow } from './cardshow.js';
-import { type Button, decide, decider, levelName, money, type Panel } from './decisions.js';
+import {
+  type Button,
+  CHOOSE_SALE,
+  decide,
+  decider,
+  levelName,
+  money,
+  nextSale,
+  type Panel,
+  partLabel,
+  partValue,
+} from './decisions.js';
 import { Hud } from './hud.js';
 import { Moments } from './moments.js';
 import { type Change, changes, grandeur, pace } from './present.js';
@@ -63,6 +74,8 @@ let timer: { ms: number; at: number } | null = null;
 /** The ms left on the clock when it was last drawn, for its ticks. */
 let clockLeft = Infinity;
 let panel: Panel | null = null;
+/** What the player has picked to Sell during their Debt. */
+let sale: Sale[] = [];
 let sending = false;
 let endedAt: number | null = null;
 let doneFor: string | null = null;
@@ -186,6 +199,7 @@ function present(view: View | null, fanfare = false) {
 
 /** Clears the decision on screen while moves play: its buttons, the roll and its line on the board. */
 function idle() {
+  board.selling([]);
   hud.show([]);
   board.status(null);
   rolling = false;
@@ -197,7 +211,8 @@ function idle() {
  * others); the player deciding gets its buttons, or the dice to tap and a blinking line for a roll.
  */
 function ask(view: View) {
-  panel = decide(view, me, names);
+  if (view.phase !== 'debt' || view.debt?.from !== me) sale = [];
+  panel = decide(view, me, names, sale);
   sending = false;
   if (held) {
     idle();
@@ -236,6 +251,15 @@ function ask(view: View) {
     hud.show(mine ? panel.buttons.filter((b) => b.event !== 'roll') : []);
   }
   board.highlight(panel.pick?.tiles ?? []);
+  if (mine && panel.pick?.event === CHOOSE_SALE)
+    board.selling(
+      panel.pick.tiles,
+      sale.map((part) => ({
+        tile: part.tile,
+        label: partLabel(part),
+        value: `+${money(partValue(view, part))}`,
+      })),
+    );
 }
 
 /** The winner's token in a beam of light, and confetti over everything. */
@@ -600,6 +624,12 @@ canvas.addEventListener('pointerdown', (event) => {
   const pick = panel?.pick;
   if (tile !== null && pick && !sending && !playing && pick.tiles.includes(tile)) {
     hud.tile(null, null, names);
+    if (pick.event === CHOOSE_SALE && shown) {
+      sale = nextSale(shown, sale, tile);
+      sounds.play('coin', { gain: 0.6 });
+      ask(shown);
+      return;
+    }
     send(pick.event, pick.payload(tile));
     return;
   }

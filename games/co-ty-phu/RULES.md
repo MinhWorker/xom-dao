@@ -50,6 +50,6 @@ Kéo dài theo lượt của chính bạn. Giữ tối đa 2; có thêm thì m�
 
 ## Nợ và phá sản
 
-Thiếu tiền trả thì bán cho ngân hàng: bớt cấp nhà (nửa giá cấp đó) hoặc cả ô (nửa giá đất và nhà, ô thành vô chủ). Gợi ý bán cấp trước, rồi ô lẻ, giữ bộ đủ màu tới cuối; hết giờ thì bán theo gợi ý.
+Thiếu tiền trả thì bán cho ngân hàng: bớt cấp nhà (nửa giá cấp đó) hoặc cả ô (nửa giá đất và nhà, ô thành vô chủ). Chạm các ô của mình để chọn bán (chạm tiếp để bớt thêm cấp, rồi bán cả ô); chọn đủ thì bấm Bán. Hết giờ thì máy bán thay: cấp trước, rồi ô lẻ, giữ bộ đủ màu tới cuối.
 
 Bán hết vẫn thiếu là phá sản: chủ nợ nhận tiền bạn còn, đất về ngân hàng, mất vé ra tù. Người rời ván do máy chơi thay, xếp chót. Người cuối cùng chưa phá sản thắng.

@@ -13,8 +13,8 @@ deciding player's buttons at the bottom, and for a roll the dice to tap (a trans
 button kept over them, wider than they are drawn). Two pure modules carry the logic, with
 tests built on real Matches (`server/game/test-match.ts`):
 
-- `decisions.ts`: `decide(view, seat, names)` is the panel a seat sees: title, text, buttons
-  and the Tiles a tap may pick (Sân bay, a Card's Lot), and the Card it is about. Prices come
+- `decisions.ts`: `decide(view, seat, names, sale)` is the panel a seat sees: title, text, buttons
+  and the Tiles a tap may pick (Sân bay, a Card's Lot, a Debt's Lots), and the Card it is about. Prices come
   from `economy.ts`, so they match the server.
 - `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
   of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
@@ -30,7 +30,7 @@ it with an impact, `release` lifts the bars, `build` raises houses and Hotels an
 sold. The tier-1 moments (#355) are there too: `build` snatches a Lot Taken over (houses yanked up,
 spun, slammed down in the taker's colour) and puts a new Hotel in a beam of light, `fullSet` lights
 the set's Tiles one after another, `fall` topples a bankrupt token and crumbles its Lots, `victory`
-throws sparks round the winner, and `shake` shakes the camera. Bulbs run round the base's rim (`marquee`), every other one lit, swapping about twice a second. `say` prints every event's text in
+throws sparks round the winner, and `shake` shakes the camera. Bulbs run round the base's rim (`marquee`), every other one lit, swapping about twice a second. `selling` shows a Debt's sale being picked (an arrow bobbing over each of the debtor's Lots, a gold tag over each picked; a tap cycles its part with `nextSale`). `say` prints every event's text in
 the middle of the board, which is otherwise left blank in a Match, and `status` the decision
 waiting there between them (the roll blinking, its dice hopping: `inviteRoll`); `diceRect` is
 where the dice are on screen. `setGraphics` follows the Hub's
