@@ -454,6 +454,38 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         });
         break;
       }
+      case 'tax': {
+        await building;
+        if (!live()) return;
+        const name = BOARD[step.tile]?.name ?? 'Thuế';
+        const note = taxNote(step);
+        const announce = () => board.say(name, { sub: note, tone: 'bad', ms: 2600 });
+        if (!step.paid) {
+          announce();
+          break;
+        }
+        const { seat, amount } = step;
+        board.follow(null);
+        await moments.pay(
+          hud.card(seat),
+          undefined,
+          { title: name, note, from: names[seat] ?? '', to: 'Ngân hàng', amount },
+          grandeur(amount),
+          show,
+          {
+            low,
+            payer: seat === me,
+            onPaid: () => sounds.play('stamp'),
+            onCoin: () => sounds.play('coin', { gain: 0.55, rate: 0.9 + Math.random() * 0.35 }),
+            onFly: (flight) => {
+              hud.delta(seat, -amount, flight);
+              counted[seat] = (counted[seat] ?? 0) - amount;
+            },
+          },
+        );
+        announce();
+        break;
+      }
       case 'cash': {
         const rest = step.delta - (counted[step.seat] ?? 0);
         if (rest !== 0) {
@@ -547,6 +579,14 @@ function announceLot(step: Extract<Change, { kind: 'lot' }>) {
     });
   else if (now.level > was.level) board.say(`${name} lên ${levelName(now.level)}`);
   else board.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
+}
+
+/** How a Thuế was worked out: its rate of the cash on landing, raised to its minimum. */
+function taxNote({ base, rate, min, amount }: Extract<Change, { kind: 'tax' }>) {
+  const share = `${Math.round(rate * 100)}% × ${money(base)} = ${money(Math.floor(rate * Math.max(0, base)))}`;
+  return amount > Math.floor(rate * Math.max(0, base))
+    ? `${share}, thấp hơn mức tối thiểu → ${money(min)}`
+    : share;
 }
 
 /** What a bill is for: the rent or Takeover of a Lot, the Card drawn, or a Debt. */

@@ -18,7 +18,7 @@ tests built on real Matches (`server/game/test-match.ts`):
   from `economy.ts`, so they match the server.
 - `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
   of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
-  a Full set made, the Quiz result, money paid from one player to another (`pay`, worked out from
+  a Full set made, the Quiz result, a Thuế landed on (`tax`: the cash it was worked out on, the rate and minimum, billed to Ngân hàng with its sum printed under the title), money paid from one player to another (`pay`, worked out from
   the cash, with `why`: rent, a Takeover, a Card or a Debt), each player's cash, and Bankruptcy
   with the Lots it takes down. `grandeur(amount)` is how grand a payment looks (0–3).
 

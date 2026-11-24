@@ -5,7 +5,7 @@
  */
 import { BOARD, JAIL_TILE, setTiles } from '../server/game/board.js';
 import { type CardId, cardOf } from '../server/game/cards.js';
-import { isFullSet } from '../server/game/economy.js';
+import { isFullSet, taxOf } from '../server/game/economy.js';
 import { DOUBLES_TO_JAIL, type Lot, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 
@@ -26,6 +26,18 @@ export type Change =
   | { kind: 'quiz'; seat: number; right: boolean }
   /** Money from one player to another, `why`; `tile` is the Lot paid for (rent, a Takeover). */
   | { kind: 'pay'; from: number; to: number; amount: number; why: PayReason; tile: number | null }
+  /** `seat` landed on a Thuế `tile`: `rate` of `base`, their cash on landing, but at least `min`. */
+  | {
+      kind: 'tax';
+      seat: number;
+      tile: number;
+      base: number;
+      rate: number;
+      min: number;
+      amount: number;
+      /** Paid at once, or owed as a Debt. */
+      paid: boolean;
+    }
   | { kind: 'cash'; seat: number; delta: number }
   /** `seat` is out, and `lots`, what they owned, go back to the bank with them. */
   | { kind: 'bankrupt'; seat: number; lots: { tile: number; lot: Lot }[] };
@@ -138,6 +150,8 @@ export function changes(before: View, after: View): Change[] {
 
   const paid = payment(before, after, drawn);
   if (paid) out.push(paid);
+  const taxed = tax(before, after, out);
+  if (taxed) out.push(taxed);
   after.players.forEach((p, seat) => {
     const delta = p.cash - (before.players[seat]?.cash ?? p.cash);
     if (delta !== 0) out.push({ kind: 'cash', seat, delta });
@@ -179,6 +193,23 @@ function payment(before: View, after: View, drawn: View['card']): Change | null 
   const tile = after.players[turn]?.tile ?? 0;
   const took = before.lots[tile]?.owner === to && after.lots[tile]?.owner === turn;
   return { ...paid(turn, to, gained(to), took ? 'takeover' : 'rent'), tile };
+}
+
+/** The Thuế the turn player paid, or owes, on landing on it this move. */
+function tax(before: View, after: View, steps: readonly Change[]): Change | null {
+  const seat = before.turn;
+  const was = before.players[seat];
+  const now = after.players[seat];
+  const tile = BOARD[now?.tile ?? -1];
+  if (!was || !now || tile?.kind !== 'tax' || was.tile === now.tile) return null;
+  const passed = steps.some(
+    (s) => s.kind === 'walk' && s.seat === seat && s.from + s.steps >= TILES,
+  );
+  const base = was.cash + (passed ? TUNING.startBonus : 0);
+  const { rate, min } = TUNING.taxes[tile.tax];
+  const amount = taxOf(TUNING, tile.tax, base);
+  const owed = after.debt?.from === seat && after.debt.to === null;
+  return { kind: 'tax', seat, tile: now.tile, base, rate, min, amount, paid: !owed };
 }
 
 const paid = (from: number, to: number, amount: number, why: PayReason) =>

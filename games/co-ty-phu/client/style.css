@@ -1213,6 +1213,18 @@ html.paused * {
   text-align: center;
 }
 
+/* How the amount was worked out, as a line of small print under the title. */
+.bill .note {
+  margin-top: 2px;
+  font-size: 0.78em;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.bill .note:empty {
+  display: none;
+}
+
 .bill dl {
   display: grid;
   grid-template-columns: auto 1fr;

@@ -20,6 +20,23 @@ describe('what a new view shows', () => {
     ]);
   });
 
+  it('bills Thuế thu nhập on landing: a tenth of the cash, but at least its minimum', () => {
+    expect(roll([1, 3]).slice(2)).toEqual([
+      {
+        kind: 'tax',
+        seat: 0,
+        tile: 4,
+        base: 1000,
+        rate: 0.1,
+        min: 100,
+        amount: 100,
+        paid: true,
+      },
+      { kind: 'cash', seat: 0, delta: -100 },
+    ]);
+    expect(roll([1, 3], player(0, { cash: 2000 }))[2]).toMatchObject({ base: 2000, amount: 200 });
+  });
+
   it('sends the rent from the payer to the owner after the token lands', () => {
     const steps = roll([1, 2], own(1, [3], 1));
     expect(steps.slice(2)).toEqual([
@@ -99,6 +116,7 @@ describe('what a new view shows', () => {
       { kind: 'walk', seat: 0, from: 0, steps: 7 },
       { kind: 'card', seat: 0, id: 'chance-back' },
       { kind: 'jump', seat: 0, to: 4, how: 'move' },
+      { kind: 'tax', seat: 0, tile: 4, base: 1000, rate: 0.1, min: 100, amount: 100, paid: true },
       { kind: 'cash', seat: 0, delta: -100 },
     ]);
   });
