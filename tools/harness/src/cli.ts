@@ -21,7 +21,7 @@ Commands for a running Harness (--harness <url>, default http://localhost:8040):
   init <player>                            send the Game client a fresh init (replay)
   reconnect <player> | disconnect <player> | leave <player>
   visibility <player> hidden|visible       tell the Game client its tab was hidden or shown
-  settings <player> [--volume 0-1] [--muted true|false] [--graphics high|low]
+  settings <player> [--volume 0-1] [--muted true|false] [--graphics high|low] [--preferences <json>]
   net [--latency <ms>] [--drop <0-1>]      slow network between the Harness and Game clients
   state                                    Room, Match and every player's view
   log [--since <n>] [--player <n>] [--source bridge|server|harness] [--limit <n>]
@@ -106,6 +106,9 @@ function body(command: string, positional: string[], flags: Record<string, strin
         ...(flags.volume !== undefined && { volume: number(flags.volume, '--volume') }),
         ...(flags.muted !== undefined && { muted: bool(flags.muted) }),
         ...(flags.graphics !== undefined && { graphics: flags.graphics }),
+        ...(flags.preferences !== undefined && {
+          preferences: json(flags.preferences, '--preferences'),
+        }),
       };
     case 'net':
       return {

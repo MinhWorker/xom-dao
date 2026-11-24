@@ -14,6 +14,7 @@ import {
 } from '@xomdao/bridge';
 import { BOARD } from '../server/game/board.js';
 import type { View } from '../server/game/model.js';
+import { CardShow } from './cardshow.js';
 import { type Button, decide, decider, levelName, type Panel } from './decisions.js';
 import { Hud } from './hud.js';
 import { type Change, changes, pace } from './present.js';
@@ -34,6 +35,7 @@ interface MatchPush {
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const board = new BoardView(canvas);
 const hud = new Hud();
+const cards = new CardShow();
 
 let myId = '';
 let me = -1;
@@ -54,14 +56,20 @@ let endedAt: number | null = null;
 let doneFor: string | null = null;
 let doneTimer = 0;
 let hidden = false;
+let low = false;
 
 const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
 
-const applyGraphics = (settings: BridgeSettings) => board.setGraphics(settings.graphics ?? 'high');
+/** The Hub's graphics level and the player's preferences (`manifest.ts`). */
+const applySettings = (settings: BridgeSettings) => {
+  low = settings.graphics === 'low';
+  board.setGraphics(low ? 'low' : 'high');
+  board.setFollowing(settings.preferences?.follow !== false);
+};
 
 const bridge = createGameBridge({
   onInit(init) {
-    applyGraphics(init.settings);
+    applySettings(init.settings);
     restart();
     myId = init.player.id;
     const seats: BridgeSeat[] = init.room.seats;
@@ -98,7 +106,7 @@ const bridge = createGameBridge({
     }
     if (push.status === 'over') finish(push.matchId);
   },
-  onSettings: applyGraphics,
+  onSettings: applySettings,
   onVisibility(paused) {
     hidden = paused;
     board.pause(paused);
@@ -113,15 +121,15 @@ function restart() {
   playing = false;
   sending = false;
   board.stop();
-  hud.hideCard();
+  cards.hide();
 }
 
 /** Redraws everything from `view` at once. */
 function present(view: View | null) {
   shown = view;
-  hud.hideCard();
   if (!view || isOver(view)) {
     panel = null;
+    cards.hide();
     board.highlight([]);
   }
   if (!view) {
@@ -145,7 +153,16 @@ function ask(view: View) {
   panel = decide(view, me, names);
   sending = false;
   const mine = panel.buttons.some((b) => !b.disabled) || !!panel.pick;
-  hud.show(panel, mine);
+  if (panel.card && mine && panel.buttons.length > 0) {
+    hud.show(null, false);
+    cards.choose(panel.card, names[view.card?.seat ?? view.turn] ?? '', panel.buttons, (b) => {
+      cards.busy(true);
+      send(b.event, b.payload);
+    });
+  } else {
+    cards.hide();
+    hud.show(panel, mine);
+  }
   board.highlight(panel.pick?.tiles ?? []);
 }
 
@@ -199,14 +216,17 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         if (step.how === 'jail') hud.say(`${names[step.seat] ?? ''} vào tù`);
         await board.jump(step.seat, step.to, ms(step.how === 'flight' ? 1400 : 560), step.how);
         break;
-      case 'card':
+      case 'card': {
         board.follow(null);
-        await board.drawCard(step.id, ms(750));
-        hud.drawn(step.id, names[step.seat] ?? '');
-        await wait(ms(1500));
-        hud.hideCard();
-        await board.putCard(ms(320));
+        const speed = hidden ? 0 : pace;
+        await cards.draw(step.id, names[step.seat] ?? '', speed, low);
+        const choosing =
+          after.phase === 'card' &&
+          after.card?.seat === me &&
+          decide(after, me, names).buttons.length > 0;
+        if (!choosing && live()) await cards.hold(Math.round(1800 * speed));
         break;
+      }
       case 'lot':
       case 'festival':
       case 'blackout':

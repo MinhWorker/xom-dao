@@ -11,11 +11,16 @@
  *                 choices: [{ value: 1, label: '1 vòng' }, { value: 3, label: '3 vòng' }] },
  *       fast: { type: 'toggle', label: 'Đánh nhanh', default: false },
  *     },
+ *     preferences: { sorted: { type: 'toggle', label: 'Tự xếp bài', default: true } },
  *   });
  *
  * The type checker catches wrong fields and a default outside its choices; `defineManifest`
  * checks the rest against `GameManifestSchema` when it loads. The Game's options type is
  * `ManifestOptions<typeof manifest>`, and the server checks a Room's picks with `optionsSchema`.
+ * `preferences` have the same shapes but belong to each player on their own device: the Hub shows
+ * them in the waiting room and its settings, keeps them, and sends them to the Game's client as
+ * the Bridge `settings.preferences` (`preferenceValues` fills the defaults). The server never sees
+ * them.
  *
  * A Game not made yet declares only what its locked card shows, beside `hub/emblem.svg`:
  *
@@ -56,7 +61,10 @@ export const ISLANDS = ['co', 'bai', 'xuc-xac', 'nao-nhiet'] as const;
 export type Island = (typeof ISLANDS)[number];
 
 /** What a Game declares to the Hub and the server. */
-export interface GameManifest<O extends Record<string, RoomOption> = Record<string, RoomOption>> {
+export interface GameManifest<
+  O extends Record<string, RoomOption> = Record<string, RoomOption>,
+  P extends Record<string, RoomOption> = Record<string, RoomOption>,
+> {
   /** The Game's folder name, `games/<id>/`: kebab-case. */
   id: string;
   /** Vietnamese only. */
@@ -76,6 +84,8 @@ export interface GameManifest<O extends Record<string, RoomOption> = Record<stri
   focus: { x: number; y: number };
   /** Room options; their keys are what the Game reads in `ctx.options`. */
   options?: O;
+  /** Each player's own choices for the Game's client, like a camera that follows the moves. */
+  preferences?: P;
 }
 
 /** A Game not made yet: only `manifest.ts` and `hub/emblem.svg`, which the build skips. */
@@ -94,6 +104,12 @@ export type AnyManifest = GameManifest | SoonManifest;
 export type ManifestOptions<M extends GameManifest> =
   M extends GameManifest<infer O>
     ? { -readonly [K in keyof O]: O[K] extends ChoiceOption<infer V> ? V : boolean }
+    : never;
+
+/** The preferences' values as the Game's client reads them from the Bridge. */
+export type ManifestPreferences<M extends GameManifest> =
+  M extends GameManifest<Record<string, RoomOption>, infer P>
+    ? { -readonly [K in keyof P]: P[K] extends ChoiceOption<infer V> ? V : boolean }
     : never;
 
 /** Infers the options from what is written and refuses a `choice` default outside its values. */
@@ -152,6 +168,12 @@ export const GameManifestSchema = z
         z.discriminatedUnion('type', [choiceOption, toggleOption]),
       )
       .optional(),
+    preferences: z
+      .record(
+        z.string().regex(OPTION_KEY, 'preferences keys are camelCase'),
+        z.discriminatedUnion('type', [choiceOption, toggleOption]),
+      )
+      .optional(),
   })
   .strict()
   .refine((m) => m.minPlayers <= m.maxPlayers, {
@@ -174,9 +196,15 @@ export function parseManifest(manifest: unknown) {
  * when it breaks a rule the type checker can't see (a min above its max, a focus off the art).
  */
 export function defineManifest(manifest: SoonManifest): SoonManifest;
-export function defineManifest<const O extends Record<string, RoomOption> = Record<never, never>>(
-  manifest: Omit<GameManifest, 'options'> & { options?: CheckedOptions<O> },
-): GameManifest<O>;
+export function defineManifest<
+  const O extends Record<string, RoomOption> = Record<never, never>,
+  const P extends Record<string, RoomOption> = Record<never, never>,
+>(
+  manifest: Omit<GameManifest, 'options' | 'preferences'> & {
+    options?: CheckedOptions<O>;
+    preferences?: CheckedOptions<P>;
+  },
+): GameManifest<O, P>;
 export function defineManifest(manifest: AnyManifest): AnyManifest {
   const parsed = parseManifest(manifest);
   if (!parsed.success) {
@@ -199,4 +227,25 @@ export function optionsSchema<M extends GameManifest>(manifest: M): z.ZodType<Ma
             .default(option.default);
   }
   return z.object(shape).strict() as unknown as z.ZodType<ManifestOptions<M>>;
+}
+
+/** A player's preferences for a Game: what they saved where it is valid, the defaults elsewhere. */
+export function preferenceValues(
+  manifest: Pick<GameManifest, 'preferences'>,
+  saved: unknown,
+): Record<string, ChoiceValue | boolean> {
+  const picks = (typeof saved === 'object' && saved !== null ? saved : {}) as Record<
+    string,
+    unknown
+  >;
+  const out: Record<string, ChoiceValue | boolean> = {};
+  for (const [key, pref] of Object.entries(manifest.preferences ?? {})) {
+    const value = picks[key];
+    const valid =
+      pref.type === 'toggle'
+        ? typeof value === 'boolean'
+        : pref.choices.some((c) => c.value === value);
+    out[key] = valid ? (value as ChoiceValue | boolean) : pref.default;
+  }
+  return out;
 }

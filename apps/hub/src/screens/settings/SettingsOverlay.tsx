@@ -1,4 +1,5 @@
 import { IconX } from '@tabler/icons-react';
+import type { GameManifest } from '@xomdao/sdk';
 import { useId } from 'react';
 import { GAMES } from '../../games.js';
 import { Chip, Choice, Icon, Select, Slider, Tabs, Toggle } from '../../kit/index.js';
@@ -13,6 +14,7 @@ import {
   useGraphics,
 } from '../../settings/graphics.js';
 import { sounds, useEffects, useMusic, useMuted, useVolume } from '../../sound/index.js';
+import { PreferenceFields } from '../room/RoomOptions.js';
 import styles from './SettingsOverlay.module.css';
 
 const percent = (value: number) => `${value}%`;
@@ -130,13 +132,35 @@ const TABS = [
   { id: 'about', label: 'Giới thiệu', content: <AboutTab /> },
 ];
 
+export interface SettingsOverlayProps {
+  open: boolean;
+  /** The Game being played: its preferences, if it declares any, come first in a tab of its own. */
+  game?: GameManifest;
+  onClose(): void;
+}
+
 /**
  * The Hub's settings: a full-screen frosted overlay (a modal `<dialog>`) with one tab each for
  * graphics, sound and About. The title and tabs stay where they are whichever tab shows; nothing scrolls.
  */
-export function SettingsOverlay({ open, onClose }: { open: boolean; onClose(): void }) {
+export function SettingsOverlay({ open, game, onClose }: SettingsOverlayProps) {
   const modal = useModal(open, onClose);
   const titleId = useId();
+  const tabs =
+    game && Object.keys(game.preferences ?? {}).length > 0
+      ? [
+          {
+            id: 'game',
+            label: game.name,
+            content: (
+              <div className={styles.tab}>
+                <PreferenceFields manifest={game} />
+              </div>
+            ),
+          },
+          ...TABS,
+        ]
+      : TABS;
 
   return (
     <dialog {...modal} className={styles.overlay} aria-labelledby={titleId}>
@@ -147,7 +171,7 @@ export function SettingsOverlay({ open, onClose }: { open: boolean; onClose(): v
             <Icon icon={IconX} />
           </button>
         </header>
-        {open && <Tabs label="Cài đặt" tabs={TABS} />}
+        {open && <Tabs label="Cài đặt" tabs={tabs} />}
       </div>
     </dialog>
   );

@@ -1,8 +1,8 @@
 /**
  * The board in Three.js, after the approved prototype (#351): the printed board floating in
  * space, the Lots in their owners' colours, the tokens, the dice and the decks. `show` puts
- * everything where a view says; `roll`, `walk`, `jump`, `release`, `build`, `drawCard` and
- * `putCard` play the moves between views, with the camera following the token that moves.
+ * everything where a view says; `roll`, `walk`, `jump`, `release` and `build` play the moves
+ * between views, with the camera following what moves.
  */
 
 import type { BridgeGraphics } from '@xomdao/bridge';
@@ -10,6 +10,7 @@ import {
   AmbientLight,
   BoxGeometry,
   CanvasTexture,
+  CatmullRomCurve3,
   DirectionalLight,
   Group,
   HemisphereLight,
@@ -22,8 +23,8 @@ import {
   PerspectiveCamera,
   Plane,
   PlaneGeometry,
-  Quaternion,
   Raycaster,
+  RingGeometry,
   Scene,
   SphereGeometry,
   SRGBColorSpace,
@@ -32,14 +33,12 @@ import {
   WebGLRenderer,
 } from 'three';
 import { BOARD } from '../server/game/board.js';
-import { type CardId, cardOf } from '../server/game/cards.js';
 import { isFullSet } from '../server/game/economy.js';
-import { type Deck, HOTEL, type Lot, type View } from '../server/game/model.js';
-import { TUNING } from '../server/game/tuning.js';
+import { HOTEL, type Lot, type View } from '../server/game/model.js';
 import { ambience } from './ambience.js';
-import { cage, DIE, die, hotel, house, token } from './pieces.js';
+import { cage, DIE, die, hotel, house, plane, token, WINGTIPS } from './pieces.js';
 import type { Change } from './present.js';
-import { BAND, bandRect, cardBack, cardFace, placement, printBoard, SIDE } from './print.js';
+import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from './print.js';
 
 export const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
@@ -52,8 +51,6 @@ const BOARD_H = 0.22;
 const GOLD = '#e6b422';
 /** How much nearer the camera comes to a token it follows (0 stays, 1 is on it). */
 const CLOSE = 0.32;
-/** How far in front of the camera a drawn Card stops: about the size of the Card shown over it. */
-const CARD_AWAY = 4.2;
 
 type JumpHow = Extract<Change, { kind: 'jump' }>['how'];
 
@@ -192,10 +189,7 @@ const buildings = (lot: Lot | null) =>
   !lot ? [] : lot.level >= HOTEL ? [HOTEL] : Array.from({ length: lot.level }, (_, k) => k + 1);
 
 const DUST = new SphereGeometry(0.05, 8, 6);
-const CARD = new BoxGeometry(1.5, 0.02, 1.0);
-const CARD_SIDE = new MeshStandardMaterial({ color: '#f5efe0' });
-const X_AXIS = new Vector3(1, 0, 0);
-const Y_AXIS = new Vector3(0, 1, 0);
+const RING = new RingGeometry(0.32, 0.42, 40);
 
 interface Tween {
   start: number;
@@ -217,7 +211,6 @@ export class BoardView {
   /** What only lives while a move plays: dust, trails, a sinking house, the Card drawn. */
   private readonly fx = new Group();
   private readonly sun: DirectionalLight;
-  private readonly decks = {} as Record<Deck, Mesh>;
   private readonly tokens: Group[] = [];
   private readonly cages: ReturnType<typeof cage>[] = [];
   private readonly dice: Mesh[];
@@ -233,6 +226,8 @@ export class BoardView {
   /** Bumped by `stop`: a walk under way gives up. */
   private generation = 0;
   private low = false;
+  /** Whether the camera follows what moves (the player's preference). */
+  private following = true;
   /** How fast moves play (1 is normal, lower is faster): the camera and dust keep up with it. */
   private pace = 1;
   private size: [number, number] = [844, 390];
@@ -243,8 +238,12 @@ export class BoardView {
   private zoom = 0;
   private readonly look = new Vector3();
   private lastFrame = 0;
-  /** The Card drawn, while it shows; `held` (and hidden under the HUD's Card) once it stops. */
-  private card: { mesh: Mesh; deck: Deck; held: boolean } | null = null;
+  /** The plane that flies from Sân bay, hidden between flights. */
+  private readonly aircraft = plane();
+  /** The camera shakes until `until` (performance.now ms). */
+  private shake = { until: 0, strength: 0 };
+  /** The last frame shook, so this one puts the camera back. */
+  private shook = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
@@ -285,7 +284,9 @@ export class BoardView {
     top.rotation.x = -Math.PI / 2;
     top.position.y = BOARD_H + 0.001;
     top.receiveShadow = true;
-    this.world.add(base, top, this.lots, this.marks, this.fx);
+    this.aircraft.scale.setScalar(1.6);
+    this.aircraft.visible = false;
+    this.world.add(base, top, this.lots, this.marks, this.fx, this.aircraft);
 
     for (const [x, kind, turn] of [
       [-1.6, 'chance', 0.12],
@@ -306,7 +307,6 @@ export class BoardView {
       deck.position.set(x, BOARD_H + 0.06, -2.4);
       deck.rotation.y = turn;
       deck.castShadow = true;
-      this.decks[kind] = deck;
       this.world.add(deck);
     }
 
@@ -349,8 +349,9 @@ export class BoardView {
   stop() {
     this.generation++;
     this.finish(false);
-    this.dropCard();
     clear(this.fx);
+    this.aircraft.visible = false;
+    this.shake.until = 0;
     this.focus = null;
     this.zoom = 0;
     this.camera.position.copy(this.home.pos);
@@ -369,6 +370,11 @@ export class BoardView {
     this.renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(this.size[0], this.size[1], false);
     if (low) this.tick();
+  }
+
+  /** Off: the camera stays over the whole board, as on low graphics. */
+  setFollowing(on: boolean) {
+    this.following = on;
   }
 
   setPace(pace: number) {
@@ -585,27 +591,114 @@ export class BoardView {
         t.position.y = a.y + Math.sin(u * Math.PI) * 1.6;
       });
     if (mine !== this.generation) return;
-    this.puff(b, 8);
+    if (how !== 'flight') this.puff(b, 8);
     this.spots[seat] = to;
     this.placeTokens(seat);
     if (how === 'jail') await this.lock(seat, Math.round(ms * 0.9));
   }
 
-  private fly(t: Group, a: Vector3, b: Vector3, ms: number) {
+  /**
+   * A flight: the plane comes in low across Sân bay and picks the token up, makes a quick turn
+   * over the board (straight on low graphics), drops it over `b`, and flies off. Wingtip trails
+   * follow the plane and the falling token; the token lands with `impact`.
+   */
+  private async fly(t: Group, a: Vector3, b: Vector3, ms: number) {
+    const air = this.aircraft;
+    const along = new Vector3(-a.z, 0, a.x).normalize();
+    const lift = (p: Vector3, y: number) => new Vector3(p.x, BOARD_H + y, p.z);
+    const centre = new Vector3().lerpVectors(a, b, 0.5).multiplyScalar(0.5);
+    const loop = this.low
+      ? []
+      : [0, 1, 2, 3, 4, 5].map((k) => {
+          const start = Math.atan2(a.z - centre.z, a.x - centre.x) + 0.6;
+          const angle = start + (k / 6) * Math.PI * 2;
+          return lift(
+            new Vector3(centre.x + Math.cos(angle) * 2.2, 0, centre.z + Math.sin(angle) * 2.2),
+            2.4,
+          );
+        });
+    const away = new Vector3(b.x, 0, b.z).normalize().multiplyScalar(6).add(b);
+    const drop = lift(b, 1.9);
+    const path = new CatmullRomCurve3(
+      [
+        lift(a.clone().addScaledVector(along, -4), 0.9),
+        lift(a, 0.6),
+        lift(a.clone().addScaledVector(along, 1.6), 1.6),
+        ...loop,
+        drop,
+        lift(away, 3.2),
+      ],
+      false,
+      'centripetal',
+    );
+    const points = path.getSpacedPoints(240);
+    const nearest = (p: Vector3) =>
+      points.reduce(
+        (best, q, k) => (q.distanceTo(p) < (points[best] as Vector3).distanceTo(p) ? k : best),
+        0,
+      ) / 240;
+    const pickAt = nearest(lift(a, 0.6));
+    const dropAt = nearest(drop);
+    const fall = Math.min(0.22, 1 - dropAt);
+    const ahead = new Vector3();
+    const hang = new Vector3();
+    let heading = 0;
     let trail = 0;
-    const bank = Math.sign(b.x - a.x || 1) * -0.4;
-    return this.tween(ms, (u) => {
-      const up = Math.sin(u * Math.PI);
-      t.position.lerpVectors(a, b, smooth(u));
-      t.position.y = a.y + up ** 0.6 * 2.6;
-      t.rotation.z = up * bank;
-      if (u - trail > 0.03 && u > 0.08 && u < 0.92) {
-        trail = u;
-        this.mote(t.position.clone());
+    let falling: Vector3 | null = null;
+    air.visible = true;
+    this.focus = air;
+    await this.tween(ms, (u) => {
+      const at = path.getPointAt(Math.min(1, u));
+      path.getPointAt(Math.min(1, u + 0.01), ahead);
+      air.position.copy(at);
+      air.lookAt(ahead);
+      const turn = Math.atan2(ahead.x - at.x, ahead.z - at.z);
+      const bend = Math.atan2(Math.sin(turn - heading), Math.cos(turn - heading));
+      heading = turn;
+      air.rotateZ(Math.max(-0.7, Math.min(0.7, -bend * 18)));
+      if (u >= pickAt && u < dropAt) {
+        hang.set(0, -0.32, 0).applyQuaternion(air.quaternion).add(at);
+        t.position.copy(hang);
+        this.focus = air;
+      } else if (u >= dropAt) {
+        falling ??= t.position.clone();
+        const k = Math.min(1, (u - dropAt) / fall);
+        t.position.lerpVectors(falling, b, k * k);
+        t.position.y = falling.y + (b.y - falling.y) * k * k + Math.sin(k * Math.PI) * 0.3;
+        this.focus = t;
       }
-    }).then(() => {
-      t.rotation.z = 0;
+      if (u - trail > 0.025) {
+        trail = u;
+        for (const tip of WINGTIPS) this.mote(air.localToWorld(tip.clone()));
+        if (falling && t.position.distanceTo(b) > 0.1) this.mote(t.position.clone());
+      }
     });
+    air.visible = false;
+    t.position.copy(b);
+    this.impact(b);
+  }
+
+  /** A token lands hard: a ring and dust run out from it, it squashes, and the camera shakes. */
+  private impact(where: Vector3) {
+    this.puff(where, 12, 520);
+    if (this.low || this.paused) return;
+    const material = new MeshBasicMaterial({
+      color: '#fff1c4',
+      transparent: true,
+      depthWrite: false,
+    });
+    const ring = new Mesh(RING, material);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(where.x, where.y + 0.02, where.z);
+    this.fx.add(ring);
+    this.tween(520 * this.pace, (u) => {
+      ring.scale.setScalar(0.4 + ease(u) * 2.6);
+      material.opacity = 0.85 * (1 - u);
+    }).then(() => {
+      this.fx.remove(ring);
+      material.dispose();
+    });
+    this.shake = { until: performance.now() + 320 * this.pace, strength: 0.09 };
   }
 
   /** The bars drop round a token that just went to jail. */
@@ -636,83 +729,6 @@ export class BoardView {
       group.position.y = 0;
       iron.opacity = 1;
     });
-  }
-
-  /**
-   * The Card drawn leaves its deck, turns over on the way and stops facing the camera, where the
-   * HUD shows it until `putCard`.
-   */
-  drawCard(id: CardId, ms = 750) {
-    const { deck, name } = cardOf(TUNING, id);
-    this.dropCard();
-    const pile = this.decks[deck];
-    const map = new CanvasTexture(cardFace(deck, name));
-    map.colorSpace = SRGBColorSpace;
-    const back = (pile.material as MeshStandardMaterial[])[2] as MeshStandardMaterial;
-    const face = new MeshBasicMaterial({ map });
-    const mesh = new Mesh(CARD, [CARD_SIDE, CARD_SIDE, back, face, CARD_SIDE, CARD_SIDE]);
-    mesh.position.copy(pile.position);
-    mesh.position.y += 0.08;
-    mesh.quaternion.copy(pile.quaternion);
-    this.fx.add(mesh);
-    const card = { mesh, deck, held: false };
-    this.card = card;
-    const p0 = mesh.position.clone();
-    const q0 = mesh.quaternion.clone();
-    const spin = new Quaternion();
-    return this.tween(ms, (u) => {
-      const e = ease(u);
-      const { p, q } = this.facing();
-      mesh.position.lerpVectors(p0, p, e);
-      mesh.position.y += Math.sin(u * Math.PI) * 0.8;
-      mesh.quaternion
-        .slerpQuaternions(q0, q, e)
-        .multiply(spin.setFromAxisAngle(Y_AXIS, Math.PI * 2 * (1 - e)));
-    }).then(() => {
-      card.held = true;
-      mesh.visible = false;
-    });
-  }
-
-  /** The Card drawn goes back down onto its deck. */
-  putCard(ms = 320) {
-    const card = this.card;
-    if (!card) return Promise.resolve();
-    card.held = false;
-    const { mesh } = card;
-    mesh.visible = true;
-    const pile = this.decks[card.deck];
-    const p0 = mesh.position.clone();
-    const q0 = mesh.quaternion.clone();
-    const p1 = pile.position.clone();
-    p1.y += 0.08;
-    return this.tween(ms, (u) => {
-      const e = ease(u);
-      mesh.position.lerpVectors(p0, p1, e);
-      mesh.quaternion.slerpQuaternions(q0, pile.quaternion, e);
-    }).then(() => {
-      if (this.card === card) this.dropCard();
-    });
-  }
-
-  private dropCard() {
-    if (!this.card) return;
-    const { mesh } = this.card;
-    this.fx.remove(mesh);
-    const face = (mesh.material as MeshBasicMaterial[])[3];
-    face?.map?.dispose();
-    face?.dispose();
-    this.card = null;
-  }
-
-  /** Where a Card stops: in front of the camera, its face (−y) turned to it. */
-  private facing() {
-    const cam = this.camera;
-    const p = cam.getWorldDirection(new Vector3()).multiplyScalar(CARD_AWAY).add(cam.position);
-    const q = cam.quaternion
-      .clone()
-      .multiply(new Quaternion().setFromAxisAngle(X_AXIS, -Math.PI / 2));
-    return { p, q };
   }
 
   /** A few motes of dust kicking out from `where`; none on low graphics. */
@@ -840,18 +856,15 @@ export class BoardView {
     });
     if (!this.low) this.tick(ms / 1000);
     this.steer(dt);
-    if (this.card?.held) {
-      const { p, q } = this.facing();
-      this.card.mesh.position.copy(p);
-      this.card.mesh.quaternion.copy(q);
-    }
     this.renderer.render(this.scene, this.camera);
   }
 
   /** Eases the camera towards the token it follows, nearer and looking at it, or back home. */
   private steer(dt: number) {
-    const want = this.focus && !this.low ? 1 : 0;
-    if (want === 0 && this.zoom === 0) return;
+    const want = this.focus && this.following && !this.low ? 1 : 0;
+    const shaking = performance.now() < this.shake.until;
+    if (want === 0 && this.zoom === 0 && !shaking && !this.shook) return;
+    this.shook = shaking;
     const there = this.focus?.getWorldPosition(new Vector3());
     if (there) {
       there.y = BOARD_H;
@@ -868,6 +881,12 @@ export class BoardView {
       .multiplyScalar(1 - k * CLOSE);
     this.camera.position.copy(target).add(back);
     this.camera.lookAt(target);
+    if (shaking) {
+      const left = (this.shake.until - performance.now()) / 320;
+      const s = this.shake.strength * Math.min(1, left);
+      this.camera.position.x += (Math.random() - 0.5) * s;
+      this.camera.position.y += (Math.random() - 0.5) * s;
+    }
   }
 
   /**

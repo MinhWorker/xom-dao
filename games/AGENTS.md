@@ -51,7 +51,10 @@ draw how it ended at once (Caro: `games/caro/client/main.ts`). The message list 
 `BRIDGE_VERSION` are in the header of `packages/bridge/src/protocol.ts`; the Hub's side is
 `createGameHost`. `settings` (in `init` and `onSettings`) also carries the Hub's Đồ họa level,
 `graphics`: on `low` a Game drops costly or busy visuals (Cờ Tỷ Phú: `BoardView.setGraphics`); a
-missing one means `high`.
+missing one means `high`. It also carries `preferences`: each player's own choices for the Game's
+client, declared as `preferences` in its manifest (same shapes as Room options; see the header of
+`packages/sdk/src/manifest.ts`). The Hub shows them under "Tuỳ chọn của bạn" in the waiting room
+and in a tab of its settings during the Match.
 
 ## The Harness: running a Game without the Hub
 

@@ -1,7 +1,9 @@
 import type { GameManifest } from '@xomdao/sdk';
 import type { RoomOptions as Picks } from '@xomdao/shared/client';
-import { Choice, CutPanel, Toggle } from '../../kit/index.js';
-import { choiceFromString, pickedChoice, withPick } from './options.js';
+import { CutPanel } from '../../kit/index.js';
+import { preferences, usePreferences } from '../../settings/preferences.js';
+import { OptionField } from './OptionField.js';
+import { withPick } from './options.js';
 import styles from './RoomOptions.module.css';
 
 export interface RoomOptionsProps {
@@ -12,7 +14,7 @@ export interface RoomOptionsProps {
   onChange(options: Picks): void;
 }
 
-/** The Room's options, drawn from the Game manifest: a `choice` as a row of buttons, a `toggle` as a switch. */
+/** The Room's options, drawn from the Game manifest. */
 export function RoomOptions({ manifest, picks, editable, onChange }: RoomOptionsProps) {
   const entries = Object.entries(manifest.options ?? {});
   if (entries.length === 0) return null;
@@ -20,27 +22,45 @@ export function RoomOptions({ manifest, picks, editable, onChange }: RoomOptions
   return (
     <CutPanel label="Tuỳ chọn phòng" className={styles.panel}>
       <div className={styles.list}>
-        {entries.map(([key, option]) =>
-          option.type === 'choice' ? (
-            <Choice
-              key={key}
-              label={option.label}
-              options={option.choices.map((c) => ({ value: String(c.value), label: c.label }))}
-              value={String(pickedChoice(option, picks[key]))}
-              disabled={!editable}
-              onChange={(raw) => onChange(withPick(picks, key, choiceFromString(option, raw)))}
-            />
-          ) : (
-            <Toggle
-              key={key}
-              label={option.label}
-              checked={typeof picks[key] === 'boolean' ? picks[key] : option.default}
-              disabled={!editable}
-              onChange={(checked) => onChange(withPick(picks, key, checked))}
-            />
-          ),
-        )}
+        {entries.map(([key, option]) => (
+          <OptionField
+            key={key}
+            option={option}
+            value={picks[key]}
+            disabled={!editable}
+            onChange={(value) => onChange(withPick(picks, key, value))}
+          />
+        ))}
       </div>
+    </CutPanel>
+  );
+}
+
+/** The player's own preferences for the Game, drawn from its manifest; `null` when it has none. */
+export function PreferenceFields({ manifest }: { manifest: GameManifest }) {
+  const values = usePreferences(manifest);
+  const entries = Object.entries(manifest.preferences ?? {});
+  if (entries.length === 0) return null;
+  return (
+    <div className={styles.list}>
+      {entries.map(([key, option]) => (
+        <OptionField
+          key={key}
+          option={option}
+          value={values[key]}
+          onChange={(value) => preferences.set(manifest.id, key, value)}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** The player's own preferences in the waiting room. */
+export function MyPreferences({ manifest }: { manifest: GameManifest }) {
+  if (Object.keys(manifest.preferences ?? {}).length === 0) return null;
+  return (
+    <CutPanel label="Tuỳ chọn của bạn" className={styles.panel}>
+      <PreferenceFields manifest={manifest} />
     </CutPanel>
   );
 }

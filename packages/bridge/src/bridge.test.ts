@@ -201,6 +201,20 @@ describe('Bridge round-trip', () => {
     expect(gameSide.onSettings).toHaveBeenCalledWith({ volume: 1, muted: false, graphics: 'low' });
   });
 
+  it("passes on the player's preferences for the Game", async () => {
+    const { host, bridge, gameSide } = connect();
+    host.init(makeInit(null));
+    bridge.ready();
+    host.settings({ volume: 1, muted: false, preferences: { follow: false, size: 'big' } });
+    await flush();
+
+    expect(gameSide.onSettings).toHaveBeenCalledWith({
+      volume: 1,
+      muted: false,
+      preferences: { follow: false, size: 'big' },
+    });
+  });
+
   it('keeps what the Hub sent before the Game was ready, in order', async () => {
     const order: string[] = [];
     const { host, bridge } = connect(

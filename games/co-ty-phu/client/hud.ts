@@ -1,9 +1,8 @@
 /**
  * The HTML over the board: the player cards (cash, Effects, jail, the turn clock), the decision
- * panel, the Card just drawn, a Tile's details, short banners and the end of the Match.
+ * panel, a Tile's details, short banners and the end of the Match.
  */
 import { BOARD, setTiles } from '../server/game/board.js';
-import { type CardId, cardOf } from '../server/game/cards.js';
 import {
   cityRent,
   isFullSet,
@@ -17,7 +16,6 @@ import { TUNING } from '../server/game/tuning.js';
 import { type Button, levelName, money, type Panel } from './decisions.js';
 import { SET_COLORS } from './print.js';
 import { SEAT_COLORS } from './scene.js';
-import { DECK_COLORS } from './special.js';
 
 const t = TUNING;
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -61,7 +59,6 @@ export class Hud {
   private readonly roster = $<HTMLOListElement>('roster');
   private readonly panel = $<HTMLElement>('panel');
   private readonly clock = $<HTMLElement>('clock').firstElementChild as HTMLElement;
-  private readonly card = $<HTMLElement>('card');
   private readonly info = $<HTMLElement>('info');
   private readonly banner = $<HTMLElement>('banner');
   private readonly toast = $<HTMLElement>('toast');
@@ -190,20 +187,6 @@ export class Hud {
     });
   }
 
-  /** The Card just drawn, face up. */
-  drawn(id: CardId, by: string) {
-    const card = cardOf(t, id);
-    this.card.style.setProperty('--deck', DECK_COLORS[card.deck]);
-    $('card-deck').textContent = `${card.deck === 'chance' ? 'Cơ hội' : 'Khí vận'} · ${by}`;
-    $('card-name').textContent = card.name;
-    $('card-text').textContent = card.text;
-    this.card.hidden = false;
-  }
-
-  hideCard() {
-    this.card.hidden = true;
-  }
-
   /** A short line at the top of the screen. */
   say(text: string, ms = 1600) {
     this.banner.textContent = text;
@@ -296,7 +279,6 @@ export class Hud {
     this.end.hidden = !view;
     if (!view) return;
     this.show(null, false);
-    this.hideCard();
     const n = view.players.length;
     const places = view.players
       .map((p, seat) => {

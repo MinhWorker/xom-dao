@@ -12,19 +12,23 @@ wait), then shows the newest view's decision. Two pure modules carry the logic, 
 tests built on real Matches (`server/game/test-match.ts`):
 
 - `decisions.ts`: `decide(view, seat, names)` is the panel a seat sees: title, text, buttons
-  and the Tiles a tap may pick (Sân bay, a Card's Lot). Prices come from `economy.ts`, so they
-  match the server.
+  and the Tiles a tap may pick (Sân bay, a Card's Lot), and the Card it is about. Prices come
+  from `economy.ts`, so they match the server.
 - `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
   of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
   the Quiz result, money and Bankruptcy.
 
 `scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the moves: `roll`
-throws the dice with bounces, `walk` hops Tile by Tile with the camera following, `jump` flies
-from Sân bay with a trail or drops the bars round a jailed token, `release` lifts them, `build`
-raises houses and Hotels and sinks those sold, `drawCard`/`putCard` turn the Card over in front
-of the camera. `setGraphics` follows the Hub's Đồ họa (its doc lists what `low` drops). `hud.ts`
-is the HTML over it (player cards, panel, Card, a Tile's details, the end). `npm run smoke:web`
-plays its first decisions in CI.
+throws the dice with bounces, `walk` hops Tile by Tile with the camera following, `jump` drops
+the bars round a jailed token or sends the plane (`plane()` in `pieces.ts`, the legacy Blender
+model rebuilt from its ellipsoids) to pick the token up at Sân bay, turn over the board and drop
+it with an impact, `release` lifts the bars, `build` raises houses and Hotels and sinks those
+sold. `setGraphics` follows the Hub's Đồ họa (its doc lists what `low` drops) and `setFollowing`
+the player's "Máy quay bám theo" preference (`manifest.ts`). `cardshow.ts` is the Card drawn, in
+2D over the board: the deck and its top card pulled off, then the Card turning over; tapped to
+close, or its choices dealt beside it as cards to tap. `hud.ts` is the rest of the HTML over the
+board (player cards, panel, a Tile's details, the end). `npm run smoke:web` plays its first
+decisions in CI.
 
 ## Look
 
