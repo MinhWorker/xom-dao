@@ -1,5 +1,5 @@
 // Draws splash art (2560×1152, 20:9) in code, in the Game's own colours:
-//   node scripts/splash.mjs [caro|tien-len|islands]     (no argument: all of them)
+//   node scripts/splash.mjs [caro|tien-len|co-ty-phu|islands]     (no argument: all of them)
 // Caro and Tiến Lên are drawn to match their clients (`games/caro/client/render.ts`,
 // `games/tien-len/godot/style.gd`). The Islands' art is a placeholder: the Island's Emblem on a
 // tinted backdrop, until the Games of that Island have a look of their own. Đặt Bom's
@@ -434,6 +434,7 @@ function island(id) {
 const jobs = {
   caro: () => ['games/caro/hub/key-art.png', caro()],
   'tien-len': () => ['games/tien-len/hub/key-art.png', tienLen()],
+  'co-ty-phu': () => ['games/co-ty-phu/hub/key-art.png', island('xuc-xac')],
   islands: () =>
     Object.keys(ISLANDS).map((id) => [`apps/hub/src/island-art/${id}.png`, island(id)]),
 };

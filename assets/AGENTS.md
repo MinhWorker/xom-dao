@@ -81,4 +81,7 @@
 - **Formats**:
   - Short effects are mono 16-bit WAV, because MP3 starts with about 25 ms of padding.
   - Music is 128 kbps MP3.
-- **Music**: the app's own tracks (`music-hub-*`, `music-sky-*`) are in `assets/app/audio/`.
+- **Music**: the app's own tracks (`music-hub-*`, `music-sky-*`) are in `assets/app/audio/`. A Game's
+  background music is supplied by the owner.
+- **Sound effects are generated with ElevenLabs** (the `sound-effects` skill), then cut and
+  measured as above.
