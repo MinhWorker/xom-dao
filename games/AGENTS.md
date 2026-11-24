@@ -230,7 +230,7 @@ player, also across reconnects: continue from the snapshot's `ack`), reads `tick
 `ack` from every `match:state` message and draws other players a snapshot behind. Keys held
 before the first tick are ignored by the server, so it sends the held direction again then.
 
-A Vite client (Caro, Đặt Bom): `vite.config.ts` sets `root: 'client'`, `base: './'`, `outDir: '../dist'`
+A Vite client (Caro, Đặt Bom, Cờ Tỷ Phú): `vite.config.ts` sets `root: 'client'`, `base: './'`, `outDir: '../dist'`
 and the `xomdao-source` condition; `vite build` runs first in `scripts.build` because it empties
 `dist/`. A `vitest.config.ts` keeps Vitest from inheriting `root: 'client'`. The client may import
 the pure rules in `server/game/` to draw the board. After rebuilding a Game, restart the Hub's

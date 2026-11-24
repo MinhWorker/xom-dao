@@ -178,6 +178,8 @@ export class BoardView {
   private spots: (number | null)[] = [];
   private picking: number[] = [];
   private paused = false;
+  /** Bumped by `stop`: a walk under way gives up. */
+  private generation = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
@@ -269,9 +271,23 @@ export class BoardView {
     this.frameCamera();
   }
 
-  /** Stops drawing while the Hub's tab is hidden. */
+  /** Stops drawing while the Hub's tab is hidden; what was moving ends where it was going. */
   pause(paused: boolean) {
     this.paused = paused;
+    if (paused) this.finish(true);
+  }
+
+  /** Drops every move under way, where it stands; the next `show` puts things right. */
+  stop() {
+    this.generation++;
+    this.finish(false);
+  }
+
+  private finish(land: boolean) {
+    for (const tw of this.tweens.splice(0)) {
+      if (land) tw.step(1);
+      tw.done();
+    }
   }
 
   /** Puts everything where `view` says, at once. */
@@ -343,7 +359,9 @@ export class BoardView {
   async walk(seat: number, from: number, steps: number, perStep = 150) {
     const t = this.tokens[seat];
     if (!t) return;
+    const mine = this.generation;
     for (let k = 1; k <= steps; k++) {
+      if (mine !== this.generation) return;
       const a = spot((from + k - 1) % 40, 0, 1);
       const b = spot((from + k) % 40, 0, 1);
       await this.tween(perStep, (u) => {
@@ -351,6 +369,7 @@ export class BoardView {
         t.position.y = a.y + Math.sin(u * Math.PI) * 0.35;
       });
     }
+    if (mine !== this.generation) return;
     this.spots[seat] = (from + steps) % 40;
     this.placeTokens(seat);
   }
@@ -359,6 +378,7 @@ export class BoardView {
   async jump(seat: number, to: number, ms = 520) {
     const t = this.tokens[seat];
     if (!t) return;
+    const mine = this.generation;
     const a = t.position.clone();
     const b = spot(to, 0, 1);
     await this.tween(ms, (u) => {
@@ -366,6 +386,7 @@ export class BoardView {
       t.position.lerpVectors(a, b, e);
       t.position.y = a.y + Math.sin(u * Math.PI) * 1.6;
     });
+    if (mine !== this.generation) return;
     this.spots[seat] = to;
     this.placeTokens(seat);
   }

@@ -49,12 +49,18 @@ function baseRent(t: Tuning, state: BoardState, tile: number, diceSum: number) {
   if (!lot) return 0;
   const owned = (k: 'station' | 'utility') =>
     tilesOf(k).filter((i) => state.lots[i]?.owner === lot.owner).length;
-  if (kind === 'station') return t.stationRent * owned('station');
+  if (kind === 'station') return stationRent(t, owned('station'));
   if (kind === 'utility')
     return diceSum * (owned('utility') >= 2 ? t.utilityRent[1] : t.utilityRent[0]);
-  const base = landPrice(t, tile) * (t.levelRent[lot.level - 1] ?? 0);
-  return Math.round(base * (isFullSet(state, tile) ? t.fullSet : 1));
+  return cityRent(t, tile, lot.level, isFullSet(state, tile));
 }
+
+/** A City's rent at `level`, before a Festival or Thần tài; `full` when in a Full set. */
+export const cityRent = (t: Tuning, tile: number, level: number, full: boolean) =>
+  Math.round(landPrice(t, tile) * (t.levelRent[level - 1] ?? 0) * (full ? t.fullSet : 1));
+
+/** A station's rent when its owner has `owned` stations. */
+export const stationRent = (t: Tuning, owned: number) => t.stationRent * owned;
 
 /** What a Takeover of this Lot costs, or `null` when it cannot be Taken over (a Hotel). */
 export function takeoverPrice(t: Tuning, state: BoardState, tile: number) {

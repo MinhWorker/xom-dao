@@ -4,7 +4,14 @@
  */
 import { BOARD, setTiles } from '../server/game/board.js';
 import { type CardId, cardOf } from '../server/game/cards.js';
-import { isFullSet, landPrice, levelCost, takeoverPrice } from '../server/game/economy.js';
+import {
+  cityRent,
+  isFullSet,
+  landPrice,
+  levelCost,
+  stationRent,
+  takeoverPrice,
+} from '../server/game/economy.js';
 import { type EffectId, HOTEL, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 import { type Button, levelName, money, type Panel } from './decisions.js';
@@ -227,16 +234,16 @@ export class Hud {
     if (board.kind === 'city') {
       band = SET_COLORS[board.set];
       const price = landPrice(t, tile);
-      const full = isFullSet(view, tile) ? t.fullSet : 1;
+      const full = isFullSet(view, tile);
       rows.push(['Giá đất', money(price)]);
-      t.levelRent.forEach((share, i) => {
-        rows.push([`Thuê ${levelName(i + 1)}`, money(Math.round(price * share * full))]);
+      t.levelRent.forEach((_, i) => {
+        rows.push([`Thuê ${levelName(i + 1)}`, money(cityRent(t, tile, i + 1, full))]);
       });
       rows.push(['Nâng một cấp', money(levelCost(t, tile))]);
-      if (full > 1) rows.push(['Đủ bộ màu', `×${t.fullSet}`]);
+      if (full) rows.push(['Đủ bộ màu', `×${t.fullSet}`]);
     } else if (board.kind === 'station') {
       rows.push(['Giá', money(t.stationPrice)]);
-      for (let n = 1; n <= 4; n++) rows.push([`Chủ có ${n} bến`, money(t.stationRent * n)]);
+      for (let n = 1; n <= 4; n++) rows.push([`Chủ có ${n} bến`, money(stationRent(t, n))]);
     } else if (board.kind === 'utility') {
       rows.push(['Giá', money(t.utilityPrice)]);
       rows.push(['Chủ có 1 ô', `xúc xắc ×${t.utilityRent[0]}`]);

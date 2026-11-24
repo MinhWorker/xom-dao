@@ -148,7 +148,6 @@ async function run(gameId, scenario, server, browser) {
 
 const SCENARIOS = {
   'dat-bom': async ({ page, state }) => {
-    // The countdown takes 3 s; then the first move.
     const me = async () => (await state()).players[0]?.view?.players?.[0];
     const start0 = await until('the first snapshot', me);
     await page.waitForFunction(
@@ -181,18 +180,16 @@ const SCENARIOS = {
       const v = await view();
       return v?.rolls > 0 && v;
     });
-    // Whatever the roll offered (buy, a Card, the next roll after the computer's turn): answer it.
     await page.waitForSelector('#panel-buttons button:not([disabled])', { timeout: 30000 });
     const before = JSON.stringify(await view());
     const answer = await page.locator('#panel-buttons button:not([disabled])').first();
     const label = await answer.textContent();
     await answer.click();
     await until('the answer', async () => JSON.stringify(await view()) !== before, 30);
-    // A tap on Xuất phát (bottom right corner of the board) shows its details.
-    await page.mouse.click(636, 352);
+    await page.mouse.click(265, 45);
     await page.waitForSelector('#info:not([hidden])', { timeout: 5000 });
     await sleep(400);
-    return `drew the board, rolled ${rolled.dice.join('+')}, then "${label}", and showed a Tile`;
+    return `drew the board, rolled ${rolled.dice.join('+')}, then "${label}", and showed Sân bay`;
   },
 };
 

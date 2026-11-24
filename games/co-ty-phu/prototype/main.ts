@@ -24,9 +24,8 @@ import {
 import { ambience } from '../client/ambience.js';
 import { DIE, die, hotel, house, token } from '../client/pieces.js';
 import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from '../client/print.js';
+import { SEAT_COLORS } from '../client/scene.js';
 import { BOARD } from '../server/game/board.js';
-
-const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
 const PLAYERS = [
   { name: 'Minh', cash: 1840, tile: 13 },

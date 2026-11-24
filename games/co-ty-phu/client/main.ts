@@ -12,7 +12,7 @@ import {
 } from '@xomdao/bridge';
 import { BOARD } from '../server/game/board.js';
 import type { View } from '../server/game/model.js';
-import { type Button, decide, type Panel } from './decisions.js';
+import { type Button, decide, decider, levelName, type Panel } from './decisions.js';
 import { Hud } from './hud.js';
 import { type Change, changes } from './present.js';
 import { BoardView } from './scene.js';
@@ -26,7 +26,7 @@ interface MatchPush {
   matchId: string;
   status: 'loading' | 'playing' | 'over';
   view?: View;
-  timer?: { ms: number; deadline: number } | null;
+  timer?: { ms: number } | null;
 }
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
@@ -44,7 +44,8 @@ const queue: View[] = [];
 let playing = false;
 /** Bumped by every `init`: a play under way for an older one stops. */
 let epoch = 0;
-let timer: { ms: number; deadline: number } | null = null;
+/** The decision clock of the last push, counted from when it arrived. */
+let timer: { ms: number; at: number } | null = null;
 let panel: Panel | null = null;
 let sending = false;
 let endedAt: number | null = null;
@@ -56,20 +57,16 @@ const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
 
 const bridge = createGameBridge({
   onInit(init) {
-    epoch++;
+    restart();
     myId = init.player.id;
     const seats: BridgeSeat[] = init.room.seats;
     names = seats.map((s) => s.name);
     me = seats.findIndex((s) => s.id === myId);
     matchId = null;
-    queue.length = 0;
-    playing = false;
     timer = null;
-    sending = false;
     clearTimeout(doneTimer);
     doneFor = null;
     endedAt = null;
-    hud.hideCard();
     hud.tile(null, null, names);
     const view = (init.match as View | null) ?? null;
     hud.seats(view ? names.slice(0, view.players.length) : names);
@@ -78,15 +75,17 @@ const bridge = createGameBridge({
   onMessage(event, data) {
     if (event !== 'match:state') return;
     const push = data as MatchPush;
-    if (push.matchId !== matchId) {
+    const fresh = push.matchId !== matchId;
+    if (fresh) {
       matchId = push.matchId;
       clearTimeout(doneTimer);
       doneFor = null;
       if (push.status !== 'over') endedAt = null;
+      restart();
     }
-    timer = push.timer ?? null;
+    timer = push.timer ? { ms: push.timer.ms, at: Date.now() } : null;
     if (push.view) {
-      if (!shown || shown.players.length !== push.view.players.length) {
+      if (fresh || !shown || shown.players.length !== push.view.players.length) {
         hud.seats(names.slice(0, push.view.players.length));
         present(push.view);
       } else queue.push(push.view);
@@ -101,10 +100,24 @@ const bridge = createGameBridge({
   },
 });
 
+/** Stops what is playing and drops the queued views: an `init` or a new Match redraws. */
+function restart() {
+  epoch++;
+  queue.length = 0;
+  playing = false;
+  sending = false;
+  board.stop();
+  hud.hideCard();
+}
+
 /** Redraws everything from `view` at once. */
 function present(view: View | null) {
   shown = view;
   hud.hideCard();
+  if (!view || isOver(view)) {
+    panel = null;
+    board.highlight([]);
+  }
   if (!view) {
     hud.show(null, false);
     hud.over(null, names, me);
@@ -114,7 +127,6 @@ function present(view: View | null) {
   hud.players(view);
   if (isOver(view)) {
     endedAt ??= performance.now() - END_MS;
-    board.highlight([]);
     hud.over(view, names, me);
     return;
   }
@@ -145,7 +157,7 @@ async function play() {
     }
     hud.show(null, false);
     board.highlight([]);
-    await animate(next, changes(before, next), queue.length > 2 ? 0.4 : 1);
+    await animate(next, changes(before, next), queue.length > 2 ? 0.4 : 1, () => mine === epoch);
     if (mine !== epoch) break;
     if (isOver(next) && endedAt === null) endedAt = performance.now();
     present(next);
@@ -155,11 +167,15 @@ async function play() {
 
 const wait = (ms: number) => new Promise((done) => setTimeout(done, hidden ? 0 : ms));
 
-/** Plays `steps`, what changed on the way to `after`; `pace` below 1 hurries it. */
-async function animate(after: View, steps: Change[], pace: number) {
+/**
+ * Plays `steps`, what changed on the way to `after`; `pace` below 1 hurries it. Stops once
+ * `live` says a redraw took over.
+ */
+async function animate(after: View, steps: Change[], pace: number, live: () => boolean) {
   const ms = (n: number) => Math.round(n * pace);
   let landed = false;
   for (const step of steps) {
+    if (!live()) return;
     switch (step.kind) {
       case 'dice':
         await board.roll(step.dice, ms(650));
@@ -168,6 +184,7 @@ async function animate(after: View, steps: Change[], pace: number) {
         await board.walk(step.seat, step.from, step.steps, ms(140));
         break;
       case 'jump':
+        if (after.players[step.seat]?.jailed) hud.say(`${names[step.seat] ?? ''} vào tù`);
         await board.jump(step.seat, step.to, ms(520));
         break;
       case 'card':
@@ -194,7 +211,7 @@ async function animate(after: View, steps: Change[], pace: number) {
         break;
       case 'quiz':
         if (after.quiz) {
-          hud.show(decide({ ...after, phase: 'quiz' }, me, names), false);
+          hud.show(decide({ ...after, phase: 'quiz', turn: after.quiz.seat }, me, names), false);
           hud.quizResult(after.quiz.answer ?? 0, after.quiz.picked);
           hud.say(step.right ? 'Đúng rồi!' : 'Sai mất rồi');
           await wait(ms(1600));
@@ -220,8 +237,7 @@ function announceLot(step: Extract<Change, { kind: 'lot' }>) {
   if (!now) hud.say(`${name} về ngân hàng`);
   else if (!was) hud.say(`${who(now.owner)} mua ${name}`);
   else if (was.owner !== now.owner) hud.say(`${who(now.owner)} mua lại ${name}`);
-  else if (now.level > was.level)
-    hud.say(now.level >= 5 ? `${name} lên Khách sạn!` : `${name} có ${now.level} nhà`);
+  else if (now.level > was.level) hud.say(`${name} lên ${levelName(now.level)}`);
   else hud.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
 }
 
@@ -276,9 +292,8 @@ function clock() {
     hud.timer(null, -1);
     return;
   }
-  const left = Math.max(0, Math.min(timer.ms, timer.deadline - Date.now())) / timer.ms;
-  const seat = shown.phase === 'debt' && shown.debt ? shown.debt.from : shown.turn;
-  hud.timer(left, seat);
+  const left = Math.max(0, timer.ms - (Date.now() - timer.at)) / timer.ms;
+  hud.timer(left, decider(shown));
 }
 clock();
 

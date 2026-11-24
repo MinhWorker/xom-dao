@@ -3,7 +3,7 @@
  * Card drawn, the Lots and marks that changed, then the money that moved and who went bankrupt.
  * The board is then redrawn from the new view.
  */
-import { JAIL_TILE } from '../server/game/board.js';
+import { BOARD, JAIL_TILE } from '../server/game/board.js';
 import { type CardId, cardOf } from '../server/game/cards.js';
 import { DOUBLES_TO_JAIL, type Lot, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
@@ -22,7 +22,7 @@ export type Change =
   | { kind: 'cash'; seat: number; delta: number }
   | { kind: 'bankrupt'; seat: number };
 
-const TILES = 40;
+const TILES = BOARD.length;
 const ahead = (from: number, to: number) => (to - from + TILES) % TILES;
 
 /** Cards that send their drawer ahead along the board rather than straight there. */

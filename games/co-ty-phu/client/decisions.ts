@@ -36,16 +36,22 @@ export const levelName = (level: number) => (level >= HOTEL ? 'Khách sạn' : `
 
 const t = TUNING;
 export const money = (n: number) => n.toLocaleString('vi-VN');
+const take = (a: CardAction) => `Nhận ${money('amount' in a ? a.amount : 0)}`;
+
 /** The two choices of a Card that offers them, the safe one first. */
 const OFFERS: Partial<Record<CardAction['kind'], (action: CardAction) => [string, string]>> = {
-  'cash-or-roll': (a) => [`Nhận ${money('amount' in a ? a.amount : 0)}`, 'Gieo thêm'],
-  'cash-or-start': (a) => [`Nhận ${money('amount' in a ? a.amount : 0)}`, 'Về Xuất phát'],
+  'cash-or-roll': (a) => [take(a), 'Gieo thêm'],
+  'cash-or-start': (a) => [take(a), 'Về Xuất phát'],
   quiz: () => [`Nhận ${money(t.quiz.safe)}`, 'Giải đố'],
 };
 const PASS: Button = { label: 'Bỏ qua', event: 'pass' };
 
+/** The seat whose decision the view waits for: the debtor during a Debt, else the turn player. */
+export const decider = (view: View) =>
+  view.phase === 'debt' && view.debt ? view.debt.from : view.turn;
+
 export function decide(view: View, me: number, names: readonly string[]): Panel {
-  const seat = view.phase === 'debt' && view.debt ? view.debt.from : view.turn;
+  const seat = decider(view);
   const mine = seat === me;
   const who = names[seat] ?? '';
   const player = view.players[seat] as Player;
