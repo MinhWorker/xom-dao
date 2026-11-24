@@ -119,7 +119,7 @@ export class Moments {
     paper.dataset.tier = String(tier);
     paper.style.setProperty('--pace', String(pace));
     paper.innerHTML =
-      '<b class="head">Hóa đơn</b><span class="what"></span><span class="note"></span><dl><dt>Người trả</dt><dd class="from"></dd><dt>Người nhận</dt><dd class="to"></dd></dl><div class="total"><span>Tổng</span><b></b></div><i class="seal">Đã thanh toán</i>';
+      '<b class="head">Hóa đơn</b><span class="what"></span><span class="note"></span><dl><dt>Người trả</dt><dd class="from"></dd><dt>Người nhận</dt><dd class="to"></dd></dl><div class="total"><span>Tổng</span><b></b></div><i class="seal"><span>Đã</span>thanh toán</i>';
     if (payer) {
       const button = el('button', 'settle');
       (button as HTMLButtonElement).type = 'button';

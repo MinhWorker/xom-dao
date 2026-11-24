@@ -1262,23 +1262,33 @@ html.paused * {
   font-size: 32px;
 }
 
+/* The paid stamp: two lines inside the bill's width, over the middle of it. */
 .bill .seal {
   position: absolute;
   left: 50%;
-  top: 52%;
-  padding: 4px 12px;
+  top: 55%;
+  padding: 6px 10px 4px;
   border: 4px double #c0262d;
   border-radius: 10px;
   color: #c0262d;
+  font-family: var(--display);
   font-style: normal;
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 900;
+  line-height: 1.3;
   letter-spacing: 0.04em;
+  text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
   opacity: 0;
   transform: translate(-50%, -50%) rotate(-14deg);
   mix-blend-mode: multiply;
+}
+
+.bill .seal span {
+  display: block;
+  font-size: 0.8em;
+  letter-spacing: 0.2em;
 }
 
 .bill.paid .seal {
