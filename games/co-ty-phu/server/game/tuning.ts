@@ -1,7 +1,10 @@
 /**
  * Every number the balance can be tuned with: prices, rents and fees. The legacy Classic table
- * is the starting point; City land prices are in board.ts and scaled by `cityPrice`.
+ * is the starting point; City land prices are in board.ts and scaled by `cityPrice`, Card
+ * amounts are in cards.ts.
  */
+import type { EffectId } from './model.js';
+
 export interface Tuning {
   startingCash: number;
   /** Paid for passing or landing on Xuất phát. */
@@ -28,6 +31,15 @@ export interface Tuning {
   jailFine: number;
   /** A tax is `max(min, floor(rate × cash))`. */
   taxes: Record<'income' | 'luxury', { min: number; rate: number }>;
+  /** How many of the holder's turns each Effect lasts. */
+  effects: Record<EffectId, number>;
+  /** Rent multiplier of a Festival, and of Thần tài. */
+  festivalRent: number;
+  luckyRent: number;
+  /** Khởi nghiệp's Levels cost this share of the price. */
+  startupCost: number;
+  /** The safe reward of a Quiz card, what a right answer multiplies it by, and how often the computer is right. */
+  quiz: { safe: number; times: number; botRight: number };
 }
 
 export const TUNING: Tuning = {
@@ -45,4 +57,9 @@ export const TUNING: Tuning = {
   airportFee: 100,
   jailFine: 50,
   taxes: { income: { min: 100, rate: 0.1 }, luxury: { min: 200, rate: 0.1 } },
+  effects: { lucky: 2, traffic: 2, exempt: 3, sick: 1, startup: 3 },
+  festivalRent: 2,
+  luckyRent: 2,
+  startupCost: 0.5,
+  quiz: { safe: 100, times: 4, botRight: 0.7 },
 };

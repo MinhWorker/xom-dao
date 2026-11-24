@@ -1,31 +1,7 @@
-import { optionsSchema, testGame } from '@xomdao/sdk';
 import { describe, expect, it } from 'vitest';
-import manifest from '../../manifest.js';
-import { CoTyPhuGame } from './CoTyPhuGame.js';
 import type { Player, State } from './model.js';
+import { all, cash, open, own, PLAYERS, player } from './test-match.js';
 import { TUNING } from './tuning.js';
-
-const PLAYERS = ['a', 'b', 'c', 'd'];
-
-/**
- * A Match whose dice come from `rolls` in order, after `arrange` changed its first state.
- */
-function open({
-  rolls = [] as [number, number][],
-  arrange = (s: State) => s,
-  players = PLAYERS.slice(0, 2),
-  speed = 'normal' as 'normal' | 'fast',
-} = {}) {
-  const game = new CoTyPhuGame({
-    dice: (_, roll) => {
-      const next = rolls[roll];
-      if (!next) throw new Error('the test ran out of dice');
-      return next;
-    },
-    arrange,
-  });
-  return testGame(game, players, { options: optionsSchema(manifest).parse({ speed }) });
-}
 
 describe('starting', () => {
   it('puts everyone on Xuất phát with 1000, the first seat to roll', () => {
@@ -38,6 +14,7 @@ describe('starting', () => {
       jailTries: 0,
       jailCards: 0,
       bankrupt: false,
+      effects: [],
     });
     expect(game.state).toMatchObject({ turn: 0, phase: 'roll', dice: null });
     expect(game.state.lots.every((l) => l === null)).toBe(true);
@@ -56,29 +33,6 @@ describe('rolling', () => {
     expect(open().error('b', 'roll')).toBe('Chưa tới lượt bạn');
   });
 });
-
-/** Changes one player's first state. */
-const player =
-  (seat: number, patch: Partial<Player>) =>
-  (s: State): State => ({
-    ...s,
-    players: s.players.map((p, i) => (i === seat ? { ...p, ...patch } : p)),
-  });
-
-/** `owner` owns `tiles` at `level`, with `built` paid for each. */
-const own =
-  (owner: number, tiles: number[], level = 1, built = 0) =>
-  (s: State): State => ({
-    ...s,
-    lots: s.lots.map((l, i) => (tiles.includes(i) ? { owner, level, built } : l)),
-  });
-
-const all =
-  (...steps: ((s: State) => State)[]) =>
-  (s: State) =>
-    steps.reduce((acc, step) => step(acc), s);
-
-const cash = (game: { state: State }) => game.state.players.map((p) => p.cash);
 
 describe('moving', () => {
   it('pays 200 for passing Xuất phát', () => {
@@ -259,12 +213,6 @@ describe('special Tiles', () => {
   it('sends Vào tù to jail and loses the double', () => {
     const game = open({ rolls: [[2, 2]], arrange: player(0, { tile: 26 }) }).send('a', 'roll');
     expect(game.state.players[0]).toMatchObject({ tile: 10, jailed: true, jailTries: 0 });
-    expect(game.state.turn).toBe(1);
-  });
-
-  it('treats Cơ hội and Khí vận as empty for now', () => {
-    const game = open({ rolls: [[3, 4]] }).send('a', 'roll');
-    expect(cash(game)).toEqual([1000, 1000]);
     expect(game.state.turn).toBe(1);
   });
 });
@@ -511,11 +459,7 @@ describe('the computer', () => {
 
 describe('tuning', () => {
   it('scales City prices, and what follows from them', () => {
-    const game = testGame(
-      new CoTyPhuGame({ tuning: { ...TUNING, cityPrice: 2 }, dice: () => [1, 2] }),
-      PLAYERS.slice(0, 2),
-      { options: optionsSchema(manifest).parse({}) },
-    ).send('a', 'roll');
+    const game = open({ tuning: { ...TUNING, cityPrice: 2 }, rolls: [[1, 2]] }).send('a', 'roll');
     game.send('a', 'buy');
     expect(game.state.players[0]?.cash).toBe(640);
   });

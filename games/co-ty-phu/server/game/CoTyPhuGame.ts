@@ -6,8 +6,14 @@
  *
  * A payment larger than the payer's cash is a Debt (phase `debt`): the debtor `sell`s Levels or
  * Lots to the bank (selling.ts) until it is covered, or the suggested sale is made when the clock
- * runs out. When even Selling everything is not enough the payer is bankrupt at once. A seat
- * whose person left is played by `bot`, which makes the safe choice too.
+ * runs out. When even Selling everything is not enough the payer is bankrupt at once.
+ *
+ * Cơ hội and Khí vận draw a Card (cards.ts). A Card that asks waits in phase `card` for the
+ * drawer's `pick`; a Quiz then waits in phase `quiz` for their `answer`, on a 20 s clock. The
+ * piles' order and a running Quiz's answer are hidden from `view`. Effects count down at the end
+ * of each of their holder's turns; a seat with Ốm skips its turn. A seat whose person left is
+ * played by `bot`, which makes the safe choice, except that it picks for its Cards sensibly and
+ * answers a Quiz right 70% of the time.
  */
 import {
   type BotContext,
@@ -15,21 +21,41 @@ import {
   Game,
   type GameContext,
   type GameEvent,
+  int,
   type Rng,
+  type Seat,
   type StartContext,
+  shuffle,
 } from '@xomdao/sdk';
 import { z } from 'zod';
 import { AIRPORT_TILE, BOARD, isLot, JAIL_TILE } from './board.js';
+import {
+  asks,
+  botPick,
+  type CardAction,
+  type CardId,
+  cardOf,
+  deckOf,
+  JAIL_CARD,
+  nearest,
+  picksOf,
+} from './cards.js';
 import { landPrice, levelCost, rent, takeoverPrice, taxOf } from './economy.js';
 import {
   CLOCK_MS,
+  type Deck,
   DOUBLES_TO_JAIL,
+  type EffectId,
   HOTEL,
   JAIL_TRIES,
+  MAX_EFFECTS,
   type Options,
   type Player,
+  QUIZ_MS,
   type State,
+  type View,
 } from './model.js';
+import { makeQuiz } from './quiz.js';
 import { saleProblem, sell, suggestSale, wholeLots } from './selling.js';
 import { TUNING, type Tuning } from './tuning.js';
 
@@ -41,6 +67,8 @@ const tile = z
   .min(0)
   .max(BOARD.length - 1);
 const fly = z.object({ to: tile });
+const pick = z.object({ pick: z.number().int().min(0) });
+const answer = z.object({ choice: z.number().int().min(0).max(3) });
 const sale = z.object({
   sale: z.array(z.object({ tile, levels: z.number().int().min(1).optional() })).max(BOARD.length),
 });
@@ -52,7 +80,7 @@ export interface CoTyPhuSetup {
   arrange?: (state: State) => State;
 }
 const die = (rng: Rng) => 1 + Math.floor(rng() * 6);
-export class CoTyPhuGame extends Game<State, Options> {
+export class CoTyPhuGame extends Game<State, Options, View> {
   readonly events = {
     roll: z.object({}),
     buy: z.object({}),
@@ -63,6 +91,8 @@ export class CoTyPhuGame extends Game<State, Options> {
     'pay-bail': z.object({}),
     'use-card': z.object({}),
     sell: sale,
+    pick,
+    answer,
   };
   private readonly t: Tuning;
   private readonly dice: (rng: Rng, roll: number) => [number, number];
@@ -81,6 +111,7 @@ export class CoTyPhuGame extends Game<State, Options> {
       jailTries: 0,
       jailCards: 0,
       bankrupt: false,
+      effects: [],
     };
     const state = this.arrange({
       players: ctx.players.map(() => ({ ...player })),
@@ -93,6 +124,14 @@ export class CoTyPhuGame extends Game<State, Options> {
       again: false,
       bankrupt: [],
       debt: null,
+      decks: {
+        chance: shuffle(ctx.rng, deckOf('chance')),
+        chest: shuffle(ctx.rng, deckOf('chest')),
+      },
+      card: null,
+      quiz: null,
+      festival: null,
+      blackout: null,
     });
     ctx.setTimer(CLOCK_MS[ctx.options.speed], 'timeout');
     return state;
@@ -111,7 +150,7 @@ export class CoTyPhuGame extends Game<State, Options> {
     const me = this.checkJailed(ctx);
     if (me.jailCards < 1) ctx.reject('Bạn không có vé ra tù');
     const free = { ...me, jailCards: me.jailCards - 1, jailed: false, jailTries: 0 };
-    return this.settle(ctx, withPlayer(ctx.state, ctx.player.seat, free));
+    return this.settle(ctx, returnJailCards(withPlayer(ctx.state, ctx.player.seat, free), 1));
   }
   onBuy(ctx: Move): State {
     const me = this.check(ctx, 'buy');
@@ -126,7 +165,7 @@ export class CoTyPhuGame extends Game<State, Options> {
   }
   onUpgrade(ctx: Move): State {
     const me = this.check(ctx, 'upgrade');
-    const cost = levelCost(this.t, me.tile);
+    const cost = this.upgradeCost(ctx.state, ctx.player.seat, me.tile);
     const lot = ctx.state.lots[me.tile];
     if (!lot) ctx.reject('Chưa thể làm việc này lúc này');
     if (me.cash < cost) ctx.reject('Không đủ tiền');
@@ -159,7 +198,21 @@ export class CoTyPhuGame extends Game<State, Options> {
     if (ctx.state.turn !== ctx.player.seat) ctx.reject('Chưa tới lượt bạn');
     if (ctx.state.phase === 'roll') ctx.reject('Hãy gieo xúc xắc');
     if (ctx.state.phase === 'debt') ctx.reject('Hãy bán đất để trả nợ');
+    if (ctx.state.phase === 'card' || ctx.state.phase === 'quiz') ctx.reject('Hãy chọn');
     return this.settle(ctx, this.next(ctx.state));
+  }
+
+  onPick(ctx: Move<z.infer<typeof pick>>): State {
+    this.check(ctx, 'card');
+    const action = this.pending(ctx.state);
+    if (!picksOf(ctx.state, ctx.player.seat, action).includes(ctx.payload.pick))
+      ctx.reject('Không chọn được');
+    return this.settle(ctx, this.pickCard(ctx, ctx.state, action, ctx.payload.pick));
+  }
+
+  onAnswer(ctx: Move<z.infer<typeof answer>>): State {
+    this.check(ctx, 'quiz');
+    return this.settle(ctx, this.answerQuiz(ctx.state, ctx.payload.choice));
   }
 
   onSell(ctx: Move<z.infer<typeof sale>>): State {
@@ -181,10 +234,31 @@ export class CoTyPhuGame extends Game<State, Options> {
         ctx,
         this.payDebt(sell(this.t, state, state.debt.from, state.debt.suggested)),
       );
+    if (state.phase === 'card') {
+      const action = this.pending(state);
+      const picks = picksOf(state, state.turn, action);
+      const safe = action.kind.includes('-or-') || action.kind === 'quiz';
+      const choice = safe ? 0 : botPick(this.t, state, action, picks);
+      return this.settle(ctx, this.pickCard(ctx, state, action, choice));
+    }
+    if (state.phase === 'quiz') return this.settle(ctx, this.answerQuiz(state, null));
     return this.settle(ctx, this.next(state));
   }
 
-  /** The safe choice for a computer seat: roll, pass, or the suggested sale. */
+  /** The piles' sizes instead of their order, and no answer while the Quiz runs. */
+  view(ctx: Ctx, _viewer: Seat | null): View {
+    const { decks, quiz, ...rest } = ctx.state;
+    return {
+      ...rest,
+      decks: { chance: decks.chance.length, chest: decks.chest.length },
+      quiz: quiz && { ...quiz, answer: rest.phase === 'quiz' ? null : quiz.answer },
+    };
+  }
+
+  /**
+   * A computer seat rolls, passes every offer and makes the suggested sale; it picks for a Card
+   * what serves it best and answers a Quiz right as often as `Tuning.quiz.botRight`.
+   */
   bot(ctx: BotContext<State, Options>): GameEvent | null {
     const { state, player } = ctx;
     if (state.phase === 'debt')
@@ -192,6 +266,16 @@ export class CoTyPhuGame extends Game<State, Options> {
         ? { event: 'sell', payload: { sale: state.debt.suggested } }
         : null;
     if (state.turn !== player.seat) return null;
+    if (state.phase === 'card') {
+      const action = this.pending(state);
+      const choice = botPick(this.t, state, action, picksOf(state, player.seat, action));
+      return { event: 'pick', payload: { pick: choice } };
+    }
+    if (state.phase === 'quiz' && state.quiz) {
+      const right = ctx.rng() < this.t.quiz.botRight;
+      const choice = right ? state.quiz.answer : (state.quiz.answer + int(ctx.rng, 1, 3)) % 4;
+      return { event: 'answer', payload: { choice } };
+    }
     return { event: state.phase === 'roll' ? 'roll' : 'pass' };
   }
   /** Refuses a move out of turn or out of `phase`; the turn player otherwise. */
@@ -218,15 +302,20 @@ export class CoTyPhuGame extends Game<State, Options> {
       ctx.finish(places, { scores: state.players.map((p) => p.cash) });
       return state;
     }
-    ctx.setTimer(CLOCK_MS[ctx.options.speed], 'timeout');
+    ctx.setTimer(state.phase === 'quiz' ? QUIZ_MS : CLOCK_MS[ctx.options.speed], 'timeout');
     return state;
+  }
+  /** Two dice, or one under Kẹt xe. */
+  private rollDice(ctx: Ctx, state: State, seat: number): number[] {
+    const dice = this.dice(ctx.rng, state.rolls);
+    return has(state, seat, 'traffic') ? [dice[0]] : dice;
   }
   private roll(ctx: Ctx, state: State): State {
     const seat = state.turn;
     const me = state.players[seat] as Player;
-    const dice = this.dice(ctx.rng, state.rolls);
-    const double = dice[0] === dice[1];
-    const steps = dice[0] + dice[1];
+    const dice = this.rollDice(ctx, state, seat);
+    const double = dice.length === 2 && dice[0] === dice[1];
+    const steps = sum(dice);
     const rolled = { ...state, dice, rolls: state.rolls + 1 };
     if (me.jailed) {
       const tries = me.jailTries + 1;
@@ -259,10 +348,13 @@ export class CoTyPhuGame extends Game<State, Options> {
           : this.next(state);
       if (lot.owner === seat) return this.offerUpgrade(state, seat) ?? this.next(state);
       const owner = state.players[lot.owner] as Player;
-      const sum = (state.dice?.[0] ?? 0) + (state.dice?.[1] ?? 0);
-      const due = owner.jailed ? 0 : rent(this.t, state, me.tile, sum);
+      const due = owner.jailed ? 0 : rent(this.t, state, me.tile, sum(state.dice ?? []));
+      if (due > 0 && has(state, seat, 'exempt'))
+        return this.afterPaying(loseEffect(state, seat, 'exempt'), seat);
       return this.afterPaying(this.charge(state, seat, lot.owner, due), seat);
     }
+    if (tile?.kind === 'chance') return this.draw(state, seat, 'chance');
+    if (tile?.kind === 'chest') return this.draw(state, seat, 'chest');
     if (tile?.kind === 'tax')
       return this.afterPaying(
         this.charge(state, seat, null, taxOf(this.t, tile.tax, me.cash)),
@@ -277,7 +369,154 @@ export class CoTyPhuGame extends Game<State, Options> {
     const me = state.players[seat] as Player;
     const lot = state.lots[me.tile];
     if (BOARD[me.tile]?.kind !== 'city' || !lot || lot.level >= HOTEL) return undefined;
-    return me.cash >= levelCost(this.t, me.tile) ? { ...state, phase: 'upgrade' } : undefined;
+    return me.cash >= this.upgradeCost(state, seat, me.tile)
+      ? { ...state, phase: 'upgrade' }
+      : undefined;
+  }
+
+  /** What the next Level of `tile` costs `seat`: less under Khởi nghiệp. */
+  private upgradeCost(state: State, seat: number, tile: number) {
+    const share = has(state, seat, 'startup') ? this.t.startupCost : 1;
+    return Math.round(levelCost(this.t, tile) * share);
+  }
+
+  /** `seat` draws the top Card of `deck`: it waits for a pick when it asks, else it is applied. */
+  private draw(state: State, seat: number, deck: Deck): State {
+    const [id, ...rest] = state.decks[deck];
+    if (!id) return this.next(state);
+    const { action } = cardOf(id);
+    const kept = action.kind === 'jail-free';
+    const drawn: State = {
+      ...state,
+      decks: { ...state.decks, [deck]: kept ? rest : [...rest, id] },
+      card: { id, seat, draw: (state.card?.draw ?? 0) + 1 },
+    };
+    if (!asks(action)) return this.applyCard(drawn, seat, action);
+    return picksOf(drawn, seat, action).length > 0 ? { ...drawn, phase: 'card' } : this.next(drawn);
+  }
+
+  /** The action of the Card waiting in phase `card`. */
+  private pending(state: State): CardAction {
+    return cardOf(state.card?.id as CardId).action;
+  }
+
+  /** What a Card that does not ask does to its drawer `seat`. */
+  private applyCard(state: State, seat: number, action: CardAction): State {
+    const me = state.players[seat] as Player;
+    const mine = state.lots.flatMap((l, tile) => (l?.owner === seat ? [tile] : []));
+    switch (action.kind) {
+      case 'jail-free':
+        return this.next(withPlayer(state, seat, { ...me, jailCards: me.jailCards + 1 }));
+      case 'cash-share': {
+        const amount = Math.floor(Math.abs(action.share) * Math.max(0, me.cash));
+        return this.money(state, seat, action.share < 0 ? -amount : amount);
+      }
+      case 'per-lot':
+        return this.money(state, seat, action.amount * mine.length);
+      case 'per-level': {
+        const levels = mine.reduce(
+          (n, tile) => n + (BOARD[tile]?.kind === 'city' ? (state.lots[tile]?.level ?? 0) : 0),
+          0,
+        );
+        return this.money(state, seat, action.amount * levels);
+      }
+      case 'rich-to-poor': {
+        const order = playing(state).sort(
+          (a, b) => (state.players[b] as Player).cash - (state.players[a] as Player).cash || a - b,
+        );
+        const rich = order[0] as number;
+        const poor = order[order.length - 1] as number;
+        const even = (state.players[rich] as Player).cash === (state.players[poor] as Player).cash;
+        if (even) return this.next(state);
+        return this.afterPaying(this.charge(state, rich, poor, action.amount), rich);
+      }
+      case 'hotel-tax': {
+        const hotels = (s: number) =>
+          state.lots.filter((l) => l?.owner === s && l.level >= HOTEL).length;
+        const payer = playing(state).sort(
+          (a, b) =>
+            hotels(b) - hotels(a) ||
+            (state.players[b] as Player).cash - (state.players[a] as Player).cash ||
+            a - b,
+        )[0] as number;
+        if (hotels(payer) === 0) return this.next(state);
+        return this.afterPaying(
+          this.charge(state, payer, null, action.amount * hotels(payer)),
+          payer,
+        );
+      }
+      case 'nearest':
+        return this.move(state, seat, steps(me.tile, nearest(me.tile, action.tile)));
+      case 'back': {
+        const tile = (me.tile - action.steps + BOARD.length) % BOARD.length;
+        return this.land(withPlayer(state, seat, { ...me, tile }), seat);
+      }
+      case 'go':
+        return action.to === 'jail'
+          ? this.endTurn(toJail(state, seat))
+          : this.move(state, seat, steps(me.tile, 0));
+      case 'effect':
+        return this.next(this.gainEffect(state, seat, action.effect));
+      default:
+        return this.next(state);
+    }
+  }
+
+  /** The drawer picked `choice` for the waiting Card. */
+  private pickCard(ctx: Ctx, state: State, action: CardAction, choice: number): State {
+    const seat = state.turn;
+    const me = state.players[seat] as Player;
+    const lot = state.lots[choice];
+    switch (action.kind) {
+      case 'cash-or-roll': {
+        if (choice === 0) return this.money(state, seat, action.amount);
+        const dice = this.rollDice(ctx, state, seat);
+        return this.move({ ...state, dice, rolls: state.rolls + 1 }, seat, sum(dice));
+      }
+      case 'cash-or-start':
+        return choice === 0
+          ? this.money(state, seat, action.amount)
+          : this.move(state, seat, steps(me.tile, 0));
+      case 'quiz':
+        if (choice === 0) return this.money(state, seat, this.t.quiz.safe);
+        return { ...state, phase: 'quiz', quiz: { ...makeQuiz(ctx.rng), seat, picked: null } };
+      case 'festival':
+        return this.next({ ...state, festival: choice });
+      case 'blackout':
+        return this.next({ ...state, blackout: { tile: choice, by: seat } });
+      case 'planning':
+        return this.next(lot ? withLot(state, choice, { ...lot, level: lot.level + 1 }) : state);
+      case 'swap': {
+        const other = state.players[choice] as Player;
+        const swapped = withPlayer(state, seat, { ...me, tile: other.tile });
+        return this.next(withPlayer(swapped, choice, { ...other, tile: me.tile }));
+      }
+      default:
+        return this.next(state);
+    }
+  }
+
+  /** The Quiz is answered with `choice` (`null`: time ran out); a right answer pays. */
+  private answerQuiz(state: State, choice: number | null): State {
+    const quiz = state.quiz as NonNullable<State['quiz']>;
+    const answered = { ...state, quiz: { ...quiz, picked: choice } };
+    if (choice !== quiz.answer) return this.next(answered);
+    return this.money(answered, quiz.seat, this.t.quiz.safe * this.t.quiz.times);
+  }
+
+  /** `seat` gets `amount` from the bank, or pays it when below 0, and the turn goes on. */
+  private money(state: State, seat: number, amount: number): State {
+    if (amount < 0) return this.afterPaying(this.charge(state, seat, null, -amount), seat);
+    const me = state.players[seat] as Player;
+    return this.next(withPlayer(state, seat, { ...me, cash: me.cash + amount }));
+  }
+
+  /** `seat` gains Effect `id` for its full length; one they hold is renewed. */
+  private gainEffect(state: State, seat: number, id: EffectId): State {
+    const me = state.players[seat] as Player;
+    const others = me.effects.filter((e) => e.id !== id).slice(-(MAX_EFFECTS - 1));
+    const effects = [...others, { id, turns: this.t.effects[id], fresh: true }];
+    return withPlayer(state, seat, { ...me, effects });
   }
 
   /**
@@ -302,6 +541,7 @@ export class CoTyPhuGame extends Game<State, Options> {
   /** A payment by `seat` is made: offers the Takeover of the Lot they stand on, or goes on. */
   private afterPaying(state: State, seat: number): State {
     if (state.debt) return state;
+    if (seat !== state.turn) return this.next(state);
     const me = state.players[seat] as Player;
     const lot = state.lots[me.tile];
     const price = takeoverPrice(this.t, state, me.tile);
@@ -315,12 +555,20 @@ export class CoTyPhuGame extends Game<State, Options> {
     if (state.again && !me.bankrupt && !me.jailed) return { ...state, phase: 'roll', again: false };
     return this.endTurn(state);
   }
-  private endTurn(state: State): State {
-    const n = state.players.length;
-    let turn = state.turn;
-    for (let k = 1; k <= n; k++) {
-      turn = (state.turn + k) % n;
-      if (!state.players[turn]?.bankrupt) break;
+  /**
+   * The turn player's Effects count down, and the next seat not bankrupt plays; one with Ốm
+   * spends that turn being skipped. A Blackout ends when its placer's turn comes again.
+   */
+  private endTurn(ended: State): State {
+    const n = ended.players.length;
+    let state = countDown(ended, ended.turn);
+    let turn = ended.turn;
+    for (;;) {
+      turn = (turn + 1) % n;
+      if (state.blackout?.by === turn) state = { ...state, blackout: null };
+      if (state.players[turn]?.bankrupt) continue;
+      if (!has(state, turn, 'sick')) break;
+      state = countDown(state, turn);
     }
     return {
       ...state,
@@ -332,6 +580,42 @@ export class CoTyPhuGame extends Game<State, Options> {
     };
   }
 }
+const sum = (dice: readonly number[]) => dice.reduce((a, b) => a + b, 0);
+
+/** How many Tiles ahead `to` is from `from` (a full lap when they are the same). */
+const steps = (from: number, to: number) => ((to - from + BOARD.length - 1) % BOARD.length) + 1;
+
+/** The seats not bankrupt. */
+const playing = (state: State) => state.players.flatMap((p, s) => (p.bankrupt ? [] : [s]));
+
+const has = (state: State, seat: number, id: EffectId) =>
+  state.players[seat]?.effects.some((e) => e.id === id) ?? false;
+
+const loseEffect = (state: State, seat: number, id: EffectId): State => {
+  const me = state.players[seat] as Player;
+  return withPlayer(state, seat, { ...me, effects: me.effects.filter((e) => e.id !== id) });
+};
+
+/** One of `seat`'s turns ends: their Effects count down, except those gained in it. */
+function countDown(state: State, seat: number): State {
+  const me = state.players[seat] as Player;
+  const effects = me.effects.flatMap((e) => {
+    if (e.fresh) return [{ ...e, fresh: false }];
+    return e.turns > 1 ? [{ ...e, turns: e.turns - 1 }] : [];
+  });
+  return withPlayer(state, seat, { ...me, effects });
+}
+
+/** `count` jail-free Cards go back to the bottom of the decks missing theirs. */
+function returnJailCards(state: State, count: number): State {
+  const decks = { ...state.decks };
+  for (let k = 0; k < count; k++) {
+    const deck = (['chance', 'chest'] as const).find((d) => !decks[d].includes(JAIL_CARD[d]));
+    if (deck) decks[deck] = [...decks[deck], JAIL_CARD[deck]];
+  }
+  return { ...state, decks };
+}
+
 const withPlayer = (state: State, seat: number, player: Player): State => ({
   ...state,
   players: state.players.map((p, s) => (s === seat ? player : p)),
@@ -362,11 +646,14 @@ function transfer(state: State, from: number, to: number | null, amount: number)
 
 /**
  * `from` cannot pay `amount`: the creditor gets their cash (at most `amount`), their Lots go
- * back to the bank and their jail-free Cards are lost.
+ * back to the bank, their jail-free Cards go back to the decks and their Effects end.
  */
 function bankrupt(state: State, from: number, to: number | null, amount: number): State {
   const payer = state.players[from] as Player;
-  const paid = transfer(state, from, to, Math.min(amount, Math.max(0, payer.cash)));
+  const paid = returnJailCards(
+    transfer(state, from, to, Math.min(amount, Math.max(0, payer.cash))),
+    payer.jailCards,
+  );
   return {
     ...withPlayer(paid, from, {
       ...payer,
@@ -374,6 +661,7 @@ function bankrupt(state: State, from: number, to: number | null, amount: number)
       bankrupt: true,
       jailed: false,
       jailCards: 0,
+      effects: [],
     }),
     lots: paid.lots.map((l) => (l?.owner === from ? null : l)),
     bankrupt: [...paid.bankrupt, from],
