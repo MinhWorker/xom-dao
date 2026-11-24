@@ -5,7 +5,8 @@
  * A turn is a roll, the move, then what the Tile offers. An offer the player may take (buy,
  * upgrade, Takeover, a flight) is a decision with a clock; everything else (rent, tax, jail)
  * happens at once, unless the payer's cash is short: then it is a Debt, settled by Selling
- * (debt.ts) or ending in Bankruptcy. Doubles roll again; the Match goes on until one player is not bankrupt.
+ * (selling.ts) or ending in Bankruptcy. Doubles roll again; the Match goes on until one player
+ * is not bankrupt.
  */
 import type { ManifestOptions } from '@xomdao/sdk';
 import type manifest from '../../manifest.js';

@@ -407,12 +407,29 @@ describe('Debt', () => {
     expect(game.state.debt?.suggested).toEqual([{ tile: 14 }, { tile: 19 }]);
   });
 
+  it('keeps the Levels of a Full set until the lone Lots are sold', () => {
+    const game = short(own(0, [11, 13, 14]), own(0, [11], 3, 220), own(0, [15], 0));
+    expect(game.send('a', 'roll').state.debt?.suggested).toEqual([{ tile: 15 }]);
+  });
+
+  it('leaves out Levels the Lot it had to Sell makes needless', () => {
+    const game = short(own(0, [9], 2, 175), own(0, [15], 0)).send('a', 'roll');
+    expect(game.state.debt?.suggested).toEqual([{ tile: 15 }]);
+  });
+
+  it('still offers the Takeover once the rent is paid', () => {
+    const game = short(own(0, [9], 5, 700)).send('a', 'roll');
+    game.send('a', 'sell', { sale: [{ tile: 9 }] });
+    expect(cash(game)).toEqual([100 + 525 - 198, 1198]);
+    expect(game.state.phase).toBe('takeover');
+  });
+
   it('refuses a sale that is short, or not the debtor’s to make', () => {
     const game = short(own(0, [1], 3, 200), own(1, [5], 0)).send('a', 'roll');
     expect(game.error('a', 'sell', { sale: [{ tile: 1, levels: 1 }] })).toBe(
       'Bán chưa đủ để trả nợ',
     );
-    expect(game.error('a', 'sell', { sale: [{ tile: 5 }] })).toBe('Bạn không có ô này');
+    expect(game.error('a', 'sell', { sale: [{ tile: 5 }] })).toBe('Bạn không có đất này');
     expect(game.error('a', 'sell', { sale: [{ tile: 1, levels: 3 }] })).toBe(
       'Không bán được chừng ấy cấp',
     );
