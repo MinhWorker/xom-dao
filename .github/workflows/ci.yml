@@ -41,9 +41,9 @@ jobs:
       - run: npm run setup:godot
       - run: npm run lint
       - run: npx turbo run typecheck test build ${{ github.event_name == 'pull_request' && '--affected' || '' }}
-      # Browsers play Đặt Bom through the Harness, use the Hub's friends and play Caro and Tiến Lên (Godot)
+      # Browsers play Đặt Bom and Cờ Tỷ Phú through the Harness, use the Hub's friends and play Caro and Tiến Lên (Godot)
       # through the Hub against the real server. Build what they run first: --affected may have skipped them.
-      - run: npx turbo run build --filter=@xomdao/game-caro --filter=@xomdao/game-dat-bom --filter=@xomdao/game-tien-len --filter=@xomdao/harness --filter=@xomdao/server
+      - run: npx turbo run build --filter=@xomdao/game-caro --filter=@xomdao/game-dat-bom --filter=@xomdao/game-tien-len --filter=@xomdao/game-co-ty-phu --filter=@xomdao/harness --filter=@xomdao/server
       - run: npx playwright-core install --with-deps chromium
       - run: npm run smoke:web
       - uses: actions/upload-artifact@v7

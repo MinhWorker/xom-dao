@@ -1,20 +1,20 @@
 /** Selling to the bank: what Lots and Levels fetch, and the sale the server suggests. */
 import { BOARD } from './board.js';
 import { isFullSet, landPrice, levelCost } from './economy.js';
-import type { Player, Sale, State } from './model.js';
+import type { BoardState, Player, Sale, State } from './model.js';
 import type { Tuning } from './tuning.js';
 
 /** What one Level of a City fetches: half what it cost. */
-const levelValue = (t: Tuning, tile: number) => Math.floor(levelCost(t, tile) / 2);
+export const levelValue = (t: Tuning, tile: number) => Math.floor(levelCost(t, tile) / 2);
 
 /** What a whole Lot fetches with its Levels: half its land price and what was built on it. */
-function lotValue(t: Tuning, state: State, tile: number) {
+export function lotValue(t: Tuning, state: BoardState, tile: number) {
   const lot = state.lots[tile];
   return lot ? Math.floor((landPrice(t, tile) + lot.built) / 2) : 0;
 }
 
 /** Why `seat` cannot make `sale`, or `null`. */
-export function saleProblem(state: State, seat: number, sale: readonly Sale[]): string | null {
+export function saleProblem(state: BoardState, seat: number, sale: readonly Sale[]): string | null {
   const seen = new Set<number>();
   for (const { tile, levels } of sale) {
     const lot = state.lots[tile];

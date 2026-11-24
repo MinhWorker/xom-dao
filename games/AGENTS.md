@@ -15,7 +15,8 @@ Where to look:
   cards, plates and boards are drawn in code, `main.gd` presents each `match:state` push paced
   one after another and sounds come from `assets/`. `assets/*.webp` and `sources/` are the legacy
   AI-made art, which the client does not use.
-  `games/co-ty-phu` (Cờ Tỷ Phú) has a balance simulator: `npm run simulate -w
+  `games/co-ty-phu` (Cờ Tỷ Phú) is the Turn-based Three.js example (`client/`: a queue of
+  pushes played one after another, and the decision panel from pure, tested code). It has a balance simulator: `npm run simulate -w
   @xomdao/game-co-ty-phu -- [--games 500] [--seats 2,3,4] [--tuning '<json>']` plays computer
   Matches with no server and prints their length, first Bankruptcy and Takeovers. Its numbers
   are in `server/game/tuning.ts`; run it after changing one. Its own notes are in
@@ -84,8 +85,9 @@ a refusal exits with 1:
 
 `npm run smoke:web` runs the web smoke test: a real server, the Harness and headless Chromium
 (`npx playwright-core install chromium` once), where Đặt Bom's client must draw the arena, walk
-and place a bomb on key presses. It saves `smoke-web/dat-bom.png`, and CI runs it and uploads
-that screenshot. Look at a client yourself the same way: `playwright-core` on the Harness'
+and place a bomb on key presses, and Cờ Tỷ Phú's must roll, answer its next decision and show a
+Tile on a tap (`npm run smoke:web -- co-ty-phu` runs one). It saves `smoke-web/<game>.png`, and
+CI runs it and uploads those screenshots. Each Game is a scenario in `scripts/smoke-web.mjs`. Look at a client yourself the same way: `playwright-core` on the Harness'
 `/game/?harness=ws://<harness>/bridge?player=0`, with `--use-angle=swiftshader` for WebGL.
 
 Caro without a client: `create --headless`, `join --headless`, `start`, then
@@ -228,7 +230,7 @@ player, also across reconnects: continue from the snapshot's `ack`), reads `tick
 `ack` from every `match:state` message and draws other players a snapshot behind. Keys held
 before the first tick are ignored by the server, so it sends the held direction again then.
 
-A Vite client (Caro, Đặt Bom): `vite.config.ts` sets `root: 'client'`, `base: './'`, `outDir: '../dist'`
+A Vite client (Caro, Đặt Bom, Cờ Tỷ Phú): `vite.config.ts` sets `root: 'client'`, `base: './'`, `outDir: '../dist'`
 and the `xomdao-source` condition; `vite build` runs first in `scripts.build` because it empties
 `dist/`. A `vitest.config.ts` keeps Vitest from inheriting `root: 'client'`. The client may import
 the pure rules in `server/game/` to draw the board. After rebuilding a Game, restart the Hub's

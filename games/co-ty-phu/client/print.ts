@@ -4,6 +4,8 @@
  * top-left corner is (0, 0) and v grows towards the camera.
  */
 import { BOARD, type ColourSet, type Tile } from '../server/game/board.js';
+import { landPrice } from '../server/game/economy.js';
+import { TUNING } from '../server/game/tuning.js';
 import { CREAM, DECK_COLORS, drawSpecial, SPECIAL_COLORS } from './special.js';
 
 export const TILE_W = 1;
@@ -185,23 +187,19 @@ const iconOf = (tile: Tile): Icon | undefined => {
   return ICONS[tile.kind];
 };
 
-const priceOf = (tile: Tile) => {
-  if (tile.kind === 'city') return tile.price;
-  if (tile.kind === 'station') return 200;
-  if (tile.kind === 'utility') return 150;
-  return undefined;
-};
+const priceOf = (i: number) => landPrice(TUNING, i) || undefined;
 
 /** Draws one Tile's face in its own text frame, centred on the origin, `w`×`h` pixels. */
 const drawFace = (
   ctx: CanvasRenderingContext2D,
-  tile: Tile,
+  i: number,
   w: number,
   h: number,
   band: { x: number; y: number } | undefined,
   px: number,
   t?: number,
 ) => {
+  const tile = BOARD[i] as Tile;
   let area = { x: -w / 2, y: -h / 2, w, h };
   const special = SPECIAL_COLORS[tile.kind];
   if (special) {
@@ -244,7 +242,7 @@ const drawFace = (
     tile.kind === 'go-jail';
   const icon = special ? undefined : iconOf(tile);
   const hasIcon = Boolean(special || icon);
-  const price = priceOf(tile);
+  const price = priceOf(i);
   const nameSize = corner ? px * 0.24 : px * 0.2;
   const lines = wrap(ctx, tile.name.toUpperCase(), maxW, nameSize);
   const size = fitFont(ctx, lines, maxW, nameSize);
@@ -315,13 +313,12 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number) => {
 
 /** Paints Tile `i` with its top-left corner at the origin; `t` sets a special icon moving. */
 export const paintTile = (ctx: CanvasRenderingContext2D, i: number, px: number, t?: number) => {
-  const tile = BOARD[i] as Tile;
   const p = placement(i);
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, p.w * px, p.h * px);
   ctx.save();
   ctx.translate((p.w / 2) * px, (p.h / 2) * px);
-  drawFace(ctx, tile, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t);
+  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t);
   ctx.restore();
   ctx.strokeStyle = LINE;
   ctx.lineWidth = px * 0.02;

@@ -3,7 +3,7 @@ import { optionsSchema, testGame } from '@xomdao/sdk';
 import manifest from '../../manifest.js';
 import { CoTyPhuGame } from './CoTyPhuGame.js';
 import type { CardId } from './cards.js';
-import type { Player, State } from './model.js';
+import type { Player, State, View } from './model.js';
 import { TUNING, type Tuning } from './tuning.js';
 
 export const PLAYERS = ['a', 'b', 'c', 'd'];
@@ -64,3 +64,7 @@ export const all =
     steps.reduce((acc, step) => step(acc), s);
 
 export const cash = (game: { state: State }) => game.state.players.map((p) => p.cash);
+
+/** What `who` sees of a Match. */
+export const viewOf = (game: { view(who: string | null): unknown }, who: string) =>
+  game.view(who) as View;
