@@ -251,6 +251,8 @@ export class BoardView {
   private readonly tokens: Group[] = [];
   private readonly cages: ReturnType<typeof cage>[] = [];
   private readonly dice: Mesh[];
+  /** A soft dark patch under each die, darkest while it sits on the board, fading as it rises. */
+  private readonly contacts: Mesh[];
   private readonly glow: Mesh[] = [];
   private readonly tick: (t?: number) => void;
   private readonly tweens: Tween[] = [];
@@ -419,6 +421,22 @@ export class BoardView {
       return d;
     });
     this.setDice([3, 4]);
+    const soft = new CanvasTexture(contactShadow());
+    this.contacts = this.dice.map(() => {
+      const c = new Mesh(
+        new PlaneGeometry(DIE * 1.45, DIE * 1.45),
+        new MeshBasicMaterial({
+          map: soft,
+          color: '#000000',
+          transparent: true,
+          depthWrite: false,
+        }),
+      );
+      c.rotation.x = -Math.PI / 2;
+      c.renderOrder = 1;
+      this.world.add(c);
+      return c;
+    });
 
     this.tick = ambience(this.world, at, anisotropy);
     r.setAnimationLoop((ms) => this.frame(ms));
@@ -1381,7 +1399,21 @@ export class BoardView {
         d.position.y = BOARD_H + DIE / 2 + Math.abs(Math.sin(ms / 240 + i * 0.9)) * 0.16;
       });
     this.steer(dt);
+    this.placeContacts();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Puts each die's contact shadow under it: dark and tight on the board, faint and wide in the air. */
+  private placeContacts() {
+    this.dice.forEach((d, i) => {
+      const c = this.contacts[i];
+      if (!c) return;
+      c.visible = d.visible;
+      const k = MathUtils.clamp((d.position.y - BOARD_H - DIE / 2) / 1.4, 0, 1);
+      c.position.set(d.position.x + 0.14, BOARD_H + 0.003, d.position.z - 0.16);
+      c.scale.setScalar(1 + k * 0.6);
+      (c.material as MeshBasicMaterial).opacity = 0.6 * (1 - k) ** 1.5;
+    });
   }
 
   /** Eases the camera towards the token it follows, nearer and looking at it, or back home. */
@@ -1682,4 +1714,18 @@ function saleTag(label: string, value: string) {
   sprite.scale.set(1.45, 0.64, 1);
   sprite.renderOrder = 5;
   return sprite;
+}
+
+/** A round soft shadow: dark in the middle, gone at the rim. */
+function contactShadow() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  r.addColorStop(0.55, 'rgba(255, 255, 255, 0.75)');
+  r.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
+  return c;
 }
