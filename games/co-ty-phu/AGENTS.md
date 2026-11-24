@@ -6,20 +6,26 @@ Rules: `server/game/model.ts` first, words in `GLOSSARY.md`, numbers in `server/
 ## Client
 
 `client/` is a Vite + Three.js client (`games/AGENTS.md`). `main.ts` queues each `match:state`
-push and plays it on the board one after another (the computer's moves arrive at once, faster
-while more wait), then shows the newest view's decision. Two pure modules carry the logic, with
+push and plays it on the board one after another (the computer's moves arrive at once; `pace`
+plays them 2× under "Tốc độ" Nhanh, which the `View` carries as `speed`, and faster while more
+wait), then shows the newest view's decision. Two pure modules carry the logic, with
 tests built on real Matches (`server/game/test-match.ts`):
 
 - `decisions.ts`: `decide(view, seat, names)` is the panel a seat sees: title, text, buttons
   and the Tiles a tap may pick (Sân bay, a Card's Lot). Prices come from `economy.ts`, so they
   match the server.
-- `present.ts`: `changes(before, after)` lists what to play between two views: dice, walks and
-  jumps, the Card drawn, Lots and marks, the Quiz result, money and Bankruptcy.
+- `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
+  of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
+  the Quiz result, money and Bankruptcy.
 
-`scene.ts` is the board (`show` places everything; `roll`, `walk`, `jump`, `pop` animate;
-`tileAt` picks), `hud.ts` the HTML over it (player cards, panel, Card, a Tile's details, the
-end). Effects are minimal for now (M11 does the real ones). `npm run smoke:web` plays its first
-decisions in CI.
+`scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the tier-2 effects
+(#354): `roll` throws the dice with bounces, `walk` hops Tile by Tile with the camera following,
+`jump` flies from Sân bay with a trail or drops the bars round a jailed token, `release` lifts
+them, `build` raises houses and Hotels and sinks those sold, `drawCard`/`putCard` turn the Card
+over in front of the camera. `setGraphics('low')` (the Hub's Đồ họa) drops shadows, dust,
+trails, moving icons and camera moves. `hud.ts` is the HTML over it (player cards, panel, Card,
+a Tile's details, the end). The tier-1 moments (rent, Takeover, Hotel, Full set, Bankruptcy) are
+still plain. `npm run smoke:web` plays its first decisions in CI.
 
 ## Look
 

@@ -12,8 +12,10 @@ export type Change =
   | { kind: 'dice'; dice: number[] }
   /** Forward along the board, `steps` Tiles from `from`. */
   | { kind: 'walk'; seat: number; from: number; steps: number }
-  /** Straight to `to`: jail, a flight, a swap, going back. */
-  | { kind: 'jump'; seat: number; to: number }
+  /** Straight to `to`: into jail, a flight from Sân bay, or a Card's move. */
+  | { kind: 'jump'; seat: number; to: number; how: 'jail' | 'flight' | 'move' }
+  /** Out of jail: the fine, a jail-free Card or the roll. */
+  | { kind: 'release'; seat: number }
   | { kind: 'card'; seat: number; id: CardId }
   | { kind: 'lot'; tile: number; before: Lot | null; after: Lot | null }
   | { kind: 'festival'; tile: number | null }
@@ -35,6 +37,10 @@ const forward = (id: CardId) => {
   );
 };
 
+/** How fast the moves into `view` play (1 is normal): 2× under Nhanh, faster while more wait. */
+export const pace = (view: View, waiting: number) =>
+  (view.speed === 'fast' ? 0.5 : 1) * (waiting > 2 ? 0.4 : 1);
+
 export function changes(before: View, after: View): Change[] {
   const out: Change[] = [];
   const rolled = after.rolls > before.rolls && after.dice !== null;
@@ -42,9 +48,13 @@ export function changes(before: View, after: View): Change[] {
   const roller = before.turn;
   /** Where each seat's token is when the Card (if any) is shown. */
   const at = before.players.map((p) => p.tile);
+  const released = after.players.flatMap((p, seat): Change[] =>
+    before.players[seat]?.jailed && !p.jailed && !p.bankrupt ? [{ kind: 'release', seat }] : [],
+  );
 
+  if (rolled && after.dice) out.push({ kind: 'dice', dice: after.dice });
+  out.push(...released);
   if (rolled && after.dice) {
-    out.push({ kind: 'dice', dice: after.dice });
     const was = before.players[roller];
     const sum = after.dice.reduce((a, b) => a + b, 0);
     const double = after.dice.length === 2 && after.dice[0] === after.dice[1];
@@ -61,7 +71,15 @@ export function changes(before: View, after: View): Change[] {
     if (p.tile === from) return;
     if (drawn && drawn.seat === seat && forward(drawn.id) && p.tile !== JAIL_TILE)
       out.push({ kind: 'walk', seat, from, steps: ahead(from, p.tile) || TILES });
-    else out.push({ kind: 'jump', seat, to: p.tile });
+    else {
+      const flew = before.phase === 'fly' && seat === before.turn;
+      out.push({
+        kind: 'jump',
+        seat,
+        to: p.tile,
+        how: p.jailed ? 'jail' : flew ? 'flight' : 'move',
+      });
+    }
   });
 
   after.lots.forEach((lot, tile) => {

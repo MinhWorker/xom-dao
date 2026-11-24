@@ -9,16 +9,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { HubError } from '../../net/store.js';
+import { graphics, useGraphics } from '../../settings/graphics.js';
 import { sounds, useSoundState } from '../../sound/index.js';
 import { loadingSeats, MatchLoading } from './MatchLoading.js';
 import styles from './Room.module.css';
 
 const LOADING_EXIT_MS = 260;
 
-/** The Game follows the Hub's volume, mute, music and effects levels. */
+/** The Game follows the Hub's volume, mute, music and effects levels and its graphics level. */
 const settings = () => {
   const { volume, muted, music, effects } = sounds.getState();
-  return { volume, muted, music, effects };
+  return { volume, muted, music, effects, graphics: graphics.getState().level };
 };
 
 /** The last `view` of each Match the Game was shown, as the Match ended without one. */
@@ -90,6 +91,7 @@ export function GameFrame({ gameId, gameName, emblem, onDone }: GameFrameProps) 
   const room = useHub((s) => s.room);
   const meId = useHub((s) => s.user?.id ?? '');
   const soundState = useSoundState();
+  const graphicsLevel = useGraphics().level;
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
@@ -141,10 +143,10 @@ export function GameFrame({ gameId, gameName, emblem, onDone }: GameFrameProps) 
     reportReady(reported);
   }, [ready, matchId, connection]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `soundState` only says when to resend
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `soundState` and `graphicsLevel` only say when to resend
   useEffect(() => {
     if (ready) host.current?.settings(settings());
-  }, [ready, soundState]);
+  }, [ready, soundState, graphicsLevel]);
 
   useEffect(() => {
     if (match?.view !== undefined) {

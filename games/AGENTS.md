@@ -49,7 +49,9 @@ calls `done()` after its end-of-match animation. Every `init` (reconnect, replay
 the whole screen from its `match` snapshot; after the Match is over that is its last view, so
 draw how it ended at once (Caro: `games/caro/client/main.ts`). The message list and
 `BRIDGE_VERSION` are in the header of `packages/bridge/src/protocol.ts`; the Hub's side is
-`createGameHost`.
+`createGameHost`. `settings` (in `init` and `onSettings`) also carries the Hub's Đồ họa level,
+`graphics`: on `low` a Game drops costly or busy visuals (Cờ Tỷ Phú: shadows, dust, moving icons
+and camera moves); a missing one means `high`.
 
 ## The Harness: running a Game without the Hub
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CardId } from '../server/game/cards.js';
 import type { State } from '../server/game/model.js';
 import { all, open, own, player, viewOf } from '../server/game/test-match.js';
-import { changes } from './present.js';
+import { changes, pace } from './present.js';
 
 /** What changes when `a` rolls `dice` from the first state after `arrange`. */
 function roll(dice: [number, number], arrange = (s: State) => s, chance: CardId[] = []) {
@@ -32,7 +32,24 @@ describe('what a new view shows', () => {
     expect(roll([1, 2], player(0, { tile: 27 }))).toEqual([
       { kind: 'dice', dice: [1, 2] },
       { kind: 'walk', seat: 0, from: 27, steps: 3 },
-      { kind: 'jump', seat: 0, to: 10 },
+      { kind: 'jump', seat: 0, to: 10, how: 'jail' },
+    ]);
+  });
+
+  it('jumps to jail on a third double without walking', () => {
+    const game = open({
+      rolls: [
+        [1, 1],
+        [2, 2],
+        [3, 3],
+      ],
+    });
+    game.send('a', 'roll').send('a', 'pass').send('a', 'roll').send('a', 'pass');
+    const before = viewOf(game, 'a');
+    game.send('a', 'roll');
+    expect(changes(before, viewOf(game, 'a'))).toEqual([
+      { kind: 'dice', dice: [3, 3] },
+      { kind: 'jump', seat: 0, to: 10, how: 'jail' },
     ]);
   });
 
@@ -41,8 +58,36 @@ describe('what a new view shows', () => {
       { kind: 'dice', dice: [3, 4] },
       { kind: 'walk', seat: 0, from: 0, steps: 7 },
       { kind: 'card', seat: 0, id: 'chance-back' },
-      { kind: 'jump', seat: 0, to: 4 },
+      { kind: 'jump', seat: 0, to: 4, how: 'move' },
       { kind: 'cash', seat: 0, delta: -100 },
+    ]);
+  });
+
+  it('flies from Sân bay to the Tile picked', () => {
+    const game = open({ rolls: [[1, 2]], arrange: player(0, { tile: 17 }) }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'fly', { to: 39 });
+    expect(changes(before, viewOf(game, 'a')).slice(0, 1)).toEqual([
+      { kind: 'jump', seat: 0, to: 39, how: 'flight' },
+    ]);
+  });
+
+  it('opens the jail before the token walks out on a double', () => {
+    const jailed = player(0, { tile: 10, jailed: true });
+    expect(roll([3, 3], jailed).slice(0, 3)).toEqual([
+      { kind: 'dice', dice: [3, 3] },
+      { kind: 'release', seat: 0 },
+      { kind: 'walk', seat: 0, from: 10, steps: 6 },
+    ]);
+  });
+
+  it('opens the jail when the fine is paid', () => {
+    const game = open({ arrange: player(0, { tile: 10, jailed: true }) });
+    const before = viewOf(game, 'a');
+    game.send('a', 'pay-bail');
+    expect(changes(before, viewOf(game, 'a'))).toEqual([
+      { kind: 'release', seat: 0 },
+      { kind: 'cash', seat: 0, delta: -50 },
     ]);
   });
 
@@ -66,5 +111,18 @@ describe('what a new view shows', () => {
       },
       { kind: 'cash', seat: 0, delta: -90 },
     ]);
+  });
+});
+
+describe('how fast the moves play', () => {
+  it('plays at 2× when "Tốc độ" is Nhanh', () => {
+    expect(pace(viewOf(open(), 'a'), 0)).toBe(1);
+    expect(pace(viewOf(open({ speed: 'fast' }), 'a'), 0)).toBe(0.5);
+  });
+
+  it('hurries while more than two views wait', () => {
+    expect(pace(viewOf(open(), 'a'), 2)).toBe(1);
+    expect(pace(viewOf(open(), 'a'), 3)).toBe(0.4);
+    expect(pace(viewOf(open({ speed: 'fast' }), 'a'), 3)).toBe(0.2);
   });
 });

@@ -161,3 +161,33 @@ const DIE_SHAPE = roundedCube(DIE, DIE_ROUND);
 
 /** A die with 1 up. */
 export const die = () => shadowed(new Mesh(DIE_SHAPE, DIE_FACES));
+
+const BAR = new CylinderGeometry(0.017, 0.017, 0.56, 6);
+const HOOP = new CylinderGeometry(0.25, 0.25, 0.03, 28, 1, true);
+
+/**
+ * The bars round a jailed token, in its own space (a child of the token): eight iron bars between
+ * two hoops. Its material is its own, so it can fade.
+ */
+export const cage = () => {
+  const g = new Group();
+  const iron = new MeshStandardMaterial({
+    color: '#9aa0ad',
+    roughness: 0.3,
+    metalness: 0.75,
+    transparent: true,
+  });
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    const bar = shadowed(new Mesh(BAR, iron));
+    bar.position.set(Math.cos(a) * 0.24, 0.3, Math.sin(a) * 0.24);
+    g.add(bar);
+  }
+  for (const y of [0.03, 0.57]) {
+    const hoop = shadowed(new Mesh(HOOP, iron));
+    hoop.position.y = y;
+    g.add(hoop);
+  }
+  g.userData.iron = iron;
+  return g;
+};

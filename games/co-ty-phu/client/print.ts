@@ -377,3 +377,27 @@ export const cardBack = (deck: keyof typeof DECK_COLORS): HTMLCanvasElement => {
   ctx.stroke();
   return canvas;
 };
+
+/** A Card's face as it turns over: cream, the deck's colour round it, its icon and its name. */
+export const cardFace = (deck: keyof typeof DECK_COLORS, name: string): HTMLCanvasElement => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  ctx.fillStyle = DECK_COLORS[deck];
+  ctx.fillRect(0, 0, 600, 400);
+  ctx.fillStyle = CREAM;
+  ctx.beginPath();
+  ctx.roundRect(20, 20, 560, 360, 22);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(300, 140);
+  drawSpecial(ctx, deck, 150, DECK_COLORS[deck], CREAM);
+  ctx.restore();
+  ctx.fillStyle = '#2a2238';
+  ctx.font = '800 52px system-ui, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(name, 300, 300, 520);
+  return canvas;
+};

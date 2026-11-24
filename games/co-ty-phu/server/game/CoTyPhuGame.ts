@@ -114,6 +114,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
       effects: [],
     };
     const state = this.arrange({
+      speed: ctx.options.speed,
       players: ctx.players.map(() => ({ ...player })),
       lots: BOARD.map(() => null),
       turn: 0,

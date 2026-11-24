@@ -191,6 +191,16 @@ describe('Bridge round-trip', () => {
     expect(gameSide.onSettings).toHaveBeenNthCalledWith(2, { volume: 1, muted: false });
   });
 
+  it('passes on the graphics level', async () => {
+    const { host, bridge, gameSide } = connect();
+    host.init(makeInit(null));
+    bridge.ready();
+    host.settings({ volume: 1, muted: false, graphics: 'low' });
+    await flush();
+
+    expect(gameSide.onSettings).toHaveBeenCalledWith({ volume: 1, muted: false, graphics: 'low' });
+  });
+
   it('keeps what the Hub sent before the Game was ready, in order', async () => {
     const order: string[] = [];
     const { host, bridge } = connect(

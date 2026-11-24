@@ -116,7 +116,8 @@ goes back to the waiting room, so playing again reuses it.
   waiting room's "Luật chơi" button and from the corner menu during a Match (the Match keeps
   running under it). It is a scroll-snap track, one slide per page of `HubGame.rules`; mount it to
   open it. It never opens by itself.
-- `settings` carries the Hub's volume, mute, `music` and `effects` levels and is resent when any changes.
+- `settings` carries the Hub's volume, mute, `music` and `effects` levels and its `graphics` level
+  (`high`/`low`), and is resent when any changes.
 - Not built yet: emotes in the corner.
 
 ## Phone screen

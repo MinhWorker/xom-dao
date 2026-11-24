@@ -1,7 +1,9 @@
 /**
  * The board in Three.js, after the approved prototype (#351): the printed board floating in
  * space, the Lots in their owners' colours, the tokens, the dice and the decks. `show` puts
- * everything where a view says; `roll`, `walk`, `jump` and `pop` play the moves between views.
+ * everything where a view says; `roll`, `walk`, `jump`, `release`, `build`, `drawCard` and
+ * `putCard` play the moves between views, with the camera following the token that moves.
+ * `setGraphics('low')` drops shadows, dust, trails, moving icons and camera moves.
  */
 import {
   AmbientLight,
@@ -19,19 +21,23 @@ import {
   PerspectiveCamera,
   Plane,
   PlaneGeometry,
+  Quaternion,
   Raycaster,
   Scene,
+  SphereGeometry,
   SRGBColorSpace,
   Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three';
 import { BOARD } from '../server/game/board.js';
+import { type CardId, cardOf } from '../server/game/cards.js';
 import { isFullSet } from '../server/game/economy.js';
-import { HOTEL, type View } from '../server/game/model.js';
+import { type Deck, HOTEL, type Lot, type View } from '../server/game/model.js';
+import { TUNING } from '../server/game/tuning.js';
 import { ambience } from './ambience.js';
-import { DIE, die, hotel, house, token } from './pieces.js';
-import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from './print.js';
+import { cage, DIE, die, hotel, house, token } from './pieces.js';
+import { BAND, bandRect, cardBack, cardFace, placement, printBoard, SIDE } from './print.js';
 
 export const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
@@ -42,6 +48,12 @@ const FIT = [0.62, 0.98] as const;
 const PIECE_TOP = 0.8;
 const BOARD_H = 0.22;
 const GOLD = '#e6b422';
+/** How much nearer the camera comes to a token it follows (0 stays, 1 is on it). */
+const CLOSE = 0.32;
+/** How far in front of the camera a drawn Card stops: about the size of the Card shown over it. */
+const CARD_AWAY = 4.2;
+
+export type Graphics = 'high' | 'low';
 
 /** Deep space with stars, drawn in code. */
 function spaceTexture() {
@@ -151,6 +163,37 @@ const FACE_UP: Record<number, [number, number]> = {
 };
 const DIE_REST = [new Vector3(-0.75, 0, 1.9), new Vector3(0.8, 0, 2.25)] as const;
 
+/** A thrown die's height over time: a fall, then two smaller bounces. */
+const bounce = (k: number) => {
+  if (k < 0.45) return 1.8 * (1 - (k / 0.45) ** 2);
+  const hop = (a: number, b: number, h: number) =>
+    k >= a && k < b ? h * Math.sin(((k - a) / (b - a)) * Math.PI) : 0;
+  return hop(0.45, 0.72, 0.5) + hop(0.72, 0.88, 0.14);
+};
+
+/** Lands with a few bounces, like a dropped weight. */
+const bounceOut = (k: number) => {
+  const n = 7.5625;
+  if (k < 1 / 2.75) return n * k * k;
+  if (k < 2 / 2.75) return n * (k - 1.5 / 2.75) ** 2 + 0.75;
+  if (k < 2.5 / 2.75) return n * (k - 2.25 / 2.75) ** 2 + 0.9375;
+  return n * (k - 2.625 / 2.75) ** 2 + 0.984375;
+};
+
+/** Overshoots a little before it settles. */
+const backOut = (k: number) => 1 + 2.70158 * (k - 1) ** 3 + 1.70158 * (k - 1) ** 2;
+
+const smooth = (k: number) => k * k * (3 - 2 * k);
+
+/** The buildings a Lot stands with: houses 1 to its Level, or the Hotel alone. */
+const buildings = (lot: Lot | null) =>
+  !lot ? [] : lot.level >= HOTEL ? [HOTEL] : Array.from({ length: lot.level }, (_, k) => k + 1);
+
+const DUST = new SphereGeometry(0.05, 8, 6);
+const CARD = new BoxGeometry(1.5, 0.02, 1.0);
+const X_AXIS = new Vector3(1, 0, 0);
+const Y_AXIS = new Vector3(0, 1, 0);
+
 interface Tween {
   start: number;
   ms: number;
@@ -159,6 +202,7 @@ interface Tween {
 }
 
 const ease = (k: number) => 1 - (1 - k) ** 3;
+const clamp01 = (k: number) => Math.min(1, Math.max(0, k));
 
 export class BoardView {
   private readonly renderer: WebGLRenderer;
@@ -167,10 +211,15 @@ export class BoardView {
   private readonly world = new Group();
   private readonly lots = new Group();
   private readonly marks = new Group();
+  /** What only lives while a move plays: dust, trails, a sinking house, the Card drawn. */
+  private readonly fx = new Group();
+  private readonly sun: DirectionalLight;
+  private readonly decks = {} as Record<Deck, Mesh>;
   private readonly tokens: Group[] = [];
+  private readonly cages: Group[] = [];
   private readonly dice: Mesh[];
   private readonly glow: Mesh[] = [];
-  private readonly tick: (t: number) => void;
+  private readonly tick: (t?: number) => void;
   private readonly tweens: Tween[] = [];
   private readonly ray = new Raycaster();
   private readonly ground = new Plane(new Vector3(0, 1, 0), -BOARD_H);
@@ -180,6 +229,17 @@ export class BoardView {
   private paused = false;
   /** Bumped by `stop`: a walk under way gives up. */
   private generation = 0;
+  private low = false;
+  private size: [number, number] = [844, 390];
+  /** The camera's place over the whole board, and what it looks at from there. */
+  private readonly home = { pos: new Vector3(), target: new Vector3() };
+  /** The token the camera follows, and how far it has come towards it (0 to 1). */
+  private focus: Object3D | null = null;
+  private zoom = 0;
+  private readonly look = new Vector3();
+  private lastFrame = 0;
+  /** The Card drawn, while it shows; `held` (and hidden under the HUD's Card) once it stops. */
+  private card: { mesh: Mesh; deck: Deck; held: boolean } | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true });
@@ -193,6 +253,7 @@ export class BoardView {
     this.scene.add(new HemisphereLight('#f2f0ff', '#2a2450', 1.0));
     this.scene.add(new AmbientLight('#ffffff', 0.15));
     const sun = new DirectionalLight('#ffe8c8', 2.4);
+    this.sun = sun;
     sun.position.set(-6, 14, 8);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -219,7 +280,7 @@ export class BoardView {
     top.rotation.x = -Math.PI / 2;
     top.position.y = BOARD_H + 0.001;
     top.receiveShadow = true;
-    this.world.add(base, top, this.lots, this.marks);
+    this.world.add(base, top, this.lots, this.marks, this.fx);
 
     for (const [x, kind, turn] of [
       [-1.6, 'chance', 0.12],
@@ -240,6 +301,7 @@ export class BoardView {
       deck.position.set(x, BOARD_H + 0.06, -2.4);
       deck.rotation.y = turn;
       deck.castShadow = true;
+      this.decks[kind] = deck;
       this.world.add(deck);
     }
 
@@ -266,6 +328,7 @@ export class BoardView {
   }
 
   resize(w: number, h: number) {
+    this.size = [w, h];
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.frameCamera();
@@ -281,6 +344,31 @@ export class BoardView {
   stop() {
     this.generation++;
     this.finish(false);
+    clear(this.fx);
+    this.card = null;
+    this.focus = null;
+    this.zoom = 0;
+    this.camera.position.copy(this.home.pos);
+    this.camera.lookAt(this.home.target);
+  }
+
+  /**
+   * `low`: no shadows, a pixel ratio of 1, the special Tiles' icons at rest, no dust or trails and
+   * a camera that stays over the whole board.
+   */
+  setGraphics(level: Graphics) {
+    const low = level === 'low';
+    if (low === this.low) return;
+    this.low = low;
+    this.sun.castShadow = !low;
+    this.renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(this.size[0], this.size[1], false);
+    if (low) this.tick();
+  }
+
+  /** The camera follows `seat`'s token, or goes back over the whole board. */
+  follow(seat: number | null) {
+    this.focus = seat === null ? null : (this.tokens[seat] ?? null);
   }
 
   private finish(land: boolean) {
@@ -296,9 +384,18 @@ export class BoardView {
     this.spots = view.players.map((p) => (p.bankrupt ? null : p.tile));
     while (this.tokens.length < view.players.length) {
       const t = token(SEAT_COLORS[this.tokens.length] as string);
+      const bars = cage();
+      t.add(bars);
       this.tokens.push(t);
+      this.cages.push(bars);
       this.world.add(t);
     }
+    this.cages.forEach((bars, seat) => {
+      const p = view.players[seat];
+      bars.visible = !!p?.jailed && !p.bankrupt;
+      bars.position.y = 0;
+      (bars.userData.iron as MeshStandardMaterial).opacity = 1;
+    });
     this.placeTokens(view.turn);
     if (view.dice) this.setDice(view.dice);
   }
@@ -328,67 +425,327 @@ export class BoardView {
     }
   }
 
-  /** The Lot on `tile` grows in from nothing. */
-  pop(tile: number, ms = 360) {
+  /**
+   * Plays a Lot's change once `showLots` drew how it ends: the houses or Hotel it gained rise, the
+   * ones it lost sink, a Lot bought or taken over pops in, and one given back shrinks away. The
+   * camera comes nearer while a building rises.
+   */
+  build(tile: number, was: Lot | null, now: Lot | null, ms = 600) {
     const g = this.lots.children.find((c) => c.userData.tile === tile);
-    if (!g) return Promise.resolve();
-    return this.tween(ms, (k) => g.scale.setScalar(Math.max(0.01, ease(k))));
+    const jobs: Promise<void>[] = [];
+    const kept = !!was && !!now && was.owner === now.owner;
+    const had = buildings(was);
+    const has = buildings(now);
+    if (g && !kept) jobs.push(this.popIn(g, Math.round(ms * 0.6)));
+    if (g && (kept || !was)) {
+      const rising = g.children.filter(
+        (c) => has.includes(c.userData.building) && !(kept && had.includes(c.userData.building)),
+      );
+      if (rising.length > 0) this.focus = g;
+      rising.forEach((b, k) => {
+        jobs.push(this.rise(b, k * Math.round(ms * 0.18), ms));
+      });
+    }
+    if (was && (!now || kept)) {
+      const ghost = lotPieces(tile, was.owner, was.level, false);
+      const lost = (c: Object3D) =>
+        had.includes(c.userData.building) && !has.includes(c.userData.building);
+      if (now) for (const c of [...ghost.children]) if (!lost(c)) ghost.remove(c);
+      if (ghost.children.length > 0) {
+        this.fx.add(ghost);
+        jobs.push(this.sink(ghost, !now, ms));
+      }
+    }
+    return Promise.all(jobs).then(() => {});
   }
 
-  /** Tumbles the dice onto `values`; one die is hidden under Kẹt xe. */
-  roll(values: number[], ms = 650) {
-    const spins = this.dice.map(() => [
-      (Math.random() * 2 + 2) * Math.PI * (Math.random() < 0.5 ? -1 : 1),
-      (Math.random() * 2 + 2) * Math.PI,
-    ]);
+  private popIn(g: Object3D, ms: number) {
+    return this.tween(ms, (k) => g.scale.setScalar(Math.max(0.01, backOut(k))));
+  }
+
+  /** A house or Hotel grows up out of the board after `delay` ms, with a puff of dust. */
+  private rise(b: Object3D, delay: number, ms: number) {
+    const s = b.userData.scale as number;
+    b.scale.set(s, 0.001, s);
+    let puffed = false;
+    return this.tween(delay + ms, (u) => {
+      const k = clamp01((u * (delay + ms) - delay) / ms);
+      b.scale.set(s, s * Math.max(0.001, backOut(k)), s);
+      if (k > 0 && !puffed) {
+        puffed = true;
+        this.puff(b.getWorldPosition(new Vector3()), 7);
+      }
+    });
+  }
+
+  /** What a Lot lost goes down into the board (all of it shrinks when `whole`), then is gone. */
+  private sink(ghost: Group, whole: boolean, ms: number) {
+    return this.tween(ms, (u) => {
+      const e = ease(u);
+      if (whole) ghost.scale.setScalar(Math.max(0.01, 1 - e));
+      else
+        for (const b of ghost.children) {
+          const s = b.userData.scale as number;
+          b.scale.set(s * (1 - e * 0.3), s * Math.max(0.001, 1 - e), s * (1 - e * 0.3));
+        }
+    }).then(() => {
+      this.fx.remove(ghost);
+    });
+  }
+
+  /** Throws the dice from the far side: they bounce twice and settle on `values`. One die shows under Kẹt xe. */
+  roll(values: number[], ms = 900) {
+    const throws = this.dice.map((_, i) => {
+      const rest = DIE_REST[i] as Vector3;
+      const sign = Math.random() < 0.5 ? -1 : 1;
+      return {
+        from: new Vector3(rest.x + (Math.random() - 0.5) * 1.4, 0, rest.z - 2.8),
+        rest,
+        spin: [(Math.random() * 2 + 3) * Math.PI * sign, (Math.random() * 2 + 3) * Math.PI],
+        landed: false,
+      };
+    });
     this.dice.forEach((d, i) => {
       d.visible = i < values.length;
     });
     return this.tween(ms, (k) => {
       this.dice.forEach((d, i) => {
+        const th = throws[i];
+        if (!d.visible || !th) return;
         const [x, z] = FACE_UP[values[i] ?? 1] as [number, number];
-        const [sx, sz] = spins[i] as [number, number];
-        const e = ease(k);
-        d.rotation.set(x + sx * (1 - e), 0.4 - i * 0.7 + (1 - e) * 2, z + sz * (1 - e));
-        d.position.y = BOARD_H + DIE / 2 + Math.sin(k * Math.PI) * 1.2 * (1 - k * 0.5);
+        const e = ease(Math.min(1, k * 1.15));
+        const left = 1 - e;
+        d.position.set(
+          th.from.x + (th.rest.x - th.from.x) * e,
+          BOARD_H + DIE / 2 + bounce(k),
+          th.from.z + (th.rest.z - th.from.z) * e,
+        );
+        d.rotation.set(
+          x + (th.spin[0] as number) * left,
+          0.4 - i * 0.7 + left * 2,
+          z + (th.spin[1] as number) * left,
+        );
+        if (!th.landed && k >= 0.45) {
+          th.landed = true;
+          this.puff(new Vector3(d.position.x, BOARD_H, d.position.z), 8);
+        }
       });
     }).then(() => this.setDice(values));
   }
 
-  /** Walks a token `steps` Tiles ahead from `from`, a hop per Tile. */
-  async walk(seat: number, from: number, steps: number, perStep = 150) {
+  /** Walks a token `steps` Tiles ahead from `from`, a hop per Tile, the camera following. */
+  async walk(seat: number, from: number, steps: number, perStep = 170) {
     const t = this.tokens[seat];
     if (!t) return;
     const mine = this.generation;
+    this.focus = t;
+    const base = t.scale.x;
     for (let k = 1; k <= steps; k++) {
       if (mine !== this.generation) return;
       const a = spot((from + k - 1) % 40, 0, 1);
       const b = spot((from + k) % 40, 0, 1);
       await this.tween(perStep, (u) => {
+        const lift = Math.sin(u * Math.PI);
         t.position.lerpVectors(a, b, u);
-        t.position.y = a.y + Math.sin(u * Math.PI) * 0.35;
+        t.position.y = a.y + lift * 0.35;
+        t.scale.set(base * (1 - lift * 0.08), base * (1 + lift * 0.14), base * (1 - lift * 0.08));
       });
+      this.puff(b, 4, 300);
     }
     if (mine !== this.generation) return;
     this.spots[seat] = (from + steps) % 40;
     this.placeTokens(seat);
   }
 
-  /** Flies a token straight to `to` in a high arc. */
-  async jump(seat: number, to: number, ms = 520) {
+  /**
+   * Takes a token straight to `to`: a hop for a Card's move, a flight from Sân bay that lifts off,
+   * crosses the board high with a trail and lands, or into jail, where the bars come down on it.
+   */
+  async jump(seat: number, to: number, ms = 560, how: 'jail' | 'flight' | 'move' = 'move') {
     const t = this.tokens[seat];
     if (!t) return;
     const mine = this.generation;
     const a = t.position.clone();
     const b = spot(to, 0, 1);
-    await this.tween(ms, (u) => {
-      const e = ease(u);
-      t.position.lerpVectors(a, b, e);
-      t.position.y = a.y + Math.sin(u * Math.PI) * 1.6;
-    });
+    this.focus = t;
+    if (how === 'flight') await this.fly(t, a, b, ms);
+    else
+      await this.tween(ms, (u) => {
+        t.position.lerpVectors(a, b, ease(u));
+        t.position.y = a.y + Math.sin(u * Math.PI) * 1.6;
+      });
     if (mine !== this.generation) return;
+    this.puff(b, 8);
     this.spots[seat] = to;
     this.placeTokens(seat);
+    if (how === 'jail') await this.lock(seat, Math.round(ms * 0.9));
+  }
+
+  private fly(t: Group, a: Vector3, b: Vector3, ms: number) {
+    let trail = 0;
+    const bank = Math.sign(b.x - a.x || 1) * -0.4;
+    return this.tween(ms, (u) => {
+      const up = Math.sin(u * Math.PI);
+      t.position.lerpVectors(a, b, smooth(u));
+      t.position.y = a.y + up ** 0.6 * 2.6;
+      t.rotation.z = up * bank;
+      if (u - trail > 0.03 && u > 0.08 && u < 0.92) {
+        trail = u;
+        this.mote(t.position.clone());
+      }
+    }).then(() => {
+      t.rotation.z = 0;
+    });
+  }
+
+  /** The bars drop round a token that just went to jail. */
+  private lock(seat: number, ms: number) {
+    const bars = this.cages[seat];
+    if (!bars) return Promise.resolve();
+    bars.visible = true;
+    (bars.userData.iron as MeshStandardMaterial).opacity = 1;
+    return this.tween(ms, (u) => {
+      bars.position.y = (1 - bounceOut(u)) * 1.4;
+    }).then(() => {
+      bars.position.y = 0;
+    });
+  }
+
+  /** The bars round a jailed token lift away and fade. */
+  release(seat: number, ms = 600) {
+    const bars = this.cages[seat];
+    if (!bars?.visible) return Promise.resolve();
+    this.focus = this.tokens[seat] ?? null;
+    const iron = bars.userData.iron as MeshStandardMaterial;
+    return this.tween(ms, (u) => {
+      bars.position.y = ease(u) * 1.2;
+      iron.opacity = 1 - u * u;
+    }).then(() => {
+      bars.visible = false;
+      bars.position.y = 0;
+      iron.opacity = 1;
+    });
+  }
+
+  /**
+   * The Card drawn leaves its deck, turns over on the way and stops facing the camera, where the
+   * HUD shows it until `putCard`.
+   */
+  drawCard(id: CardId, ms = 750) {
+    const { deck, name } = cardOf(TUNING, id);
+    this.dropCard();
+    const pile = this.decks[deck];
+    const map = new CanvasTexture(cardFace(deck, name));
+    map.colorSpace = SRGBColorSpace;
+    const side = new MeshStandardMaterial({ color: '#f5efe0' });
+    const back = (pile.material as MeshStandardMaterial[])[2] as MeshStandardMaterial;
+    const mesh = new Mesh(CARD, [side, side, back, new MeshBasicMaterial({ map }), side, side]);
+    mesh.position.copy(pile.position);
+    mesh.position.y += 0.08;
+    mesh.quaternion.copy(pile.quaternion);
+    this.fx.add(mesh);
+    const card = { mesh, deck, held: false };
+    this.card = card;
+    const p0 = mesh.position.clone();
+    const q0 = mesh.quaternion.clone();
+    const spin = new Quaternion();
+    return this.tween(ms, (u) => {
+      const e = ease(u);
+      const { p, q } = this.facing();
+      mesh.position.lerpVectors(p0, p, e);
+      mesh.position.y += Math.sin(u * Math.PI) * 0.8;
+      mesh.quaternion
+        .slerpQuaternions(q0, q, e)
+        .multiply(spin.setFromAxisAngle(Y_AXIS, Math.PI * 2 * (1 - e)));
+    }).then(() => {
+      card.held = true;
+      mesh.visible = false;
+    });
+  }
+
+  /** The Card drawn goes back down onto its deck. */
+  putCard(ms = 320) {
+    const card = this.card;
+    if (!card) return Promise.resolve();
+    card.held = false;
+    const { mesh } = card;
+    mesh.visible = true;
+    const pile = this.decks[card.deck];
+    const p0 = mesh.position.clone();
+    const q0 = mesh.quaternion.clone();
+    const p1 = pile.position.clone();
+    p1.y += 0.08;
+    return this.tween(ms, (u) => {
+      const e = ease(u);
+      mesh.position.lerpVectors(p0, p1, e);
+      mesh.quaternion.slerpQuaternions(q0, pile.quaternion, e);
+    }).then(() => {
+      if (this.card === card) this.dropCard();
+    });
+  }
+
+  private dropCard() {
+    if (!this.card) return;
+    const { mesh } = this.card;
+    this.fx.remove(mesh);
+    const face = (mesh.material as MeshBasicMaterial[])[3];
+    face?.map?.dispose();
+    face?.dispose();
+    this.card = null;
+  }
+
+  /** Where a Card stops: in front of the camera, its face (−y) turned to it. */
+  private facing() {
+    const cam = this.camera;
+    const p = cam.getWorldDirection(new Vector3()).multiplyScalar(CARD_AWAY).add(cam.position);
+    const q = cam.quaternion
+      .clone()
+      .multiply(new Quaternion().setFromAxisAngle(X_AXIS, -Math.PI / 2));
+    return { p, q };
+  }
+
+  /** A few motes of dust kicking out from `where`; none on low graphics. */
+  private puff(where: Vector3, n = 6, ms = 420) {
+    if (this.low || this.paused) return;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + Math.random() * 0.6;
+      const out = new Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(
+        0.22 + Math.random() * 0.16,
+      );
+      this.particle(ms, '#efe6d2', (m, u) => {
+        const e = ease(u);
+        m.position.set(
+          where.x + out.x * e,
+          where.y + 0.04 + Math.sin(u * Math.PI) * 0.1,
+          where.z + out.z * e,
+        );
+        m.scale.setScalar(0.6 + e * 0.9);
+        return 0.8 * (1 - u);
+      });
+    }
+  }
+
+  /** One puff of a flight's trail, left where the token was; none on low graphics. */
+  private mote(where: Vector3) {
+    if (this.low || this.paused) return;
+    this.particle(650, '#ffffff', (m, u) => {
+      m.position.copy(where);
+      m.scale.setScalar(1.4 * (1 - u * 0.6));
+      return 0.75 * (1 - u);
+    });
+  }
+
+  /** A short-lived dot; `step` places it and returns its opacity. */
+  private particle(ms: number, color: string, step: (m: Mesh, u: number) => number) {
+    const material = new MeshBasicMaterial({ color, transparent: true, depthWrite: false });
+    const m = new Mesh(DUST, material);
+    this.fx.add(m);
+    this.tween(ms, (u) => {
+      material.opacity = step(m, u);
+    }).then(() => {
+      this.fx.remove(m);
+      material.dispose();
+    });
   }
 
   /** Lights up the Tiles a tap may pick; none clears them. */
@@ -419,7 +776,8 @@ export class BoardView {
       d.visible = i < values.length;
       const [x, z] = FACE_UP[values[i] ?? 1] as [number, number];
       d.rotation.set(x, 0.4 - i * 0.7, z);
-      d.position.y = BOARD_H + DIE / 2;
+      const rest = DIE_REST[i] as Vector3;
+      d.position.set(rest.x, BOARD_H + DIE / 2, rest.z);
     });
   }
 
@@ -436,6 +794,7 @@ export class BoardView {
       const seats = stacks.get(tile) ?? [seat];
       t.position.copy(spot(tile, seats.indexOf(seat), seats.length));
       t.scale.setScalar(seat === turn ? 0.85 : 0.75);
+      t.rotation.z = 0;
     });
   }
 
@@ -452,6 +811,8 @@ export class BoardView {
 
   private frame(ms: number) {
     const now = performance.now();
+    const dt = Math.min(0.1, Math.max(0, (ms - this.lastFrame) / 1000));
+    this.lastFrame = ms;
     for (const tw of [...this.tweens]) {
       const k = Math.min(1, (now - tw.start) / tw.ms);
       tw.step(k);
@@ -465,8 +826,36 @@ export class BoardView {
     this.glow.forEach((g, i) => {
       (g.material as MeshBasicMaterial).opacity = this.picking.includes(i) ? pulse : 0;
     });
-    this.tick(ms / 1000);
+    if (!this.low) this.tick(ms / 1000);
+    this.steer(dt);
+    if (this.card?.held) {
+      const { p, q } = this.facing();
+      this.card.mesh.position.copy(p);
+      this.card.mesh.quaternion.copy(q);
+    }
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Eases the camera towards the token it follows, nearer and looking at it, or back home. */
+  private steer(dt: number) {
+    const want = this.focus && !this.low ? 1 : 0;
+    if (want === 0 && this.zoom === 0) return;
+    const there = this.focus?.getWorldPosition(new Vector3());
+    if (there) {
+      there.y = BOARD_H;
+      if (this.zoom < 0.01) this.look.copy(there);
+      else this.look.lerp(there, 1 - Math.exp(-dt * 6));
+    }
+    this.zoom += (want - this.zoom) * (1 - Math.exp(-dt * 3));
+    if (want === 0 && this.zoom < 0.002) this.zoom = 0;
+    const k = smooth(this.zoom);
+    const target = this.home.target.clone().lerp(this.look, k * 0.7);
+    const back = this.home.pos
+      .clone()
+      .sub(this.home.target)
+      .multiplyScalar(1 - k * CLOSE);
+    this.camera.position.copy(target).add(back);
+    this.camera.lookAt(target);
   }
 
   /**
@@ -515,6 +904,8 @@ export class BoardView {
       tz -= ((e.top + e.bottom) / 2) * d * 0.2;
     }
     place(d, tz);
+    this.home.pos.copy(camera.position);
+    this.home.target.set(0, 0, tz);
   }
 }
 
@@ -608,6 +999,7 @@ function lotPieces(i: number, owner: number, level: number, full: boolean) {
   if (level >= HOTEL) {
     const h = hotel(color);
     h.scale.setScalar(1.25);
+    h.userData = { building: HOTEL, scale: 1.25 };
     h.position.copy(local(cu, cv));
     if (!horizontal) h.rotation.y = Math.PI / 2;
     g.add(h);
@@ -618,6 +1010,7 @@ function lotPieces(i: number, owner: number, level: number, full: boolean) {
     const offset = (k - (level - 1) / 2) * step;
     const h = house(color);
     h.scale.setScalar(1.3);
+    h.userData = { building: k + 1, scale: 1.3 };
     h.position.copy(horizontal ? local(cu + offset, cv) : local(cu, cv + offset));
     g.add(h);
   }
