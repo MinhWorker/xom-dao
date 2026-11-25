@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { tilesOf } from '../server/game/board.js';
 import type { CardId } from '../server/game/cards.js';
 import type { State } from '../server/game/model.js';
 import { all, open, own, player, viewOf } from '../server/game/test-match.js';
@@ -199,8 +200,25 @@ describe('what a new view shows', () => {
       kind: 'monopoly',
       seat: 0,
       tiles: [5, 15, 25, 35],
+      of: 'station',
     });
     expect(changes(after, after).some((s) => s.kind === 'monopoly')).toBe(false);
+  });
+
+  it('hails the owner of both Điện lực and Cấp nước', () => {
+    const [power, water] = tilesOf('utility') as [number, number];
+    const game = open({
+      rolls: [[1, 2]],
+      arrange: all(own(0, [power], 0), player(0, { tile: water - 3 })),
+    }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'buy');
+    expect(changes(before, viewOf(game, 'a')).find((s) => s.kind === 'monopoly')).toEqual({
+      kind: 'monopoly',
+      seat: 0,
+      tiles: [power, water],
+      of: 'utility',
+    });
   });
 
   it('lights up a Colour set when its third City is bought', () => {

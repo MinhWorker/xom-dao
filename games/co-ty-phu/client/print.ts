@@ -257,7 +257,23 @@ const iconOf = (tile: Tile): Icon | undefined => {
   return ICONS[tile.kind];
 };
 
-const priceOf = (i: number) => landPrice(TUNING, i) || undefined;
+/** What a Tile prints under its name: its price, or for Điện lực and Cấp nước what they charge per point rolled. */
+const priceOf = (i: number) =>
+  BOARD[i]?.kind === 'utility' ? `${TUNING.utilityRent[0]} ×` : landPrice(TUNING, i) || undefined;
+
+/** A flat dark die, `s` pixels across, centred on (`x`, `y`). */
+function printDie(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  ctx.fillStyle = '#3b3026';
+  ctx.beginPath();
+  ctx.roundRect(x - s / 2, y - s / 2, s, s, s * 0.22);
+  ctx.fill();
+  ctx.fillStyle = '#f3ead8';
+  for (const k of [-1, 0, 1]) {
+    ctx.beginPath();
+    ctx.arc(x + k * s * 0.27, y + k * s * 0.27, s * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
 
 /** Draws one Tile's face in its own text frame, centred on the origin, `w`×`h` pixels. */
 const drawFace = (
@@ -345,7 +361,15 @@ const drawFace = (
     ctx.font = `700 ${priceSize}px system-ui, "Segoe UI", Roboto, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(`${price}`, cx, y + priceSize * 0.2);
+    if (tile.kind === 'utility') {
+      const die = priceSize * 1.05;
+      const gap = priceSize * 0.25;
+      const text = ctx.measureText(`${price}`).width;
+      const left = cx - (text + gap + die) / 2;
+      ctx.textAlign = 'left';
+      ctx.fillText(`${price}`, left, y + priceSize * 0.2);
+      printDie(ctx, left + text + gap + die / 2, y + priceSize * 0.2 + priceSize * 0.5, die);
+    } else ctx.fillText(`${price}`, cx, y + priceSize * 0.2);
   }
 };
 

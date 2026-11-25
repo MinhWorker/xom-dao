@@ -54,6 +54,10 @@ const JAIL_ICON =
 const TICKET_ICON =
   '<path d="M1 5h14v2a1.5 1.5 0 000 3v2H1v-2a1.5 1.5 0 000-3z" fill="#e2731c"/><path d="M6 5v7" stroke="#fff6e1" stroke-dasharray="1.2 1.2"/>';
 
+/** A die, flat and dark, for what Điện lực and Cấp nước charge per point rolled. */
+const DIE_ICON =
+  '<rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="#3b3026"/><g fill="#f3ead8"><circle cx="5" cy="5" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="11" cy="11" r="1.3"/></g>';
+
 const svg = (body: string) => `<svg viewBox="0 0 16 16" aria-hidden="true">${body}</svg>`;
 
 export class Hud {
@@ -243,7 +247,7 @@ export class Hud {
         ? view.lots.filter((l, i) => l?.owner === lot.owner && BOARD[i]?.kind === kind).length
         : 0;
     /** The rows of what the Tile charges; `now` marks the one in force. */
-    const rows: { label: string; value: string; now?: boolean }[] = [];
+    const rows: { label: string; value: string; now?: boolean; die?: boolean }[] = [];
     const facts: [string, string][] = [];
     let band = '#5b4a34';
     let kind = '';
@@ -272,8 +276,8 @@ export class Hud {
       kind = 'Công ty';
       facts.push(['Giá', money(t.utilityPrice)]);
       const n = owned('utility');
-      rows.push({ label: 'Chủ có 1 ô', value: `xúc xắc ×${t.utilityRent[0]}`, now: n === 1 });
-      rows.push({ label: 'Chủ có cả 2', value: `xúc xắc ×${t.utilityRent[1]}`, now: n >= 2 });
+      rows.push({ label: 'Chủ có 1 ô', value: `${t.utilityRent[0]} ×`, now: n === 1, die: true });
+      rows.push({ label: 'Chủ có cả 2', value: `${t.utilityRent[1]} ×`, now: n >= 2, die: true });
     } else if (board.kind === 'tax') {
       const tax = t.taxes[board.tax];
       facts.push(['Nộp', `${Math.round(tax.rate * 100)}% tiền mặt`], ['Ít nhất', money(tax.min)]);
@@ -284,7 +288,11 @@ export class Hud {
     if (board.kind === 'city') extra.push(['Nâng một cấp', money(levelCost(t, tile))]);
     if (board.kind === 'city' && isFullSet(view, tile))
       extra.push(['Đủ bộ màu', `thuê ×${t.fullSet}`]);
-    if (isMonopoly(view, tile)) extra.push(['Độc quyền', 'Ông hoàng vận tải']);
+    if (isMonopoly(view, tile))
+      extra.push([
+        'Độc quyền',
+        board.kind === 'station' ? 'Ông hoàng vận tải' : 'Con cưng Nhà nước',
+      ]);
     const takeover = lot ? takeoverPrice(t, view, tile) : null;
     if (takeover !== null) extra.push(['Mua lại', money(takeover)]);
     const marks = [
@@ -322,7 +330,7 @@ export class Hud {
         ? `<article class="deed right" style="--band:${band}"><header><span>Tiền thuê</span><h2>${esc(board.name)}</h2></header><table>${rows
             .map(
               (r) =>
-                `<tr${r.now ? ' class="now"' : ''}><td>${esc(r.label)}</td><td>${esc(r.value)}</td></tr>`,
+                `<tr${r.now ? ' class="now"' : ''}><td>${esc(r.label)}</td><td>${esc(r.value)}${r.die ? `<i class="die">${svg(DIE_ICON)}</i>` : ''}</td></tr>`,
             )
             .join('')}</table>${dl(extra)}</article>`
         : '';

@@ -29,11 +29,12 @@ export function isFullSet(state: BoardState, tile: number) {
   return owner !== undefined && setTiles(city.set).every((i) => state.lots[i]?.owner === owner);
 }
 
-/** The owner of a bến xe has all four: a monopoly. */
+/** The owner of a bến xe has all four, or of Điện lực or Cấp nước both: a monopoly. */
 export function isMonopoly(state: BoardState, tile: number) {
-  if (BOARD[tile]?.kind !== 'station') return false;
+  const kind = BOARD[tile]?.kind;
+  if (kind !== 'station' && kind !== 'utility') return false;
   const owner = state.lots[tile]?.owner;
-  return owner !== undefined && tilesOf('station').every((i) => state.lots[i]?.owner === owner);
+  return owner !== undefined && tilesOf(kind).every((i) => state.lots[i]?.owner === owner);
 }
 
 /**

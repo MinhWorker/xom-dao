@@ -436,8 +436,12 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         if (!live()) return;
         board.follow(null);
         fullSetBeats(step.tiles.length, ms);
-        board.say('Ông hoàng vận tải!', {
-          sub: `${names[step.seat] ?? ''} · mỗi bến thu ${money(stationRent(TUNING, step.tiles.length))}`,
+        board.say(step.of === 'station' ? 'Ông hoàng vận tải!' : 'Con cưng Nhà nước!', {
+          sub: `${names[step.seat] ?? ''} · ${
+            step.of === 'station'
+              ? `mỗi bến thu ${money(stationRent(TUNING, step.tiles.length))}`
+              : `thu xúc xắc ×${TUNING.utilityRent[1]}`
+          }`,
           tone: 'gold',
           big: true,
           ms: 2800,

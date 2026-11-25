@@ -21,8 +21,8 @@ export type Change =
   | { kind: 'lot'; tile: number; before: Lot | null; after: Lot | null }
   /** `seat` now owns the whole Colour set of `tiles`. */
   | { kind: 'fullset'; seat: number; tiles: number[] }
-  /** `seat` now owns all four bến xe, `tiles`. */
-  | { kind: 'monopoly'; seat: number; tiles: number[] }
+  /** `seat` now owns all four bến xe, or both Điện lực and Cấp nước: `tiles`. */
+  | { kind: 'monopoly'; seat: number; tiles: number[]; of: 'station' | 'utility' }
   | { kind: 'festival'; tile: number | null }
   | { kind: 'blackout'; tile: number | null }
   | { kind: 'quiz'; seat: number; right: boolean }
@@ -139,15 +139,17 @@ export function changes(before: View, after: View): Change[] {
     )
       out.push({ kind: 'fullset', seat: owner, tiles });
   }
-  const stations = tilesOf('station');
-  const [station] = stations as [number];
-  const baron = after.lots[station]?.owner;
-  if (
-    baron !== undefined &&
-    isMonopoly(after, station) &&
-    !(before.lots[station]?.owner === baron && isMonopoly(before, station))
-  )
-    out.push({ kind: 'monopoly', seat: baron, tiles: stations });
+  for (const of of ['station', 'utility'] as const) {
+    const tiles = tilesOf(of);
+    const [first] = tiles as [number];
+    const owner = after.lots[first]?.owner;
+    if (
+      owner !== undefined &&
+      isMonopoly(after, first) &&
+      !(before.lots[first]?.owner === owner && isMonopoly(before, first))
+    )
+      out.push({ kind: 'monopoly', seat: owner, tiles, of });
+  }
   const unmarked = (tile: number | null | undefined, now: number | null) =>
     now === null && tile !== null && tile !== undefined && lost(tile);
   if (after.festival !== before.festival && !unmarked(before.festival, after.festival))

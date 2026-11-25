@@ -786,6 +786,13 @@ body {
   font-weight: 800;
 }
 
+.deed td .die svg {
+  width: 1.05em;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: -0.18em;
+}
+
 .deed tr.now td {
   background: linear-gradient(180deg, #ffe58e, #f2bd2c);
   font-weight: 900;
