@@ -45,6 +45,26 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-bottom: var(--space-2);
+  padding-right: var(--space-2);
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 194 52 / 0.45) transparent;
+}
+
+/* Safari: the same thin gold thumb on no track. */
+.side::-webkit-scrollbar,
+.history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.side::-webkit-scrollbar-track,
+.history::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.side::-webkit-scrollbar-thumb,
+.history::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgb(255 194 52 / 0.45);
 }
 
 .identity {
@@ -53,18 +73,18 @@
   gap: var(--space-3);
 }
 
-.face {
+.portrait {
   display: grid;
   flex: none;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  background: linear-gradient(#5d6671, #3a4048);
-  border-bottom: 3px solid var(--accent);
-  clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%);
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 700;
+  width: 88px;
+  height: 88px;
+}
+
+.portrait img {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.5));
 }
 
 .who {
@@ -83,6 +103,26 @@
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.handleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.copy {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  color: var(--text-dim);
+}
+
+.copy svg {
+  width: 20px;
+  height: 20px;
 }
 
 .handle {

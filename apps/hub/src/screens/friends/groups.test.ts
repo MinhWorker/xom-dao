@@ -31,8 +31,11 @@ describe('groupFriends', () => {
 
 describe('presenceLabel', () => {
   it('says where a friend is', () => {
-    expect(presenceLabel(friend({ roomCode: 'ABCD' }), 'Caro')).toBe('Trong phòng Caro');
-    expect(presenceLabel(friend({ roomCode: 'ABCD' }))).toBe('Trong phòng');
+    expect(presenceLabel(friend({ roomCode: 'ABCD' }), 'Caro')).toBe('Đang mở phòng Caro');
+    expect(presenceLabel(friend({ roomCode: 'ABCD', roomStatus: 'playing' }), 'Caro')).toBe(
+      'Đang chơi Caro',
+    );
+    expect(presenceLabel(friend({ roomCode: 'ABCD' }))).toBe('Đang mở phòng');
     expect(presenceLabel(friend({}))).toBe('Trực tuyến');
     expect(presenceLabel(friend({ online: false }))).toBe('Ngoại tuyến');
   });

@@ -17,9 +17,12 @@ export function groupFriends(list: readonly Friend[]): FriendGroups {
   };
 }
 
-/** What a friend is doing: in a Room (of this Game), online, or away. */
+/** What a friend is doing: playing or holding a Room open (of this Game), online, or away. */
 export function presenceLabel(friend: Friend, gameName?: string): string {
-  if (friend.roomCode) return gameName ? `Trong phòng ${gameName}` : 'Trong phòng';
+  if (friend.roomCode) {
+    const what = friend.roomStatus === 'playing' ? 'Đang chơi' : 'Đang mở phòng';
+    return gameName ? `${what} ${gameName}` : what;
+  }
   return friend.online ? 'Trực tuyến' : 'Ngoại tuyến';
 }
 

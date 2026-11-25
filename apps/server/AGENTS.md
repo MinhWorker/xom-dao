@@ -34,7 +34,11 @@ packages/shared/src/registry.ts   games/getGame, from the generated (gitignored)
 - Rooms open only for a Game in `GAME_MANIFESTS` (`rooms/manifests.ts`), which comes from the
   generated server list. `/api/games` returns the IDs loaded by GameHostModule.
 - A Room has the Game's `maxPlayers` seats; `room:state` sends them in order, `null` for an empty
-  one. `room:join` takes the first empty seat between Matches. There are no spectators.
+  one, and its `watchers`: people in the Room without a seat, with no limit. `room:join` takes the
+  first empty seat between Matches, else makes you a watcher (also mid-Match). Between Matches,
+  `room:sit` moves anyone in the Room to an empty seat, or out to watch with `null`. Watchers get
+  `match:state` without a `view`: Games have no spectator view yet. A Room lives while a person
+  sits or watches in it; the host passes to the next person seated, else the first watcher.
 - Options are picks for the manifest's `options`, checked and filled with `optionsSchema`. The
   host may replace them between Matches (`room:options`).
 - The host seats the computer (`room:add-bot`, Games with `bots`) and removes it

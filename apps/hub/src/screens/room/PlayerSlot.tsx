@@ -1,4 +1,4 @@
-import { IconRobot, IconX } from '@tabler/icons-react';
+import { IconRobot, IconUserCheck, IconUserPlus, IconX } from '@tabler/icons-react';
 import type { RoomMember } from '@xomdao/shared/client';
 import { Button } from '../../kit/index.js';
 import styles from './PlayerSlot.module.css';
@@ -13,9 +13,51 @@ export interface PlayerSlotProps {
   /** The viewer may fill an empty seat with the computer. */
   canAddBot: boolean;
   busy: boolean;
+  /** The viewer may move into this empty seat. */
+  canSit?: boolean;
+  /** Where the viewer stands with this person: `add` offers Kết bạn, `sent` shows it was asked. */
+  befriend?: Befriend;
   onInvite(): void;
   onAddBot(): void;
   onRemove(): void;
+  onSit?(): void;
+  onBefriend?(): void;
+}
+
+export type Befriend = 'add' | 'sent' | null;
+
+/** The Kết bạn button beside someone in the Room, or what became of the request. */
+export function BefriendButton({
+  befriend,
+  name,
+  busy,
+  onBefriend,
+}: {
+  befriend: Befriend | undefined;
+  name: string;
+  busy: boolean;
+  onBefriend?(): void;
+}) {
+  if (befriend === 'sent')
+    return (
+      <span className={styles.sent} title="Đã gửi lời mời kết bạn">
+        <IconUserCheck stroke={2} aria-hidden />
+        Đã gửi
+      </span>
+    );
+  if (befriend !== 'add') return null;
+  return (
+    <Button
+      variant="ghost"
+      className={styles.befriend}
+      aria-label={`Kết bạn với ${name}`}
+      disabled={busy}
+      onClick={onBefriend}
+    >
+      <IconUserPlus stroke={2} aria-hidden />
+      Kết bạn
+    </Button>
+  );
 }
 
 function statusOf(member: RoomMember, isHost: boolean): string {
@@ -33,13 +75,27 @@ export function PlayerSlot({
   canRemove,
   canAddBot,
   busy,
+  canSit = false,
+  befriend,
   onInvite,
   onAddBot,
   onRemove,
+  onSit,
+  onBefriend,
 }: PlayerSlotProps) {
   if (!member) {
     return (
       <li className={`${styles.slot} ${styles.empty}`}>
+        {canSit && (
+          <button
+            type="button"
+            className={`${styles.invite} ${styles.sit}`}
+            disabled={busy}
+            onClick={onSit}
+          >
+            Ngồi đây
+          </button>
+        )}
         <button type="button" className={styles.invite} onClick={onInvite}>
           + Mời
         </button>
@@ -71,6 +127,14 @@ export function PlayerSlot({
           {statusOf(member, isHost)}
         </span>
       </span>
+      {!member.bot && !isMe && (
+        <BefriendButton
+          befriend={befriend}
+          name={member.name}
+          busy={busy}
+          onBefriend={onBefriend}
+        />
+      )}
       {member.bot && canRemove && (
         <Button
           variant="ghost"

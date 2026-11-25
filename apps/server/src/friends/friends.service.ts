@@ -7,6 +7,7 @@ import {
   FRIENDS_MAX,
   type Friend,
   type Person,
+  type RoomStatus,
   SUGGEST_MAX,
   type User,
 } from '@xomdao/shared';
@@ -19,7 +20,12 @@ export const FRIENDS_STORE = Symbol('FRIENDS_STORE');
 export class FriendsError extends Error {}
 
 /** Whether an account is connected, and the room it is in (from the rooms gateway). */
-export type Presence = (userId: string) => { online: boolean; gameId?: string; roomCode?: string };
+export type Presence = (userId: string) => {
+  online: boolean;
+  gameId?: string;
+  roomCode?: string;
+  roomStatus?: RoomStatus;
+};
 
 /**
  * Bạn bè: friend requests, friendships and chat between friends. It owns `friendships` and
@@ -57,6 +63,7 @@ export class FriendsService {
         online: seen.online,
         ...(seen.gameId && { gameId: seen.gameId }),
         ...(seen.roomCode && { roomCode: seen.roomCode }),
+        ...(seen.roomStatus && { roomStatus: seen.roomStatus }),
         unread: state === 'friend' ? (unread.get(otherId) ?? 0) : 0,
       });
     }
@@ -126,8 +133,10 @@ export class FriendsService {
    * Asks someone by username to be friends, or accepts their request if they already asked you.
    * Returns the other account's id.
    */
-  async add(userId: string, username: string): Promise<string> {
-    const other = await this.accounts.userByUsername(String(username ?? ''));
+  async add(userId: string, who: { username?: string; userId?: string }): Promise<string> {
+    const other = who.userId
+      ? await this.accounts.userById(who.userId)
+      : await this.accounts.userByUsername(String(who.username ?? ''));
     if (!other) throw new FriendsError('Không tìm thấy tên đăng nhập này');
     if (other.id === userId) throw new FriendsError('Đó là tên đăng nhập của bạn');
     const pair = await this.store.pair(userId, other.id);

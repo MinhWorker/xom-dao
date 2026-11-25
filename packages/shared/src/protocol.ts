@@ -16,7 +16,7 @@ import { avatarSchema, frameSchema, profileSchema } from './account.js';
  * `PROTOCOL_MISMATCH` (the reply's `protocol` is the server's version). CI fails when this file changes without a bump, unless the PR has the
  * `protocol:compatible` label.
  */
-export const PROTOCOL_VERSION = 17;
+export const PROTOCOL_VERSION = 18;
 
 /** Error when the client's PROTOCOL_VERSION differs from the server's. */
 export const PROTOCOL_MISMATCH = 'protocol-mismatch';
@@ -75,6 +75,8 @@ export const RoomState = z.object({
   hostId: z.string(),
   /** One entry per seat of the Game (`maxPlayers`), in seat order; `null` is an empty seat. */
   seats: z.array(RoomMember.nullable()),
+  /** People in the Room without a seat, in the order they came; no limit. */
+  watchers: z.array(RoomMember),
   options: RoomOptions,
   status: RoomStatus,
   /** The running Match, `null` while waiting. */
@@ -232,9 +234,10 @@ export const Friend = z.object({
   frame: z.string(),
   state: FriendState,
   online: z.boolean(),
-  /** The game whose room they are in, and its code (friends only). */
+  /** The game whose room they are in, its code and whether it plays now (friends only). */
   gameId: z.string().optional(),
   roomCode: z.string().optional(),
+  roomStatus: RoomStatus.optional(),
   /** Their messages you haven't read. */
   unread: z.int(),
 });
@@ -345,8 +348,13 @@ export const requests = {
     req: z.object({ gameId: z.string(), version: z.string(), options: RoomOptions.optional() }),
     res: JoinedRoom,
   },
-  /** Takes the first empty seat of the Room with this code (any case), between Matches. */
+  /**
+   * Enters the Room with this code (any case): the first empty seat between Matches, else among
+   * its watchers.
+   */
   'room:join': { req: z.object({ roomCode: z.string() }), res: JoinedRoom },
+  /** Between Matches: move to the empty seat `seat`, or get up to watch with `null`. */
+  'room:sit': { req: z.object({ seat: z.int().nullable() }), res: Empty },
   /**
    * Frees your seat. The next person seated becomes host; with nobody left the Room is
    * disbanded ('room:closed').
@@ -382,7 +390,11 @@ export const requests = {
    * new list; the other side gets `friends:changed`.
    */
   'friends:list': { req: Empty, res: FriendList },
-  'friends:add': { req: z.object({ username: z.string() }), res: FriendList },
+  /** By `username`, or by `userId` (someone met in a Room). */
+  'friends:add': {
+    req: z.union([z.object({ username: z.string() }), z.object({ userId: z.string() })]),
+    res: FriendList,
+  },
   'friends:answer': { req: z.object({ userId: z.string(), accept: z.boolean() }), res: FriendList },
   'friends:remove': { req: z.object({ userId: z.string() }), res: FriendList },
   /**

@@ -105,3 +105,35 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+.sit {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.befriend {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  padding-inline: var(--space-2);
+  font-size: var(--label);
+}
+
+.sent {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.sent svg {
+  width: 18px;
+  height: 18px;
+}

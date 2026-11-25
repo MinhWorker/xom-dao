@@ -108,15 +108,50 @@ describe('joining', () => {
     ]);
   });
 
-  it('refuses a full Room, a running Match and an unknown code', () => {
+  it('lets in watchers when the seats are full or a Match plays, and refuses an unknown code', () => {
     const rooms = setup();
     const room = rooms.create('caro', acc('Lan'));
     rooms.join(room.code, acc('Minh'));
-    expect(() => rooms.join(room.code, acc('Hoa'))).toThrow('Phòng đã đủ người');
-    const party = rooms.create('party', acc('Tú'));
-    rooms.start(party.code, 'tú');
-    expect(() => rooms.join(party.code, acc('Hoa'))).toThrow('Ván đang chơi');
+    rooms.join(room.code, acc('Hoa'));
+    rooms.join(room.code, acc('Tú'));
+    expect(rooms.stateOf(room.code).watchers.map((w) => w.id)).toEqual(['hoa', 'tú']);
+    expect(rooms.roomOf('hoa')?.code).toBe(room.code);
+    const party = rooms.create('party', acc('An'));
+    rooms.start(party.code, 'an');
+    rooms.join(party.code, acc('Bình'));
+    const state = rooms.stateOf(party.code);
+    expect(state.seats.map((s) => s?.id ?? null)).toEqual(['an', null, null, null]);
+    expect(state.watchers.map((w) => w.id)).toEqual(['bình']);
     expect(() => rooms.join('ZZZZ', acc('Hoa'))).toThrow('Phòng không còn nữa');
+  });
+});
+
+describe('changing seats', () => {
+  it('moves a watcher into an empty seat and a player out to watch, between Matches', () => {
+    const rooms = setup();
+    const room = rooms.create('caro', acc('Lan'));
+    rooms.join(room.code, acc('Minh'));
+    rooms.join(room.code, acc('Hoa'));
+    expect(() => rooms.sit(room.code, 'hoa', 1)).toThrow('Ghế này đã có người');
+    rooms.sit(room.code, 'minh', null);
+    rooms.sit(room.code, 'hoa', 1);
+    const state = rooms.stateOf(room.code);
+    expect(state.seats.map((s) => s?.id ?? null)).toEqual(['lan', 'hoa']);
+    expect(state.watchers.map((w) => w.id)).toEqual(['minh']);
+    rooms.setReady(room.code, 'hoa', true);
+    rooms.start(room.code, 'lan');
+    expect(() => rooms.sit(room.code, 'minh', null)).toThrow('Đợi hết ván đã');
+  });
+
+  it('keeps the Room while a watcher is left, and passes them the host', () => {
+    const rooms = setup();
+    const room = rooms.create('caro', acc('Lan'));
+    rooms.join(room.code, acc('Minh'));
+    rooms.join(room.code, acc('Hoa'));
+    rooms.leave(room.code, 'lan');
+    rooms.leave(room.code, 'minh');
+    expect(rooms.stateOf(room.code).hostId).toBe('hoa');
+    expect(rooms.leave(room.code, 'hoa').closed).toBe(true);
   });
 });
 

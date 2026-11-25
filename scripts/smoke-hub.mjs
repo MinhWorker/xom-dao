@@ -1,6 +1,7 @@
 // Web smoke test of the Hub's social side: a real server (no database), the Hub in dev mode and two
 // headless Chromium pages on a phone-sized screen. Alice asks Bob to be friends, Bob accepts,
-// Alice opens a Room and invites Bob from its empty seat, and Bob takes the invite into the Room.
+// Alice opens a Room and invites Bob from its empty seat, and Bob takes the invite into the Room;
+// he leaves, comes back through the door beside Alice in Hàng xóm, gets up to watch and sits again.
 // Needs a built server and at least one built Game, and Chromium (`npx playwright-core install
 // chromium`). Saves screenshots to smoke-hub/.
 // Usage: node scripts/smoke-hub.mjs
@@ -157,6 +158,21 @@ async function main() {
     await a.getByRole('list', { name: 'Người chơi' }).getByText('Bob', { exact: true }).waitFor();
     await a.screenshot({ path: resolve(shots, 'room-with-friend.png') });
 
+    // Bob leaves, then walks back in through the door beside Alice in Hàng xóm; he gets up to
+    // watch and sits down again.
+    await b.getByRole('button', { name: 'Rời phòng' }).click();
+    await b.getByRole('button', { name: /^Hàng xóm/ }).click();
+    const bobList = b.getByRole('dialog', { name: 'Hàng xóm' });
+    await bobList.getByText('Đang mở phòng Caro').waitFor();
+    await sleep(600); // the sheet sliding in
+    await b.screenshot({ path: resolve(shots, 'friend-room.png') });
+    await bobList.getByRole('button', { name: 'Vào phòng của Alice' }).click();
+    await b.waitForURL(new RegExp(`/room/${code}$`));
+    await b.getByRole('button', { name: 'Đứng xem' }).click();
+    await a.getByText('Khách xem · 1').waitFor();
+    await b.getByRole('button', { name: 'Ngồi đây' }).click();
+    await a.getByText('Khách xem · 0').waitFor();
+
     // Bob's profile is reachable from the Bến.
     await b.getByRole('button', { name: 'Rời phòng' }).click();
     await b.getByRole('button', { name: /^Nhà/ }).click();
@@ -167,7 +183,7 @@ async function main() {
 
     if (problems.length) throw new Error(`The pages reported errors:\n${problems.join('\n')}`);
     console.log(
-      `OK: Alice and Bob became friends, Alice invited Bob to Room ${code} and he joined`,
+      `OK: Alice and Bob became friends, Alice invited Bob to Room ${code}, he joined, came back through Hàng xóm and changed seats`,
     );
   } finally {
     await browser.close();

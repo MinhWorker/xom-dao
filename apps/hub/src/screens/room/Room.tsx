@@ -1,4 +1,4 @@
-import { IconArrowLeft, IconBook2, IconMenu2 } from '@tabler/icons-react';
+import { IconArrowLeft, IconBook2, IconEye, IconMenu2 } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { FullscreenToggle } from '../../display/FullscreenToggle.js';
 import { enterFullscreen, exitFullscreen } from '../../display/fullscreen.js';
@@ -17,7 +17,7 @@ import { SettingsOverlay } from '../settings/SettingsOverlay.js';
 import { GameFrame } from './GameFrame.js';
 import { type Table, tableNotices } from './notices.js';
 import { Peek } from './Peek.js';
-import { PlayerSlot } from './PlayerSlot.js';
+import { type Befriend, BefriendButton, PlayerSlot } from './PlayerSlot.js';
 import { Results } from './Results.js';
 import styles from './Room.module.css';
 import { MyPreferences, RoomOptions } from './RoomOptions.js';
@@ -32,6 +32,7 @@ export function Room({ code }: { code: string }) {
   const match = useHub((s) => s.match);
   const notice = useHub((s) => s.result);
   const closed = useHub((s) => s.closed);
+  const friends = useHub((s) => s.friends);
   const [joinError, setJoinError] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,6 +47,8 @@ export function Room({ code }: { code: string }) {
   const here = room?.code === code ? room : null;
   const game = here ? gameById(here.gameId) : undefined;
   const playing = here?.status === 'playing';
+  /** The viewer has a seat; otherwise they watch from the waiting room. */
+  const seatedHere = !!here?.seats.some((s) => s?.id === user?.id);
 
   useEffect(() => {
     if (!frameOpen) void exitFullscreen();
@@ -65,11 +68,11 @@ export function Room({ code }: { code: string }) {
   }, [closed]);
 
   useEffect(() => {
-    if (playing) setFrameOpen(true);
-  }, [playing]);
+    if (playing && seatedHere) setFrameOpen(true);
+  }, [playing, seatedHere]);
 
   useEffect(() => {
-    if (!playing) {
+    if (!playing || !seatedHere) {
       setLeaving(false);
       return;
     }
@@ -80,7 +83,7 @@ export function Room({ code }: { code: string }) {
       unblock?.();
       removeEventListener('beforeunload', onUnload);
     };
-  }, [playing]);
+  }, [playing, seatedHere]);
 
   const roster = useRef({ matchId: '', names: new Map<string, string>() });
   if (match && roster.current.matchId !== match.matchId) {
@@ -168,6 +171,14 @@ export function Room({ code }: { code: string }) {
   const me = here.seats.find((s) => s?.id === user.id);
   const canBot = isHost && game?.manifest.bots === true;
   const minPlayers = game?.manifest.minPlayers ?? 1;
+  const watchers = here.watchers ?? [];
+  const befriendOf = (id: string): Befriend => {
+    const friend = friends.find((f) => f.id === id);
+    if (!friend || friend.state === 'incoming') return 'add';
+    return friend.state === 'outgoing' ? 'sent' : null;
+  };
+  const befriend = (userId: string) => void run(() => hub.request('friends:add', { userId }));
+  const sit = (seat: number | null) => void run(() => hub.request('room:sit', { seat }));
 
   const copyLink = async () => {
     try {
@@ -224,12 +235,50 @@ export function Room({ code }: { code: string }) {
             canRemove={isHost}
             canAddBot={canBot}
             busy={busy}
+            canSit={!playing}
+            befriend={seat ? befriendOf(seat.id) : null}
+            onSit={() => sit(i)}
+            onBefriend={() => seat && befriend(seat.id)}
             onInvite={() => setInviteOpen(true)}
             onAddBot={() => void run(() => hub.request('room:add-bot', {}))}
             onRemove={() => void run(() => hub.request('room:remove-bot', { seat: i }))}
           />
         ))}
       </ol>
+
+      <section className={styles.watchers} aria-label="Khách xem">
+        <h2 className={styles.watchersTitle}>
+          <IconEye stroke={2} aria-hidden />
+          Khách xem · {watchers.length}
+        </h2>
+        {watchers.length > 0 && (
+          <ul className={styles.watcherList}>
+            {watchers.map((w) => (
+              <li key={w.id} className={w.id === user.id ? styles.watcherMe : undefined}>
+                <span className={styles.watcherName}>{w.name}</span>
+                {w.id !== user.id && (
+                  <BefriendButton
+                    befriend={befriendOf(w.id)}
+                    name={w.name}
+                    busy={busy}
+                    onBefriend={() => befriend(w.id)}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {me && !playing && (
+          <Button
+            variant="ghost"
+            className={styles.stand}
+            disabled={busy}
+            onClick={() => sit(null)}
+          >
+            Đứng xem
+          </Button>
+        )}
+      </section>
 
       <aside className={styles.side}>
         {error && (
@@ -246,7 +295,13 @@ export function Room({ code }: { code: string }) {
           />
         )}
         {game && <MyPreferences manifest={game.manifest} />}
-        {isHost ? (
+        {!me && !isHost ? (
+          <p className={styles.watching}>
+            {playing
+              ? 'Ván đang chơi. Hết ván, chọn một ghế trống để vào chơi.'
+              : 'Bạn đang xem. Chọn "Ngồi đây" ở một ghế trống để vào chơi.'}
+          </p>
+        ) : isHost ? (
           <Button
             variant="primary"
             forward

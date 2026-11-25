@@ -26,6 +26,7 @@ const roomState = {
   gameId: 'caro',
   hostId: 'u1',
   seats: [{ id: 'u1', name: 'Minh', connected: true }, null],
+  watchers: [],
   options: {},
   status: 'waiting',
   matchId: null,
