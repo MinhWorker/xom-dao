@@ -14,7 +14,7 @@ import {
   type BridgeSettings,
   createGameBridge,
 } from '@xomdao/bridge';
-import { BOARD } from '../server/game/board.js';
+import { BOARD, tilesOf } from '../server/game/board.js';
 import { cardOf } from '../server/game/cards.js';
 import { stationRent } from '../server/game/economy.js';
 import { HOTEL, type Sale, type View } from '../server/game/model.js';
@@ -186,6 +186,15 @@ const bridge = createGameBridge({
       if (fresh || !shown || shown.players.length !== push.view.players.length) {
         hud.seats(names.slice(0, push.view.players.length), avatars);
         present(push.view);
+        if (fresh && SHOWCASE) {
+          const mine = epoch;
+          playing = true;
+          void showcase(push.view, () => mine === epoch).then(() => {
+            if (mine === epoch) playing = false;
+            play();
+          });
+          return;
+        }
       } else queue.push(push.view);
       play();
     }
@@ -347,6 +356,26 @@ async function play() {
     present(next, ended);
   }
   if (mine === epoch) playing = false;
+}
+
+/** `?showcase` on the page: the monopoly moments play on the first view, for a look without a Match that reaches them. */
+const SHOWCASE = new URLSearchParams(location.search).has('showcase');
+
+/** Plays each monopoly moment for seat 0 on `view`'s board, then puts the board back. */
+async function showcase(view: View, live: () => boolean) {
+  for (const of of ['station', 'utility'] as const) {
+    const tiles = tilesOf(of);
+    const lots = view.lots.map((lot, i) =>
+      tiles.includes(i) ? { owner: 0, level: 0, built: 0 } : lot,
+    );
+    const crowned = { ...view, lots };
+    await wait(1200);
+    if (!live()) return;
+    board.showLots(crowned);
+    await animate(crowned, [{ kind: 'monopoly', seat: 0, tiles, of }], 1, live);
+    await wait(2500);
+  }
+  if (live()) present(view);
 }
 
 const wait = (ms: number) => new Promise((done) => setTimeout(done, hidden ? 0 : ms));
