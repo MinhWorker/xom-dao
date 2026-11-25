@@ -68,6 +68,10 @@ const CLOUD = `<svg viewBox="0 0 240 90" aria-hidden="true"><path d="M30 80a28 2
 /** A lightning bolt, 60×160. */
 const BOLT = `<svg viewBox="0 0 60 160" aria-hidden="true"><path d="M34 0L6 84h20L12 160 56 60H34L48 0z" fill="#fff6c2" stroke="#ffd21f" stroke-width="3" stroke-linejoin="round"/></svg>`;
 
+/** When lightning strikes in the storm (ms at `pace` 1); one strike on low graphics. */
+export const STRIKES = [450, 1250, 2200] as const;
+export const LOW_STRIKES = [700] as const;
+
 const VEHICLE_COLORS = ['#e0553d', '#2f80ed', '#27ae60', '#f2b705', '#9b51e0', '#eb5757'];
 
 export class MonopolyShow {
@@ -187,7 +191,7 @@ export class MonopolyShow {
     const engineer = el('div', 'engineer');
     engineer.innerHTML = ENGINEER;
     this.root.append(clouds, rain, flash, engineer);
-    const strikes = low ? [700] : [450, 1250, 2200];
+    const strikes = low ? LOW_STRIKES : STRIKES;
     for (const [k, at] of strikes.entries()) {
       const bolt = el('i', 'bolt');
       bolt.innerHTML = BOLT;

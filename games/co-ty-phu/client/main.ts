@@ -35,7 +35,7 @@ import {
 } from './decisions.js';
 import { Hud } from './hud.js';
 import { Moments } from './moments.js';
-import { MonopolyShow } from './monopoly.js';
+import { LOW_STRIKES, MonopolyShow, STRIKES } from './monopoly.js';
 import { type Change, changes, grandeur, pace } from './present.js';
 import { BoardView, SEAT_COLORS } from './scene.js';
 import { Sounds, ticks } from './sound.js';
@@ -473,6 +473,11 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
             ? `mỗi bến thu ${money(stationRent(TUNING, step.tiles.length))}`
             : `thu xúc xắc ×${TUNING.utilityRent[1]}`
         }`;
+        if (show > 0 && step.of === 'station') sounds.play('convoy', { rate: 1 / show });
+        if (show > 0 && step.of === 'utility') {
+          sounds.play('rain', { rate: 1 / show });
+          for (const at of low ? LOW_STRIKES : STRIKES) sounds.play('thunder', { at: at * show });
+        }
         await crowning.play(step.of, title, sub, SEAT_COLORS[step.seat] ?? '#e8c04a', show, low);
         if (!live()) return;
         fullSetBeats(step.tiles.length, ms);
