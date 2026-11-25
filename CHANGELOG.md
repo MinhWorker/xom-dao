@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.0](https://github.com/MinhWorker/xom-dao/compare/v0.30.1...v0.31.0) (2026-11-25)
+
+
+### Features
+
+* **hub:** new sounds, two Bến characters, avatar picker and lobby fixes ([#385](https://github.com/MinhWorker/xom-dao/issues/385)) ([8363048](https://github.com/MinhWorker/xom-dao/commit/83630487fdaf8573bfed8e986b0cfe38b2f05aa3))
+
+
+### Bug fixes
+
+* **co-ty-phu:** print owned Lots' rent, Start pay before tax, card time on the clock ([#387](https://github.com/MinhWorker/xom-dao/issues/387)) ([5822311](https://github.com/MinhWorker/xom-dao/commit/58223118668ef1e15b7c3c91bcae76c242979d4e))
+
 ## [0.30.1](https://github.com/MinhWorker/xom-dao/compare/v0.30.0...v0.30.1) (2026-11-25)
 
 
