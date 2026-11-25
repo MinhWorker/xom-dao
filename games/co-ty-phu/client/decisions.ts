@@ -7,7 +7,7 @@ import { AIRPORT_TILE, BOARD } from '../server/game/board.js';
 import { type CardAction, type CardId, cardOf, picksOf } from '../server/game/cards.js';
 import { landPrice, takeoverPrice, upgradeCost } from '../server/game/economy.js';
 import { HOTEL, JAIL_TRIES, type Player, type Sale, type View } from '../server/game/model.js';
-import { levelValue, lotValue } from '../server/game/selling.js';
+import { freeSaleProblem, levelValue, lotValue } from '../server/game/selling.js';
 import { TUNING } from '../server/game/tuning.js';
 
 export interface Button {
@@ -74,6 +74,16 @@ export function nextSale(view: View, sale: readonly Sale[], tile: number): Sale[
 /** How a part of a sale reads on its Lot. */
 export const partLabel = ({ levels }: Sale) =>
   levels === undefined ? 'Bán đất' : `Bớt ${levels} cấp`;
+
+/** The button that Sells `tile` whole for `me` of their own will, with what it fetches, or `null` when they cannot now. */
+export function freeSale(view: View, me: number, tile: number | null): Button | null {
+  if (tile === null || freeSaleProblem(view, me, [{ tile }])) return null;
+  return {
+    label: `Bán · nhận ${money(lotValue(t, view, tile))}`,
+    event: 'sell',
+    payload: { sale: [{ tile }] },
+  };
+}
 
 /** The decision of `view` for seat `me`; `sale` is what the debtor has picked to Sell so far. */
 export function decide(

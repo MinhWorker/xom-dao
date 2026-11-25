@@ -24,6 +24,7 @@ import {
   CHOOSE_SALE,
   decide,
   decider,
+  freeSale,
   levelName,
   money,
   nextSale,
@@ -76,6 +77,8 @@ let clockLeft = Infinity;
 let panel: Panel | null = null;
 /** What the player has picked to Sell during their Debt. */
 let sale: Sale[] = [];
+/** The Tile the player last tapped, whose deed is open: their own Lot offers a "Bán" button. */
+let chosen: number | null = null;
 let sending = false;
 let endedAt: number | null = null;
 let doneFor: string | null = null;
@@ -289,9 +292,12 @@ function ask(view: View) {
         ? { title: roll.label, sub: panel.title, tone: 'gold', blink: true }
         : { title: panel.title, ...(panel.text && { sub: panel.text }) },
     );
-    hud.show(mine ? panel.buttons.filter((b) => b.event !== 'roll') : []);
+    const own = mine ? panel.buttons.filter((b) => b.event !== 'roll') : [];
+    const selling = freeSale(view, me, chosen);
+    hud.show(selling ? [...own, selling] : own);
   }
-  board.highlight(panel.pick?.tiles ?? []);
+  const offered = chosen !== null && !panel.pick && freeSale(view, me, chosen);
+  board.highlight(panel.pick?.tiles ?? (offered && chosen !== null ? [chosen] : []));
   if (mine && panel.pick?.event === CHOOSE_SALE)
     board.selling(
       panel.pick.tiles,
@@ -561,7 +567,7 @@ function announceLot(step: Extract<Change, { kind: 'lot' }>) {
   const name = BOARD[step.tile]?.name ?? '';
   const who = (seat: number) => names[seat] ?? '';
   const { before: was, after: now } = step;
-  if (!now) board.say(`${name} về ngân hàng`);
+  if (!now) board.say(was ? `${who(was.owner)} bán ${name}` : `${name} về ngân hàng`);
   else if (!was) board.say(`${who(now.owner)} mua ${name}`);
   else if (was.owner !== now.owner)
     board.say('Mua lại!', {
@@ -699,7 +705,13 @@ pauseButton.addEventListener('click', () => {
   bridge.send('resume', {}).catch(() => {});
 });
 
-hud.onButton = (button: Button) => send(button.event, button.payload);
+hud.onButton = (button: Button) => {
+  if (button.event === 'sell') {
+    chosen = null;
+    hud.tile(null, null, names);
+  }
+  send(button.event, button.payload);
+};
 rollButton.addEventListener('click', () => {
   if (rolling && !playing) send('roll');
 });
@@ -710,6 +722,7 @@ canvas.addEventListener('pointerdown', (event) => {
   const pick = panel?.pick;
   if (tile !== null && pick && !sending && !playing && pick.tiles.includes(tile)) {
     hud.tile(null, null, names);
+    chosen = null;
     if (pick.event === CHOOSE_SALE && shown) {
       sale = nextSale(shown, sale, tile);
       sounds.play('coin', { gain: 0.6 });
@@ -720,6 +733,10 @@ canvas.addEventListener('pointerdown', (event) => {
     return;
   }
   hud.tile(shown, tile, names);
+  const was = chosen;
+  chosen = tile;
+  const offers = (at: number | null) => !!shown && !!freeSale(shown, me, at);
+  if (shown && !playing && !sending && !held && (offers(tile) || offers(was))) ask(shown);
 });
 
 /** The turn clock, from the last push's timer. */

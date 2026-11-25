@@ -386,7 +386,7 @@ describe('Debt', () => {
     );
     expect(game.error('b', 'sell', { sale: [{ tile: 5 }] })).toBe('Bạn không có nợ');
     expect(game.error('a', 'pass')).toBe('Hãy bán đất để trả nợ');
-    expect(open().error('a', 'sell', { sale: [] })).toBe('Chưa thể làm việc này lúc này');
+    expect(open().error('a', 'sell', { sale: [] })).toBe('Chưa chọn ô để bán');
   });
 
   it('makes the suggested sale when the clock runs out', () => {
@@ -415,6 +415,32 @@ describe('Debt', () => {
     expect(game.state.debt).toMatchObject({ from: 0, to: null, amount: 100 });
     game.send('a', 'sell', { sale: [{ tile: 15 }] });
     expect(cash(game)).toEqual([50, 1000]);
+  });
+});
+
+describe('Selling of one’s own will', () => {
+  it('Sells a Lot to the bank in the seller’s turn, and the decision waits on', () => {
+    const game = open({ arrange: own(0, [1, 5], 3, 200) });
+    game.send('a', 'sell', { sale: [{ tile: 5 }] });
+    expect(game.state.lots[5]).toBeNull();
+    expect(cash(game)).toEqual([1000 + Math.floor((200 + 200) / 2), 1000]);
+    expect(game.state).toMatchObject({ turn: 0, phase: 'roll' });
+  });
+
+  it('is refused out of turn, for another’s Lot and on the City offered to upgrade', () => {
+    const game = open({ arrange: all(own(0, [1]), own(1, [5], 0)) });
+    expect(game.error('b', 'sell', { sale: [{ tile: 5 }] })).toBe('Chưa tới lượt bạn');
+    expect(game.error('a', 'sell', { sale: [{ tile: 5 }] })).toBe('Bạn không có đất này');
+    const upgrading = open({
+      rolls: [[1, 2]],
+      arrange: all(own(0, [3, 1]), player(0, { tile: 0 })),
+    }).send('a', 'roll');
+    expect(upgrading.state.phase).toBe('upgrade');
+    expect(upgrading.error('a', 'sell', { sale: [{ tile: 3 }] })).toBe(
+      'Không bán được ô đang nâng cấp',
+    );
+    upgrading.send('a', 'sell', { sale: [{ tile: 1 }] });
+    expect(upgrading.state.phase).toBe('upgrade');
   });
 });
 

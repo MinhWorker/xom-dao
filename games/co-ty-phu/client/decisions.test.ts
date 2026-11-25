@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { CardId } from '../server/game/cards.js';
 import type { State } from '../server/game/model.js';
+import { lotValue } from '../server/game/selling.js';
 import { all, open, own, player, viewOf } from '../server/game/test-match.js';
-import { CHOOSE_SALE, decide, money, nextSale } from './decisions.js';
+import { TUNING } from '../server/game/tuning.js';
+import { CHOOSE_SALE, decide, freeSale, money, nextSale } from './decisions.js';
 
 /** `a` rolls onto Cơ hội (7) and draws `id`. */
 const draw = (id: CardId, arrange = (s: State) => s) =>
@@ -168,5 +170,20 @@ describe('the decision panel', () => {
     expect(nextSale(view, sale, 6)).toEqual([]);
     expect(nextSale(view, [], 8)).toEqual([{ tile: 8 }]);
     expect(decide(viewOf(game, 'b'), 1, NAMES).title).toBe('An đang bán đất trả nợ');
+  });
+});
+
+describe('freeSale', () => {
+  it('offers the turn player their own Lot whole, with what it fetches', () => {
+    const game = open({ arrange: all(own(0, [1], 3, 200), own(1, [5], 0)) });
+    const view = viewOf(game, 'a');
+    expect(freeSale(view, 0, 1)).toEqual({
+      label: `Bán · nhận ${money(lotValue(TUNING, view, 1))}`,
+      event: 'sell',
+      payload: { sale: [{ tile: 1 }] },
+    });
+    expect(freeSale(view, 0, 5)).toBeNull();
+    expect(freeSale(view, 1, 5)).toBeNull();
+    expect(freeSale(view, 0, null)).toBeNull();
   });
 });

@@ -4,6 +4,9 @@
  * `use-card` before rolling. Every decision runs the clock of the Room's "Tốc độ"; when it runs
  * out the safe choice is made (`timeout`): roll, or pass the offer.
  *
+ * In their turn, between decisions, a player may also `sell` Lots of their own will
+ * (`freeSaleProblem`).
+ *
  * A payment larger than the payer's cash is a Debt (phase `debt`): the debtor `sell`s Levels or
  * Lots to the bank (selling.ts) until it is covered, or the suggested sale is made when the clock
  * runs out. When even Selling everything is not enough the payer is bankrupt at once.
@@ -56,7 +59,7 @@ import {
   type View,
 } from './model.js';
 import { makeQuiz } from './quiz.js';
-import { saleProblem, sell, suggestSale, unmark, wholeLots } from './selling.js';
+import { freeSaleProblem, saleProblem, sell, suggestSale, unmark, wholeLots } from './selling.js';
 import { TUNING, type Tuning } from './tuning.js';
 
 type Ctx = GameContext<State, Options>;
@@ -235,8 +238,13 @@ export class CoTyPhuGame extends Game<State, Options, View> {
 
   onSell(ctx: Move<z.infer<typeof sale>>): State {
     const { debt } = ctx.state;
+    if (ctx.state.phase !== 'debt') {
+      const problem = freeSaleProblem(ctx.state, ctx.player.seat, ctx.payload.sale);
+      if (problem) ctx.reject(problem);
+      return this.settle(ctx, sell(this.t, ctx.state, ctx.player.seat, ctx.payload.sale));
+    }
     if (ctx.state.paused) ctx.reject('Ván đang tạm dừng');
-    if (ctx.state.phase !== 'debt' || !debt) ctx.reject('Chưa thể làm việc này lúc này');
+    if (!debt) ctx.reject('Chưa thể làm việc này lúc này');
     if (debt.from !== ctx.player.seat) ctx.reject('Bạn không có nợ');
     const problem = saleProblem(ctx.state, debt.from, ctx.payload.sale);
     if (problem) ctx.reject(problem);

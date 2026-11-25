@@ -10,6 +10,8 @@ Dừng ở ô chưa có chủ thì được mua. Mua một thành phố là có 
 
 Mỗi lần dừng ở thành phố của mình được nâng một cấp với giá bằng nửa giá đất: thêm một nhà, tới bốn nhà, rồi đổi thành **Khách sạn**.
 
+Trong lượt của mình, chạm một ô của bạn rồi bấm Bán để bán cho ngân hàng lấy nửa giá đất và nhà.
+
 ## Tiền thuê và mua lại
 
 Dừng ở đất người khác thì trả tiền thuê theo cấp; đủ ba ô cùng màu thì gấp đôi. Bến xe thu 50 mỗi bến chủ có. Điện lực, Cấp nước thu xúc xắc ×4, ×10 nếu chủ có cả hai. Chủ ở tù không thu.
