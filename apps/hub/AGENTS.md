@@ -142,6 +142,9 @@ goes back to the waiting room, so playing again reuses it.
   (`main.tsx`) unlocks on `pointerup`/`touchend`/`click`/`keydown` (iOS ignores `pointerdown` and
   `touchstart`), plays a silent buffer, and sets `navigator.audioSession.type = 'playback'` so the
   iPhone silent switch does not mute it. A tap after the browser interrupts audio resumes it.
+- The seven interface sounds (`button-*`, `island-*`, `game-win`, `game-lose` in `assets/app/audio/`)
+  are synthesized: short, soft and of one family. Change them in
+  `assets/app/audio/sources/hub-ui.py` and run it (`python3 … assets/app/audio`, needs numpy).
 - Play with `playSound(name)` (`hoverSound(event)` for a real mouse only). The kit's Button, Toggle,
   Choice, Tabs and Menu already click; the Bến's panels and Results add theirs. A sound still not
   ready 300 ms after its tap is dropped.
