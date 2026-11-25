@@ -109,7 +109,10 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
         this.loadMissesMarked.delete(match.matchId);
         const result = match.outcome === 'settled' ? match.result : undefined;
         const room = this.rooms.endMatch(match.roomCode, match.matchId, result);
-        if (room) this.broadcast(room);
+        if (room) {
+          this.broadcast(room);
+          this.membersMoved(room.code);
+        }
       }
     });
     this.stopWatchingResults = this.gameHost.onResult((notice) => {
@@ -209,9 +212,14 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
   }
 
   @On('friends:add')
-  friendsAdd(socket: Client, req: { username?: unknown }) {
+  friendsAdd(socket: Client, req: { username?: unknown; userId?: unknown }) {
     return this.handle(async () => {
-      const other = await this.friends.add(socket.data.user.id, String(req?.username ?? ''));
+      const other = await this.friends.add(
+        socket.data.user.id,
+        typeof req?.userId === 'string'
+          ? { userId: req.userId }
+          : { username: String(req?.username ?? '') },
+      );
       void this.pushFriends(other);
       return this.friendList(socket.data.user.id);
     });
@@ -351,6 +359,16 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  @On('room:sit')
+  sit(socket: Client, req: { seat?: unknown }) {
+    return this.handle(() => {
+      const code = this.requireRoom(socket);
+      const seat = req?.seat === null ? null : Number(req?.seat);
+      this.broadcast(this.rooms.sit(code, socket.data.user.id, seat));
+      return {};
+    });
+  }
+
   @On('room:add-bot')
   addBot(socket: Client) {
     return this.handle(() => {
@@ -377,6 +395,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       const start = this.rooms.start(code, socket.data.user.id);
       this.gameHost.startMatch(start);
       this.broadcastCode(code);
+      this.membersMoved(code);
       return { matchId: start.matchId };
     });
   }
@@ -482,7 +501,7 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
       s.data.roomCode = undefined;
     }
     if (matchId && closed) this.gameHost.stop(matchId);
-    else if (matchId) this.gameHost.leave(matchId, userId);
+    else if (matchId && room.matchPlayers?.includes(userId)) this.gameHost.leave(matchId, userId);
     if (closed) this.disband(room);
     else this.broadcast(room);
     this.friendsMoved(userId);
@@ -499,7 +518,11 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     const room = this.rooms.roomOf(userId);
     return {
       online: this.socketsOf(userId).length > 0,
-      ...(room && { gameId: room.manifest.id, roomCode: room.code }),
+      ...(room && {
+        gameId: room.manifest.id,
+        roomCode: room.code,
+        roomStatus: room.matchId ? ('playing' as const) : ('waiting' as const),
+      }),
     };
   };
 
@@ -530,6 +553,12 @@ export class RoomsGateway implements OnModuleInit, OnModuleDestroy {
     }, FRIEND_PUSH_MS);
     timer.unref();
     this.friendPushes.set(userId, timer);
+  }
+
+  /** A Room started or ended a Match: its people's friends see them playing, or not. */
+  private membersMoved(code: string) {
+    const { seats, watchers } = this.rooms.stateOf(code);
+    for (const m of [...seats, ...watchers]) if (m && !m.bot) this.friendsMoved(m.id);
   }
 
   private socketsOf(userId: string) {

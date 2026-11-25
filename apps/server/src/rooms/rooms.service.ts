@@ -24,6 +24,8 @@ export interface Room {
   hostId: PlayerId;
   /** `manifest.maxPlayers` seats in order; `null` is an empty one. */
   seats: (RoomMember | null)[];
+  /** People in the Room without a seat, as many as come; they play once they take an empty seat. */
+  watchers: RoomMember[];
   /** The running Match's id, `null` while waiting. */
   matchId: string | null;
   /** A Match was started here before: playing again needs no Sẵn sàng. */
@@ -67,6 +69,7 @@ export class RoomsService {
       options: parseOptions(manifest, rawOptions),
       hostId: account.id,
       seats,
+      watchers: [],
       matchId: null,
       played: false,
       lastResult: null,
@@ -76,18 +79,50 @@ export class RoomsService {
     return room;
   }
 
-  /** Takes the first empty seat; joining a Room you sit in just reconnects you. */
+  /**
+   * Takes the first empty seat between Matches, else a place among the watchers; joining a Room
+   * you are in just reconnects you.
+   */
   join(code: string, account: Account) {
     const room = this.get(code);
-    const mine = room.seats.find((s) => s?.id === account.id);
+    const mine = memberOf(room, account.id);
     if (mine) {
       mine.connected = true;
       return room;
     }
-    if (room.matchId) throw new RoomError('Ván đang chơi, chờ hết ván nhé');
-    const free = room.seats.indexOf(null);
-    if (free < 0) throw new RoomError('Phòng đã đủ người');
+    const free = room.matchId ? -1 : room.seats.indexOf(null);
+    if (free < 0) {
+      room.watchers.push(member(account));
+      return room;
+    }
     room.seats[free] = member(account);
+    room.lastResult = null;
+    return room;
+  }
+
+  /**
+   * Between Matches, someone in the Room moves to the empty seat `seat`, or with `null` gets up
+   * to watch.
+   */
+  sit(code: string, userId: PlayerId, seat: number | null) {
+    const room = this.get(code);
+    const me = memberOf(room, userId);
+    if (!me) throw new RoomError('Bạn chưa ở trong phòng này');
+    if (room.matchId) throw new RoomError('Đợi hết ván đã');
+    const from = room.seats.indexOf(me);
+    if (seat === null) {
+      if (from < 0) return room;
+      room.seats[from] = null;
+      room.watchers.push(me);
+    } else {
+      if (!Number.isInteger(seat) || seat < 0 || seat >= room.seats.length)
+        throw new RoomError('Không có ghế này');
+      if (room.seats[seat] !== null) throw new RoomError('Ghế này đã có người');
+      if (from >= 0) room.seats[from] = null;
+      else room.watchers = room.watchers.filter((w) => w !== me);
+      room.seats[seat] = me;
+    }
+    me.ready = undefined;
     room.lastResult = null;
     return room;
   }
@@ -99,20 +134,26 @@ export class RoomsService {
   leave(code: string, userId: PlayerId) {
     const room = this.get(code);
     const seat = room.seats.findIndex((s) => s?.id === userId);
-    if (seat < 0) throw new RoomError('Bạn chưa ở trong phòng này');
-    room.seats[seat] = null;
-    room.lastResult = null;
-    const people = room.seats.filter((s): s is RoomMember => s !== null && !s.bot);
+    const watching = room.watchers.findIndex((w) => w.id === userId);
+    if (seat < 0 && watching < 0) throw new RoomError('Bạn chưa ở trong phòng này');
+    if (seat >= 0) {
+      room.seats[seat] = null;
+      room.lastResult = null;
+    } else room.watchers.splice(watching, 1);
+    const people = [
+      ...room.seats.filter((s): s is RoomMember => s !== null && !s.bot),
+      ...room.watchers,
+    ];
     const closed = people.length === 0;
     if (closed) this.rooms.delete(room.code);
     else if (room.hostId === userId) room.hostId = people[0]!.id;
     return { room, closed };
   }
 
-  /** The Room this account sits in, if any. */
+  /** The Room this account sits or watches in, if any. */
   roomOf(userId: string) {
     for (const room of this.rooms.values()) {
-      if (room.seats.some((s) => s?.id === userId)) return room;
+      if (memberOf(room, userId)) return room;
     }
     return undefined;
   }
@@ -120,16 +161,16 @@ export class RoomsService {
   /** The account changed its name or picture: its seat follows. Returns its Room, if any. */
   rename(userId: string, { name, avatar, frame }: Omit<Account, 'id'>) {
     const room = this.roomOf(userId);
-    const seat = room?.seats.find((s) => s?.id === userId);
-    if (seat) Object.assign(seat, member({ id: userId, name, avatar, frame }));
+    const me = room && memberOf(room, userId);
+    if (me) Object.assign(me, member({ id: userId, name, avatar, frame }));
     return room;
   }
 
   /** A dropped connection keeps the seat; returns the Room when there is one. */
   setConnected(code: string, userId: PlayerId, connected: boolean) {
     const room = this.rooms.get(code);
-    const seat = room?.seats.find((s) => s?.id === userId);
-    if (seat) seat.connected = connected;
+    const me = room && memberOf(room, userId);
+    if (me) me.connected = connected;
     return room;
   }
 
@@ -142,7 +183,7 @@ export class RoomsService {
   setReady(code: string, userId: PlayerId, ready: boolean) {
     const room = this.get(code);
     const seat = room.seats.find((s) => s?.id === userId);
-    if (!seat) throw new RoomError('Bạn chưa ở trong phòng này');
+    if (!seat) throw new RoomError('Ngồi vào ghế trước đã');
     if (room.matchId) throw new RoomError('Ván đã bắt đầu');
     seat.ready = ready;
     return room;
@@ -222,6 +263,7 @@ export class RoomsService {
       gameId: room.manifest.id,
       hostId: room.hostId,
       seats: room.seats.map((s) => s && { ...s }),
+      watchers: room.watchers.map((w) => ({ ...w })),
       options: room.options,
       status: room.matchId ? 'playing' : 'waiting',
       matchId: room.matchId,
@@ -233,6 +275,7 @@ export class RoomsService {
     const pruned: Room[] = [];
     for (const [code, room] of this.rooms) {
       if (room.seats.some((s) => s && !s.bot && s.connected)) continue;
+      if (room.watchers.some((w) => w.connected)) continue;
       this.rooms.delete(code);
       pruned.push(room);
     }
@@ -265,6 +308,11 @@ export class RoomsService {
     } while (this.rooms.has(code));
     return code;
   }
+}
+
+/** Whoever `userId` is in the Room: in a seat or watching. */
+function memberOf(room: Room, userId: string) {
+  return room.seats.find((s) => s?.id === userId) ?? room.watchers.find((w) => w.id === userId);
 }
 
 function member({ id, name, avatar, frame }: Account): RoomMember {

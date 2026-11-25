@@ -21,28 +21,30 @@ const nobody: Presence = () => ({ online: false });
 describe('Bạn bè', () => {
   it('asks by username, the other side accepts, and both are friends', async () => {
     const { friends, minh, lan } = await setup();
-    expect(await friends.add(minh.id, '  LAN ')).toBe(lan.id);
+    expect(await friends.add(minh.id, { username: '  LAN ' })).toBe(lan.id);
     expect(await friends.list(minh.id, nobody)).toMatchObject([{ id: lan.id, state: 'outgoing' }]);
     expect(await friends.list(lan.id, nobody)).toMatchObject([{ id: minh.id, state: 'incoming' }]);
     await friends.answer(lan.id, minh.id, true);
     expect(await friends.areFriends(minh.id, lan.id)).toBe(true);
     expect(await friends.friendIds(minh.id)).toEqual([lan.id]);
-    await expect(friends.add(minh.id, 'lan')).rejects.toThrow('Hai bạn đã là bạn bè');
+    await expect(friends.add(minh.id, { username: 'lan' })).rejects.toThrow('Hai bạn đã là bạn bè');
   });
 
   it('asking someone who already asked you makes you friends', async () => {
     const { friends, minh, lan } = await setup();
-    await friends.add(lan.id, 'minh');
-    await friends.add(minh.id, 'lan');
+    await friends.add(lan.id, { username: 'minh' });
+    await friends.add(minh.id, { username: 'lan' });
     expect(await friends.areFriends(minh.id, lan.id)).toBe(true);
   });
 
   it('refuses unknown names, yourself, a second request and a stale answer', async () => {
     const { friends, minh, lan } = await setup();
-    await expect(friends.add(minh.id, 'ai-day')).rejects.toThrow('Không tìm thấy');
-    await expect(friends.add(minh.id, 'minh')).rejects.toThrow('của bạn');
-    await friends.add(minh.id, 'lan');
-    await expect(friends.add(minh.id, 'lan')).rejects.toThrow('đã gửi lời mời');
+    expect(await friends.add(minh.id, { userId: lan.id })).toBe(lan.id);
+    await friends.remove(minh.id, lan.id);
+    await expect(friends.add(minh.id, { username: 'ai-day' })).rejects.toThrow('Không tìm thấy');
+    await expect(friends.add(minh.id, { username: 'minh' })).rejects.toThrow('của bạn');
+    await friends.add(minh.id, { username: 'lan' });
+    await expect(friends.add(minh.id, { username: 'lan' })).rejects.toThrow('đã gửi lời mời');
     await expect(friends.answer(minh.id, lan.id, true)).rejects.toThrow('không còn');
     await friends.answer(lan.id, minh.id, false);
     expect(await friends.list(minh.id, nobody)).toEqual([]);
@@ -50,9 +52,9 @@ describe('Bạn bè', () => {
 
   it('lists requests to you first, then friends online first, with presence for friends only', async () => {
     const { friends, minh, lan, hoa } = await setup();
-    await friends.add(minh.id, 'lan');
+    await friends.add(minh.id, { username: 'lan' });
     await friends.answer(lan.id, minh.id, true);
-    await friends.add(hoa.id, 'minh');
+    await friends.add(hoa.id, { username: 'minh' });
     const presence: Presence = (id) =>
       id === lan.id ? { online: true, gameId: 'tien-len', roomCode: 'K7M2' } : { online: true };
     const list = await friends.list(minh.id, presence);
@@ -66,7 +68,7 @@ describe('Bạn bè', () => {
   it('chats only between friends, counts unread and reads them on history', async () => {
     const { friends, minh, lan } = await setup();
     await expect(friends.send(minh.id, lan.id, 'chào')).rejects.toThrow('bạn bè');
-    await friends.add(minh.id, 'lan');
+    await friends.add(minh.id, { username: 'lan' });
     await friends.answer(lan.id, minh.id, true);
     const sent = await friends.send(minh.id, lan.id, '  chơi   Tiến Lên  không? ');
     expect(sent.text).toBe('chơi Tiến Lên không?');
@@ -83,7 +85,7 @@ describe('Bạn bè', () => {
 
   it('suggests people played with lately, then others online, never yourself or friends', async () => {
     const { friends, minh, lan, hoa } = await setup();
-    await friends.add(minh.id, 'lan');
+    await friends.add(minh.id, { username: 'lan' });
     await friends.answer(lan.id, minh.id, true);
     const presence: Presence = (id) => ({ online: id === hoa.id });
     const people = await friends.suggest(minh.id, [lan.id, hoa.id], [minh.id, hoa.id], presence);

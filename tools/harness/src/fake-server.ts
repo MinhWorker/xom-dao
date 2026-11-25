@@ -36,6 +36,7 @@ export function fakeServer() {
       connected: true,
       bot: s.bot,
     })),
+    watchers: [],
     options: {},
     status: room.status,
     matchId: room.matchId,
