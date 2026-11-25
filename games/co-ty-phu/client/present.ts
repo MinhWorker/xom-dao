@@ -97,6 +97,11 @@ export function changes(before: View, after: View): Change[] {
       at[roller] = (was.tile + sum) % TILES;
     }
   }
+  if (drawn && drawn.tile !== at[drawn.seat]) {
+    const flew = before.phase === 'fly' && drawn.seat === before.turn;
+    out.push({ kind: 'jump', seat: drawn.seat, to: drawn.tile, how: flew ? 'flight' : 'move' });
+    at[drawn.seat] = drawn.tile;
+  }
   if (drawn) out.push({ kind: 'card', seat: drawn.seat, id: drawn.id });
   after.players.forEach((p, seat) => {
     const from = at[seat] as number;

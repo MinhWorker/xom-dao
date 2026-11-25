@@ -393,7 +393,12 @@ export class CoTyPhuGame extends Game<State, Options, View> {
     const drawn: State = {
       ...state,
       decks: { ...state.decks, [deck]: kept ? rest : [...rest, id] },
-      card: { id, seat, draw: (state.card?.draw ?? 0) + 1 },
+      card: {
+        id,
+        seat,
+        tile: (state.players[seat] as Player).tile,
+        draw: (state.card?.draw ?? 0) + 1,
+      },
     };
     if (!asks(action)) return this.applyCard(drawn, seat, action);
     return picksOf(drawn, seat, action).length > 0 ? { ...drawn, phase: 'card' } : this.next(drawn);

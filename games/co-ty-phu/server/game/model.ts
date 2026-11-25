@@ -56,10 +56,11 @@ export interface Effect {
 
 export type Deck = 'chance' | 'chest';
 
-/** The last Card drawn, by `seat`; `draw` counts the draws of the Match, from 1. */
+/** The last Card drawn, by `seat` standing on `tile`; `draw` counts the draws of the Match, from 1. */
 export interface Drawn {
   id: CardId;
   seat: number;
+  tile: number;
   draw: number;
 }
 

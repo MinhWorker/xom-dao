@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tilesOf } from '../server/game/board.js';
+import { BOARD, tilesOf } from '../server/game/board.js';
 import type { CardId } from '../server/game/cards.js';
 import type { State } from '../server/game/model.js';
 import { all, open, own, player, viewOf } from '../server/game/test-match.js';
@@ -146,6 +146,21 @@ describe('what a new view shows', () => {
     game.send('a', 'fly', { to: 39 });
     expect(changes(before, viewOf(game, 'a')).slice(0, 1)).toEqual([
       { kind: 'jump', seat: 0, to: 39, how: 'flight' },
+    ]);
+  });
+
+  it('flies to a Cơ hội before its Card is drawn there', () => {
+    const chance = BOARD.findIndex((t, i) => i > 20 && t.kind === 'chance');
+    const game = open({
+      rolls: [[1, 2]],
+      chance: ['chance-interest'],
+      arrange: player(0, { tile: 17 }),
+    }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'fly', { to: chance });
+    expect(changes(before, viewOf(game, 'a')).slice(0, 2)).toEqual([
+      { kind: 'jump', seat: 0, to: chance, how: 'flight' },
+      { kind: 'card', seat: 0, id: 'chance-interest' },
     ]);
   });
 
