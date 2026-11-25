@@ -153,7 +153,9 @@ export function Room({ code }: { code: string }) {
     return (
       <main className={screen.center}>
         <p className={screen.error}>{joinError}</p>
-        <Button onClick={() => navigate('/', { replace: true })}>Về Bến</Button>
+        <Button sound="close" onClick={() => navigate('/', { replace: true })}>
+          Về Bến
+        </Button>
       </main>
     );
   }
@@ -204,6 +206,7 @@ export function Room({ code }: { code: string }) {
       <header className={styles.top}>
         <Button
           variant="ghost"
+          sound="close"
           className={styles.back}
           onClick={() => void leave()}
           disabled={busy}
@@ -299,12 +302,13 @@ export function Room({ code }: { code: string }) {
           <p className={styles.watching}>
             {playing
               ? 'Ván đang chơi. Hết ván, chọn một ghế trống để vào chơi.'
-              : 'Bạn đang xem. Chọn "Ngồi đây" ở một ghế trống để vào chơi.'}
+              : 'Bạn đang xem. Chọn một ghế trống để vào chơi.'}
           </p>
         ) : isHost ? (
           <Button
             variant="primary"
             forward
+            sound="enter"
             className={styles.start}
             disabled={busy || !game || seated < minPlayers}
             onClick={() => void start()}

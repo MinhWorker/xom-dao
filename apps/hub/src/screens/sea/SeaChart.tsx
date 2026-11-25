@@ -8,7 +8,7 @@ import { rovingKeyDown } from '../../kit/roving.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
 import { prefersReducedMotion } from '../../settings/graphics.js';
-import { hoverSound, playSound } from '../../sound/index.js';
+import { playSound } from '../../sound/index.js';
 import { tilt, untilt } from '../kit/GameTiles.js';
 import { RulesPager } from '../rules/RulesPager.js';
 import { type ChartCard, islandCards } from './chart.js';
@@ -78,6 +78,83 @@ function scrollToCard(track: HTMLElement | null, index: number, instant = false)
   });
 }
 
+/** A mouse drag past this many px pans the track instead of clicking a card. */
+const DRAG_SLOP = 6;
+/** A drag this long moves at least one card, even when it is shorter than one card's pitch. */
+const DRAG_STEP = 40;
+
+/**
+ * Lets a mouse pan the track by dragging, as a finger does. Snapping is off while it drags; on
+ * release the focus moves by as many cards as the drag covered (so it reaches the tail too), and the
+ * click that ends the drag is swallowed.
+ */
+function dragWithMouse(track: HTMLElement, focused: () => number, select: (index: number) => void) {
+  let press: { id: number; x: number; left: number; from: number } | null = null;
+  let dragging = false;
+  let swallowClick = false;
+
+  const restoreSnap = () => {
+    track.style.scrollSnapType = '';
+  };
+  const onDown = (event: PointerEvent) => {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    press = { id: event.pointerId, x: event.clientX, left: track.scrollLeft, from: focused() };
+    dragging = false;
+    swallowClick = false;
+  };
+  const onMove = (event: PointerEvent) => {
+    if (!press || event.pointerId !== press.id) return;
+    const dx = event.clientX - press.x;
+    if (!dragging) {
+      if (Math.abs(dx) < DRAG_SLOP) return;
+      dragging = true;
+      track.setPointerCapture(event.pointerId);
+      track.style.scrollSnapType = 'none';
+      track.dataset.dragging = '';
+    }
+    track.scrollLeft = press.left - dx;
+  };
+  const onUp = (event: PointerEvent) => {
+    if (!press || event.pointerId !== press.id) return;
+    const { x, from } = press;
+    press = null;
+    if (!dragging) return;
+    dragging = false;
+    swallowClick = true;
+    delete track.dataset.dragging;
+    const dx = event.clientX - x;
+    const pitch = offsetOf(track, 1) - offsetOf(track, 0) || track.clientWidth;
+    let steps = Math.round(-dx / pitch);
+    if (steps === 0 && Math.abs(dx) >= DRAG_STEP) steps = -Math.sign(dx);
+    select(from + steps);
+    track.addEventListener('scrollend', restoreSnap, { once: true });
+    setTimeout(restoreSnap, 600);
+  };
+  const onClick = (event: MouseEvent) => {
+    if (!swallowClick) return;
+    swallowClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const onDragStart = (event: DragEvent) => event.preventDefault();
+
+  track.addEventListener('pointerdown', onDown);
+  track.addEventListener('pointermove', onMove);
+  track.addEventListener('pointerup', onUp);
+  track.addEventListener('pointercancel', onUp);
+  track.addEventListener('click', onClick, true);
+  track.addEventListener('dragstart', onDragStart);
+  return () => {
+    track.removeEventListener('pointerdown', onDown);
+    track.removeEventListener('pointermove', onMove);
+    track.removeEventListener('pointerup', onUp);
+    track.removeEventListener('pointercancel', onUp);
+    track.removeEventListener('click', onClick, true);
+    track.removeEventListener('dragstart', onDragStart);
+    track.removeEventListener('scrollend', restoreSnap);
+  };
+}
+
 /**
  * The track of Game cards: scroll-snaps one card at a time and reports the focused card. Cards in
  * the tail cannot reach the snap line, so there the focus is the last one picked, not read from the scroll.
@@ -144,10 +221,12 @@ function useSnapTrack(
       lastStep = now;
       select(focusRef.current + Math.sign(event.deltaY));
     };
+    const stopDrag = dragWithMouse(track, () => focusRef.current, select);
     track.addEventListener('scroll', onScroll, { passive: true });
     track.addEventListener('wheel', onWheel, { passive: false });
     return () => {
       cancelAnimationFrame(frame);
+      stopDrag();
       track.removeEventListener('scroll', onScroll);
       track.removeEventListener('wheel', onWheel);
     };
@@ -203,7 +282,7 @@ export function SeaChart() {
   const onFocus = useCallback((index: number) => {
     setFocus(index);
     setError('');
-    playSound('cardHover');
+    playSound('click');
   }, []);
   const {
     ref: track,
@@ -214,7 +293,7 @@ export function SeaChart() {
 
   const pickIsland = (id: Island) => {
     if (id === islandId) return;
-    playSound('pick');
+    playSound('flip');
     setIslandId(id);
     setFocus(0);
     setError('');
@@ -229,7 +308,6 @@ export function SeaChart() {
   const hasRules = !!game && game.rules.length > 0;
 
   async function sail(target: HubGame) {
-    playSound('pick');
     setBusy(true);
     setError('');
     try {
@@ -269,9 +347,8 @@ export function SeaChart() {
           type="button"
           className={styles.back}
           aria-label="Về Bến"
-          onPointerEnter={(e) => hoverSound(e)}
           onClick={() => {
-            playSound('click');
+            playSound('close');
             navigate('/');
           }}
         >
@@ -297,7 +374,6 @@ export function SeaChart() {
                   aria-current={on || undefined}
                   aria-label={`Đảo ${item.name}`}
                   tabIndex={on ? 0 : -1}
-                  onPointerEnter={(e) => hoverSound(e)}
                   onClick={() => pickIsland(item.id)}
                 >
                   <span className={styles.islandNo}>{pad(index + 1)}</span>
@@ -397,12 +473,11 @@ export function SeaChart() {
                 aria-current={on || undefined}
                 aria-label={card.name}
                 tabIndex={on ? 0 : -1}
-                onPointerEnter={(e) => hoverSound(e, 'cardHover')}
                 onPointerMove={tilt}
                 onPointerLeave={untilt}
                 onClick={() => {
                   if (!on) select(index);
-                  else playSound(card.game ? 'pick' : 'locked');
+                  else playSound(card.game ? 'click' : 'locked');
                 }}
               >
                 <span className={styles.face}>

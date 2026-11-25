@@ -84,7 +84,7 @@
   z-index: 1;
 }
 
-/* Customise, sound and the menu, down the left edge halfway. */
+/* Customise, sound and the HUD toggle, down the left edge halfway. */
 .side {
   grid-area: side;
   display: flex;
@@ -570,4 +570,17 @@ a.panel:active,
   .lockLabel {
     display: none;
   }
+}
+
+/* The eye hides everything but the character, the backdrop and itself. */
+.top,
+.title,
+.cluster,
+.side > :not(.eye) {
+  transition: opacity 200ms ease-out;
+}
+
+.harbour[data-hud-hidden] :is(.top, .title, .cluster, .side > :not(.eye)) {
+  opacity: 0;
+  pointer-events: none;
 }

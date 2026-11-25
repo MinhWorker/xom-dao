@@ -46,7 +46,7 @@ export interface OfflineOverlayProps {
 
 /** The connection is lost: frosted glass over everything, HUD included, while the Hub retries. */
 export function OfflineOverlay({ open, onDismiss }: OfflineOverlayProps) {
-  const modal = useModal(open, () => {});
+  const modal = useModal(open);
   return (
     <dialog {...modal} className={styles.offline} aria-labelledby="offline-title" data-over-toasts>
       <div className={styles.inner}>
@@ -58,7 +58,7 @@ export function OfflineOverlay({ open, onDismiss }: OfflineOverlayProps) {
             <SyncIcon size={20} />
             Đang kết nối lại
           </span>
-          <Button variant="primary" onClick={onDismiss}>
+          <Button variant="primary" sound="close" onClick={onDismiss}>
             Thoát
           </Button>
         </div>

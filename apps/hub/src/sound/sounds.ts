@@ -1,4 +1,4 @@
-export type SoundName = 'click' | 'hover' | 'pick' | 'cardHover' | 'locked' | 'win' | 'lose';
+export type SoundName = 'click' | 'close' | 'flip' | 'enter' | 'locked' | 'win' | 'lose';
 
 /** The part of `AudioContext` the Hub uses, so tests can fake it. */
 export interface AudioContextLike {

@@ -80,6 +80,32 @@
   height: 88px;
 }
 
+.editable {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.edit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-sunken);
+  color: var(--accent);
+}
+
+.edit svg {
+  width: 18px;
+  height: 18px;
+}
+
 .portrait img {
   grid-area: 1 / 1;
   width: 100%;

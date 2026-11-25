@@ -258,6 +258,7 @@ export function createStore(deps: StoreDeps) {
     const { ok: _ok, ...rest } = ack;
     const reply = requests[event].res.parse(rest) as Res<E>;
     if (event.startsWith('friends:') && 'friends' in reply) set({ friends: reply.friends });
+    if (event === 'profile:update' && 'user' in reply) set({ user: reply.user });
     return reply;
   }
 

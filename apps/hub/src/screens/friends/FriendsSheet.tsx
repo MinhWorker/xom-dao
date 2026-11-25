@@ -12,6 +12,7 @@ import {
   Tabs,
   TextField,
   toast,
+  useFormReady,
 } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
@@ -185,6 +186,7 @@ function AddFriend() {
   const known = useHub((s) => s.friends);
   const [suggested, setSuggested] = useState<Person[] | null>(null);
   const { error, busy, run } = useAction();
+  const { ready, form } = useFormReady();
 
   useEffect(() => {
     let live = true;
@@ -220,7 +222,7 @@ function AddFriend() {
   const people = (suggested ?? []).filter((p) => !known.some((f) => f.id === p.id));
   return (
     <div className={styles.lists}>
-      <form className={styles.find} onSubmit={(e) => void submit(e)}>
+      <form {...form} className={styles.find} onSubmit={(e) => void submit(e)}>
         <TextField
           label="Tên đăng nhập"
           name="username"
@@ -229,7 +231,7 @@ function AddFriend() {
           spellCheck={false}
           required
         />
-        <Button variant="primary" type="submit" disabled={busy}>
+        <Button variant="primary" type="submit" disabled={busy || !ready}>
           Kết bạn
         </Button>
       </form>

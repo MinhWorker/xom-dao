@@ -20,18 +20,23 @@
     `caro()` in `scripts/splash.mjs` projects every point through `project`; tune the view with
     `away` (camera distance: smaller is stronger perspective), `pitch` (look-down angle) and `yaw`,
     then run `npm run splash -- caro` and check the sheet stays inside the frame, right of 40%.
-- **Harbour art** (`apps/hub/src/harbour-art/`: `harbour-master.webp`, the Bến's standing character,
-  and `harbour-night.webp`, its night backdrop) is the one place AI image generation is allowed. The
-  character is the owner's friend Long drawn as an Arknights-style operator.
-  - Describe the person in words and never send their photo to the generator. Run `agy --print`
-    with the prompt (it saves the PNG to the path the prompt names); for a later change, give it the
-    previous generated image as the reference so the face and costume stay the same.
-  - The character is generated on flat `#00FF00` with no green on him. His ID badge is generated
-    with a flat `#FF00FF` square where the photo goes and a blank white strip below it. Measure the
-    square's corners, warp Long's real photo (`assets/shared/images/Long-look-at-u.jpg`) into it,
-    write his name in the strip, then key the green out into transparency and trim.
-  - Originals are in `assets/shared/images/`: `harbour-master-raw.png` (generated),
-    `harbour-master.png` (cut-out with the photo), `harbour-night-raw.png` (the backdrop).
+- **Harbour art** (`apps/hub/src/harbour-art/`: the Bến's standing characters, listed in `arts.ts`,
+  and `harbour-night.webp`, its night backdrop) is the one place AI image generation is allowed. Each
+  character is one of the owner's friends drawn as an Arknights-style operator: `harbour-master`
+  is Long, `harbour-dang` is Đăng, `harbour-nam` is Nam.
+  - Describe the person in words and never send their photo to the generator. Generate with
+    `python3 scripts/harbour-character.py generate <prompt.txt> <raw.png> [reference.png]`: it runs
+    `agy` with its default permissions (it only draws, then names the file). Pass
+    `harbour-master-raw.png` as the reference so a new friend matches the style, or the person's own
+    raw image for a later change so the face and costume stay the same.
+  - The prompt asks for flat `#00FF00` around the figure with no green on it, and an ID badge with a
+    flat `#FF00FF` square where the photo goes over a blank white strip.
+    `python3 scripts/harbour-character.py cutout <raw.png> <out.png> <out.webp> <Name> [photo | #colour]`
+    fills the square with the friend's photo (a solid colour until there is one), writes the name in
+    the strip, keys the green out, trims, and writes the 640 px WebP for `harbour-art/`.
+  - Originals are in `assets/shared/images/`: `harbour-<id>-raw.png` (generated; Long's is
+    `harbour-master-raw.png`), `harbour-<id>.png` (the cut-out), `harbour-night-raw.png` (the
+    backdrop); Long's photo is `Long-look-at-u.jpg`. Đăng's and Nam's badges still have the solid placeholder.
 - Pick what looks and sounds best for a card/board game in the app's style.
 - Keep a third-party license file next to assets whose license requires one.
 - Use only free, clearly allowed assets, and never sell anything.
@@ -58,6 +63,10 @@
     at the viewer (generated with `agy` like the Harbour art above, keyed from green, on the same blue disc
     as `avatar-boy`; original in `assets/shared/images/avatar-harbour-raw.png`). `avatar-long` is a real photo (`assets/shared/images/Long-look-at-u.jpg`), not
     generated art.
+    `avatar-dang` and `avatar-nam` are the Bến's Đăng and Nam drawn the same way: generate a portrait
+    with their `harbour-<id>-raw.png` and `avatar-harbour-raw.png` as references (originals in
+    `assets/shared/images/avatar-<id>-raw.png`), then
+    `python3 scripts/harbour-character.py avatar <portrait.png> assets/app/images/avatar-<id>.webp`.
   - `node scripts/avatars.mjs gold` draws `frame-gold` (a flat octagonal ring in the Hub's style: accent
     yellow, dark outline, a pointer on each side); then `node scripts/avatars.mjs frames` recolors it into the other frames;
     `node scripts/avatars.mjs emoji <dir>` makes the animal avatars from Microsoft's Fluent Emoji 3D

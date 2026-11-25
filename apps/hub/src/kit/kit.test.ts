@@ -4,6 +4,8 @@ import { nextIndex } from './roving.js';
 import { createToastStore, MAX_TOASTS } from './toasts.js';
 import { createWaitStore, WAIT_DELAY_MS } from './wait.js';
 
+vi.mock('../sound/index.js', () => ({ playSound: () => {} }));
+
 describe('nextIndex', () => {
   it('wraps around at both ends', () => {
     expect(nextIndex('ArrowRight', 2, 3)).toBe(0);

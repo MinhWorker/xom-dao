@@ -11,7 +11,7 @@ import {
   VOLUME_KEY,
 } from './sounds.js';
 
-const NAMES: SoundName[] = ['click', 'hover', 'pick', 'cardHover', 'locked', 'win', 'lose'];
+const NAMES: SoundName[] = ['click', 'close', 'flip', 'enter', 'locked', 'win', 'lose'];
 const urls = Object.fromEntries(NAMES.map((n) => [n, `/${n}.wav`])) as Record<SoundName, string>;
 
 function fakeContext(initial = 'suspended') {

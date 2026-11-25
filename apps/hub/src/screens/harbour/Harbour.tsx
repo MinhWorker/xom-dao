@@ -4,7 +4,8 @@ import {
   IconBuildingPavilion,
   IconBuildingStore,
   IconDoorEnter,
-  IconDots,
+  IconEye,
+  IconEyeOff,
   IconLock,
   IconPalette,
   IconSettings,
@@ -16,11 +17,11 @@ import type { PlayerStats } from '@xomdao/shared/client';
 import { type CSSProperties, type FormEvent, useEffect, useState } from 'react';
 import { BACKGROUNDS, CHARACTERS, pickArt } from '../../harbour-art/arts.js';
 import { HUB_EMBLEM, ISLANDS } from '../../islands.js';
-import { Button, Dialog, Icon, Loop, Menu, OnlineDot, TextField } from '../../kit/index.js';
+import { Button, Dialog, Icon, Loop, OnlineDot, TextField, useFormReady } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
 import { useHarbourLook } from '../../settings/harbour.js';
-import { hoverSound, playSound } from '../../sound/index.js';
+import { playSound } from '../../sound/index.js';
 import { SoundToggle } from '../../sound/SoundToggle.js';
 import { FriendsSheet } from '../friends/FriendsSheet.js';
 import { onlineFriends } from '../friends/groups.js';
@@ -112,9 +113,8 @@ function Home() {
       type="button"
       className={styles.home}
       aria-label={label}
-      onPointerEnter={(e) => hoverSound(e)}
       onClick={() => {
-        playSound('pick');
+        playSound('click');
         navigate('/profile');
       }}
     >
@@ -164,6 +164,8 @@ export function Harbour() {
   const [settings, setSettings] = useState(false);
   const [look, setLook] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [hudHidden, setHudHidden] = useState(false);
+  const { ready: codeReady, form: joinForm } = useFormReady();
   const picked = useHarbourLook();
   const character = pickArt(CHARACTERS, picked.character);
   const background = pickArt(BACKGROUNDS, picked.background);
@@ -177,7 +179,7 @@ export function Harbour() {
   }
 
   return (
-    <main className={styles.harbour}>
+    <main className={styles.harbour} data-hud-hidden={hudHidden || undefined}>
       <div className={styles.backdrop} aria-hidden="true">
         <img
           className={styles.scene}
@@ -198,7 +200,6 @@ export function Harbour() {
           type="button"
           className={`${styles.tool} glass cut-br`}
           aria-label="Tuỳ chỉnh Bến"
-          onPointerEnter={(e) => hoverSound(e)}
           onClick={() => {
             playSound('click');
             setLook(true);
@@ -207,12 +208,18 @@ export function Harbour() {
           <Icon icon={IconPalette} />
         </button>
         <SoundToggle className={`${styles.tool} glass cut-br`} />
-        <Menu
-          label="Menu"
-          triggerClassName={`${styles.tool} glass cut-br`}
-          trigger={<Icon icon={IconDots} />}
-          items={[{ label: 'Đăng xuất', danger: true, onSelect: () => hub.logout() }]}
-        />
+        <button
+          type="button"
+          className={`${styles.tool} ${styles.eye} glass cut-br`}
+          aria-label={hudHidden ? 'Hiện giao diện' : 'Ẩn giao diện'}
+          aria-pressed={hudHidden}
+          onClick={() => {
+            playSound(hudHidden ? 'click' : 'close');
+            setHudHidden(!hudHidden);
+          }}
+        >
+          <Icon icon={hudHidden ? IconEyeOff : IconEye} />
+        </button>
       </div>
 
       <div className={styles.title}>
@@ -235,7 +242,6 @@ export function Harbour() {
             type="button"
             className={`${styles.panel} ${styles.small} glass cut-br`}
             style={{ gridArea: 'join' }}
-            onPointerEnter={(e) => hoverSound(e)}
             onClick={() => {
               playSound('click');
               setJoinOpen(true);
@@ -249,7 +255,6 @@ export function Harbour() {
             type="button"
             className={`${styles.panel} ${styles.small} glass cut-br`}
             style={{ gridArea: 'set' }}
-            onPointerEnter={(e) => hoverSound(e)}
             onClick={() => {
               playSound('click');
               setSettings(true);
@@ -264,9 +269,8 @@ export function Harbour() {
             className={`${styles.panel} ${styles.go} cut-br`}
             style={{ gridArea: 'go' }}
             aria-label="Ra khơi"
-            onPointerEnter={(e) => hoverSound(e, 'cardHover')}
             onClick={() => {
-              playSound('pick');
+              playSound('click');
               navigate('/sea');
             }}
           >
@@ -292,7 +296,6 @@ export function Harbour() {
             className={`${styles.panel} ${styles.tall} glass cut-br`}
             style={{ gridArea: 'nb' }}
             aria-label={requests > 0 ? `Hàng xóm, ${requests} lời mời` : 'Hàng xóm'}
-            onPointerEnter={(e) => hoverSound(e)}
             onClick={() => {
               playSound('click');
               setNeighbours(true);
@@ -328,16 +331,16 @@ export function Harbour() {
         title="Vào phòng"
         actions={
           <>
-            <Button variant="ghost" onClick={() => setJoinOpen(false)}>
+            <Button variant="ghost" sound="close" onClick={() => setJoinOpen(false)}>
               Huỷ
             </Button>
-            <Button variant="primary" type="submit" form="join-room">
+            <Button variant="primary" type="submit" form="join-room" disabled={!codeReady}>
               Vào
             </Button>
           </>
         }
       >
-        <form id="join-room" className={styles.join} onSubmit={join}>
+        <form {...joinForm} id="join-room" className={styles.join} onSubmit={join}>
           <TextField
             label="Mã phòng"
             name="code"

@@ -1,6 +1,6 @@
 import { DEFAULT_FRAME, STARTER_AVATARS } from '@xomdao/shared/client';
 import { type FormEvent, useState } from 'react';
-import { Button, CutPanel, TextField } from '../../kit/index.js';
+import { Button, CutPanel, TextField, useFormReady } from '../../kit/index.js';
 import { hub } from '../../net/hub.js';
 import screen from '../Screen.module.css';
 import styles from './Login.module.css';
@@ -11,6 +11,7 @@ export function Login() {
   const [mode, setMode] = useState<Mode>('login');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const { ready, form } = useFormReady(mode);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,7 +58,7 @@ export function Login() {
             </Button>
           ))}
         </div>
-        <form className={styles.form} onSubmit={submit}>
+        <form {...form} className={styles.form} onSubmit={submit}>
           <TextField
             label="Tên đăng nhập"
             name="username"
@@ -78,7 +79,7 @@ export function Login() {
               {error}
             </p>
           )}
-          <Button variant="primary" type="submit" disabled={busy}>
+          <Button variant="primary" type="submit" disabled={busy || !ready}>
             {mode === 'login' ? 'Vào' : 'Tạo'}
           </Button>
         </form>

@@ -107,6 +107,12 @@
 }
 
 .sit {
+  display: grid;
+  place-items: center;
+  flex: none;
+  aspect-ratio: 1;
+  min-width: var(--tap);
+  padding: 0;
   border-style: solid;
   border-color: var(--accent);
   color: var(--accent);

@@ -1,10 +1,10 @@
 import { useSyncExternalStore } from 'react';
 import clickUrl from '../../../../assets/app/audio/button-click.wav';
-import hoverUrl from '../../../../assets/app/audio/button-hover.wav';
+import closeUrl from '../../../../assets/app/audio/button-close.wav';
+import enterUrl from '../../../../assets/app/audio/game-enter.wav';
 import loseUrl from '../../../../assets/app/audio/game-lose.wav';
 import winUrl from '../../../../assets/app/audio/game-win.wav';
-import pickUrl from '../../../../assets/app/audio/island-click.wav';
-import cardHoverUrl from '../../../../assets/app/audio/island-hover.wav';
+import flipUrl from '../../../../assets/app/audio/island-flip.wav';
 import lockedUrl from '../../../../assets/app/audio/island-locked.wav';
 import { type AudioContextLike, createSounds, type SoundName } from './sounds.js';
 
@@ -23,9 +23,9 @@ export const sounds = createSounds({
   storage: localStorage,
   urls: {
     click: clickUrl,
-    hover: hoverUrl,
-    pick: pickUrl,
-    cardHover: cardHoverUrl,
+    close: closeUrl,
+    flip: flipUrl,
+    enter: enterUrl,
     locked: lockedUrl,
     win: winUrl,
     lose: loseUrl,
@@ -33,11 +33,6 @@ export const sounds = createSounds({
 });
 
 export const playSound = (name: SoundName) => void sounds.play(name);
-
-/** Plays `name` for a real mouse only: touch has no hover. */
-export const hoverSound = (event: { pointerType: string }, name: SoundName = 'hover') => {
-  if (event.pointerType === 'mouse') playSound(name);
-};
 
 export function useMuted() {
   return useSyncExternalStore(sounds.subscribe, () => sounds.getState().muted);

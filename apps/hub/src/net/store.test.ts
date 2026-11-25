@@ -284,6 +284,14 @@ describe('store', () => {
     await expect(joined).rejects.toThrow('Không tìm thấy phòng');
   });
 
+  it('keeps the account the server returns after a profile change', async () => {
+    const store = await online();
+    const changed = store.request('profile:update', { name: 'Minh', avatar: 'dang' });
+    lastSocket().reply('profile:update', { ok: true, user: { ...user, avatar: 'dang' } });
+    await changed;
+    expect(store.getState().user?.avatar).toBe('dang');
+  });
+
   it('forgets the Room once the server lets us leave it', async () => {
     const store = await online();
     lastSocket().push('room:state', roomState);

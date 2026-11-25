@@ -2,8 +2,9 @@ import { IconX } from '@tabler/icons-react';
 import type { GameManifest } from '@xomdao/sdk';
 import { useId } from 'react';
 import { GAMES } from '../../games.js';
-import { Chip, Choice, Icon, Select, Slider, Tabs, Toggle } from '../../kit/index.js';
+import { Button, Chip, Choice, Icon, Select, Slider, Tabs, Toggle } from '../../kit/index.js';
 import { useModal } from '../../kit/modal.js';
+import { hub, useHub } from '../../net/hub.js';
 import { FRAMES, isFrameId } from '../../settings/frame.js';
 import {
   canScaleHud,
@@ -13,7 +14,7 @@ import {
   MARGIN,
   useGraphics,
 } from '../../settings/graphics.js';
-import { sounds, useEffects, useMusic, useMuted, useVolume } from '../../sound/index.js';
+import { playSound, sounds, useEffects, useMusic, useMuted, useVolume } from '../../sound/index.js';
 import { PreferenceFields } from '../room/RoomOptions.js';
 import styles from './SettingsOverlay.module.css';
 
@@ -107,6 +108,23 @@ function SoundTab() {
   );
 }
 
+function AccountTab() {
+  const user = useHub((s) => s.user);
+  return (
+    <div className={styles.about}>
+      {user && (
+        <div className={styles.title}>
+          <p className={styles.name}>{user.name}</p>
+          <p className={styles.version}>@{user.username}</p>
+        </div>
+      )}
+      <Button sound="close" className={styles.logout} onClick={() => hub.logout()}>
+        Đăng xuất
+      </Button>
+    </div>
+  );
+}
+
 function AboutTab() {
   return (
     <div className={styles.about}>
@@ -132,6 +150,8 @@ const TABS = [
   { id: 'about', label: 'Giới thiệu', content: <AboutTab /> },
 ];
 
+const ACCOUNT = { id: 'account', label: 'Tài khoản', content: <AccountTab /> };
+
 export interface SettingsOverlayProps {
   open: boolean;
   /** The Game being played: its preferences, if it declares any, come first in a tab of its own. */
@@ -141,10 +161,14 @@ export interface SettingsOverlayProps {
 
 /**
  * The Hub's settings: a full-screen frosted overlay (a modal `<dialog>`) with one tab each for
- * graphics, sound and About. The title and tabs stay where they are whichever tab shows; nothing scrolls.
+ * graphics, sound and About, and outside a Room one for the account (sign out). The title and tabs stay where they are whichever tab shows; nothing scrolls.
  */
 export function SettingsOverlay({ open, game, onClose }: SettingsOverlayProps) {
   const modal = useModal(open, onClose);
+  const dismiss = () => {
+    playSound('close');
+    onClose();
+  };
   const titleId = useId();
   const tabs =
     game && Object.keys(game.preferences ?? {}).length > 0
@@ -160,14 +184,16 @@ export function SettingsOverlay({ open, game, onClose }: SettingsOverlayProps) {
           },
           ...TABS,
         ]
-      : TABS;
+      : game
+        ? TABS
+        : [...TABS, ACCOUNT];
 
   return (
     <dialog {...modal} className={styles.overlay} aria-labelledby={titleId}>
       <div className={styles.frame}>
         <header className={styles.top}>
           <h2 id={titleId}>Cài đặt</h2>
-          <button type="button" className={styles.close} aria-label="Đóng" onClick={onClose}>
+          <button type="button" className={styles.close} aria-label="Đóng" onClick={dismiss}>
             <Icon icon={IconX} />
           </button>
         </header>
