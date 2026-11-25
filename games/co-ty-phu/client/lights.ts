@@ -68,6 +68,8 @@ export class Marquee {
   private readonly bulb = new Color();
   private readonly glow = new Color();
   private readonly hue = new Color();
+  /** The at-rest swap the bulbs show now, `-1` after a show. */
+  private painted = -1;
 
   constructor(halo: Texture) {
     const half = SIDE / 2 + 0.1;
@@ -148,10 +150,13 @@ export class Marquee {
     this.show = null;
   }
 
-  /** Sets every bulb for the time `now` (ms). */
+  /** Sets every bulb for the time `now` (ms); at rest only when they swap. */
   paint(now: number) {
     const show = this.show;
     if (show && now - show.start > show.ms) this.show = null;
+    const rest = this.show ? -1 : Math.floor(now / 480);
+    if (rest >= 0 && rest === this.painted) return;
+    this.painted = rest;
     for (let k = 0; k < this.count; k++) {
       const [color, level] = this.light(k, now);
       this.bulb.copy(OFF).lerp(color, level);
