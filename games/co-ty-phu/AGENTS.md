@@ -69,6 +69,8 @@ Direction, reviewed by the owner on #351:
 
 - Three.js, everything drawn in code: a model board floating in dark space with stars, Tiles
   printed flat on one Canvas 2D texture (name, price, icon, Colour set band on the inner edge).
+  An owned Lot's price is reprinted as the rent it charges (`rentMark` in `scene.ts`), with a red
+  ×n when a Full set, the bến xe owned, a Festival or Thần tài raise it.
   The Xuất phát arrow points the way play runs (left along the bottom).
 - The camera looks straight at the board from 56° above it, with Xuất phát at the bottom right.
   The board fills the screen height, pieces included, and leaves the sides for the player cards;

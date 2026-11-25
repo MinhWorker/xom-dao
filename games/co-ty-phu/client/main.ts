@@ -17,7 +17,7 @@ import {
 import { BOARD } from '../server/game/board.js';
 import { type CardId, cardOf } from '../server/game/cards.js';
 import { stationRent } from '../server/game/economy.js';
-import { HOTEL, type Sale, type View } from '../server/game/model.js';
+import { CLOCK_MS, HOTEL, QUIZ_MS, type Sale, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 import { CardMoments } from './cardmoments.js';
 import { CardShow } from './cardshow.js';
@@ -462,6 +462,13 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
   let building: Promise<unknown> | null = null;
   /** Per seat, the cash a payment already counted on its card. */
   const counted: number[] = [];
+  /** Xuất phát's pay counts on `seat`'s card `at` ms from now, before a tax or rent after it. */
+  const payStart = (seat: number, at: number) => {
+    counted[seat] = (counted[seat] ?? 0) + TUNING.startBonus;
+    void wait(at).then(() => {
+      if (live()) hud.delta(seat, TUNING.startBonus, ms(600));
+    });
+  };
   for (const step of steps) {
     if (!live()) return;
     switch (step.kind) {
@@ -475,8 +482,11 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         break;
       case 'walk':
         for (let k = 1; k <= step.steps; k++) sounds.play('step', { at: k * ms(170) });
-        if (step.from + step.steps >= BOARD.length)
-          sounds.play('coins', { at: (BOARD.length - step.from) * ms(170) });
+        if (step.from + step.steps >= BOARD.length) {
+          const at = (BOARD.length - step.from) * ms(170);
+          sounds.play('coins', { at });
+          payStart(step.seat, at);
+        }
         await board.walk(step.seat, step.from, step.steps, ms(170), TUNING.startBonus);
         break;
       case 'doubles':
@@ -513,7 +523,10 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           sounds.play('slam', { at: ms(1400), gain: 0.7 });
         } else if (step.how === 'jail') sounds.play('jail', { at: ms(560 + 504 * BOUNCE_LAND) });
         else sounds.play('step', { at: ms(560) });
-        if (step.how === 'flight' && step.to === 0) sounds.play('coins', { at: ms(1400) });
+        if (step.how === 'flight' && step.to === 0) {
+          sounds.play('coins', { at: ms(1400) });
+          payStart(step.seat, ms(1400));
+        }
         await board.jump(
           step.seat,
           step.to,
@@ -1027,7 +1040,8 @@ function clock() {
     return;
   }
   const ms = Math.max(0, timer.ms - (Date.now() - timer.at));
-  const left = ms / timer.ms;
+  const full = shown.phase === 'quiz' ? QUIZ_MS : CLOCK_MS[shown.speed];
+  const left = Math.min(1, ms / Math.min(full, timer.ms));
   if (decider(shown) === me && ticks(clockLeft, ms)) sounds.play('tick');
   clockLeft = ms;
   hud.timer(left, decider(shown));

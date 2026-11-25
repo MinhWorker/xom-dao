@@ -16,6 +16,11 @@ import type { Quiz } from './quiz.js';
 
 /** The decision clock per "Tốc độ" (ms). */
 export const CLOCK_MS = { normal: 15_000, fast: 10_000 } as const;
+/**
+ * What a decision's clock adds when the move before it drew a Card (ms): the screens show the Card,
+ * then its moment (Vé ra tù's pass, Ốm), before anyone can decide. Half under Nhanh.
+ */
+export const CARD_MS = 7_000;
 /** How long the drawer has to answer a Quiz (ms). */
 export const QUIZ_MS = 20_000;
 /** A player holds at most this many Effects; a new one drops the oldest. */

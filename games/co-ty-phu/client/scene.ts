@@ -41,8 +41,9 @@ import {
   WebGLRenderer,
 } from 'three';
 import { AIRPORT_TILE, BOARD } from '../server/game/board.js';
-import { isFullSet, isMonopoly } from '../server/game/economy.js';
+import { cityRent, isFullSet, isMonopoly, stationRent } from '../server/game/economy.js';
 import { HOTEL, type Lot, type View } from '../server/game/model.js';
+import { TUNING } from '../server/game/tuning.js';
 import { ambience } from './ambience.js';
 import { Marquee } from './lights.js';
 import {
@@ -63,6 +64,7 @@ import {
   bandRect,
   CORNER,
   cardBack,
+  type Mark,
   paintTile,
   placement,
   printBoard,
@@ -277,11 +279,15 @@ export class BoardView {
   /** The dice cast no shadow: a soft dark patch under each, darkest on the board, fading as it rises. */
   private readonly contacts: Mesh[];
   private readonly glow: Mesh[] = [];
-  private readonly tick: (t?: number, neon?: number, struck?: ReadonlySet<number>) => void;
-  /** Per Tile whose price is crossed out (`rentFree`): its face printed again, laid over the board. */
+  private readonly tick: (t?: number, neon?: number, marks?: ReadonlyMap<number, Mark>) => void;
+  /** Per Tile whose price reads differently now (`prices`): its face printed again, laid over the board. */
   private readonly strikes = new Map<number, Mesh>();
   /** The Tiles whose price the player sees crossed out for a 0 under Miễn thuê. */
   private struck: ReadonlySet<number> = new Set();
+  /** Per owned Lot, how its price reads from the Lots shown (`showLots`): what it charges. */
+  private owned = new Map<number, Mark>();
+  /** How each Tile's price reads now, from `struck` and `owned`. */
+  private prices: ReadonlyMap<number, Mark> = new Map();
   private readonly tweens: Tween[] = [];
   /** Shader programs held for the whole session (`keepPrograms`). */
   private readonly kept = new Set<object>();
@@ -592,12 +598,21 @@ export class BoardView {
    * empty list prints them as they are.
    */
   rentFree(tiles: readonly number[]) {
-    const next = new Set(tiles);
-    const changed = [...new Set([...this.struck, ...next])].filter(
-      (i) => this.struck.has(i) !== next.has(i),
+    this.struck = new Set(tiles);
+    this.remark();
+  }
+
+  /** Reprints the faces whose price reads differently from `struck` and `owned`. */
+  private remark() {
+    const next = new Map<number, Mark>();
+    for (const [i, mark] of this.owned) next.set(i, { ...mark });
+    for (const i of this.struck) next.set(i, { ...next.get(i), struck: true });
+    const key = (m?: Mark) => (m ? [m.struck, m.rent, m.rate, m.times, m.boosted].join('|') : '');
+    const changed = [...new Set([...this.prices.keys(), ...next.keys()])].filter(
+      (i) => key(this.prices.get(i)) !== key(next.get(i)),
     );
     if (changed.length === 0) return;
-    this.struck = next;
+    this.prices = next;
     for (const i of changed) {
       const kind = BOARD[i]?.kind;
       if (!kind || isSpecial(kind) || kind === 'utility') continue;
@@ -607,22 +622,23 @@ export class BoardView {
         (old.material as MeshStandardMaterial).map?.dispose();
         this.strikes.delete(i);
       }
-      if (next.has(i)) this.strikes.set(i, this.strikeFace(i));
+      const mark = next.get(i);
+      if (mark) this.strikes.set(i, this.strikeFace(i, mark));
     }
     this.tick(undefined, 0, next);
   }
 
   /**
-   * Tile `i` printed again with its price crossed out, laid just over the board: a small texture,
-   * where repainting the whole printed board stalled the screen.
+   * Tile `i` printed again with its price read as `mark`, laid just over the board: a small
+   * texture, where repainting the whole printed board stalled the screen.
    */
-  private strikeFace(i: number) {
+  private strikeFace(i: number, mark: Mark) {
     const p = placement(i);
     const px = 160;
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(p.w * px);
     canvas.height = Math.ceil(p.h * px);
-    paintTile(canvas.getContext('2d') as CanvasRenderingContext2D, i, px, undefined, 0, true);
+    paintTile(canvas.getContext('2d') as CanvasRenderingContext2D, i, px, undefined, 0, mark);
     const map = new CanvasTexture(canvas);
     map.colorSpace = SRGBColorSpace;
     const face = new Mesh(
@@ -687,12 +703,16 @@ export class BoardView {
   showLots(view: View) {
     clear(this.lots);
     clear(this.marks);
+    const owned = new Map<number, Mark>();
     view.lots.forEach((lot, i) => {
       if (!lot) return;
       const g = lotPieces(i, lot.owner, lot.level, isFullSet(view, i) || isMonopoly(view, i));
       g.userData.tile = i;
       this.lots.add(g);
+      owned.set(i, rentMark(view, i));
     });
+    this.owned = owned;
+    this.remark();
     for (const [tile, material] of [
       [view.festival, FESTIVAL],
       [view.blackout?.tile ?? null, BLACKOUT],
@@ -1921,7 +1941,7 @@ export class BoardView {
       a.position.y = BOARD_H + 0.45 + Math.abs(Math.sin(ms / 260 + k * 0.5)) * 0.25;
     const lit = ms < this.neonUntil ? (Math.floor(ms / 110) % 2 === 0 ? 1 : 0.25) : 0;
     if (!this.low || lit > 0 || this.wasLit)
-      this.tick(this.low ? undefined : ms / 1000, lit, this.struck);
+      this.tick(this.low ? undefined : ms / 1000, lit, this.prices);
     this.wasLit = lit > 0;
     if (!this.speaking && this.standing?.blink)
       this.notice.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(ms / 170));
@@ -2077,6 +2097,32 @@ function drop(parent: Object3D, obj: Object3D) {
 
 function clear(group: Object3D) {
   for (const child of [...group.children]) group.remove(child);
+}
+
+/** How an owned Lot's price reads: what it charges, and by how much that is raised now. */
+function rentMark(view: View, i: number): Mark {
+  const lot = view.lots[i];
+  const kind = BOARD[i]?.kind;
+  if (!lot) return {};
+  const count = view.lots.filter(
+    (l, k) => l?.owner === lot.owner && BOARD[k]?.kind === kind,
+  ).length;
+  const lucky = view.players[lot.owner]?.effects.some((e) => e.id === 'lucky');
+  const buff = (view.festival === i ? TUNING.festivalRent : 1) * (lucky ? TUNING.luckyRent : 1);
+  if (kind === 'utility') {
+    const both = count >= 2;
+    return {
+      rate: TUNING.utilityRent[both ? 1 : 0],
+      times: buff,
+      boosted: both || buff > 1,
+    };
+  }
+  if (kind === 'station') {
+    const times = count * buff;
+    return { rent: stationRent(TUNING, 1), times, boosted: times > 1 };
+  }
+  const times = (isFullSet(view, i) ? TUNING.fullSet : 1) * buff;
+  return { rent: cityRent(TUNING, i, lot.level, false), times, boosted: times > 1 };
 }
 
 /** An owned Lot: a tint and an outer strip in the owner's colour, its houses or Hotel, a gold rim in a Full set or a monopoly. */
