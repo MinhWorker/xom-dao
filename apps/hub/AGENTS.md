@@ -100,7 +100,7 @@ goes back to the waiting room, so playing again reuses it.
 - A new Match or a reconnect → a fresh `init`.
 - Every `match:state` push → `message('match:state', data)`: the whole push, `view` included.
 - `send` → `match:move { matchId, event, payload }`; the server's refusal goes back in `ack`.
-- Results show on `done`, or 4 s after the Match is over if the Game never says it. Places come
+- Results show on `done`, or 15 s after the Match is over if the Game never says it. Places come
   from the `match:state` that ends it (`match:result` is not resent after a reconnect).
 - While Results show, the eye button (`screens/room/Peek`) in the corner hides every element marked
   `data-hud` (Results and the corner's other buttons) while a mouse hovers it or a finger holds it,
