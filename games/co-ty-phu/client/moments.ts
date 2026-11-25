@@ -121,6 +121,7 @@ export class Moments {
     paper.innerHTML =
       '<b class="head">Hóa đơn</b><span class="what"></span><span class="note"></span><dl><dt>Người trả</dt><dd class="from"></dd><dt>Người nhận</dt><dd class="to"></dd></dl><div class="total"><span>Tổng</span><b></b></div><i class="seal"><span>Đã</span>thanh toán</i>';
     if (payer) {
+      paper.classList.add('payer');
       const button = el('button', 'settle');
       (button as HTMLButtonElement).type = 'button';
       button.innerHTML = 'Thanh toán<i></i>';

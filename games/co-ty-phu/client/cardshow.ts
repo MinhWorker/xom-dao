@@ -38,8 +38,8 @@ export class CardShow {
   private readonly card = el('button', 'flip');
   private readonly choices = el('div', 'choices');
   private readonly stage = el('div', 'stage');
-  /** The Quiz's clock along the bottom of the Card. */
-  private readonly clock = el('i', 'quiz-clock');
+  /** The time left to decide, as a bright rim running out round the Card. */
+  private readonly countdown = el('i', 'countdown');
   /** Bumped by every show and hide: a sequence under way for an older one stops. */
   private run = 0;
   private release: (() => void) | null = null;
@@ -48,6 +48,8 @@ export class CardShow {
   constructor() {
     this.card.type = 'button';
     this.card.innerHTML = '<span class="face back"></span><span class="face front"></span>';
+    this.countdown.append(el('i', 'ring'));
+    this.countdown.hidden = true;
     for (let k = 0; k < 4; k++) this.pile.append(el('i', 'back'));
     this.stage.append(this.card, this.choices);
     this.root.append(this.pile, this.stage);
@@ -139,8 +141,7 @@ export class CardShow {
       Object.assign(el('span', 'deck'), { textContent: by }),
       Object.assign(el('span', 'name'), { textContent: 'Đố' }),
     );
-    front.replaceChildren(head, question, this.clock);
-    this.clock.hidden = true;
+    front.replaceChildren(head, question);
     this.root.hidden = false;
     this.root.dataset.step = 'face';
     this.root.dataset.quiz = key;
@@ -176,10 +177,15 @@ export class CardShow {
     });
   }
 
-  /** The Quiz's clock: how much of it is left, from 0 to 1; `null` hides it. */
+  /** The clock of the decision on the Card: how much of it is left, from 0 to 1; `null` hides it. */
   timer(left: number | null) {
-    this.clock.hidden = left === null || this.root.dataset.quiz === undefined;
-    if (left !== null) this.clock.style.transform = `scaleX(${left})`;
+    const on = left !== null && !this.root.hidden && this.root.dataset.step === 'face';
+    this.countdown.hidden = !on;
+    if (!on) return;
+    const front = this.card.querySelector('.front') as HTMLElement;
+    if (this.countdown.parentElement !== front) front.append(this.countdown);
+    this.countdown.style.setProperty('--left', String(left));
+    this.countdown.classList.toggle('short', left < 0.3);
   }
 
   private answers() {
