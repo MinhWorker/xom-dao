@@ -11,7 +11,10 @@ Where to look:
   for the new platform needs only `server/index.ts`; the legacy registry skips it.
   `games/tien-len` (Tiến Lên) is the Turn-based example with hidden hands: rounds, a turn clock,
   `bot` that also plays the seat of anyone who leaves (so it has no `onLeave`), and `finish`
-  with places and scores. Its client is a Godot project in `godot/` (the reference Godot Game): the
+  with places and scores. Its computer plays rounds out ahead on guessed hands (`server/game/search.ts`)
+  with quick rules (`bot.ts`); `npm run simulate -w @xomdao/game-tien-len -- [--games 200]
+  [--seats 2,3,4]` measures it against the old one (`sim/baseline.ts`). Run it after changing
+  either. Its client is a Godot project in `godot/` (the reference Godot Game): the
   cards, plates and boards are drawn in code, `main.gd` presents each `match:state` push paced
   one after another and sounds come from `assets/`. `assets/*.webp` and `sources/` are the legacy
   AI-made art, which the client does not use.

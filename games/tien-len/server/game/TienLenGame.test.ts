@@ -9,8 +9,14 @@ import { TienLenGame } from './TienLenGame.js';
 const PLAYERS = ['a', 'b', 'c', 'd'];
 
 /** A Match as the server starts it: the options filled from the manifest. */
-function open(players = PLAYERS, options: Partial<Options> = {}, seed = 1, bots: string[] = []) {
-  return testGame(new TienLenGame(), players, {
+function open(
+  players = PLAYERS,
+  options: Partial<Options> = {},
+  seed = 1,
+  bots: string[] = [],
+  playouts = 0,
+) {
+  return testGame(new TienLenGame({ playouts }), players, {
     options: optionsSchema(manifest).parse(options),
     seed,
     bots,
@@ -220,6 +226,12 @@ describe('computer seats', () => {
         expect(game.result?.seats.map((s) => s.place).sort()).toEqual(players.map((_, i) => i + 1));
       }
     }
+  });
+
+  it('looks ahead without a refused move', () => {
+    const players = PLAYERS.slice(0, 3);
+    const game = playMatch(open(players, { rounds: 1 }, 5, players, 20), players);
+    expect(game.result).not.toBeNull();
   });
 
   it('plays a ten-round Match through without a refused move', () => {
