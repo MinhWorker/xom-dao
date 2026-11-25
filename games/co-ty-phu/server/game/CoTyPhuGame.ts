@@ -45,6 +45,7 @@ import {
 } from './cards.js';
 import { landPrice, rent, takeoverPrice, taxOf, upgradeCost } from './economy.js';
 import {
+  CARD_MS,
   CLOCK_MS,
   type Deck,
   DOUBLES_TO_JAIL,
@@ -315,7 +316,9 @@ export class CoTyPhuGame extends Game<State, Options, View> {
       ctx.finish(places, { scores: state.players.map((p) => p.cash) });
       return state;
     }
-    ctx.setTimer(state.phase === 'quiz' ? QUIZ_MS : CLOCK_MS[state.speed], 'timeout');
+    const drew = (state.card?.draw ?? 0) > (ctx.state.card?.draw ?? 0);
+    const shown = drew ? CARD_MS * (state.speed === 'fast' ? 0.5 : 1) : 0;
+    ctx.setTimer((state.phase === 'quiz' ? QUIZ_MS : CLOCK_MS[state.speed]) + shown, 'timeout');
     return state;
   }
   /** Two dice, or one under Kẹt xe. */

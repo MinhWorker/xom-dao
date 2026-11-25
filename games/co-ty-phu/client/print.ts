@@ -257,9 +257,27 @@ const iconOf = (tile: Tile): Icon | undefined => {
   return ICONS[tile.kind];
 };
 
-/** What a Tile prints under its name: its price, or for Điện lực and Cấp nước what they charge per point rolled. */
-const priceOf = (i: number) =>
-  BOARD[i]?.kind === 'utility' ? `${TUNING.utilityRent[0]} ×` : landPrice(TUNING, i) || undefined;
+/**
+ * How a Tile's printed price reads now: `struck` crossed out for a 0 (Miễn thuê); for an owned Lot,
+ * `rent` what it charges before `times` (a ×n after it), or for a utility `rate` per point rolled;
+ * `boosted` prints it in red, raised by a Full set, a monopoly, a Festival or Thần tài.
+ */
+export interface Mark {
+  struck?: boolean;
+  rent?: number;
+  rate?: number;
+  times?: number;
+  boosted?: boolean;
+}
+
+/** What a Tile prints under its name: its price, or what it charges once owned; Điện lực and Cấp nước per point rolled. */
+const priceOf = (i: number, mark: Mark) => {
+  const price =
+    BOARD[i]?.kind === 'utility'
+      ? `${mark.rate ?? TUNING.utilityRent[0]} ×`
+      : (mark.rent ?? landPrice(TUNING, i)) || undefined;
+  return price && mark.times && mark.times > 1 ? `${price} ×${mark.times}` : price;
+};
 
 /** A flat dark die, `s` pixels across, centred on (`x`, `y`). */
 function printDie(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
@@ -285,8 +303,9 @@ const drawFace = (
   px: number,
   t?: number,
   neon?: number,
-  struck?: boolean,
+  mark: Mark = {},
 ) => {
+  const struck = mark.struck;
   const tile = BOARD[i] as Tile;
   let area = { x: -w / 2, y: -h / 2, w, h };
   const special = SPECIAL_COLORS[tile.kind];
@@ -330,7 +349,7 @@ const drawFace = (
     tile.kind === 'go-jail';
   const icon = special ? undefined : iconOf(tile);
   const hasIcon = Boolean(special || icon);
-  const price = priceOf(i);
+  const price = priceOf(i, mark);
   const nameSize = corner ? px * 0.24 : px * 0.2;
   const lines = wrap(ctx, tile.name.toUpperCase(), maxW, nameSize);
   const size = fitFont(ctx, lines, maxW, nameSize);
@@ -373,7 +392,7 @@ const drawFace = (
     ctx.font = `700 ${priceSize}px system-ui, "Segoe UI", Roboto, sans-serif`;
     const left = cx - (width + zero) / 2;
     const top = y + priceSize * 0.2;
-    ctx.fillStyle = struck ? '#a3937e' : '#6b5a48';
+    ctx.fillStyle = struck ? '#a3937e' : mark.boosted ? '#c2410c' : '#6b5a48';
     ctx.fillText(label, left, top);
     if (die) printDie(ctx, left + text + gap + die / 2, top + priceSize * 0.5, die);
     if (struck) {
@@ -425,7 +444,7 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number, title: boolean) =
 
 /**
  * Paints Tile `i` with its top-left corner at the origin; `t` sets its icon moving, if it moves,
- * `neon` (0 to 1) lights its outline, and `struck` crosses its price out for a 0 (Miễn thuê).
+ * `neon` (0 to 1) lights its outline, and `mark` says how its price reads now.
  */
 export const paintTile = (
   ctx: CanvasRenderingContext2D,
@@ -433,14 +452,14 @@ export const paintTile = (
   px: number,
   t?: number,
   neon?: number,
-  struck?: boolean,
+  mark?: Mark,
 ) => {
   const p = placement(i);
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, p.w * px, p.h * px);
   ctx.save();
   ctx.translate((p.w / 2) * px, (p.h / 2) * px);
-  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t, neon, struck);
+  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t, neon, mark);
   ctx.restore();
   ctx.strokeStyle = LINE;
   ctx.lineWidth = px * 0.02;

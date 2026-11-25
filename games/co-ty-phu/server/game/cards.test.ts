@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import manifest from '../../manifest.js';
 import { CoTyPhuGame } from './CoTyPhuGame.js';
 import { type CardId, cardOf, deckOf } from './cards.js';
-import type { Effect, State, View } from './model.js';
+import { CARD_MS, CLOCK_MS, type Effect, type State, type View } from './model.js';
 import { all, cash, open, own, PLAYERS, player, RULES_TUNING } from './test-match.js';
 import { TUNING } from './tuning.js';
 
@@ -64,6 +64,10 @@ describe('the decks', () => {
     const game = draw('chance-interest');
     expect(game.state.decks.chance).toEqual(['chance-interest', 'chance-interest']);
     expect(game.state.card).toMatchObject({ id: 'chance-interest', seat: 0, draw: 1 });
+  });
+
+  it('gives the next decision the time the Card takes to show', () => {
+    expect(draw('chance-jail').timer?.ms).toBe(CLOCK_MS.normal + CARD_MS);
   });
 });
 
@@ -203,7 +207,7 @@ describe('Cards that ask', () => {
 
   it('makes the safe pick when the clock runs out', () => {
     const game = draw('chance-bonus');
-    expect(game.timer).toMatchObject({ ms: 15_000 });
+    expect(game.timer).toMatchObject({ ms: CLOCK_MS.normal + CARD_MS });
     game.fireTimer();
     expect(cash(game)).toEqual([1150, 1000]);
   });

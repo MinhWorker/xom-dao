@@ -14,7 +14,7 @@ import {
   type Vector3,
 } from 'three';
 import { BOARD } from '../server/game/board.js';
-import { paintTile, placement } from './print.js';
+import { type Mark, paintTile, placement } from './print.js';
 import { isSpecial } from './special.js';
 
 /** Board units to the board group's space; `y` is height above the board. */
@@ -33,8 +33,8 @@ const GAP = 4;
 
 /**
  * Lays a moving face over each special Tile; call the result each frame with seconds, or with
- * nothing to paint the icons at rest, `neon` for how lit Xuất phát's arrow is, and `struck` the
- * Tiles whose price is crossed out.
+ * nothing to paint the icons at rest, `neon` for how lit Xuất phát's arrow is, and `marks` how
+ * each Tile's price reads now.
  */
 export const ambience = (parent: Object3D, at: At, anisotropy: number) => {
   const tiles = BOARD.flatMap((tile, i) =>
@@ -88,7 +88,7 @@ export const ambience = (parent: Object3D, at: At, anisotropy: number) => {
     parent.add(face);
   }
   let last = Number.NEGATIVE_INFINITY;
-  return (t?: number, neon = 0, struck: ReadonlySet<number> = new Set()) => {
+  return (t?: number, neon = 0, marks: ReadonlyMap<number, Mark> = new Map()) => {
     if (t !== undefined && t - last < 1 / FPS) return;
     last = t ?? Number.NEGATIVE_INFINITY;
     for (const { i, x, y, w, h } of cells) {
@@ -97,7 +97,7 @@ export const ambience = (parent: Object3D, at: At, anisotropy: number) => {
       ctx.beginPath();
       ctx.rect(0, 0, w, h);
       ctx.clip();
-      paintTile(ctx, i, PX, t, i === 0 ? neon : 0, struck.has(i));
+      paintTile(ctx, i, PX, t, i === 0 ? neon : 0, marks.get(i));
       ctx.restore();
     }
     map.needsUpdate = true;
