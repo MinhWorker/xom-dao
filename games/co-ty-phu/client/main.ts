@@ -14,7 +14,7 @@ import {
   type BridgeSettings,
   createGameBridge,
 } from '@xomdao/bridge';
-import { BOARD, setTiles, tilesOf } from '../server/game/board.js';
+import { BOARD, JAIL_TILE, setTiles, tilesOf } from '../server/game/board.js';
 import { cardOf } from '../server/game/cards.js';
 import { stationRent } from '../server/game/economy.js';
 import { HOTEL, type Sale, type View } from '../server/game/model.js';
@@ -365,7 +365,7 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: a Full set, the monopoly moments, "Có tội!!!", Xuất phát's pay and a flight's aim play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page: a Full set, the monopoly moments, "Có tội!!!", Xuất phát's pay, a flight's aim and the rim going to jail and flying play on the first view, for a look without a Match that reaches them. */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
 
 /** Plays each monopoly moment and the jail verdict for seat 0 on `view`'s board, then puts the board back. */
@@ -396,6 +396,9 @@ async function showcase(view: View, live: () => boolean) {
   sounds.play('guilty');
   await verdict.play(names[0] ?? '', 1, low);
   if (!live()) return;
+  await board.jump(0, JAIL_TILE, 560, 'jail');
+  await wait(900);
+  if (!live()) return;
   sounds.play('coins');
   board.payday(TUNING.startBonus);
   await wait(1900);
@@ -405,6 +408,9 @@ async function showcase(view: View, live: () => boolean) {
     await wait(1100);
   }
   board.aim(null);
+  if (!live()) return;
+  await board.jump(0, 39, 1400, 'flight');
+  await wait(1600);
   if (live()) present(view);
 }
 

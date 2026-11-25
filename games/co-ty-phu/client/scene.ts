@@ -1042,8 +1042,13 @@ export class BoardView {
     const a = t.position.clone();
     const b = spot(to, 0, 1);
     this.focus = t;
-    if (how === 'flight') await this.fly(t, a, b, ms);
-    else
+    if (how === 'jail') this.marquee.play({ kind: 'jail', ms: ms * 2.4 + 400 * this.pace });
+    if (how === 'flight') {
+      this.marquee.play({ kind: 'dark', ms: ms * 4 });
+      await this.fly(t, a, b, ms);
+      if (mine === this.generation)
+        this.marquee.play({ kind: 'wave', tile: to, ms: 1100 * this.pace });
+    } else
       await this.tween(ms, (u) => {
         t.position.lerpVectors(a, b, ease(u));
         t.position.y = a.y + Math.sin(u * Math.PI) * 1.6;

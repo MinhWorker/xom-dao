@@ -3,7 +3,8 @@
  * second; a `LightShow` takes them over for a moment: a Full set lights the bulbs by its Tiles one
  * after another in its colour, then blinks the whole rim; the four bến xe light the rim side by side
  * and send a "O o ." run round it clockwise; Điện lực and Cấp nước crackle orange along the bottom
- * and left sides and ripple blue along the top and right.
+ * and left sides and ripple blue along the top and right. Going to jail turns the rim white; a
+ * flight puts it out until the token lands, then a wave runs out from that Tile all round.
  */
 import {
   AdditiveBlending,
@@ -27,6 +28,7 @@ const OFF = new Color('#5a4310');
 const GOLD = new Color('#ffd21f');
 const SPARK = new Color('#ffa31a');
 const WATER = new Color('#3aa0ff');
+const WHITE = new Color('#ffffff');
 /** The sides of the rim in the order a clockwise run passes them, starting at the bottom. */
 const CLOCKWISE_SIDES = [0, 3, 2, 1];
 
@@ -34,7 +36,12 @@ export type LightShow =
   /** A Full set of `tiles` in `color`; each Tile lights `step` ms after the one before. */
   | { kind: 'set'; tiles: number[]; color: string; step: number; ms: number }
   | { kind: 'transport'; ms: number }
-  | { kind: 'utility'; ms: number };
+  | { kind: 'utility'; ms: number }
+  | { kind: 'jail'; ms: number }
+  /** Every bulb out, while a token flies. */
+  | { kind: 'dark'; ms: number }
+  /** A wave out of the bulbs by `tile`, both ways round the rim. */
+  | { kind: 'wave'; tile: number; ms: number };
 
 /** A number from 0 to 1 that looks random but is the same for the same `a` and `b`. */
 const hash = (a: number, b: number) => {
@@ -165,6 +172,16 @@ export class Marquee {
     if (!show) return [ON, (k + Math.floor(now / 480)) % 2 === 0 ? 1 : 0];
     const t = now - show.start;
     const side = this.side[k] as number;
+    if (show.kind === 'jail') return [WHITE, 1];
+    if (show.kind === 'dark') return [ON, 0];
+    if (show.kind === 'wave') {
+      const from = this.nearest.indexOf(show.tile);
+      const apart = Math.abs(k - Math.max(0, from));
+      const ring = Math.min(apart, this.count - apart);
+      const front = (t / (show.ms * 0.8)) * (this.count / 2);
+      const crest = Math.max(0, 1 - Math.abs(ring - front) / 4);
+      return [crest > 0.5 ? WHITE : ON, ring < front ? Math.max(crest, 0.35) : crest];
+    }
     if (show.kind === 'set') {
       const color = show.tint;
       const all = show.step * (show.tiles.length - 1) + show.step * 0.8;
