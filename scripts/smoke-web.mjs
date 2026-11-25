@@ -186,8 +186,16 @@ const SCENARIOS = {
     const label = (await answer.textContent()) || (await answer.getAttribute('aria-label'));
     await answer.click();
     await until('the answer', async () => JSON.stringify(await view()) !== before, 30);
-    await page.mouse.click(265, 45);
-    await page.waitForSelector('#info:not([hidden])', { timeout: 5000 });
+    // The camera may still be following a token, away from Sân bay: tap until the board is back.
+    await until(
+      'a Tile shown on a tap',
+      async () => {
+        await page.mouse.click(265, 45);
+        await sleep(300);
+        return page.locator('#info:not([hidden])').isVisible();
+      },
+      20,
+    );
     await sleep(400);
     return `drew the board, rolled ${rolled.dice.join('+')}, then "${label}", and showed Sân bay`;
   },
