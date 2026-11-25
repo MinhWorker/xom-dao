@@ -786,7 +786,7 @@ body {
   font-weight: 800;
 }
 
-.deed td .die svg {
+.deed .die svg {
   width: 1.05em;
   height: 1.05em;
   margin-left: 3px;
@@ -1974,7 +1974,7 @@ body.quake .roster {
   filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.5)) brightness(0.85);
 }
 
-.monopoly .vehicle svg {
+.monopoly .vehicle .art {
   display: block;
   width: 100%;
   height: auto;
@@ -2014,7 +2014,7 @@ body.quake .roster {
     calc(0.25s * var(--pace)) both;
 }
 
-.monopoly .banner b {
+.monopoly .banner-title {
   padding: 6px 28px 10px;
   font-size: clamp(30px, 8vh, 64px);
   font-weight: 900;
@@ -2063,7 +2063,7 @@ body.quake .roster {
   margin-right: 8vw;
 }
 
-.monopoly[data-of="utility"] .banner b {
+.monopoly[data-of="utility"] .banner-title {
   background: linear-gradient(180deg, #2f80ed, #1a4fa0);
   text-shadow:
     0 3px 0 #0e2d5e,
@@ -2094,7 +2094,7 @@ body.quake .roster {
   animation-direction: alternate-reverse;
 }
 
-.monopoly .cloud svg {
+.monopoly .cloud .art {
   display: block;
   width: 100%;
 }
@@ -2147,7 +2147,7 @@ body.quake .roster {
   filter: drop-shadow(0 0 14px #fff2a0) drop-shadow(0 0 30px #ffd21f);
 }
 
-.monopoly .bolt svg {
+.monopoly .bolt .art {
   display: block;
   width: 100%;
 }
@@ -2165,7 +2165,7 @@ body.quake .roster {
     mono-breathe calc(1.2s * var(--pace)) ease-in-out calc(0.7s * var(--pace)) infinite alternate;
 }
 
-.monopoly .engineer svg {
+.monopoly .engineer .art {
   display: block;
   width: 100%;
   height: 100%;
@@ -2213,7 +2213,7 @@ body.quake .roster {
   animation: mono-out calc(0.22s * var(--pace)) ease-in forwards;
 }
 
-.verdict .lines {
+.verdict .burst-lines {
   position: absolute;
   left: 70%;
   top: 45%;
@@ -2241,7 +2241,7 @@ body.quake .roster {
   transform-origin: 15% 90%;
 }
 
-.verdict .lawyer svg {
+.verdict .lawyer .art {
   display: block;
   width: 100%;
 }
@@ -2265,13 +2265,13 @@ body.quake .roster {
     verdict-shake calc(0.06s * var(--pace)) linear calc(0.58s * var(--pace)) 6;
 }
 
-.verdict .shout svg {
+.verdict .shout .art {
   grid-area: 1 / 1;
   display: block;
   width: 100%;
 }
 
-.verdict .shout b {
+.verdict .shout-title {
   grid-area: 1 / 1;
   font-family: var(--display);
   font-size: min(10vh, 7vw);
@@ -2319,7 +2319,7 @@ body.quake .roster {
   animation: fade-in calc(0.2s * var(--pace)) ease-out calc(0.5s * var(--pace)) both;
 }
 
-.verdict.low .lines {
+.verdict.low .burst-lines {
   animation: none;
 }
 
@@ -2340,7 +2340,7 @@ body.quake .roster {
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.5));
 }
 
-.card-moments .crow svg {
+.card-moments .crow .art {
   display: block;
   width: 100%;
 }
@@ -2387,7 +2387,7 @@ body.quake .roster {
     virus-wobble calc(1.4s * var(--pace)) ease-in-out infinite alternate;
 }
 
-.card-moments .virus svg {
+.card-moments .virus .art {
   display: block;
   width: 100%;
 }
@@ -2476,7 +2476,7 @@ body.quake .roster {
   color: #7a5a24;
 }
 
-.card-moments .pass-head b {
+.card-moments .pass-title {
   font-size: min(6vh, 30px);
   font-weight: 900;
   color: #8e1f14;
@@ -2499,8 +2499,8 @@ body.quake .roster {
   width: min(9vh, 48px);
 }
 
-.card-moments .pass-door svg,
-.card-moments .pass-sign svg {
+.card-moments .pass-door .art,
+.card-moments .pass-sign .art {
   display: block;
   width: 100%;
 }
@@ -2512,7 +2512,7 @@ body.quake .roster {
   border-top: 1px dashed #8a6a2e;
 }
 
-.card-moments .pass-sign svg {
+.card-moments .pass-sign .art {
   margin-top: -36px;
 }
 

@@ -11,7 +11,7 @@ const el = (tag: string, className: string) => {
 };
 
 /** A crow side on, flying right, a brown wallet in its beak; its wings flap (`.wing`). */
-const CROW = `<svg viewBox="0 0 220 140" aria-hidden="true">
+const CROW = `<svg class="art" viewBox="0 0 220 140" aria-hidden="true">
   <g stroke="#0d0d12" stroke-width="3" stroke-linejoin="round">
     <path class="wing back" d="M96 62q-30-50-80-46 26 22 30 52z" fill="#26262f"/>
     <path d="M40 74l-34-8 18 18-16 10 36-4z" fill="#1b1b22"/>
@@ -30,7 +30,7 @@ const CROW = `<svg viewBox="0 0 220 140" aria-hidden="true">
 </svg>`;
 
 /** A virus: a green ball with knobbed spikes. */
-const VIRUS = `<svg viewBox="0 0 100 100" aria-hidden="true">
+const VIRUS = `<svg class="art" viewBox="0 0 100 100" aria-hidden="true">
   <g stroke="#1f4d1a" stroke-width="4" fill="#7ccf4f">
     ${Array.from({ length: 10 }, (_, k) => {
       const a = (k / 10) * Math.PI * 2;
@@ -44,14 +44,14 @@ const VIRUS = `<svg viewBox="0 0 100 100" aria-hidden="true">
 </svg>`;
 
 /** The jail's door: bars in an arch. */
-const DOOR = `<svg viewBox="0 0 60 70" aria-hidden="true">
+const DOOR = `<svg class="art" viewBox="0 0 60 70" aria-hidden="true">
   <path d="M6 68V30a24 24 0 0148 0v38z" fill="#4a3a2c" stroke="#1f160f" stroke-width="4"/>
   <path d="M18 66V22M30 66V12M42 66V22" stroke="#d9c9a8" stroke-width="5" stroke-linecap="round"/>
   <path d="M8 44h44" stroke="#d9c9a8" stroke-width="4"/>
 </svg>`;
 
 /** A signature, drawn as it shows. */
-const SIGN = `<svg viewBox="0 0 160 50" aria-hidden="true"><path class="ink" d="M6 38c10-26 18-30 20-14s-4 22 4 10 14-30 18-12-2 20 8 6 10-16 14-6 6 8 14-2 10-10 16-2 30-4 50-6" fill="none" stroke="#1b2a6b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const SIGN = `<svg class="art" viewBox="0 0 160 50" aria-hidden="true"><path class="ink" d="M6 38c10-26 18-30 20-14s-4 22 4 10 14-30 18-12-2 20 8 6 10-16 14-6 6 8 14-2 10-10 16-2 30-4 50-6" fill="none" stroke="#1b2a6b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 export class CardMoments {
   private readonly layer = el('div', 'card-moments');
@@ -120,7 +120,7 @@ export class CardMoments {
     if (pace <= 0) return;
     const root = el('div', 'pass');
     root.style.setProperty('--pace', `${pace}`);
-    root.innerHTML = `<div class="pass-card"><div class="pass-head"><span>Bộ Tư pháp Xóm Đảo</span><b>Vé ra tù</b></div><p class="pass-body">Cấp cho <strong></strong>. Người giữ vé được ra tù ngay, không cần gieo, không cần nộp tiền. Có giá trị một lần.</p><div class="pass-foot"><i class="pass-door">${DOOR}</i><span class="pass-sign">${SIGN}<em>Giám đốc trại</em></span></div></div>`;
+    root.innerHTML = `<div class="pass-card"><div class="pass-head"><span>Bộ Tư pháp Xóm Đảo</span><b class="pass-title">Vé ra tù</b></div><p class="pass-body">Cấp cho <strong></strong>. Người giữ vé được ra tù ngay, không cần gieo, không cần nộp tiền. Có giá trị một lần.</p><div class="pass-foot"><i class="pass-door">${DOOR}</i><span class="pass-sign">${SIGN}<em>Giám đốc trại</em></span></div></div>`;
     (root.querySelector('strong') as HTMLElement).textContent = who;
     this.layer.append(root);
     await Promise.race([

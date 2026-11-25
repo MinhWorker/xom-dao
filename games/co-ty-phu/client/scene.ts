@@ -854,7 +854,7 @@ export class BoardView {
       const grow = u < 0.18 ? backOut(u / 0.18) : u > 0.85 ? 1 - (u - 0.85) / 0.15 : 1;
       g.scale.setScalar(Math.max(0.001, grow));
       g.rotation.y = u * 0.8;
-    }).then(() => this.fx.remove(g));
+    }).then(() => drop(this.fx, g));
     const p = where
       .clone()
       .setY(BOARD_H + 0.5)
@@ -1269,7 +1269,7 @@ export class BoardView {
         this.puff(sitting.position, 10, 420);
         this.tween(320 * this.pace, (u) =>
           sitting.scale.setScalar(Math.max(0.001, (1 - ease(u)) * GOD)),
-        ).then(() => this.world.remove(sitting));
+        ).then(() => drop(this.world, sitting));
       }
     });
   }
@@ -1298,7 +1298,7 @@ export class BoardView {
     const { taxi } = parked;
     this.puff(new Vector3(taxi.position.x, BOARD_H, taxi.position.z), 10, 380);
     this.tween(260 * this.pace, (u) => taxi.scale.setScalar(Math.max(0.001, 1 - ease(u)))).then(
-      () => this.fx.remove(taxi),
+      () => drop(this.fx, taxi),
     );
   }
 
@@ -1959,6 +1959,16 @@ const flat = (w: number, h: number, color: string, opacity = 1) => {
   m.rotation.x = -Math.PI / 2;
   return m;
 };
+
+/** Takes `obj` off `parent` and frees the geometry and materials it was built with. */
+function drop(parent: Object3D, obj: Object3D) {
+  parent.remove(obj);
+  obj.traverse((o) => {
+    if (!(o instanceof Mesh)) return;
+    o.geometry.dispose();
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose();
+  });
+}
 
 function clear(group: Object3D) {
   for (const child of [...group.children]) group.remove(child);

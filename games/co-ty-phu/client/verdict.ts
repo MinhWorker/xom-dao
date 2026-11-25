@@ -11,7 +11,7 @@ const el = (tag: string, className: string) => {
 };
 
 /** The lawyer, 420×260: dark suit, red tie, the right arm out and pointing, and no face. */
-const LAWYER = `<svg viewBox="0 0 420 260" aria-hidden="true">
+const LAWYER = `<svg class="art" viewBox="0 0 420 260" aria-hidden="true">
   <g stroke="#14141c" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
     <path d="M40 270l14-120q46-26 104-6l20 126z" fill="#2b2f45"/>
     <path d="M92 132l20 30 20-32z" fill="#f4f4f8" stroke-width="3"/>
@@ -30,7 +30,7 @@ const LAWYER = `<svg viewBox="0 0 420 260" aria-hidden="true">
 </svg>`;
 
 /** A jagged shout bubble, 300×180, white with a red rim. */
-const BURST = `<svg viewBox="0 0 300 180" aria-hidden="true">
+const BURST = `<svg class="art" viewBox="0 0 300 180" aria-hidden="true">
   <path d="M150 4l18 34 40-26 4 42 52-14-22 40 52 14-46 24 34 36-50-4 4 44-40-30-26 38-18-40-40 26 2-44-52 8 30-38-50-20 48-16-30-38 52 8 6-42 38 28z" fill="#fff" stroke="#d1312a" stroke-width="6" stroke-linejoin="round"/>
 </svg>`;
 
@@ -50,7 +50,7 @@ export class Verdict {
     if (pace <= 0) return;
     const run = ++this.run;
     const root = this.root;
-    root.innerHTML = `<i class="lines"></i><div class="lawyer">${LAWYER}</div><div class="shout">${BURST}<b>Có tội!!!</b></div><p class="who"></p>`;
+    root.innerHTML = `<i class="burst-lines"></i><div class="lawyer">${LAWYER}</div><div class="shout">${BURST}<b class="shout-title">Có tội!!!</b></div><p class="who"></p>`;
     (root.querySelector('.who') as HTMLElement).textContent = `${who} vào tù`;
     root.style.setProperty('--pace', `${pace}`);
     root.classList.toggle('low', low);

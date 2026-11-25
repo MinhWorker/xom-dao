@@ -15,7 +15,7 @@ const wheel = (x: number) =>
   `<g transform="translate(${x} 78)"><g class="spin"><circle r="12" fill="#1d1d24"/><circle r="6" fill="#b9bcc6"/><path d="M-6 0h12M0-6v12" stroke="#55586a" stroke-width="2"/></g></g>`;
 
 /** A coach in `color`, 200×92, facing right. */
-const bus = (color: string) => `<svg viewBox="0 0 200 92" aria-hidden="true">
+const bus = (color: string) => `<svg class="art" viewBox="0 0 200 92" aria-hidden="true">
   <rect x="4" y="10" width="190" height="64" rx="12" fill="${color}"/>
   <rect x="4" y="52" width="190" height="10" fill="#000" opacity=".18"/>
   ${[16, 48, 80, 112, 144].map((x) => `<rect x="${x}" y="20" width="26" height="22" rx="4" fill="#cfe9ff"/>`).join('')}
@@ -26,7 +26,7 @@ const bus = (color: string) => `<svg viewBox="0 0 200 92" aria-hidden="true">
 </svg>`;
 
 /** A lorry in `color` with a container, 220×92, facing right. */
-const truck = (color: string) => `<svg viewBox="0 0 220 92" aria-hidden="true">
+const truck = (color: string) => `<svg class="art" viewBox="0 0 220 92" aria-hidden="true">
   <rect x="4" y="8" width="150" height="62" rx="5" fill="#f3ead8"/>
   <rect x="4" y="8" width="150" height="62" rx="5" fill="none" stroke="${color}" stroke-width="6"/>
   ${[30, 60, 90, 120].map((x) => `<path d="M${x} 16v46" stroke="${color}" stroke-width="3" opacity=".45"/>`).join('')}
@@ -37,7 +37,7 @@ const truck = (color: string) => `<svg viewBox="0 0 220 92" aria-hidden="true">
 </svg>`;
 
 /** The engineer: a yellow hard hat, a hi-vis vest, a wrench raised, and no face. */
-const ENGINEER = `<svg viewBox="0 0 200 300" aria-hidden="true">
+const ENGINEER = `<svg class="art" viewBox="0 0 200 300" aria-hidden="true">
   <g stroke="#1b1b26" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
     <path d="M72 194h24v80H72zM104 194h24v80h-24z" fill="#2c3f6b"/>
     <path d="M66 272h32v14H58c0-8 3-14 8-14zM102 272h32c5 0 8 6 8 14h-40z" fill="#4a3324"/>
@@ -63,10 +63,10 @@ const ENGINEER = `<svg viewBox="0 0 200 300" aria-hidden="true">
   <path d="M78 44a24 20 0 0112-14" stroke="#fff6c2" stroke-width="4" stroke-linecap="round" fill="none"/>
 </svg>`;
 
-const CLOUD = `<svg viewBox="0 0 240 90" aria-hidden="true"><path d="M30 80a28 28 0 010-56 40 40 0 0174-10 34 34 0 0160 8 32 32 0 0146 58z" fill="currentColor"/></svg>`;
+const CLOUD = `<svg class="art" viewBox="0 0 240 90" aria-hidden="true"><path d="M30 80a28 28 0 010-56 40 40 0 0174-10 34 34 0 0160 8 32 32 0 0146 58z" fill="currentColor"/></svg>`;
 
 /** A lightning bolt, 60×160. */
-const BOLT = `<svg viewBox="0 0 60 160" aria-hidden="true"><path d="M34 0L6 84h20L12 160 56 60H34L48 0z" fill="#fff6c2" stroke="#ffd21f" stroke-width="3" stroke-linejoin="round"/></svg>`;
+const BOLT = `<svg class="art" viewBox="0 0 60 160" aria-hidden="true"><path d="M34 0L6 84h20L12 160 56 60H34L48 0z" fill="#fff6c2" stroke="#ffd21f" stroke-width="3" stroke-linejoin="round"/></svg>`;
 
 /** When lightning strikes in the storm (ms at `pace` 1); one strike on low graphics. */
 export const STRIKES = [450, 1250, 2200] as const;
@@ -108,8 +108,8 @@ export class MonopolyShow {
     if (of === 'station') this.convoy(color, pace, low);
     else this.storm(pace, low);
     const banner = el('div', 'banner');
-    banner.innerHTML = '<b></b><span></span>';
-    (banner.querySelector('b') as HTMLElement).textContent = title;
+    banner.innerHTML = '<b class="banner-title"></b><span></span>';
+    (banner.querySelector('.banner-title') as HTMLElement).textContent = title;
     (banner.querySelector('span') as HTMLElement).textContent = sub;
     root.append(banner);
     await new Promise<void>((done) => {

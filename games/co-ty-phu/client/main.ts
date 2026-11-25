@@ -14,7 +14,7 @@ import {
   type BridgeSettings,
   createGameBridge,
 } from '@xomdao/bridge';
-import { BOARD, JAIL_TILE, setTiles, tilesOf } from '../server/game/board.js';
+import { BOARD } from '../server/game/board.js';
 import { type CardId, cardOf } from '../server/game/cards.js';
 import { stationRent } from '../server/game/economy.js';
 import { HOTEL, type Sale, type View } from '../server/game/model.js';
@@ -39,6 +39,7 @@ import { Moments } from './moments.js';
 import { LOW_STRIKES, MonopolyShow, STRIKES } from './monopoly.js';
 import { type Change, changes, grandeur, pace } from './present.js';
 import { BoardView, SEAT_COLORS } from './scene.js';
+import { type Stage, showcase } from './showcase.js';
 import { Sounds, ticks } from './sound.js';
 import { Verdict } from './verdict.js';
 
@@ -182,8 +183,8 @@ const bridge = createGameBridge({
     if (event !== 'match:state') return;
     const push = data as MatchPush;
     const fresh = push.matchId !== matchId;
-    /** The first push after `init` is of the Match that `init` already put on the board. */
-    const known = fresh && matchId === null && joined;
+    /** Under `?showcase`, the first push after `init` is taken for the Match `init` put on the board. */
+    const known = SHOWCASE && fresh && matchId === null && joined;
     joined = false;
     if (fresh) {
       matchId = push.matchId;
@@ -410,7 +411,7 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: a Kẹt xe roll, Du lịch and Sửa nhà on some houses, a Full set, a Quiz answered right, the monopoly moments, "Có tội!!!", Xuất phát's pay, a flight's aim and the rim going to jail and flying play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page plays the moments a Match seldom reaches first (`showcase.ts`). */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
 
 let showcased = false;
@@ -423,171 +424,25 @@ function startShowcase(view: View) {
   showcased = true;
   const mine = epoch;
   playing = true;
-  void showcase(view, () => mine === epoch).then(() => {
+  const stage: Stage = {
+    board,
+    sounds,
+    hud,
+    moments,
+    cardMoments,
+    verdict,
+    names,
+    low,
+    wait,
+    animate,
+    rollBeats,
+    present,
+  };
+  void showcase(view, () => mine === epoch, stage).then(() => {
     if (mine === epoch) playing = false;
     play();
   });
   return true;
-}
-
-/** Plays each monopoly moment and the jail verdict for seat 0 on `view`'s board, then puts the board back. */
-async function showcase(view: View, live: () => boolean) {
-  await wait(1200);
-  if (!live()) return;
-  const steps: [string, () => Promise<unknown> | unknown, number][] = [
-    ['Mất ví', () => (sounds.play('crow'), cardMoments.crow(1)), 2600],
-    [
-      'Phí bảo trì',
-      () => (
-        sounds.play('hammer', { at: 160 }),
-        board.knock([1, 3, 6, 8].map((tile) => ({ tile, text: '−25' })))
-      ),
-      600,
-    ],
-    [
-      'Lãi tiết kiệm',
-      async () => {
-        sounds.play('coins', { at: 300 });
-        const from = board.vault();
-        await wait(450);
-        await moments.shower(from, hud.card(0), 1, 1, low, () =>
-          sounds.play('coin', { gain: 0.5 }),
-        );
-      },
-      600,
-    ],
-    [
-      'Thần tài',
-      async () => {
-        const lucky = { id: 'lucky' as const, turns: 2, fresh: false };
-        board.show({
-          ...view,
-          players: view.players.map((p, s) => (s === 0 ? { ...p, effects: [lucky] } : p)),
-        });
-        await wait(900);
-        sounds.play('coins');
-        board.luck(0, 120);
-        await wait(1500);
-        board.show(view);
-      },
-      600,
-    ],
-    [
-      'Miễn thuê',
-      async () => {
-        board.exempt([1, 3, 5, 6, 8, 11, 12, 13, 15]);
-        await wait(2600);
-        board.exempt([]);
-      },
-      300,
-    ],
-    [
-      'Khởi nghiệp',
-      async () => {
-        const startup = { id: 'startup' as const, turns: 3, fresh: false };
-        hud.players({
-          ...view,
-          players: view.players.map((p, s) => (s === 0 ? { ...p, effects: [startup] } : p)),
-        });
-        await wait(2400);
-        hud.players(view);
-      },
-      300,
-    ],
-    ['Ốm', () => (sounds.play('wrong', { gain: 0.7 }), cardMoments.sick(1)), 300],
-    [
-      'Vé ra tù',
-      () => (sounds.play('stamp', { at: 900 }), cardMoments.ticket(names[0] ?? '', 1)),
-      600,
-    ],
-  ];
-  for (const [title, play, after] of steps) {
-    if (!live()) return;
-    board.say(title, { ms: 1400 });
-    await play();
-    await wait(after);
-  }
-  rollBeats(2, (n) => n);
-  sounds.play('horn', { at: 90 });
-  sounds.play('slam', { at: 495, gain: 0.8 });
-  board.say('Kẹt xe!', { tone: 'bad', big: true, ms: 1800 });
-  await board.roll([4], 900);
-  await wait(1800);
-  if (!live()) return;
-  const built = [
-    [1, 2],
-    [3, 5],
-    [6, 1],
-    [8, 3],
-  ] as const;
-  const housed = {
-    ...view,
-    lots: view.lots.map((lot, i) => {
-      const level = built.find(([tile]) => tile === i)?.[1];
-      return level ? { owner: 0, level, built: 0 } : lot;
-    }),
-  };
-  board.showLots(housed);
-  for (const [good, rate] of [
-    [true, TUNING.cards.tourism],
-    [false, TUNING.cards.repairs],
-  ] as const) {
-    await wait(900);
-    if (!live()) return;
-    sounds.play(good ? 'coins' : 'crumble', { gain: 0.8 });
-    board.levy(
-      built.map(([tile, level]) => ({ tile, text: `${good ? '+' : '−'}${money(rate * level)}` })),
-      good,
-    );
-    await wait(1600);
-  }
-  board.showLots(view);
-  const set = setTiles('magenta');
-  const owned = {
-    ...view,
-    lots: view.lots.map((lot, i) => (set.includes(i) ? { owner: 0, level: 1, built: 0 } : lot)),
-  };
-  await wait(1200);
-  if (!live()) return;
-  board.showLots(owned);
-  await animate(owned, [{ kind: 'fullset', seat: 0, tiles: set }], 1, live);
-  await wait(1500);
-  if (!live()) return;
-  board.say('Đúng rồi!', { tone: 'good', big: true, ms: 2000 });
-  board.cheer();
-  await wait(2900);
-  for (const of of ['station', 'utility'] as const) {
-    const tiles = tilesOf(of);
-    const lots = view.lots.map((lot, i) =>
-      tiles.includes(i) ? { owner: 0, level: 0, built: 0 } : lot,
-    );
-    const crowned = { ...view, lots };
-    await wait(1200);
-    if (!live()) return;
-    board.showLots(crowned);
-    await animate(crowned, [{ kind: 'monopoly', seat: 0, tiles, of }], 1, live);
-    await wait(2500);
-  }
-  if (!live()) return;
-  sounds.play('guilty');
-  await verdict.play(names[0] ?? '', 1, low);
-  if (!live()) return;
-  await board.jump(0, JAIL_TILE, 560, 'jail');
-  await wait(900);
-  if (!live()) return;
-  sounds.play('coins');
-  board.payday(TUNING.startBonus);
-  await wait(1900);
-  for (const tile of [5, 12, 26, 33, 39]) {
-    if (!live()) return;
-    board.aim(tile);
-    await wait(1100);
-  }
-  board.aim(null);
-  if (!live()) return;
-  await board.jump(0, 39, 1400, 'flight');
-  await wait(1600);
-  if (live()) present(view);
 }
 
 const wait = (ms: number) => new Promise((done) => setTimeout(done, hidden ? 0 : ms));
