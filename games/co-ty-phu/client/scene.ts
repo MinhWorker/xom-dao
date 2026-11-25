@@ -45,7 +45,7 @@ import { isFullSet, isMonopoly } from '../server/game/economy.js';
 import { HOTEL, type Lot, type View } from '../server/game/model.js';
 import { ambience } from './ambience.js';
 import { Marquee } from './lights.js';
-import { cage, DIE, die, hotel, house, plane, token, WINGTIPS } from './pieces.js';
+import { cage, car, DIE, die, hotel, house, plane, token, WINGTIPS } from './pieces.js';
 import type { Change } from './present.js';
 import { BAND, bandRect, cardBack, placement, printBoard, SET_COLORS, SIDE } from './print.js';
 
@@ -276,6 +276,10 @@ export class BoardView {
   /** Bumped by `stop`: a walk under way gives up. */
   private generation = 0;
   private low = false;
+  /** The turn of the view on the board, whose player a Kẹt xe taxi parks for. */
+  private turnShown = 0;
+  /** A Kẹt xe roll's taxi, parked on the board until `seat`'s turn is over. */
+  private parked: { taxi: Group; seat: number } | null = null;
   /** Until when (ms) Xuất phát's arrow blinks neon, while it pays (`payday`). */
   private neonUntil = 0;
   private wasLit = false;
@@ -459,6 +463,7 @@ export class BoardView {
     this.generation++;
     this.finish(false);
     clear(this.fx);
+    this.parked = null;
     this.marquee.stop();
     this.aircraft.visible = false;
     this.shaking.until = 0;
@@ -515,6 +520,8 @@ export class BoardView {
 
   /** Puts everything where `view` says, at once. */
   show(view: View) {
+    this.turnShown = view.turn;
+    if (this.parked && this.parked.seat !== view.turn) this.leaveParked();
     this.showLots(view);
     this.spots = view.players.map((p) => (p.bankrupt ? null : p.tile));
     while (this.tokens.length < view.players.length) {
@@ -969,6 +976,7 @@ export class BoardView {
   /** Throws the dice from the far side: they bounce twice and settle on `values`. One die shows under Kẹt xe. */
   roll(values: number[], ms = 900) {
     this.inviteRoll(false);
+    if (values.length === 1) return this.jammed(values[0] ?? 1, ms);
     const throws = this.dice.map((_, i) => {
       const rest = DIE_REST[i] as Vector3;
       const sign = Math.random() < 0.5 ? -1 : 1;
@@ -1005,6 +1013,117 @@ export class BoardView {
         }
       });
     }).then(() => this.setDice(values));
+  }
+
+  /**
+   * A roll under Kẹt xe: both dice are thrown, but a taxi pops up out of nowhere on the board,
+   * drives into the second while it still rolls and knocks it off the screen, where it vanishes;
+   * the taxi pulls up and stays parked until the player's turn is over. `value` is the die that counts.
+   */
+  private async jammed(value: number, ms: number) {
+    const spare = 1 + Math.floor(Math.random() * 6);
+    const hitAt = 0.55;
+    const struck = this.dice[1];
+    const throws = this.dice.map((_, i) => {
+      const rest = DIE_REST[i] as Vector3;
+      const sign = Math.random() < 0.5 ? -1 : 1;
+      return {
+        from: new Vector3(rest.x + (Math.random() - 0.5) * 1.4, 0, rest.z - 2.8),
+        rest,
+        spin: [(Math.random() * 2 + 3) * Math.PI * sign, (Math.random() * 2 + 3) * Math.PI],
+      };
+    });
+    const place = (i: number, k: number, v: number) => {
+      const d = this.dice[i];
+      const th = throws[i];
+      if (!d || !th) return;
+      const [x, z] = FACE_UP[v] as [number, number];
+      const e = ease(Math.min(1, k * 1.15));
+      const left = 1 - e;
+      d.position.set(
+        th.from.x + (th.rest.x - th.from.x) * e,
+        BOARD_H + DIE / 2 + bounce(k),
+        th.from.z + (th.rest.z - th.from.z) * e,
+      );
+      d.rotation.set(
+        x + (th.spin[0] as number) * left,
+        0.4 - i * 0.7 + left * 2,
+        z + (th.spin[1] as number) * left,
+      );
+    };
+    for (const d of this.dice) d.visible = true;
+    place(1, hitAt, spare);
+    const hit = struck?.position.clone() ?? new Vector3();
+    this.leaveParked();
+    const taxi = car();
+    taxi.rotation.y = -Math.PI / 2;
+    const run = 2.4;
+    const park = 1.1;
+    /** The taxi drives towards the viewer, reaching the die halfway along its drive, then pulls up. */
+    const along = (u: number) =>
+      new Vector3(
+        hit.x,
+        BOARD_H,
+        u < 0.5 ? hit.z - run + (u / 0.5) * run : hit.z + ease((u - 0.5) / 0.5) * park,
+      );
+    taxi.position.copy(along(0));
+    taxi.scale.setScalar(0.001);
+    this.fx.add(taxi);
+    const wheels = taxi.userData.wheels as Mesh[];
+    const drive = ms * 0.9;
+    const start = ms * hitAt - drive / 2;
+    const total = start + drive;
+    let landed = false;
+    let struckAt: Vector3 | null = null;
+    await this.tween(total, (k) => {
+      const t = k * total;
+      const r = Math.min(1, t / ms);
+      place(0, r, value);
+      if (!landed && r >= 0.45) {
+        landed = true;
+        const d0 = this.dice[0];
+        if (d0) this.puff(new Vector3(d0.position.x, BOARD_H, d0.position.z), 8);
+      }
+      if (r < hitAt) place(1, r, spare);
+      else if (struck?.visible) {
+        if (!struckAt) {
+          struckAt = struck.position.clone();
+          this.shake(0.06, 220);
+          this.puff(new Vector3(struckAt.x, BOARD_H, struckAt.z), 12, 380);
+        }
+        const sec = (t - ms * hitAt) / 1000;
+        struck.position.set(
+          struckAt.x + sec * 2,
+          struckAt.y + sec * 8 - sec * sec * 5,
+          struckAt.z + sec * 10,
+        );
+        struck.rotation.x += 0.5;
+        struck.rotation.z += 0.35;
+        const fade = Math.max(0, 1 - sec / 0.45);
+        struck.scale.setScalar(Math.max(0.001, fade));
+        if (fade <= 0) struck.visible = false;
+      }
+      const u = Math.max(0, Math.min(1, (t - start) / drive));
+      taxi.position.copy(along(u));
+      taxi.scale.setScalar(Math.max(0.001, backOut(Math.min(1, u / 0.12))));
+      const speed = u < 0.5 ? 1 : 1 - (u - 0.5) / 0.5;
+      for (const w of wheels) w.rotation.z -= 0.45 * speed;
+    });
+    struck?.scale.setScalar(1);
+    this.setDice([value]);
+    this.parked = { taxi, seat: this.turnShown };
+  }
+
+  /** The taxi of a Kẹt xe roll pops away, as its player's turn is over. */
+  private leaveParked() {
+    const parked = this.parked;
+    if (!parked) return;
+    this.parked = null;
+    const { taxi } = parked;
+    this.puff(new Vector3(taxi.position.x, BOARD_H, taxi.position.z), 10, 380);
+    this.tween(260 * this.pace, (u) => taxi.scale.setScalar(Math.max(0.001, 1 - ease(u)))).then(
+      () => this.fx.remove(taxi),
+    );
   }
 
   /**

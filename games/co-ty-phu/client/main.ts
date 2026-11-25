@@ -173,32 +173,29 @@ const bridge = createGameBridge({
     halt.hidden = !held;
     hud.seats(view ? names.slice(0, view.players.length) : names, avatars);
     present(view);
+    joined = !!view;
+    if (view) startShowcase(view);
   },
   onMessage(event, data) {
     if (event !== 'match:state') return;
     const push = data as MatchPush;
     const fresh = push.matchId !== matchId;
+    /** The first push after `init` is of the Match that `init` already put on the board. */
+    const known = fresh && matchId === null && joined;
+    joined = false;
     if (fresh) {
       matchId = push.matchId;
       clearTimeout(doneTimer);
       doneFor = null;
       if (push.status !== 'over') endedAt = null;
-      restart();
+      if (!known) restart();
     }
     timer = push.timer ? { ms: push.timer.ms, at: Date.now() } : null;
     if (push.view) {
-      if (fresh || !shown || shown.players.length !== push.view.players.length) {
+      if ((fresh && !known) || !shown || shown.players.length !== push.view.players.length) {
         hud.seats(names.slice(0, push.view.players.length), avatars);
         present(push.view);
-        if (fresh && SHOWCASE) {
-          const mine = epoch;
-          playing = true;
-          void showcase(push.view, () => mine === epoch).then(() => {
-            if (mine === epoch) playing = false;
-            play();
-          });
-          return;
-        }
+        if (startShowcase(push.view)) return;
       } else queue.push(push.view);
       play();
     }
@@ -365,11 +362,36 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: a Full set, a Quiz answered right, the monopoly moments, "Có tội!!!", Xuất phát's pay, a flight's aim and the rim going to jail and flying play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page: a Kẹt xe roll, a Full set, a Quiz answered right, the monopoly moments, "Có tội!!!", Xuất phát's pay, a flight's aim and the rim going to jail and flying play on the first view, for a look without a Match that reaches them. */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
+
+let showcased = false;
+/** `init` put a Match on the board that no push has named yet. */
+let joined = false;
+
+/** Starts the showcase on `view` once per page with `?showcase`, holding the moves that arrive meanwhile. */
+function startShowcase(view: View) {
+  if (!SHOWCASE || showcased || isOver(view)) return false;
+  showcased = true;
+  const mine = epoch;
+  playing = true;
+  void showcase(view, () => mine === epoch).then(() => {
+    if (mine === epoch) playing = false;
+    play();
+  });
+  return true;
+}
 
 /** Plays each monopoly moment and the jail verdict for seat 0 on `view`'s board, then puts the board back. */
 async function showcase(view: View, live: () => boolean) {
+  await wait(1200);
+  if (!live()) return;
+  rollBeats(2, (n) => n);
+  sounds.play('horn', { at: 90 });
+  sounds.play('slam', { at: 495, gain: 0.8 });
+  board.say('Kẹt xe!', { tone: 'bad', big: true, ms: 1800 });
+  await board.roll([4], 900);
+  await wait(1800);
   const set = setTiles('magenta');
   const owned = {
     ...view,
@@ -437,7 +459,11 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
     if (!live()) return;
     switch (step.kind) {
       case 'dice':
-        rollBeats(step.dice.length, ms);
+        rollBeats(2, ms);
+        if (step.dice.length === 1) {
+          sounds.play('horn', { at: ms(90) });
+          sounds.play('slam', { at: ms(495), gain: 0.8 });
+        }
         await board.roll(step.dice, ms(900));
         break;
       case 'walk':

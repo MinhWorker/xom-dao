@@ -31,6 +31,7 @@ const FILES = {
   rain: file('rain'),
   thunder: file('thunder'),
   guilty: file('guilty'),
+  horn: file('horn'),
   tick: file('tick'),
 };
 

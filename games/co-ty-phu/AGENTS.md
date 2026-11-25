@@ -23,7 +23,7 @@ tests built on real Matches (`server/game/test-match.ts`):
   with the Lots it takes down. `grandeur(amount)` is how grand a payment looks (0–3).
 
 `scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the moves: `roll`
-throws the dice with bounces, `walk` hops Tile by Tile with the camera following (it comes in only while a token moves and for a Takeover or a new Hotel, and goes back over the whole board once that is done: a plain buy or Level does not move it), `jump` drops
+throws the dice with bounces, or under Kẹt xe both, a taxi (`car()` in `pieces.ts`) popping up to knock the second off the screen and staying parked until that player's turn is over, `walk` hops Tile by Tile with the camera following (it comes in only while a token moves and for a Takeover or a new Hotel, and goes back over the whole board once that is done: a plain buy or Level does not move it), `jump` drops
 the bars round a jailed token (after `verdict.ts`: a faceless lawyer pointing, "Có tội!!!" in a jagged shout, with the `guilty` stinger) or sends the plane (`plane()` in `pieces.ts`, the legacy Blender
 model rebuilt from its ellipsoids) to pick the token up at Sân bay, turn over the board and drop
 it with an impact, `release` lifts the bars, `build` raises houses and Hotels and sinks those
@@ -54,7 +54,7 @@ Three medallions sit at the top middle, clear of the Hub's corner buttons: fewer
 graphics whatever the Hub's Đồ họa, and no bulbs), ×2 (every move plays twice as fast), both kept
 in `localStorage`; and between them, for the only person at a table of computers, pause: `pause` stops the server's clock and the computer (`State.paused`), the client
 finishes the move playing and holds the rest until `resume`.
-`?showcase` on the client's URL (through the Harness) plays a Full set, a Quiz answered right, both monopoly moments, the jail verdict, Xuất phát's pay, a flight's aim, a jailing and a flight for seat 0 on the first view of a Match, then plays on.
+`?showcase` on the client's URL (through the Harness) plays a Kẹt xe roll, a Full set, a Quiz answered right, both monopoly moments, the jail verdict, Xuất phát's pay, a flight's aim, a jailing and a flight for seat 0 on the first view of a Match, then plays on.
 `npm run smoke:web` rolls on the dice and plays the next decision in CI.
 
 ## Look

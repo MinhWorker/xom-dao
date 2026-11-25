@@ -32,6 +32,58 @@ const HOUSE = new BoxGeometry(0.17, 0.13, 0.17);
 const HOUSE_ROOF = new ConeGeometry(0.15, 0.11, 4);
 HOUSE_ROOF.rotateY(Math.PI / 4);
 
+/**
+ * A yellow taxi about 2.4 dice long, facing +x, its wheels in `userData.wheels` to spin. It runs
+ * the second die off the board under Kẹt xe.
+ */
+export const car = () => {
+  const g = new Group();
+  const body = paint('#f2b705', 0.35, 0.1);
+  const glass = paint('#1d2b44', 0.15, 0.3);
+  const dark = paint('#2a2a33', 0.7);
+  const part = (
+    w: number,
+    h: number,
+    d: number,
+    m: MeshStandardMaterial,
+    x: number,
+    y: number,
+    z = 0,
+  ) => {
+    const mesh = shadowed(new Mesh(new BoxGeometry(w, h, d), m));
+    mesh.position.set(x, y, z);
+    g.add(mesh);
+    return mesh;
+  };
+  part(2, 0.42, 1, body, 0, 0.4);
+  part(1.0, 0.32, 0.88, glass, -0.12, 0.76);
+  part(0.62, 0.07, 0.9, body, -0.12, 0.95);
+  part(0.36, 0.14, 0.3, paint('#fff2c2', 0.4), -0.12, 1.05);
+  part(0.08, 0.16, 1.02, dark, 1.0, 0.26);
+  part(0.08, 0.16, 1.02, dark, -1.0, 0.26);
+  part(2.02, 0.06, 1.02, dark, 0, 0.5);
+  const lamp = (color: string) =>
+    new MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8 });
+  for (const z of [-0.32, 0.32]) {
+    part(0.05, 0.1, 0.2, lamp('#ffe58e'), 1.01, 0.45, z);
+    part(0.05, 0.1, 0.18, lamp('#e0553d'), -1.01, 0.45, z);
+  }
+  const wheels: Mesh[] = [];
+  const tyre = new CylinderGeometry(0.21, 0.21, 0.16, 18);
+  tyre.rotateX(Math.PI / 2);
+  for (const x of [-0.62, 0.62])
+    for (const z of [-0.47, 0.47]) {
+      const w = shadowed(new Mesh(tyre, paint('#16161c', 0.8)));
+      w.position.set(x, 0.21, z);
+      const hub = new Mesh(new BoxGeometry(0.2, 0.06, 0.17), paint('#b9bcc6', 0.3, 0.6));
+      w.add(hub);
+      g.add(w);
+      wheels.push(w);
+    }
+  g.userData.wheels = wheels;
+  return g;
+};
+
 /** A Level 1–4 house in the owner's colour. */
 export const house = (color: string) => {
   const g = new Group();
