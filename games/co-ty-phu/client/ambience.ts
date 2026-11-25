@@ -24,7 +24,7 @@ const FPS = 30;
 
 /**
  * Lays a moving face over each special Tile; call the result each frame with seconds, or with
- * nothing to paint the icons at rest.
+ * nothing to paint the icons at rest, and `neon` for how lit Xuất phát's arrow is.
  */
 export const ambience = (parent: Object3D, at: At, anisotropy: number) => {
   const faces = BOARD.flatMap((tile, i) => {
@@ -53,12 +53,12 @@ export const ambience = (parent: Object3D, at: At, anisotropy: number) => {
     return [{ i, ctx, map }];
   });
   let last = Number.NEGATIVE_INFINITY;
-  return (t?: number) => {
+  return (t?: number, neon = 0) => {
     if (t !== undefined && t - last < 1 / FPS) return;
     last = t ?? Number.NEGATIVE_INFINITY;
     for (const { i, ctx, map } of faces) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      paintTile(ctx, i, PX, t);
+      paintTile(ctx, i, PX, t, i === 0 ? neon : 0);
       map.needsUpdate = true;
     }
   };

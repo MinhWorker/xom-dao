@@ -254,7 +254,7 @@ export class BoardView {
   /** The dice cast no shadow: a soft dark patch under each, darkest on the board, fading as it rises. */
   private readonly contacts: Mesh[];
   private readonly glow: Mesh[] = [];
-  private readonly tick: (t?: number) => void;
+  private readonly tick: (t?: number, neon?: number) => void;
   private readonly tweens: Tween[] = [];
   private readonly ray = new Raycaster();
   private readonly ground = new Plane(new Vector3(0, 1, 0), -BOARD_H);
@@ -270,6 +270,9 @@ export class BoardView {
   /** Bumped by `stop`: a walk under way gives up. */
   private generation = 0;
   private low = false;
+  /** Until when (ms) Xuất phát's arrow blinks neon, while it pays (`payday`). */
+  private neonUntil = 0;
+  private wasLit = false;
   /** Whether the camera follows what moves (the player's preference). */
   private following = true;
   /** How fast moves play (1 is normal, lower is faster): the camera and dust keep up with it. */
@@ -710,6 +713,52 @@ export class BoardView {
   }
 
   /** `n` sparks shot up from `where` that tumble and fall back. */
+  /**
+   * Xuất phát pays `amount`: its Tile flashes gold, sparks burst off it and "+amount" floats up from
+   * it, whether a token lands there or passes.
+   */
+  payday(amount: number, ms = 1800) {
+    ms *= this.pace;
+    this.neonUntil = performance.now() + ms;
+    const p = placement(0);
+    const where = at(p.x + p.w / 2, p.y + p.h / 2);
+    this.flash(0, GOLD, ms * 0.4);
+    this.sparks(where, 18, [GOLD, '#fff2c2', '#58b368'], ms * 0.7, 1.8);
+    const c = document.createElement('canvas');
+    c.width = 320;
+    c.height = 120;
+    const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+    ctx.font = '900 92px "Be Vietnam Pro", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = '#3a2606';
+    const text = `+${amount.toLocaleString('vi-VN')}`;
+    ctx.strokeText(text, 160, 62);
+    const fill = ctx.createLinearGradient(0, 20, 0, 104);
+    fill.addColorStop(0, '#fff2c2');
+    fill.addColorStop(1, GOLD);
+    ctx.fillStyle = fill;
+    ctx.fillText(text, 160, 62);
+    const map = new CanvasTexture(c);
+    map.colorSpace = SRGBColorSpace;
+    const material = new SpriteMaterial({ map, transparent: true, depthTest: false });
+    const label = new Sprite(material);
+    label.renderOrder = 10;
+    this.fx.add(label);
+    this.tween(ms, (u) => {
+      const pop = u < 0.15 ? 0.6 + (u / 0.15) * 0.5 : 1.1 - Math.min(1, (u - 0.15) * 4) * 0.1;
+      label.scale.set(1.5 * pop, 0.56 * pop, 1);
+      label.position.set(where.x, BOARD_H + 0.5 + ease(u) * 1.3, where.z);
+      material.opacity = u < 0.7 ? 1 : (1 - u) / 0.3;
+    }).then(() => {
+      this.fx.remove(label);
+      material.dispose();
+      map.dispose();
+    });
+  }
+
   private sparks(where: Vector3, n: number, colors: readonly string[], ms: number, up = 2.2) {
     if (this.low || this.paused) return;
     for (let k = 0; k < n; k++) {
@@ -945,8 +994,11 @@ export class BoardView {
     }).then(() => this.setDice(values));
   }
 
-  /** Walks a token `steps` Tiles ahead from `from`, a hop per Tile, the camera following until it stands. */
-  async walk(seat: number, from: number, steps: number, perStep = 170) {
+  /**
+   * Walks a token `steps` Tiles ahead from `from`, a hop per Tile, the camera following until it
+   * stands; Xuất phát pays `bonus` (`payday`) as the token reaches it.
+   */
+  async walk(seat: number, from: number, steps: number, perStep = 170, bonus = 0) {
     const t = this.tokens[seat];
     if (!t) return;
     const mine = this.generation;
@@ -963,6 +1015,7 @@ export class BoardView {
         t.scale.set(base * (1 - lift * 0.08), base * (1 + lift * 0.14), base * (1 - lift * 0.08));
       });
       this.puff(b, 4, 300);
+      if (bonus > 0 && (from + k) % 40 === 0) this.payday(bonus);
     }
     if (mine !== this.generation) return;
     this.spots[seat] = (from + steps) % 40;
@@ -974,7 +1027,7 @@ export class BoardView {
    * Takes a token straight to `to`: a hop for a Card's move, a flight from Sân bay that lifts off,
    * crosses the board high with a trail and lands, or into jail, where the bars come down on it.
    */
-  async jump(seat: number, to: number, ms = 560, how: JumpHow = 'move') {
+  async jump(seat: number, to: number, ms = 560, how: JumpHow = 'move', bonus = 0) {
     const t = this.tokens[seat];
     if (!t) return;
     const mine = this.generation;
@@ -991,6 +1044,7 @@ export class BoardView {
     if (how !== 'flight') this.puff(b, 8);
     this.spots[seat] = to;
     this.placeTokens(seat);
+    if (bonus > 0 && to === 0) this.payday(bonus);
     if (how === 'jail') await this.lock(seat, Math.round(ms * 0.9));
     if (this.focus === t) this.focus = null;
   }
@@ -1400,7 +1454,9 @@ export class BoardView {
     });
     for (const [k, a] of this.arrows.entries())
       a.position.y = BOARD_H + 0.45 + Math.abs(Math.sin(ms / 260 + k * 0.5)) * 0.25;
-    if (!this.low) this.tick(ms / 1000);
+    const lit = ms < this.neonUntil ? (Math.floor(ms / 110) % 2 === 0 ? 1 : 0.25) : 0;
+    if (!this.low || lit > 0 || this.wasLit) this.tick(this.low ? undefined : ms / 1000, lit);
+    this.wasLit = lit > 0;
     if (!this.speaking && this.standing?.blink)
       this.notice.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(ms / 170));
     if (this.inviting && !this.low)

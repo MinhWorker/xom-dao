@@ -24,12 +24,14 @@ export const CREAM = '#fff6e1';
 const SPARK = '#ffe9a6';
 
 /** Draws an icon `s` pixels across, centred on the origin, in `ink` over `bg`, `t` seconds in. */
+/** Draws a special Tile's icon; `neon` (0 to 1) lights its outline, which only Xuất phát's arrow has. */
 type Special = (
   ctx: CanvasRenderingContext2D,
   s: number,
   ink: string,
   bg: string,
   t?: number,
+  neon?: number,
 ) => void;
 
 type Point = readonly [number, number];
@@ -103,7 +105,7 @@ const line = (ctx: CanvasRenderingContext2D, pts: readonly Point[], s: number) =
 };
 
 /** The arrow points left, the way play runs; two lights run from its tip round to its tail. */
-const start: Special = (ctx, s, ink, _bg, t) => {
+const start: Special = (ctx, s, ink, _bg, t, neon = 0) => {
   const top: Point[] = [
     [-0.6, 0],
     [-0.1, -0.4],
@@ -115,6 +117,21 @@ const start: Special = (ctx, s, ink, _bg, t) => {
   line(ctx, [...top, ...bottom.slice().reverse()], s);
   ctx.closePath();
   ctx.fill();
+  if (neon > 0) {
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = neon;
+    ctx.shadowColor = '#3ff7ff';
+    ctx.shadowBlur = s * 0.16;
+    ctx.strokeStyle = '#3ff7ff';
+    ctx.lineWidth = s * 0.06;
+    ctx.stroke();
+    ctx.shadowBlur = s * 0.05;
+    ctx.strokeStyle = '#eaffff';
+    ctx.lineWidth = s * 0.022;
+    ctx.stroke();
+    ctx.restore();
+  }
   if (t === undefined) return;
   const u = (t * 0.55) % 1;
   for (const edge of [top, bottom]) {
@@ -357,8 +374,9 @@ export const drawSpecial = (
   ink: string,
   bg: string,
   t?: number,
+  neon?: number,
 ) => {
   ctx.save();
-  SPECIALS[kind]?.(ctx, s, ink, bg, t);
+  SPECIALS[kind]?.(ctx, s, ink, bg, t, neon);
   ctx.restore();
 };

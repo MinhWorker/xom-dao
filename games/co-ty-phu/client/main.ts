@@ -364,7 +364,7 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: the monopoly moments and "Có tội!!!" play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page: the monopoly moments, "Có tội!!!" and Xuất phát's pay play on the first view, for a look without a Match that reaches them. */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
 
 /** Plays each monopoly moment and the jail verdict for seat 0 on `view`'s board, then puts the board back. */
@@ -384,6 +384,10 @@ async function showcase(view: View, live: () => boolean) {
   if (!live()) return;
   sounds.play('guilty');
   await verdict.play(names[0] ?? '', 1, low);
+  if (!live()) return;
+  sounds.play('coins');
+  board.payday(TUNING.startBonus);
+  await wait(1600);
   if (live()) present(view);
 }
 
@@ -411,7 +415,9 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         break;
       case 'walk':
         for (let k = 1; k <= step.steps; k++) sounds.play('step', { at: k * ms(170) });
-        await board.walk(step.seat, step.from, step.steps, ms(170));
+        if (step.from + step.steps >= BOARD.length)
+          sounds.play('coins', { at: (BOARD.length - step.from) * ms(170) });
+        await board.walk(step.seat, step.from, step.steps, ms(170), TUNING.startBonus);
         break;
       case 'release':
         board.say(`${names[step.seat] ?? ''} ra tù`);
@@ -431,7 +437,14 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           sounds.play('slam', { at: ms(1400), gain: 0.7 });
         } else if (step.how === 'jail') sounds.play('jail', { at: ms(560 + 504 * BOUNCE_LAND) });
         else sounds.play('step', { at: ms(560) });
-        await board.jump(step.seat, step.to, ms(step.how === 'flight' ? 1400 : 560), step.how);
+        if (step.how === 'flight' && step.to === 0) sounds.play('coins', { at: ms(1400) });
+        await board.jump(
+          step.seat,
+          step.to,
+          ms(step.how === 'flight' ? 1400 : 560),
+          step.how,
+          step.how === 'flight' ? TUNING.startBonus : 0,
+        );
         break;
       case 'card': {
         board.follow(null);

@@ -284,6 +284,7 @@ const drawFace = (
   band: { x: number; y: number } | undefined,
   px: number,
   t?: number,
+  neon?: number,
 ) => {
   const tile = BOARD[i] as Tile;
   let area = { x: -w / 2, y: -h / 2, w, h };
@@ -351,7 +352,7 @@ const drawFace = (
     y += px * 0.04;
     ctx.save();
     ctx.translate(cx, y + iconS / 2);
-    if (special) drawSpecial(ctx, tile.kind, iconS, CREAM, special, t);
+    if (special) drawSpecial(ctx, tile.kind, iconS, CREAM, special, t, neon);
     else icon?.(ctx, iconS, t);
     ctx.restore();
     y += iconS + px * 0.04;
@@ -405,14 +406,23 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number, title: boolean) =
   ctx.restore();
 };
 
-/** Paints Tile `i` with its top-left corner at the origin; `t` sets its icon moving, if it moves. */
-export const paintTile = (ctx: CanvasRenderingContext2D, i: number, px: number, t?: number) => {
+/**
+ * Paints Tile `i` with its top-left corner at the origin; `t` sets its icon moving, if it moves,
+ * and `neon` (0 to 1) lights its outline.
+ */
+export const paintTile = (
+  ctx: CanvasRenderingContext2D,
+  i: number,
+  px: number,
+  t?: number,
+  neon?: number,
+) => {
   const p = placement(i);
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, p.w * px, p.h * px);
   ctx.save();
   ctx.translate((p.w / 2) * px, (p.h / 2) * px);
-  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t);
+  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t, neon);
   ctx.restore();
   ctx.strokeStyle = LINE;
   ctx.lineWidth = px * 0.02;

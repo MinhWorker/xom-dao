@@ -29,7 +29,7 @@ model rebuilt from its ellipsoids) to pick the token up at Sân bay, turn over t
 it with an impact, `release` lifts the bars, `build` raises houses and Hotels and sinks those
 sold. The tier-1 moments (#355) are there too: `build` snatches a Lot Taken over (houses yanked up,
 spun, slammed down in the taker's colour) and puts a new Hotel in a beam of light, `fullSet` lights
-the set's Tiles one after another, `fall` topples a bankrupt token and crumbles its Lots, `victory`
+the set's Tiles one after another, `fall` topples a bankrupt token and crumbles its Lots, `payday` has Xuất phát pay where it stands, whether a token lands or passes (its Tile flashes, sparks, "+200" floats up and its arrow's outline blinks neon through `ambience`), `victory`
 throws sparks round the winner, and `shake` shakes the camera. Bulbs run round the base's rim (`marquee`), every other one lit, swapping about twice a second. `selling` shows a Debt's sale being picked (an arrow bobbing over each of the debtor's Lots, a gold tag over each picked; a tap cycles its part with `nextSale`). `say` prints every event's text in
 the middle of the board, which is otherwise left blank in a Match, and `status` the decision
 waiting there between them (the roll blinking, its dice hopping: `inviteRoll`); `diceRect` is
@@ -54,7 +54,7 @@ Three medallions sit at the top middle, clear of the Hub's corner buttons: fewer
 graphics whatever the Hub's Đồ họa, and no bulbs), ×2 (every move plays twice as fast), both kept
 in `localStorage`; and between them, for the only person at a table of computers, pause: `pause` stops the server's clock and the computer (`State.paused`), the client
 finishes the move playing and holds the rest until `resume`.
-`?showcase` on the client's URL (through the Harness) plays both monopoly moments and the jail verdict for seat 0 on the first view of a Match, then plays on.
+`?showcase` on the client's URL (through the Harness) plays both monopoly moments, the jail verdict and Xuất phát's pay for seat 0 on the first view of a Match, then plays on.
 `npm run smoke:web` rolls on the dice and plays the next decision in CI.
 
 ## Look
