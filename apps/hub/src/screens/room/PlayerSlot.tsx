@@ -1,4 +1,10 @@
-import { IconRobot, IconUserCheck, IconUserPlus, IconX } from '@tabler/icons-react';
+import {
+  IconArrowsExchange,
+  IconRobot,
+  IconUserCheck,
+  IconUserPlus,
+  IconX,
+} from '@tabler/icons-react';
 import type { RoomMember } from '@xomdao/shared/client';
 import { Button } from '../../kit/index.js';
 import styles from './PlayerSlot.module.css';
@@ -90,10 +96,12 @@ export function PlayerSlot({
           <button
             type="button"
             className={`${styles.invite} ${styles.sit}`}
+            aria-label="Ngồi đây"
+            title="Ngồi đây"
             disabled={busy}
             onClick={onSit}
           >
-            Ngồi đây
+            <IconArrowsExchange stroke={2} aria-hidden />
           </button>
         )}
         <button type="button" className={styles.invite} onClick={onInvite}>

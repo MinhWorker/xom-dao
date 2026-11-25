@@ -1,4 +1,5 @@
 import { type SyntheticEvent, useEffect, useRef } from 'react';
+import { playSound } from '../sound/index.js';
 
 /** Longest a dialog's exit may hold it open, should an animation never finish. */
 const EXIT_LIMIT_MS = 600;
@@ -27,8 +28,9 @@ export async function closeAnimated(
 /**
  * Drives a modal `<dialog>` from `open`: `showModal()` when it turns true, the animated exit when it
  * turns false. Spread the returned props on the `<dialog>`; Escape and a close from elsewhere call `onClose`.
+ * Without `onClose`, Escape does nothing.
  */
-export function useModal(open: boolean, onClose: () => void) {
+export function useModal(open: boolean, onClose?: () => void) {
   const ref = useRef<HTMLDialogElement>(null);
   const wanted = useRef(open);
   wanted.current = open;
@@ -47,10 +49,12 @@ export function useModal(open: boolean, onClose: () => void) {
   return {
     ref,
     onClose() {
-      if (wanted.current) onClose();
+      if (wanted.current) onClose?.();
     },
     onCancel(e: SyntheticEvent<HTMLDialogElement>) {
       e.preventDefault();
+      if (!onClose) return;
+      playSound('close');
       onClose();
     },
   };

@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Button, SignalIcon } from './kit/index.js';
+import { Button } from './kit/index.js';
 import { hub, useHub } from './net/hub.js';
 import { OFFLINE } from './net/store.js';
 import { navigate, useRoute } from './router.js';
+import { Connecting } from './screens/connecting/Connecting.js';
 import { InviteNotice } from './screens/friends/InviteNotice.js';
 import { Harbour } from './screens/harbour/Harbour.js';
 import { Login } from './screens/login/Login.js';
@@ -79,14 +80,7 @@ export function App() {
   }
   if (phase === 'signed-out') return <Login />;
   if (!user || (phase === 'connecting' && route.name !== 'room')) {
-    return (
-      <main className={screen.center}>
-        <p className={`${screen.dim} ${screen.connecting}`}>
-          <SignalIcon size={28} />
-          Đang kết nối…
-        </p>
-      </main>
-    );
+    return <Connecting />;
   }
   return (
     <>

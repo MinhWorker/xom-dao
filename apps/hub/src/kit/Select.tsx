@@ -1,6 +1,6 @@
 import { IconCheck, IconChevronDown } from '@tabler/icons-react';
 import { useId, useRef } from 'react';
-import { hoverSound, playSound } from '../sound/index.js';
+import { playSound } from '../sound/index.js';
 import { Icon } from './Icon.js';
 import { rovingKeyDown } from './roving.js';
 import styles from './Select.module.css';
@@ -34,6 +34,8 @@ export function Select({ label, options, value, onChange, disabled, className }:
   const valueId = `${id}-value`;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  /** Whether the list was open when the button was pressed: the press itself light-dismisses it first. */
+  const wasOpen = useRef(false);
   const selected = options.find((option) => option.value === value) ?? options[0];
 
   /** Shows the list and puts it against the button; lengths are divided by the HUD scale, which zooms the page. */
@@ -81,10 +83,14 @@ export function Select({ label, options, value, onChange, disabled, className }:
         aria-expanded="false"
         aria-labelledby={`${labelId} ${valueId}`}
         disabled={disabled}
-        onPointerEnter={hoverSound}
+        onPointerDown={() => {
+          wasOpen.current = !!popoverRef.current?.matches(':popover-open');
+        }}
         onClick={() => {
           playSound('click');
-          if (popoverRef.current?.matches(':popover-open')) popoverRef.current.hidePopover();
+          const shown = wasOpen.current || !!popoverRef.current?.matches(':popover-open');
+          wasOpen.current = false;
+          if (shown) popoverRef.current?.hidePopover();
           else open();
         }}
         onKeyDown={(e) => {
@@ -135,7 +141,6 @@ export function Select({ label, options, value, onChange, disabled, className }:
                 aria-selected={on}
                 tabIndex={on ? 0 : -1}
                 className={styles.item}
-                onPointerEnter={hoverSound}
                 onClick={() => choose(option.value)}
               >
                 <span>{option.label}</span>

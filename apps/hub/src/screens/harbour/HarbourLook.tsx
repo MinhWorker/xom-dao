@@ -4,7 +4,7 @@ import { BACKGROUNDS, CHARACTERS, type HarbourArt } from '../../harbour-art/arts
 import { Icon, Tabs } from '../../kit/index.js';
 import { useModal } from '../../kit/modal.js';
 import { type HarbourLook, harbourLook, useHarbourLook } from '../../settings/harbour.js';
-import { hoverSound, playSound } from '../../sound/index.js';
+import { playSound } from '../../sound/index.js';
 import styles from './HarbourLook.module.css';
 
 interface ArtPickerProps {
@@ -27,9 +27,8 @@ function ArtPicker({ label, arts, selected, shape, onPick }: ArtPickerProps) {
               type="button"
               className={styles.card}
               aria-pressed={on}
-              onPointerEnter={(e) => hoverSound(e)}
               onClick={() => {
-                if (!on) playSound('pick');
+                if (!on) playSound('click');
                 onPick(art.id);
               }}
             >
@@ -95,6 +94,10 @@ const TABS = [
  */
 export function HarbourLookOverlay({ open, onClose }: { open: boolean; onClose(): void }) {
   const modal = useModal(open, onClose);
+  const dismiss = () => {
+    playSound('close');
+    onClose();
+  };
   const titleId = useId();
 
   return (
@@ -102,7 +105,7 @@ export function HarbourLookOverlay({ open, onClose }: { open: boolean; onClose()
       <div className={styles.frame}>
         <header className={styles.top}>
           <h2 id={titleId}>Tuỳ chỉnh Bến</h2>
-          <button type="button" className={styles.close} aria-label="Đóng" onClick={onClose}>
+          <button type="button" className={styles.close} aria-label="Đóng" onClick={dismiss}>
             <Icon icon={IconX} />
           </button>
         </header>

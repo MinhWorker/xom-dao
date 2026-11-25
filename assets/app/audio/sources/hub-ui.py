@@ -28,15 +28,6 @@ def tone(freq, sec, attack=0.002, decay=0.05, glide=None, partials=((1, 1.0),)):
     return fade_tail(wave_ * env(len(x), attack, decay), min(sec / 3, 0.04))
 
 
-def noise(sec, decay, lowpass=0.3):
-    rng = np.random.default_rng(7)
-    n = rng.standard_normal(len(t(sec)))
-    out = np.zeros_like(n)
-    for i in range(1, len(n)):
-        out[i] = out[i - 1] + lowpass * (n[i] - out[i - 1])
-    return fade_tail(out * env(len(n), 0.0005, decay), min(sec / 3, 0.04))
-
-
 def mix(sec, *parts):
     out = np.zeros(len(t(sec)))
     for at, sig in parts:
@@ -62,31 +53,6 @@ def save(name, x, peak_db):
         w.setframerate(RATE)
         w.writeframes(data.tobytes())
 
-
-# A button: a soft, woody "tock" with a hint of a key's click.
-click = mix(
-    0.07,
-    (0, tone(1500, 0.07, 0.001, 0.018, glide=900, partials=((1, 1), (2, 0.15)))),
-    (0, noise(0.02, 0.003, 0.5) * 0.18),
-)
-save('button-click', click, -9)
-
-# A mouse over a button: barely there, a tiny high tick.
-hover = tone(3400, 0.03, 0.001, 0.006, partials=((1, 1), (2, 0.2)))
-save('button-hover', hover, -24)
-
-# A mouse over an island's card: a glassy "tink".
-card = tone(1760, 0.16, 0.001, 0.045, partials=((1, 1), (2.76, 0.25), (5.4, 0.08)))
-save('island-hover', card, -19)
-
-# Picking an island: two notes up, a fifth apart, with a breath of air under them.
-pick = mix(
-    0.42,
-    (0, tone(659, 0.3, 0.004, 0.09, partials=((1, 1), (2, 0.25), (3, 0.06)))),
-    (0.07, tone(988, 0.35, 0.004, 0.12, partials=((1, 1), (2, 0.25), (3, 0.06)))),
-    (0, noise(0.2, 0.06, 0.08) * 0.25),
-)
-save('island-click', pick, -7)
 
 # A locked island: two muted low knocks, "no".
 knock = lambda: tone(220, 0.08, 0.001, 0.022, glide=150, partials=((1, 1), (2, 0.3)))

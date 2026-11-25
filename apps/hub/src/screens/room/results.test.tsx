@@ -9,7 +9,6 @@ import { outcomeFor, Results } from './Results.js';
 const played = vi.hoisted(() => [] as string[]);
 vi.mock('../../sound/index.js', () => ({
   playSound: (name: string) => played.push(name),
-  hoverSound: () => {},
 }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

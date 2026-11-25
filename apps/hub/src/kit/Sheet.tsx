@@ -1,5 +1,6 @@
 import { IconX } from '@tabler/icons-react';
 import { type ReactNode, useId } from 'react';
+import { playSound } from '../sound/index.js';
 import { Icon } from './Icon.js';
 import { useModal } from './modal.js';
 import styles from './Sheet.module.css';
@@ -19,6 +20,10 @@ export interface SheetProps {
 export function Sheet({ open, onClose, title, children }: SheetProps) {
   const modal = useModal(open, onClose);
   const titleId = useId();
+  const dismiss = () => {
+    playSound('close');
+    onClose();
+  };
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: a tap on the backdrop is a pointer shortcut; Escape and the close button are the keyboard routes
@@ -26,13 +31,13 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
       {...modal}
       className={`${styles.sheet} glass`}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) dismiss();
       }}
       aria-labelledby={titleId}
     >
       <header className={styles.top}>
         <h2 id={titleId}>{title}</h2>
-        <button type="button" className={styles.close} aria-label="Đóng" onClick={onClose}>
+        <button type="button" className={styles.close} aria-label="Đóng" onClick={dismiss}>
           <Icon icon={IconX} size={28} />
         </button>
       </header>

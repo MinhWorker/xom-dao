@@ -1,5 +1,5 @@
 import { type ReactNode, useId, useRef } from 'react';
-import { hoverSound, playSound } from '../sound/index.js';
+import { playSound } from '../sound/index.js';
 import styles from './Menu.module.css';
 import { rovingKeyDown } from './roving.js';
 
@@ -43,7 +43,6 @@ export function Menu({ label, trigger, items, triggerClassName }: MenuProps) {
         aria-label={label}
         aria-haspopup="menu"
         {...(hasInvoker ? invoker(id) : {})}
-        onPointerEnter={hoverSound}
         onClick={(e) => {
           playSound('click');
           fromKeyboard.current = e.detail === 0;
@@ -89,7 +88,6 @@ export function Menu({ label, trigger, items, triggerClassName }: MenuProps) {
               type="button"
               role="menuitem"
               className={[styles.item, item.danger && styles.danger].filter(Boolean).join(' ')}
-              onPointerEnter={hoverSound}
               onClick={() => {
                 playSound('click');
                 item.onSelect();

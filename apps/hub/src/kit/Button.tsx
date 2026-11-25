@@ -1,13 +1,15 @@
 import { IconChevronRight } from '@tabler/icons-react';
 import type { ButtonHTMLAttributes, PointerEvent } from 'react';
 import { prefersReducedMotion } from '../settings/graphics.js';
-import { hoverSound, playSound } from '../sound/index.js';
+import { playSound, type SoundName } from '../sound/index.js';
 import styles from './Button.module.css';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost';
   /** The screen's main way forward: chevrons march after the label and a sheen passes now and then. */
   forward?: boolean;
+  /** Played on click: `close` for a way back or out. */
+  sound?: SoundName;
 }
 
 const EASE = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
@@ -35,10 +37,10 @@ function pressFlash(button: HTMLButtonElement, forward: boolean) {
 export function Button({
   variant = 'secondary',
   forward = false,
+  sound = 'click',
   className,
   type = 'button',
   onClick,
-  onPointerEnter,
   onPointerDown,
   children,
   ...rest
@@ -56,12 +58,8 @@ export function Button({
       className={classes.filter(Boolean).join(' ')}
       data-loop={forward || undefined}
       onClick={(e) => {
-        playSound('click');
+        playSound(sound);
         onClick?.(e);
-      }}
-      onPointerEnter={(e) => {
-        hoverSound(e);
-        onPointerEnter?.(e);
       }}
       onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
         if (e.pointerType !== 'mouse') pressFlash(e.currentTarget, forward);

@@ -36,6 +36,8 @@ export const AVATARS = [
   'alien',
   'ghost',
   'harbour',
+  'dang',
+  'nam',
 ] as const;
 export type Avatar = (typeof AVATARS)[number];
 

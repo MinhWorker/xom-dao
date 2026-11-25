@@ -1,12 +1,14 @@
-import { IconArrowLeft, IconCopy } from '@tabler/icons-react';
+import { IconArrowLeft, IconCopy, IconPencil } from '@tabler/icons-react';
 import type { MatchRecord, PlayerStats } from '@xomdao/shared/client';
 import { useEffect, useState } from 'react';
 import { gameById } from '../../games.js';
 import { Button, Chip, CutPanel, toast } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
+import { playSound } from '../../sound/index.js';
 import { avatarSrc, frameSrc } from '../harbour/portrait.js';
 import screen from '../Screen.module.css';
+import { AvatarPicker } from './AvatarPicker.js';
 import { ago, boardLabel, boardUnit, levelProgress, OUTCOME_LABEL, winPercent } from './format.js';
 import styles from './Profile.module.css';
 
@@ -98,6 +100,7 @@ export function Profile({ userId }: { userId?: string }) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [matches, setMatches] = useState<MatchRecord[] | null>(null);
   const [error, setError] = useState('');
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -138,7 +141,7 @@ export function Profile({ userId }: { userId?: string }) {
   return (
     <main className={styles.profile}>
       <header className={styles.top}>
-        <Button variant="ghost" className={styles.back} onClick={() => navigate('/')}>
+        <Button variant="ghost" sound="close" className={styles.back} onClick={() => navigate('/')}>
           <IconArrowLeft stroke={2} aria-hidden />
           Về Bến
         </Button>
@@ -148,10 +151,29 @@ export function Profile({ userId }: { userId?: string }) {
       <div className={`${styles.columns} ${own ? '' : styles.single}`}>
         <section className={styles.side} aria-label="Thống kê">
           <div className={styles.identity}>
-            <span className={styles.portrait} aria-hidden="true">
-              <img src={avatarSrc(avatar ?? '')} alt="" draggable={false} />
-              <img src={frameSrc(frame ?? '')} alt="" draggable={false} />
-            </span>
+            {own ? (
+              <button
+                type="button"
+                className={`${styles.portrait} ${styles.editable}`}
+                aria-label="Đổi ảnh đại diện"
+                title="Đổi ảnh đại diện"
+                onClick={() => {
+                  playSound('click');
+                  setPicking(true);
+                }}
+              >
+                <img src={avatarSrc(avatar ?? '')} alt="" draggable={false} />
+                <img src={frameSrc(frame ?? '')} alt="" draggable={false} />
+                <span className={styles.edit} aria-hidden="true">
+                  <IconPencil stroke={2} />
+                </span>
+              </button>
+            ) : (
+              <span className={styles.portrait} aria-hidden="true">
+                <img src={avatarSrc(avatar ?? '')} alt="" draggable={false} />
+                <img src={frameSrc(frame ?? '')} alt="" draggable={false} />
+              </span>
+            )}
             <span className={styles.who}>
               <span className={styles.name}>{name}</span>
               {handle && (
@@ -201,6 +223,7 @@ export function Profile({ userId }: { userId?: string }) {
           </section>
         )}
       </div>
+      {own && <AvatarPicker open={picking} onClose={() => setPicking(false)} />}
     </main>
   );
 }
