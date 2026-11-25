@@ -1,8 +1,18 @@
-import { IconDots } from '@tabler/icons-react';
+import { IconDoorEnter, IconDots, IconEye } from '@tabler/icons-react';
 import type { Friend, Person } from '@xomdao/shared/client';
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { gameById } from '../../games.js';
-import { Button, Chip, Icon, Menu, Sheet, Tabs, TextField, toast } from '../../kit/index.js';
+import {
+  Button,
+  Chip,
+  Dialog,
+  Icon,
+  Menu,
+  Sheet,
+  Tabs,
+  TextField,
+  toast,
+} from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
 import styles from './FriendsSheet.module.css';
@@ -44,6 +54,8 @@ function FriendList({ onClose }: { onClose(): void }) {
   const friends = useHub((s) => s.friends);
   const { error, busy, run } = useAction();
   const [query, setQuery] = useState('');
+  /** The friend asked about before removing them. */
+  const [removing, setRemoving] = useState<Friend | null>(null);
   const shown = filterFriends(friends, query);
   const groups = groupFriends(shown);
 
@@ -93,16 +105,27 @@ function FriendList({ onClose }: { onClose(): void }) {
               dim={!f.online}
             >
               {f.roomCode && (
-                <Button variant="primary" disabled={busy} onClick={() => go(`/room/${f.roomCode}`)}>
-                  Vào
-                </Button>
+                <button
+                  type="button"
+                  className={`${styles.door} ${f.roomStatus === 'playing' ? styles.doorPlaying : ''}`}
+                  aria-label={
+                    f.roomStatus === 'playing'
+                      ? `Vào xem phòng của ${f.name}`
+                      : `Vào phòng của ${f.name}`
+                  }
+                  title={f.roomStatus === 'playing' ? 'Vào xem' : 'Vào phòng'}
+                  disabled={busy}
+                  onClick={() => go(`/room/${f.roomCode}`)}
+                >
+                  <Icon icon={f.roomStatus === 'playing' ? IconEye : IconDoorEnter} />
+                </button>
               )}
               <Menu
                 label={`Tuỳ chọn ${f.name}`}
                 trigger={<Icon icon={IconDots} />}
                 items={[
                   { label: 'Hồ sơ', onSelect: () => go(`/profile/${f.id}`) },
-                  { label: 'Xoá bạn', danger: true, onSelect: () => void remove(f) },
+                  { label: 'Xoá bạn', danger: true, onSelect: () => setRemoving(f) },
                 ]}
               />
             </PersonRow>
@@ -129,6 +152,31 @@ function FriendList({ onClose }: { onClose(): void }) {
           {error}
         </p>
       )}
+      <Dialog
+        open={removing !== null}
+        onClose={() => setRemoving(null)}
+        look="band"
+        kicker="Xác nhận"
+        title="Xoá bạn?"
+        actions={
+          <>
+            <Button onClick={() => setRemoving(null)}>Giữ lại</Button>
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() => {
+                const who = removing;
+                setRemoving(null);
+                if (who) void remove(who);
+              }}
+            >
+              Xoá
+            </Button>
+          </>
+        }
+      >
+        <p>{removing?.name} sẽ không còn trong danh sách Hàng xóm của bạn.</p>
+      </Dialog>
     </div>
   );
 }

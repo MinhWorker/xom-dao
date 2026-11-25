@@ -47,3 +47,27 @@
   padding-inline: var(--space-4);
   font-size: var(--text-md);
 }
+
+/* A friend's open Room: tap to walk in; while it plays, to watch. */
+.door {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 1px solid var(--accent);
+  background: rgb(255 194 52 / 0.16);
+  color: var(--accent);
+  box-shadow: 0 0 12px rgb(255 194 52 / 0.35);
+}
+
+.door:disabled {
+  opacity: 0.5;
+}
+
+.doorPlaying {
+  border-color: var(--line-strong);
+  background: rgb(11 13 16 / 0.5);
+  color: var(--text-dim);
+  box-shadow: none;
+}
