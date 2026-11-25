@@ -66,6 +66,8 @@ const LIFT := 26.0
 ## `_layout_buttons`): change them together.
 const BUTTON := Vector2(132.0, 46.0)
 const DONE_AFTER_STANDINGS := 3.4
+## The bus of the sound effects, set to the Hub's `effects` level.
+const EFFECTS_BUS := "Effects"
 
 var _me := -1
 var _seats: Array = []
@@ -84,6 +86,8 @@ var _selected: Dictionary = {}
 var _seat_views: Array[SeatView] = []
 var _seat_count := 0
 var _players: Dictionary = {}
+## Đồ họa thấp: no shaking or pulsing.
+var _low := false
 
 var _glow: GradientTexture2D
 var _seat_layer := Control.new()
@@ -92,6 +96,13 @@ var _fx := Control.new()
 var _overlay := Overlay.new()
 var _play_button := Button.new()
 var _pass_button := Button.new()
+var _hint_button := Button.new()
+## Where Gợi ý is in its list, for the table as it stands (`_hint_key`).
+var _hint_index := 0
+var _hint_key := ""
+## A drag across the hand selects (true) or puts down (false) the cards it passes over.
+var _drag_select := true
+var _dragging := false
 var _turn_label: Label
 
 
@@ -110,14 +121,22 @@ func _ready() -> void:
 	_build_background()
 	_build_buttons()
 	add_child(_overlay)
+	_overlay.z_index = 1000
+	if AudioServer.get_bus_index(EFFECTS_BUS) < 0:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, EFFECTS_BUS)
+		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
 	for sound: String in SOUNDS:
 		var player := AudioStreamPlayer.new()
 		player.stream = SOUNDS[sound]
+		player.bus = EFFECTS_BUS
 		add_child(player)
 		_players[sound] = player
 	XomdaoBridge.inited.connect(_on_init)
 	XomdaoBridge.message_received.connect(_on_message)
+	XomdaoBridge.settings_changed.connect(_apply_settings)
 	resized.connect(_relayout)
+	_refresh_buttons()
 	XomdaoBridge.announce_ready()
 
 
@@ -159,6 +178,9 @@ func _on_init(init: Dictionary) -> void:
 	_selected.clear()
 	_view = {}
 	init = _whole(init)
+	var settings: Variant = init.get("settings")
+	if settings is Dictionary:
+		_apply_settings(settings)
 	var player: Dictionary = init.get("player", {})
 	var room: Dictionary = init.get("room", {})
 	_seats = room.get("seats", [])
@@ -215,6 +237,18 @@ func _whole(value: Variant) -> Variant:
 			table[key] = _whole(value[key])
 		return table
 	return value
+
+
+## The Hub's `effects` level and Đồ họa (volume and mute are already on the Master bus).
+func _apply_settings(settings: Dictionary) -> void:
+	if settings.has("effects"):
+		var bus := AudioServer.get_bus_index(EFFECTS_BUS)
+		AudioServer.set_bus_volume_db(bus, linear_to_db(float(settings["effects"])))
+	if settings.has("graphics"):
+		_low = str(settings["graphics"]) == "low"
+		for seat_view in _seat_views:
+			seat_view.calm = _low
+			seat_view.refresh()
 
 
 ## Shows the queued pushes one by one.
@@ -305,8 +339,23 @@ func _announce_play(play: Dictionary, prev: Dictionary) -> float:
 			1.0,
 			_pile_center().y - size.y * 0.2
 		)
+	if impact["big"]:
+		_shake(7.0 if str(impact["words"]).begins_with("Chặt") else 4.0)
 	var hold := HOLD_OWN if seat == _me else HOLD_PLAY
 	return hold + (HOLD_BIG if impact["big"] else 0.0)
+
+
+## The table jolts under a bomb or a chop.
+func _shake(strength: float) -> void:
+	if _low:
+		return
+	for layer: Control in [_card_layer, _seat_layer]:
+		var jolt := layer.create_tween()
+		for i in 6:
+			var fade := 1.0 - float(i) / 6.0
+			var offset := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * strength * fade
+			jolt.tween_property(layer, "position", offset, 0.04)
+		jolt.tween_property(layer, "position", Vector2.ZERO, 0.05)
 
 
 ## Marks the seats that just ran out of cards or are down to their last one.
@@ -320,6 +369,12 @@ func _announce_hands(view: Dictionary, prev: Dictionary) -> float:
 			_pop(seat, "Còn 1 lá", Style.DANGER)
 			_sfx("last-card")
 			hold = maxf(hold, 0.4)
+		elif now == 0 and int(before[seat]) > 0 and (view["out"] as Array).size() == 1:
+			var who := "Bạn" if seat == _me else _name_of(seat)
+			_overlay.banner("%s về nhất!" % who, 40, Style.BRASS, 1.4, size.y * 0.27)
+			_sfx("special-hand")
+			_flash(seat)
+			hold = maxf(hold, 0.9)
 		elif now == 0 and int(before[seat]) > 0:
 			_pop(seat, "Hết bài", Style.BRASS)
 			hold = maxf(hold, 0.5)
@@ -649,6 +704,7 @@ func _build_seats(count: int) -> void:
 		seat_view.is_bot = bool(info.get("bot", false))
 		seat_view.tint = TINTS[seat % TINTS.size()]
 		seat_view.mine = seat == _me
+		seat_view.calm = _low
 		seat_view.position = _seat_spot(seat)
 		_seat_layer.add_child(seat_view)
 		_seat_views.append(seat_view)
@@ -773,14 +829,17 @@ func _draw() -> void:
 func _build_buttons() -> void:
 	_play_button.text = "Đánh"
 	_pass_button.text = "Bỏ lượt"
+	_hint_button.text = "Gợi ý"
 	_style_button(_play_button, true)
 	_style_button(_pass_button, false)
+	_style_button(_hint_button, false)
 	_play_button.pressed.connect(_on_play)
 	_pass_button.pressed.connect(_on_pass)
+	_hint_button.pressed.connect(_on_hint)
 	_turn_label = Style.label("Lượt của bạn", 15, Style.BRASS, true)
 	_turn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_turn_label.visible = false
-	for node: Control in [_pass_button, _play_button, _turn_label]:
+	for node: Control in [_hint_button, _pass_button, _play_button, _turn_label]:
 		add_child(node)
 	_layout_buttons()
 
@@ -816,6 +875,8 @@ func _layout_buttons() -> void:
 	_play_button.size = BUTTON
 	_pass_button.position = play_at - Vector2(0.0, BUTTON.y * 0.85 + 10.0)
 	_pass_button.size = Vector2(BUTTON.x, BUTTON.y * 0.85)
+	_hint_button.position = _pass_button.position - Vector2(0.0, BUTTON.y * 0.85 + 10.0)
+	_hint_button.size = _pass_button.size
 	var hand_top := size.y - 14.0 - CardView.SIZE.y * _hand_scale()
 	_turn_label.size = Vector2(240.0, 24.0)
 	_turn_label.position = Vector2(
@@ -863,6 +924,7 @@ func _refresh_buttons() -> void:
 		must = int(_view["mustPlay"])
 	_play_button.disabled = not (mine and Rules.can_play(_selection(), _table_cards(), must))
 	_pass_button.disabled = not (mine and _view.get("table") != null)
+	_hint_button.disabled = not mine or _hints().is_empty()
 	_turn_label.visible = _is_my_turn()
 	if _autoplay and mine:
 		_autoplay_move.call_deferred()
@@ -880,6 +942,32 @@ func _on_pass() -> void:
 	_send("pass", {})
 
 
+## The plays Gợi ý goes through now, weakest first.
+func _hints() -> Array:
+	var must := -1
+	if _view.get("mustPlay") != null:
+		must = int(_view["mustPlay"])
+	return Rules.hints(_view.get("hand", []), _table_cards(), must)
+
+
+## Selects the next suggested play, round and round.
+func _on_hint() -> void:
+	var hints := _hints()
+	if _hint_button.disabled or hints.is_empty():
+		return
+	var key := "%d/%d" % [int(_view.get("trick", 0)), (_view.get("played", []) as Array).size()]
+	if key != _hint_key:
+		_hint_key = key
+		_hint_index = 0
+	var cards: Array = hints[_hint_index % hints.size()]
+	_hint_index += 1
+	_selected.clear()
+	for card: Variant in cards:
+		_selected[int(card)] = true
+	_sfx("card-select")
+	_apply_view(_view, true)
+
+
 func _send(event: String, data: Dictionary) -> void:
 	_pending = true
 	_refresh_buttons()
@@ -895,10 +983,20 @@ func _send(event: String, data: Dictionary) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and _dragging:
+		var card := _hand_card_at((event as InputEventMouseMotion).position)
+		if card >= 0 and _selected.has(card) != _drag_select:
+			_toggle(card)
+		return
 	if not event is InputEventMouseButton:
 		return
 	var click := event as InputEventMouseButton
-	if not click.pressed or click.button_index != MOUSE_BUTTON_LEFT or _me < 0:
+	if click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if not click.pressed:
+		_dragging = false
+		return
+	if _me < 0:
 		return
 	var card := _hand_card_at(click.position)
 	if card < 0:
@@ -906,6 +1004,12 @@ func _gui_input(event: InputEvent) -> void:
 			_selected.clear()
 			_apply_view(_view, true)
 		return
+	_dragging = true
+	_drag_select = not _selected.has(card)
+	_toggle(card)
+
+
+func _toggle(card: int) -> void:
 	if _selected.has(card):
 		_selected.erase(card)
 	else:
@@ -948,6 +1052,18 @@ func _autoplay_move() -> void:
 
 # ---------------------------------------------------------------------------------------------
 # Words, sounds and boards
+
+
+## The plate of the seat that went out first swells and glows.
+func _flash(seat: int) -> void:
+	if _low or seat >= _seat_views.size():
+		return
+	var plate := _seat_views[seat]
+	var glow := plate.create_tween()
+	glow.tween_property(plate, "scale", Vector2(1.12, 1.12), 0.18).set_trans(Tween.TRANS_BACK)
+	glow.parallel().tween_property(plate, "modulate", Color(1.35, 1.25, 0.9), 0.18)
+	glow.tween_property(plate, "scale", Vector2.ONE, 0.35)
+	glow.parallel().tween_property(plate, "modulate", Color.WHITE, 0.35)
 
 
 ## A short tag that floats up between a seat and the pile.
