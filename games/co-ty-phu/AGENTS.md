@@ -54,7 +54,7 @@ Three medallions sit at the top middle, clear of the Hub's corner buttons: fewer
 graphics whatever the Hub's Đồ họa, and no bulbs), ×2 (every move plays twice as fast), both kept
 in `localStorage`; and between them, for the only person at a table of computers, pause: `pause` stops the server's clock and the computer (`State.paused`), the client
 finishes the move playing and holds the rest until `resume`.
-`?showcase` on the client's URL (through the Harness) plays both monopoly moments, the jail verdict, Xuất phát's pay and a flight's aim for seat 0 on the first view of a Match, then plays on.
+`?showcase` on the client's URL (through the Harness) plays a Full set, both monopoly moments, the jail verdict, Xuất phát's pay and a flight's aim for seat 0 on the first view of a Match, then plays on.
 `npm run smoke:web` rolls on the dice and plays the next decision in CI.
 
 ## Look
