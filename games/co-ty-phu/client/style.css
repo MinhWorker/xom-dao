@@ -1393,13 +1393,39 @@ body.quake .roster {
   display: none;
 }
 
-.quiz-clock {
-  align-self: stretch;
-  height: 4px;
-  margin-top: auto;
-  border-radius: 2px;
-  background: var(--deck);
-  transform-origin: left;
+.countdown {
+  --run: #fff27a;
+  position: absolute;
+  inset: -14px;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px var(--run)) drop-shadow(0 0 10px #ffb300);
+}
+
+.countdown[hidden] {
+  display: none;
+}
+
+/* The time left lit clockwise from the top, on a ring cut out of a conic gradient. */
+.countdown .ring {
+  position: absolute;
+  inset: 0;
+  padding: 7px;
+  border-radius: 22px;
+  background: conic-gradient(var(--run) calc(var(--left, 1) * 1turn), rgba(0, 0, 0, 0.35) 0);
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+
+.countdown.short {
+  --run: #ff6a4d;
+  animation: countdown-blink 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes countdown-blink {
+  to {
+    opacity: 0.45;
+  }
 }
 
 .answer {
@@ -1546,10 +1572,21 @@ body.quake .roster {
   color: #ffb3a3;
 }
 
-/* The payer pays their bill with a tap; the bar runs out over the 5 s it waits. */
+/* The payer pays their bill with a tap anywhere on it; the bar runs out over the 5 s it waits. */
 .bill {
   pointer-events: auto;
   cursor: pointer;
+}
+
+.bill.payer::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+}
+
+.bill.payer:active .settle {
+  filter: brightness(0.88);
+  scale: 0.97;
 }
 
 .settle {

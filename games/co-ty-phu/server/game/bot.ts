@@ -11,6 +11,29 @@ import { landPrice, rent, takeoverPrice, upgradeCost } from './economy.js';
 import { HOTEL, JAIL_TRIES, type Player, type State } from './model.js';
 import type { Tuning } from './tuning.js';
 
+/** About how long a step of a walk takes on screen, in ms at normal speed. */
+const STEP_MS = 170;
+
+/**
+ * How long the computer waits before its move: about as long as the screens take to play the
+ * move before it (the dice and the walk, a Card, a bill), so the moves never pile up there. Half
+ * under Nhanh.
+ */
+export function thinkMs(state: State): number {
+  const walk = 900 + STEP_MS * (state.dice ?? []).reduce((a, b) => a + b, 0);
+  const ms = {
+    roll: 2600,
+    buy: walk + 900,
+    upgrade: walk + 900,
+    takeover: walk + 3600,
+    fly: walk + 900,
+    card: walk + 3200,
+    quiz: 2400,
+    debt: 3200,
+  }[state.phase];
+  return Math.round(ms * (state.speed === 'fast' ? 0.5 : 1));
+}
+
 /** What the computer plays for `seat` now, or `null` when it is not theirs to play. */
 export function botMove(t: Tuning, state: State, seat: number, rng: Rng): GameEvent | null {
   if (state.phase === 'debt')

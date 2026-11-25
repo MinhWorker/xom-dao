@@ -30,7 +30,7 @@ import {
 } from '@xomdao/sdk';
 import { z } from 'zod';
 import { AIRPORT_TILE, BOARD, isLot, JAIL_TILE } from './board.js';
-import { botMove } from './bot.js';
+import { botMove, thinkMs } from './bot.js';
 import {
   asks,
   botPick,
@@ -286,6 +286,9 @@ export class CoTyPhuGame extends Game<State, Options, View> {
   bot(ctx: BotContext<State, Options>): GameEvent | null {
     if (ctx.state.paused) return null;
     return botMove(this.t, ctx.state, ctx.player.seat, ctx.rng);
+  }
+  botDelay(ctx: BotContext<State, Options>) {
+    return thinkMs(ctx.state);
   }
   /** Refuses a move while paused, out of turn or out of `phase`; the turn player otherwise. */
   private check(ctx: Move<unknown>, phase: State['phase']): Player {

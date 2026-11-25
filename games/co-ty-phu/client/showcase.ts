@@ -97,9 +97,9 @@ export async function showcase(view: View, live: () => boolean, stage: Stage) {
     [
       'Miễn thuê',
       async () => {
-        board.exempt([1, 3, 5, 6, 8, 11, 12, 13, 15]);
+        board.rentFree([1, 3, 5, 6, 8, 11, 12, 13, 15]);
         await wait(2600);
-        board.exempt([]);
+        board.rentFree([]);
       },
       300,
     ],

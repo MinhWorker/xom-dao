@@ -23,7 +23,7 @@ import styles from './Room.module.css';
 import { MyPreferences, RoomOptions } from './RoomOptions.js';
 
 /** How long the Hub waits for the Game's `done` before showing the results anyway. */
-const DONE_FALLBACK_MS = 4000;
+const DONE_FALLBACK_MS = 15000;
 
 export function Room({ code }: { code: string }) {
   const phase = useHub((s) => s.phase);

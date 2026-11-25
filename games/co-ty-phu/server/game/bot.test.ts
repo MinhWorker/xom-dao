@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AIRPORT_TILE, JAIL_TILE } from './board.js';
+import { thinkMs } from './bot.js';
 import { all, open, own, player } from './test-match.js';
 
 describe('the computer buying and building', () => {
@@ -89,5 +90,14 @@ describe('the computer in jail', () => {
       own(1, [1, 2, 3, 6, 8, 9, 11, 13, 14, 16, 18, 19, 21, 23, 24, 26], 1),
     );
     expect(open({ arrange: late }).bot('a')).toEqual({ event: 'roll' });
+  });
+});
+
+describe('how long the computer thinks', () => {
+  it('waits out the walk it just made, and half as long under Nhanh', () => {
+    const rolled = open({ rolls: [[1, 2]] }).send('a', 'roll').state;
+    expect(rolled.phase).toBe('buy');
+    expect(thinkMs(rolled)).toBe(900 + 170 * 3 + 900);
+    expect(thinkMs({ ...rolled, speed: 'fast' })).toBe(Math.round((900 + 170 * 3 + 900) / 2));
   });
 });
