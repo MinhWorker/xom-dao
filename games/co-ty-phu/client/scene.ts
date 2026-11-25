@@ -45,9 +45,30 @@ import { isFullSet, isMonopoly } from '../server/game/economy.js';
 import { HOTEL, type Lot, type View } from '../server/game/model.js';
 import { ambience } from './ambience.js';
 import { Marquee } from './lights.js';
-import { cage, car, DIE, die, hotel, house, plane, token, WINGTIPS } from './pieces.js';
+import {
+  cage,
+  car,
+  DIE,
+  die,
+  godOfWealth,
+  hotel,
+  house,
+  plane,
+  token,
+  WINGTIPS,
+} from './pieces.js';
 import type { Change } from './present.js';
-import { BAND, bandRect, cardBack, placement, printBoard, SET_COLORS, SIDE } from './print.js';
+import {
+  BAND,
+  bandRect,
+  CORNER,
+  cardBack,
+  placement,
+  printBoard,
+  reprint,
+  SET_COLORS,
+  SIDE,
+} from './print.js';
 
 export const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
@@ -255,7 +276,11 @@ export class BoardView {
   /** The dice cast no shadow: a soft dark patch under each, darkest on the board, fading as it rises. */
   private readonly contacts: Mesh[];
   private readonly glow: Mesh[] = [];
-  private readonly tick: (t?: number, neon?: number) => void;
+  private readonly tick: (t?: number, neon?: number, struck?: ReadonlySet<number>) => void;
+  /** The printed board, repainted where prices are crossed out (`exempt`). */
+  private readonly printed: CanvasTexture;
+  /** The Tiles whose price the player sees crossed out for a 0 under Miễn thuê. */
+  private struck: ReadonlySet<number> = new Set();
   private readonly tweens: Tween[] = [];
   private readonly ray = new Raycaster();
   private readonly ground = new Plane(new Vector3(0, 1, 0), -BOARD_H);
@@ -276,6 +301,8 @@ export class BoardView {
   /** Bumped by `stop`: a walk under way gives up. */
   private generation = 0;
   private low = false;
+  /** Each seat's Thần tài, sitting in a corner of the board while they hold the Effect. */
+  private readonly gods = new Map<number, Group>();
   /** The turn of the view on the board, whose player a Kẹt xe taxi parks for. */
   private turnShown = 0;
   /** A Kẹt xe roll's taxi, parked on the board until `seat`'s turn is over. */
@@ -348,6 +375,7 @@ export class BoardView {
     const printed = new CanvasTexture(printBoard(336, false));
     printed.colorSpace = SRGBColorSpace;
     printed.anisotropy = anisotropy;
+    this.printed = printed;
     const top = new Mesh(
       new PlaneGeometry(SIDE, SIDE),
       new MeshStandardMaterial({ roughness: 0.85, map: printed }),
@@ -501,6 +529,22 @@ export class BoardView {
     this.pace = pace;
   }
 
+  /**
+   * Miễn thuê, as its holder sees it: the price on each of `tiles` (Lots of others) crossed out
+   * in red with a green 0 beside it, like a discount; an empty list prints them as they are.
+   */
+  exempt(tiles: readonly number[]) {
+    const next = new Set(tiles);
+    const changed = [...new Set([...this.struck, ...next])].filter(
+      (i) => this.struck.has(i) !== next.has(i),
+    );
+    if (changed.length === 0) return;
+    this.struck = next;
+    reprint(this.printed.image as HTMLCanvasElement, changed, next);
+    this.printed.needsUpdate = true;
+    this.tick(undefined, 0, next);
+  }
+
   /** A Quiz answered right: the rim's bulbs celebrate (`Marquee`). */
   cheer(ms = 2400) {
     this.marquee.play({ kind: 'quiz', ms: ms * this.pace });
@@ -521,6 +565,7 @@ export class BoardView {
   /** Puts everything where `view` says, at once. */
   show(view: View) {
     this.turnShown = view.turn;
+    this.seatGods(view);
     if (this.parked && this.parked.seat !== view.turn) this.leaveParked();
     this.showLots(view);
     this.spots = view.players.map((p) => (p.bankrupt ? null : p.tile));
@@ -753,6 +798,72 @@ export class BoardView {
       );
       this.floatText(where, text, good, ms, 0.8);
     }
+  }
+
+  /**
+   * Phí bảo trì: a hammer swings down on each of `tiles` three times at once, a puff of dust and
+   * smoke at every knock, then the Lot's share, `text`, floats up red.
+   */
+  async knock(tiles: { tile: number; text: string }[], ms = 1300) {
+    ms *= this.pace;
+    const knocks = 3;
+    const jobs = tiles.map(async ({ tile, text }, n) => {
+      const p = placement(tile);
+      const where = at(p.x + p.w / 2, p.y + p.h / 2);
+      const material = new SpriteMaterial({ map: HAMMER, transparent: true, depthTest: false });
+      const hammer = new Sprite(material);
+      hammer.center.set(0.5, 0.08);
+      hammer.scale.set(0.9, 0.9, 1);
+      hammer.renderOrder = 9;
+      hammer.position.set(where.x + 0.25, BOARD_H + 0.05, where.z);
+      this.fx.add(hammer);
+      let struck = 0;
+      await this.wait(n * 40);
+      await this.tween(ms, (u) => {
+        const beat = u * knocks;
+        const k = beat % 1;
+        material.rotation = k < 0.6 ? 0.2 + (k / 0.6) * 0.9 : 1.1 - ((k - 0.6) / 0.4) * 1.3;
+        material.opacity = u > 0.9 ? (1 - u) * 10 : Math.min(1, u * 8);
+        if (Math.floor(beat + 0.4) > struck && struck < knocks) {
+          struck++;
+          this.puff(new Vector3(where.x, BOARD_H, where.z), 6, 420);
+          this.sparks(where, 5, ['#8a8f9c', '#b9a58a', '#5a5e68'], 500, 0.7);
+          if (struck === knocks) this.flash(tile, '#e0553d', 300 * this.pace);
+        }
+      });
+      this.fx.remove(hammer);
+      material.dispose();
+      this.floatText(where, text, false, ms * 1.1, 0.8);
+    });
+    await Promise.all(jobs);
+  }
+
+  /**
+   * Lãi tiết kiệm: a little hoard of gold pops up in the middle of the board; returns where it
+   * shows on the screen (CSS pixels) for the money to fly out of, and takes it away after `ms`.
+   */
+  vault(ms = 2200) {
+    ms *= this.pace;
+    const g = hoard();
+    const where = new Vector3(0, BOARD_H, 0.4);
+    g.position.copy(where);
+    g.scale.setScalar(0.001);
+    this.fx.add(g);
+    this.sparks(where, 16, [GOLD, '#fff2c2'], 700 * this.pace, 1.6);
+    this.tween(ms, (u) => {
+      const grow = u < 0.18 ? backOut(u / 0.18) : u > 0.85 ? 1 - (u - 0.85) / 0.15 : 1;
+      g.scale.setScalar(Math.max(0.001, grow));
+      g.rotation.y = u * 0.8;
+    }).then(() => this.fx.remove(g));
+    const p = where
+      .clone()
+      .setY(BOARD_H + 0.5)
+      .project(this.camera);
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: rect.left + ((p.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - p.y) / 2) * rect.height,
+    };
   }
 
   /** `text` pops up over `where` and floats away: gold when `good`, red when not; `size` scales it. */
@@ -1138,6 +1249,45 @@ export class BoardView {
     struck?.scale.setScalar(1);
     this.setDice([value]);
     this.parked = { taxi, seat: this.turnShown };
+  }
+
+  /** A Thần tài sits down in their corner for each seat holding the Effect, and leaves when it ends. */
+  private seatGods(view: View) {
+    view.players.forEach((p, seat) => {
+      const lucky = !p.bankrupt && p.effects.some((e) => e.id === 'lucky');
+      const sitting = this.gods.get(seat);
+      if (lucky && !sitting) {
+        const god = godOfWealth(SEAT_COLORS[seat] as string);
+        god.position.copy(godSpot(seat));
+        god.scale.setScalar(0.001);
+        this.world.add(god);
+        this.gods.set(seat, god);
+        this.sparks(god.position, 14, [GOLD, '#fff2c2'], 700 * this.pace, 1.4);
+        this.tween(420 * this.pace, (u) => god.scale.setScalar(Math.max(0.001, backOut(u) * GOD)));
+      } else if (!lucky && sitting) {
+        this.gods.delete(seat);
+        this.puff(sitting.position, 10, 420);
+        this.tween(320 * this.pace, (u) =>
+          sitting.scale.setScalar(Math.max(0.001, (1 - ease(u)) * GOD)),
+        ).then(() => this.world.remove(sitting));
+      }
+    });
+  }
+
+  /** The extra a Thần tài brought `seat`: gold bursts off them and "+amount" floats up there. */
+  luck(seat: number, amount: number, ms = 1500) {
+    const god = this.gods.get(seat);
+    if (!god) return;
+    ms *= this.pace;
+    this.sparks(god.position, 18, [GOLD, '#fff2c2', SEAT_COLORS[seat] as string], ms * 0.6, 1.6);
+    this.floatText(
+      god.position.clone().setY(BOARD_H + 0.9),
+      `+${amount.toLocaleString('vi-VN')}`,
+      true,
+      ms,
+      0.8,
+    );
+    this.tween(ms * 0.4, (u) => god.scale.setScalar(GOD * (1 + Math.sin(u * Math.PI) * 0.25)));
   }
 
   /** The taxi of a Kẹt xe roll pops away, as its player's turn is over. */
@@ -1674,7 +1824,8 @@ export class BoardView {
     for (const [k, a] of this.arrows.entries())
       a.position.y = BOARD_H + 0.45 + Math.abs(Math.sin(ms / 260 + k * 0.5)) * 0.25;
     const lit = ms < this.neonUntil ? (Math.floor(ms / 110) % 2 === 0 ? 1 : 0.25) : 0;
-    if (!this.low || lit > 0 || this.wasLit) this.tick(this.low ? undefined : ms / 1000, lit);
+    if (!this.low || lit > 0 || this.wasLit)
+      this.tick(this.low ? undefined : ms / 1000, lit, this.struck);
     this.wasLit = lit > 0;
     if (!this.speaking && this.standing?.blink)
       this.notice.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(ms / 170));
@@ -1901,6 +2052,83 @@ function halo() {
   g.fillStyle = r;
   g.fillRect(0, 0, 64, 64);
   return new CanvasTexture(c);
+}
+
+/** How large a Thần tài sits on the board. */
+const GOD = 1.6;
+
+/** Where seat `seat`'s Thần tài sits: an empty corner of the middle of the board. */
+const godSpot = (seat: number) => {
+  const r = SIDE / 2 - CORNER - 0.75;
+  const [x, z] = ([
+    [-1, 1],
+    [1, -1],
+    [-1, -1],
+    [1, 1],
+  ][seat % 4] ?? [1, 1]) as [number, number];
+  return new Vector3(x * r, BOARD_H, z * r);
+};
+
+/** A claw hammer, its head up and its handle down, drawn once for Phí bảo trì. */
+const HAMMER = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  g.lineJoin = 'round';
+  g.lineWidth = 6;
+  g.strokeStyle = '#1b1b22';
+  g.fillStyle = '#a8703a';
+  g.beginPath();
+  g.roundRect(56, 34, 16, 88, 6);
+  g.fill();
+  g.stroke();
+  g.fillStyle = '#9aa0ac';
+  g.beginPath();
+  g.moveTo(24, 14);
+  g.lineTo(96, 14);
+  g.lineTo(104, 22);
+  g.lineTo(104, 40);
+  g.lineTo(24, 40);
+  g.quadraticCurveTo(10, 28, 24, 14);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.fillStyle = '#d9dde4';
+  g.fillRect(30, 18, 60, 6);
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+})();
+
+/** A little hoard of gold: bars stacked in a pyramid and a few coins round it. */
+function hoard() {
+  const g = new Group();
+  const gold = new MeshStandardMaterial({
+    color: '#f2c033',
+    emissive: '#5a3c00',
+    roughness: 0.25,
+    metalness: 0.8,
+  });
+  const bar = new BoxGeometry(0.42, 0.16, 0.2);
+  const rows = [[-0.46, 0, 0.46], [-0.23, 0.23], [0]];
+  rows.forEach((xs, y) => {
+    for (const x of xs)
+      for (const z of y === 2 ? [0] : [-0.13, 0.13]) {
+        const m = new Mesh(bar, gold);
+        m.position.set(x, 0.08 + y * 0.16, z);
+        m.castShadow = true;
+        g.add(m);
+      }
+  });
+  const coin = new CylinderGeometry(0.12, 0.12, 0.035, 20);
+  for (let k = 0; k < 7; k++) {
+    const m = new Mesh(coin, gold);
+    const a = (k / 7) * Math.PI * 2;
+    m.position.set(Math.cos(a) * 0.85, 0.02 + (k % 3) * 0.035, Math.sin(a) * 0.5);
+    m.rotation.z = (k % 2) * 0.4;
+    g.add(m);
+  }
+  return g;
 }
 
 /** A gold arrow pointing down at a Tile, always facing the camera. */

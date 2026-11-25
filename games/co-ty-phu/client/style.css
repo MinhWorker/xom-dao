@@ -2322,3 +2322,274 @@ body.quake .roster {
 .verdict.low .lines {
   animation: none;
 }
+
+/* A few Cards' moments (cardmoments.ts) */
+.card-moments {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.card-moments .crow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: min(30vh, 220px);
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.5));
+}
+
+.card-moments .crow svg {
+  display: block;
+  width: 100%;
+}
+
+.card-moments .crow .wing {
+  transform-box: fill-box;
+  transform-origin: 90% 95%;
+  animation: crow-flap calc(0.22s * var(--pace)) ease-in-out infinite alternate;
+}
+
+.card-moments .crow .wing.back {
+  animation-delay: calc(-0.05s * var(--pace));
+}
+
+@keyframes crow-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(-0.55);
+  }
+}
+
+.card-moments .sick {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, transparent 45%, rgba(40, 90, 20, 0.45));
+  animation: fade-in calc(0.3s * var(--pace)) ease-out;
+}
+
+.card-moments .sick.leaving {
+  animation: mono-out calc(0.35s * var(--pace)) ease-in forwards;
+}
+
+.card-moments .virus {
+  position: absolute;
+  width: calc(min(14vh, 90px) * var(--s));
+  margin: calc(min(-7vh, -45px) * var(--s)) 0 0 calc(min(-7vh, -45px) * var(--s));
+  animation:
+    virus-in calc(0.5s * var(--pace)) cubic-bezier(0.2, 1.5, 0.4, 1)
+    calc(var(--k) * 0.04s * var(--pace)) both,
+    virus-wobble calc(1.4s * var(--pace)) ease-in-out infinite alternate;
+}
+
+.card-moments .virus svg {
+  display: block;
+  width: 100%;
+}
+
+@keyframes virus-in {
+  from {
+    transform: scale(0) rotate(-90deg);
+  }
+}
+
+@keyframes virus-wobble {
+  to {
+    rotate: 25deg;
+    translate: 0 6px;
+  }
+}
+
+.card-moments .sick-word {
+  font-family: var(--display);
+  font-size: min(12vh, 84px);
+  font-weight: 900;
+  color: #dff7c8;
+  -webkit-text-stroke: 3px #1f4d1a;
+  text-shadow:
+    0 5px 0 #1f4d1a,
+    0 0 24px rgba(124, 207, 79, 0.7);
+  animation: verdict-slam calc(0.4s * var(--pace)) cubic-bezier(0.2, 1.6, 0.4, 1)
+    calc(0.15s * var(--pace)) both;
+}
+
+.card-moments .pass {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 5, 16, 0.55);
+  pointer-events: auto;
+  animation: fade-in calc(0.2s * var(--pace)) ease-out;
+}
+
+.card-moments .pass.leaving {
+  animation: mono-out calc(0.3s * var(--pace)) ease-in forwards;
+}
+
+.card-moments .pass-card {
+  width: min(86vw, 120vh, 560px);
+  aspect-ratio: 2.1 / 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 14px 20px 10px;
+  box-sizing: border-box;
+  color: #2b2116;
+  background:
+    repeating-linear-gradient(45deg, rgba(120, 90, 40, 0.06) 0 6px, transparent 6px 12px),
+    linear-gradient(180deg, #fbf3dc, #efe0b8);
+  border: 3px solid #8a6a2e;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 5px #fbf3dc,
+    inset 0 0 0 7px #b08a42,
+    0 18px 40px rgba(0, 0, 0, 0.55);
+  font-family: var(--display);
+  animation: pass-in calc(0.45s * var(--pace)) cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes pass-in {
+  from {
+    transform: translateY(40vh) rotate(-12deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+.card-moments .pass-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid #b08a42;
+  padding-bottom: 4px;
+}
+
+.card-moments .pass-head span {
+  font-size: min(2.6vh, 13px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a5a24;
+}
+
+.card-moments .pass-head b {
+  font-size: min(6vh, 30px);
+  font-weight: 900;
+  color: #8e1f14;
+}
+
+.card-moments .pass-body {
+  margin: 8px 0 0;
+  font-size: min(3.2vh, 16px);
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.card-moments .pass-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+}
+
+.card-moments .pass-door {
+  width: min(9vh, 48px);
+}
+
+.card-moments .pass-door svg,
+.card-moments .pass-sign svg {
+  display: block;
+  width: 100%;
+}
+
+.card-moments .pass-sign {
+  display: grid;
+  justify-items: center;
+  width: min(30vh, 160px);
+  border-top: 1px dashed #8a6a2e;
+}
+
+.card-moments .pass-sign svg {
+  margin-top: -36px;
+}
+
+.card-moments .pass-sign em {
+  font-size: min(2.2vh, 11px);
+  font-style: normal;
+  font-weight: 700;
+  color: #7a5a24;
+}
+
+.card-moments .pass-sign .ink {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: pass-sign calc(0.9s * var(--pace)) ease-out calc(0.6s * var(--pace)) forwards;
+}
+
+@keyframes pass-sign {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Khởi nghiệp: a halo of fire burning round the player's card while it lasts. */
+.seat.aflame {
+  animation: aflame 0.45s ease-in-out infinite alternate;
+}
+
+.seat.aflame::after {
+  content: "";
+  position: absolute;
+  inset: -16px -10px -6px;
+  z-index: -1;
+  border-radius: 20px;
+  background:
+    radial-gradient(14px 26px at 12% 100%, #ffd21f, transparent 70%) 0 0 / 34px 100% repeat-x,
+    radial-gradient(10px 22px at 50% 100%, #ff7a1a, transparent 70%) 17px 0 / 34px 100% repeat-x,
+    radial-gradient(closest-side, rgba(255, 122, 26, 0.6), transparent);
+  filter: blur(3px);
+  animation: flames 0.6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes aflame {
+  from {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 236, 180, 0.3),
+      0 0 10px 3px rgba(255, 138, 31, 0.75),
+      0 -6px 18px 4px rgba(255, 210, 31, 0.45);
+  }
+  to {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 236, 180, 0.3),
+      0 0 16px 6px rgba(255, 90, 20, 0.8),
+      0 -10px 26px 8px rgba(255, 200, 40, 0.55);
+  }
+}
+
+@keyframes flames {
+  0% {
+    background-position:
+      0 4px,
+      17px 8px,
+      0 0;
+    opacity: 0.85;
+  }
+  50% {
+    background-position:
+      -6px -3px,
+      11px 1px,
+      0 0;
+    opacity: 1;
+  }
+  100% {
+    background-position:
+      -12px 4px,
+      5px 8px,
+      0 0;
+    opacity: 0.85;
+  }
+}

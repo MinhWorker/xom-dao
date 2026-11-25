@@ -33,6 +33,40 @@ const HOUSE_ROOF = new ConeGeometry(0.15, 0.11, 4);
 HOUSE_ROOF.rotateY(Math.PI / 4);
 
 /**
+ * A little Thần tài sitting on a cushion, faceless, in a robe of `color`, his black hat with its
+ * two wings, a gold ingot held out in front (+z).
+ */
+export const godOfWealth = (color: string) => {
+  const g = new Group();
+  const gold = new MeshStandardMaterial({
+    color: '#f2c033',
+    emissive: '#5a3c00',
+    roughness: 0.25,
+    metalness: 0.8,
+  });
+  const black = paint('#1b1b22', 0.5);
+  const add = (mesh: Mesh, x: number, y: number, z = 0) => {
+    mesh.position.set(x, y, z);
+    g.add(shadowed(mesh));
+    return mesh;
+  };
+  add(new Mesh(new CylinderGeometry(0.36, 0.4, 0.1, 24), paint('#b8312a', 0.7)), 0, 0.05);
+  add(new Mesh(new CylinderGeometry(0.18, 0.34, 0.5, 24), paint(color, 0.5)), 0, 0.34);
+  add(new Mesh(new CylinderGeometry(0.2, 0.2, 0.05, 24), gold), 0, 0.42);
+  add(new Mesh(new SphereGeometry(0.16, 20, 14), paint('#e9b48a', 0.6)), 0, 0.72);
+  add(new Mesh(new CylinderGeometry(0.12, 0.14, 0.16, 20), black), 0, 0.86);
+  add(new Mesh(new BoxGeometry(0.28, 0.04, 0.03), gold), 0, 0.8, 0.12);
+  for (const x of [-0.2, 0.2]) {
+    const wing = add(new Mesh(new BoxGeometry(0.2, 0.05, 0.05), black), x, 0.88);
+    wing.rotation.z = x > 0 ? -0.25 : 0.25;
+  }
+  const ingot = add(new Mesh(new SphereGeometry(0.13, 18, 12), gold), 0, 0.44, 0.27);
+  ingot.scale.set(1.3, 0.55, 0.8);
+  add(new Mesh(new SphereGeometry(0.07, 14, 10), gold), 0, 0.5, 0.27);
+  return g;
+};
+
+/**
  * A yellow taxi about 2.4 dice long, facing +x, its wheels in `userData.wheels` to spin. It runs
  * the second die off the board under Kẹt xe.
  */

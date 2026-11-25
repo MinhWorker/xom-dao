@@ -32,6 +32,8 @@ const FILES = {
   thunder: file('thunder'),
   guilty: file('guilty'),
   horn: file('horn'),
+  crow: file('crow'),
+  hammer: file('hammer'),
   tick: file('tick'),
 };
 

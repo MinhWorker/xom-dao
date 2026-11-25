@@ -285,6 +285,7 @@ const drawFace = (
   px: number,
   t?: number,
   neon?: number,
+  struck?: boolean,
 ) => {
   const tile = BOARD[i] as Tile;
   let area = { x: -w / 2, y: -h / 2, w, h };
@@ -358,19 +359,35 @@ const drawFace = (
     y += iconS + px * 0.04;
   }
   if (price) {
-    ctx.fillStyle = '#6b5a48';
     ctx.font = `700 ${priceSize}px system-ui, "Segoe UI", Roboto, sans-serif`;
-    ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    if (tile.kind === 'utility') {
-      const die = priceSize * 1.05;
-      const gap = priceSize * 0.25;
-      const text = ctx.measureText(`${price}`).width;
-      const left = cx - (text + gap + die) / 2;
-      ctx.textAlign = 'left';
-      ctx.fillText(`${price}`, left, y + priceSize * 0.2);
-      printDie(ctx, left + text + gap + die / 2, y + priceSize * 0.2 + priceSize * 0.5, die);
-    } else ctx.fillText(`${price}`, cx, y + priceSize * 0.2);
+    ctx.textAlign = 'left';
+    const label = `${price}`;
+    const text = ctx.measureText(label).width;
+    const die = tile.kind === 'utility' ? priceSize * 1.05 : 0;
+    const gap = die ? priceSize * 0.25 : 0;
+    const width = text + gap + die;
+    const space = priceSize * 0.3;
+    ctx.font = `900 ${priceSize * 1.3}px system-ui, "Segoe UI", Roboto, sans-serif`;
+    const zero = struck ? space + ctx.measureText('0').width : 0;
+    ctx.font = `700 ${priceSize}px system-ui, "Segoe UI", Roboto, sans-serif`;
+    const left = cx - (width + zero) / 2;
+    const top = y + priceSize * 0.2;
+    ctx.fillStyle = struck ? '#a3937e' : '#6b5a48';
+    ctx.fillText(label, left, top);
+    if (die) printDie(ctx, left + text + gap + die / 2, top + priceSize * 0.5, die);
+    if (struck) {
+      ctx.strokeStyle = '#d1312a';
+      ctx.lineWidth = priceSize * 0.13;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(left - priceSize * 0.1, top + priceSize * 0.58);
+      ctx.lineTo(left + width + priceSize * 0.1, top + priceSize * 0.42);
+      ctx.stroke();
+      ctx.fillStyle = '#2f9e44';
+      ctx.font = `900 ${priceSize * 1.3}px system-ui, "Segoe UI", Roboto, sans-serif`;
+      ctx.fillText('0', left + width + space, top - priceSize * 0.06);
+    }
   }
 };
 
@@ -408,7 +425,7 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number, title: boolean) =
 
 /**
  * Paints Tile `i` with its top-left corner at the origin; `t` sets its icon moving, if it moves,
- * and `neon` (0 to 1) lights its outline.
+ * `neon` (0 to 1) lights its outline, and `struck` crosses its price out for a 0 (Miễn thuê).
  */
 export const paintTile = (
   ctx: CanvasRenderingContext2D,
@@ -416,13 +433,14 @@ export const paintTile = (
   px: number,
   t?: number,
   neon?: number,
+  struck?: boolean,
 ) => {
   const p = placement(i);
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, p.w * px, p.h * px);
   ctx.save();
   ctx.translate((p.w / 2) * px, (p.h / 2) * px);
-  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t, neon);
+  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t, neon, struck);
   ctx.restore();
   ctx.strokeStyle = LINE;
   ctx.lineWidth = px * 0.02;
@@ -448,10 +466,34 @@ export const printBoard = (px = 336, title = true): HTMLCanvasElement => {
     paintTile(ctx, i, px);
     ctx.restore();
   });
-  ctx.lineWidth = px * 0.05;
-  ctx.strokeRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeRect(CORNER * px, CORNER * px, (SIDE - 2 * CORNER) * px, (SIDE - 2 * CORNER) * px);
+  frame(ctx, px);
   return canvas;
+};
+
+/** The board's thick outer and inner edges. */
+const frame = (ctx: CanvasRenderingContext2D, px: number) => {
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = px * 0.05;
+  ctx.strokeRect(0, 0, SIDE * px, SIDE * px);
+  ctx.strokeRect(CORNER * px, CORNER * px, (SIDE - 2 * CORNER) * px, (SIDE - 2 * CORNER) * px);
+};
+
+/** Paints `tiles` again on a board `printBoard` drew at `px`, those in `struck` crossed out. */
+export const reprint = (
+  canvas: HTMLCanvasElement,
+  tiles: Iterable<number>,
+  struck: ReadonlySet<number>,
+  px = 336,
+) => {
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  for (const i of tiles) {
+    const p = placement(i);
+    ctx.save();
+    ctx.translate(p.x * px, p.y * px);
+    paintTile(ctx, i, px, undefined, 0, struck.has(i));
+    ctx.restore();
+  }
+  frame(ctx, px);
 };
 
 /** The back of a Cơ hội or Khí vận card: the deck colour with its icon repeated small. */

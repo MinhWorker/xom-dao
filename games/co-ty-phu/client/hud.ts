@@ -117,6 +117,7 @@ export class Hud {
       const out = p.bankrupt;
       li.classList.toggle('turn', !out && seat === view.turn);
       li.classList.toggle('out', out);
+      li.classList.toggle('aflame', !out && p.effects.some((e) => e.id === 'startup'));
       (li.querySelector('.cash') as HTMLElement).textContent = out ? 'Phá sản' : money(p.cash);
       const tags: string[] = [];
       if (p.jailed) tags.push(`<span class="tag bad">${svg(JAIL_ICON)}Tù</span>`);

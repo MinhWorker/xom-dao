@@ -19,6 +19,7 @@ import { type CardId, cardOf } from '../server/game/cards.js';
 import { stationRent } from '../server/game/economy.js';
 import { HOTEL, type Sale, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
+import { CardMoments } from './cardmoments.js';
 import { CardShow } from './cardshow.js';
 import {
   type Button,
@@ -60,6 +61,7 @@ const cards = new CardShow();
 const moments = new Moments();
 const crowning = new MonopolyShow();
 const verdict = new Verdict();
+const cardMoments = new CardMoments();
 const sounds = new Sounds();
 
 let myId = '';
@@ -227,6 +229,7 @@ function restart() {
   moments.clear();
   crowning.hide();
   verdict.hide();
+  cardMoments.clear();
 }
 
 /** Redraws everything from `view` at once; `fanfare` when the Match just ended on screen. */
@@ -243,6 +246,10 @@ function present(view: View | null, fanfare = false) {
     return;
   }
   board.show(view);
+  const exempt = view.players[me]?.effects.some((e) => e.id === 'exempt') ?? false;
+  board.exempt(
+    exempt ? view.lots.flatMap((lot, tile) => (lot && lot.owner !== me ? [tile] : [])) : [],
+  );
   hud.players(view);
   if (isOver(view)) {
     endedAt ??= performance.now() - END_MS;
@@ -324,13 +331,21 @@ function ask(view: View) {
 }
 
 /**
- * The Lots a Card that counts houses or Hotels charges or pays for, drawn by `seat`: the drawer's
- * Cities with their Levels (Du lịch, Sửa nhà), or the Hotels of whoever pays Thuế Khách sạn, who lost
+ * The Lots a Card that counts Lots, houses or Hotels charges or pays for, drawn by `seat`: every
+ * Lot of the drawer (Được mùa, Phí bảo trì), the drawer's Cities with their Levels (Du lịch, Sửa nhà), or the Hotels of whoever pays Thuế Khách sạn, who lost
  * cash between the view on the board and `after`. `null` for any other Card.
  */
 function levied(id: CardId, seat: number, after: View) {
   const { action } = cardOf(TUNING, id);
   const sign = (n: number) => (n > 0 ? '+' : '−');
+  if (action.kind === 'per-lot') {
+    const tiles = after.lots.flatMap((lot, tile) =>
+      lot?.owner === seat
+        ? [{ tile, text: `${sign(action.amount)}${money(Math.abs(action.amount))}` }]
+        : [],
+    );
+    return tiles.length > 0 ? { tiles, good: action.amount > 0 } : null;
+  }
   if (action.kind === 'per-level') {
     const tiles = after.lots.flatMap((lot, tile) =>
       lot?.owner === seat && BOARD[tile]?.kind === 'city'
@@ -419,6 +434,79 @@ function startShowcase(view: View) {
 async function showcase(view: View, live: () => boolean) {
   await wait(1200);
   if (!live()) return;
+  const steps: [string, () => Promise<unknown> | unknown, number][] = [
+    ['Mất ví', () => (sounds.play('crow'), cardMoments.crow(1)), 2600],
+    [
+      'Phí bảo trì',
+      () => (
+        sounds.play('hammer', { at: 160 }),
+        board.knock([1, 3, 6, 8].map((tile) => ({ tile, text: '−25' })))
+      ),
+      600,
+    ],
+    [
+      'Lãi tiết kiệm',
+      async () => {
+        sounds.play('coins', { at: 300 });
+        const from = board.vault();
+        await wait(450);
+        await moments.shower(from, hud.card(0), 1, 1, low, () =>
+          sounds.play('coin', { gain: 0.5 }),
+        );
+      },
+      600,
+    ],
+    [
+      'Thần tài',
+      async () => {
+        const lucky = { id: 'lucky' as const, turns: 2, fresh: false };
+        board.show({
+          ...view,
+          players: view.players.map((p, s) => (s === 0 ? { ...p, effects: [lucky] } : p)),
+        });
+        await wait(900);
+        sounds.play('coins');
+        board.luck(0, 120);
+        await wait(1500);
+        board.show(view);
+      },
+      600,
+    ],
+    [
+      'Miễn thuê',
+      async () => {
+        board.exempt([1, 3, 5, 6, 8, 11, 12, 13, 15]);
+        await wait(2600);
+        board.exempt([]);
+      },
+      300,
+    ],
+    [
+      'Khởi nghiệp',
+      async () => {
+        const startup = { id: 'startup' as const, turns: 3, fresh: false };
+        hud.players({
+          ...view,
+          players: view.players.map((p, s) => (s === 0 ? { ...p, effects: [startup] } : p)),
+        });
+        await wait(2400);
+        hud.players(view);
+      },
+      300,
+    ],
+    ['Ốm', () => (sounds.play('wrong', { gain: 0.7 }), cardMoments.sick(1)), 300],
+    [
+      'Vé ra tù',
+      () => (sounds.play('stamp', { at: 900 }), cardMoments.ticket(names[0] ?? '', 1)),
+      600,
+    ],
+  ];
+  for (const [title, play, after] of steps) {
+    if (!live()) return;
+    board.say(title, { ms: 1400 });
+    await play();
+    await wait(after);
+  }
   rollBeats(2, (n) => n);
   sounds.play('horn', { at: 90 });
   sounds.play('slam', { at: 495, gain: 0.8 });
@@ -573,11 +661,41 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           decide(after, me, names).buttons.length > 0;
         if (!choosing && live()) await cards.hold(Math.round(1800 * speed));
         if (!live()) return;
+        const { action } = cardOf(TUNING, step.id);
+        if (action.kind === 'cash-share' && action.share < 0) {
+          sounds.play('crow');
+          cardMoments.crow(show);
+        }
+        if (action.kind === 'effect' && action.effect === 'sick') {
+          sounds.play('wrong', { gain: 0.7 });
+          await cardMoments.sick(show);
+        }
+        if (action.kind === 'jail-free') {
+          sounds.play('stamp', { at: 900 * show });
+          await cardMoments.ticket(names[step.seat] ?? '', show);
+        }
+        if (!live()) return;
         const levy = levied(step.id, step.seat, after);
-        if (levy) {
+        if (levy && action.kind === 'per-lot' && !levy.good) {
+          sounds.play('hammer', { at: ms(160), gain: 0.9 });
+          await board.knock(levy.tiles);
+          await wait(ms(400));
+        } else if (levy) {
           sounds.play(levy.good ? 'coins' : 'crumble', { gain: 0.8 });
           board.levy(levy.tiles, levy.good);
           await wait(ms(1300));
+        }
+        if (action.kind === 'cash-share' && action.share > 0 && show > 0) {
+          const gain =
+            (after.players[step.seat]?.cash ?? 0) - (shown?.players[step.seat]?.cash ?? 0);
+          if (gain > 0) {
+            sounds.play('coins', { at: ms(300) });
+            const from = board.vault();
+            await wait(ms(450));
+            await moments.shower(from, hud.card(step.seat), grandeur(gain), show, low, () =>
+              sounds.play('coin', { gain: 0.5 }),
+            );
+          }
         }
         break;
       }
@@ -654,13 +772,18 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         if (!live()) return;
         board.follow(null);
         if (grand >= 2) board.shake(grand >= 3 ? 0.18 : 0.08, grand >= 3 ? 900 : 500);
+        const { from, to, amount } = step;
+        /** What the owner's Thần tài added to the rent: it shows at the Thần tài, not on the bill. */
+        const lucky =
+          step.why === 'rent' && !!shown?.players[to]?.effects.some((e) => e.id === 'lucky');
+        const extra = lucky ? amount - Math.round(amount / TUNING.luckyRent) : 0;
         const bill = {
           title: billTitle(step, after),
           from: names[step.from] ?? '',
           to: names[step.to] ?? '',
-          amount: step.amount,
+          amount: amount - extra,
+          ...(extra > 0 && { note: `Thần tài thu thêm ${money(extra)}` }),
         };
-        const { from, to, amount } = step;
         await moments.pay(hud.card(from), hud.card(to), bill, grand, show, {
           low,
           payer: from === me,
@@ -668,11 +791,17 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           onCoin: () => sounds.play('coin', { gain: 0.55, rate: 0.9 + Math.random() * 0.35 }),
           onFly: (flight) => {
             hud.delta(from, -amount, flight);
-            hud.delta(to, amount, flight);
+            hud.delta(to, amount - extra, flight);
             counted[from] = (counted[from] ?? 0) - amount;
             counted[to] = (counted[to] ?? 0) + amount;
           },
         });
+        if (extra > 0 && live()) {
+          sounds.play('coins');
+          board.luck(to, extra);
+          hud.delta(to, extra, ms(700));
+          await wait(ms(900));
+        }
         break;
       }
       case 'tax': {

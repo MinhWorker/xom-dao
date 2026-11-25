@@ -196,6 +196,32 @@ export class Moments {
     await Promise.all(flights);
   }
 
+  /**
+   * Money flies from a point of the screen (`from`, CSS pixels: a hoard on the board) to card `to`;
+   * `onCoin` is told as each coin lands. Resolves when the last one lands.
+   */
+  async shower(
+    from: { x: number; y: number },
+    to: HTMLElement | undefined,
+    grand: number,
+    pace: number,
+    low: boolean,
+    onCoin?: () => void,
+  ) {
+    if (pace <= 0) return;
+    const anchor = el('i', 'anchor');
+    Object.assign(anchor.style, {
+      position: 'fixed',
+      left: `${from.x}px`,
+      top: `${from.y}px`,
+      width: '0',
+      height: '0',
+    });
+    this.layer.append(anchor);
+    await this.fly(anchor, to, grand as 0 | 1 | 2 | 3, pace, low, () => {}, onCoin);
+    anchor.remove();
+  }
+
   /** Confetti in `colors` falling over the whole screen; none on low graphics. */
   confetti(colors: readonly string[], pace: number, low: boolean, n = 90) {
     if (low || pace <= 0) return;
