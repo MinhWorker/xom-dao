@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/MinhWorker/xom-dao/compare/v0.29.2...v0.30.0) (2026-11-25)
+
+
+### Features
+
+* **hub:** join a friend's Room from Hàng xóm, watchers and seat changes ([#381](https://github.com/MinhWorker/xom-dao/issues/381)) ([1b14b46](https://github.com/MinhWorker/xom-dao/commit/1b14b464eda3dbccdf28c72c403033252b53b8bd))
+
 ## [0.29.2](https://github.com/MinhWorker/xom-dao/compare/v0.29.1...v0.29.2) (2026-11-25)
 
 
