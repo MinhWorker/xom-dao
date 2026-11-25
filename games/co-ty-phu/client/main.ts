@@ -260,6 +260,7 @@ function present(view: View | null, fanfare = false) {
 /** Clears the decision on screen while moves play: its buttons, the roll and its line on the board. */
 function idle() {
   board.selling([]);
+  board.aim(null);
   hud.show([]);
   board.status(null);
   rolling = false;
@@ -364,7 +365,7 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: the monopoly moments, "Có tội!!!" and Xuất phát's pay play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page: the monopoly moments, "Có tội!!!", Xuất phát's pay and a flight's aim play on the first view, for a look without a Match that reaches them. */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
 
 /** Plays each monopoly moment and the jail verdict for seat 0 on `view`'s board, then puts the board back. */
@@ -387,7 +388,13 @@ async function showcase(view: View, live: () => boolean) {
   if (!live()) return;
   sounds.play('coins');
   board.payday(TUNING.startBonus);
-  await wait(1600);
+  await wait(1900);
+  for (const tile of [5, 12, 26, 33, 39]) {
+    if (!live()) return;
+    board.aim(tile);
+    await wait(1100);
+  }
+  board.aim(null);
   if (live()) present(view);
 }
 
@@ -808,6 +815,21 @@ hud.onButton = (button: Button) => {
 rollButton.addEventListener('click', () => {
   if (rolling && !playing) send('roll');
 });
+
+canvas.addEventListener('pointermove', (event) => {
+  if (event.pointerType !== 'mouse') return;
+  const pick = panel?.pick;
+  if (pick?.event !== 'fly' || sending || playing) {
+    board.aim(null);
+    canvas.style.cursor = '';
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const tile = board.tileAt(event.clientX - rect.left, event.clientY - rect.top);
+  board.aim(tile !== null && pick.tiles.includes(tile) ? tile : null);
+  canvas.style.cursor = tile !== null && pick.tiles.includes(tile) ? 'pointer' : '';
+});
+canvas.addEventListener('pointerleave', () => board.aim(null));
 
 canvas.addEventListener('pointerdown', (event) => {
   const rect = canvas.getBoundingClientRect();

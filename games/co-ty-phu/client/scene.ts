@@ -27,6 +27,7 @@ import {
   PerspectiveCamera,
   Plane,
   PlaneGeometry,
+  QuadraticBezierCurve3,
   Raycaster,
   RingGeometry,
   Scene,
@@ -34,11 +35,12 @@ import {
   Sprite,
   SpriteMaterial,
   SRGBColorSpace,
+  TubeGeometry,
   Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { BOARD } from '../server/game/board.js';
+import { AIRPORT_TILE, BOARD } from '../server/game/board.js';
 import { isFullSet, isMonopoly } from '../server/game/economy.js';
 import { HOTEL, type Lot, type View } from '../server/game/model.js';
 import { ambience } from './ambience.js';
@@ -224,6 +226,8 @@ type Say = Omit<Line, 'title' | 'blink'> & { ms?: number };
 const DUST = new SphereGeometry(0.05, 8, 6);
 const RING = new RingGeometry(0.32, 0.42, 40);
 const SPARK = new PlaneGeometry(0.07, 0.11);
+/** A light running along a flight's aim. */
+const DOT = new SphereGeometry(0.05, 10, 8);
 const BEAM = new CylinderGeometry(0.34, 0.5, 4, 24, 1, true);
 BEAM.translate(0, 2, 0);
 const CONFETTI = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368', '#fff2c2', '#e6b422'];
@@ -263,6 +267,11 @@ export class BoardView {
   private picking: number[] = [];
   /** Tiles picked for a sale: a steady gold glow and their tags. */
   private chosen: number[] = [];
+  /** The Tile a flight is aimed at under the mouse (`aim`): lit, with an arc to it from Sân bay. */
+  private aimed: number | null = null;
+  private readonly route = new Group();
+  private routePath: QuadraticBezierCurve3 | null = null;
+  private readonly routeDots: Mesh[] = [];
   /** The arrows bobbing over the Tiles to pick for a sale, and the tags over those picked. */
   private readonly pointers = new Group();
   private arrows: Sprite[] = [];
@@ -378,6 +387,7 @@ export class BoardView {
     this.world.add(
       base,
       top,
+      this.route,
       this.marquee,
       this.pointers,
       this.notice,
@@ -1369,6 +1379,60 @@ export class BoardView {
   /** Lights up the Tiles a tap may pick; none clears them. */
   highlight(tiles: number[]) {
     this.picking = tiles;
+    if (this.aimed !== null && !tiles.includes(this.aimed)) this.aim(null);
+  }
+
+  /**
+   * Aims a flight at `tile` from under the mouse: the Tile lights gold and an arc rises from Sân
+   * bay to it, higher the farther it goes, with lights running along it. `null` takes it away.
+   */
+  aim(tile: number | null) {
+    if (tile === this.aimed) return;
+    this.aimed = tile;
+    for (const c of this.route.children as Mesh[]) {
+      if (c.geometry instanceof TubeGeometry) c.geometry.dispose();
+      (c.material as MeshBasicMaterial).dispose();
+    }
+    clear(this.route);
+    this.routeDots.length = 0;
+    this.routePath = null;
+    if (tile === null) return;
+    const centre = (i: number) => {
+      const p = placement(i);
+      return at(p.x + p.w / 2, p.y + p.h / 2, 0.05);
+    };
+    const from = centre(AIRPORT_TILE);
+    const to = centre(tile);
+    const lift = 0.8 + from.distanceTo(to) * 0.32;
+    const mid = from.clone().lerp(to, 0.5);
+    mid.y += lift * 2;
+    const path = new QuadraticBezierCurve3(from, mid, to);
+    this.routePath = path;
+    const tube = new Mesh(
+      new TubeGeometry(path, 48, 0.045, 6),
+      new MeshBasicMaterial({
+        color: GOLD,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      }),
+    );
+    this.route.add(tube);
+    const dot = new MeshBasicMaterial({ color: '#fff2c2', blending: AdditiveBlending });
+    for (let k = 0; k < 8; k++) {
+      const d = new Mesh(DOT, dot);
+      this.route.add(d);
+      this.routeDots.push(d);
+    }
+    const ring = new Mesh(
+      RING,
+      new MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.8, depthWrite: false }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(to);
+    ring.scale.setScalar(0.7);
+    this.route.add(ring);
   }
 
   /** The Tile under a point of the canvas, in CSS pixels from its top-left. */
@@ -1449,9 +1513,15 @@ export class BoardView {
     this.glow.forEach((g, i) => {
       const material = g.material as MeshBasicMaterial;
       const chosen = this.chosen.includes(i);
-      material.color.set(chosen ? GOLD : '#ffffff');
-      material.opacity = chosen ? 0.55 : this.picking.includes(i) ? pulse : 0;
+      const aimed = i === this.aimed;
+      material.color.set(chosen || aimed ? GOLD : '#ffffff');
+      material.opacity = aimed ? 0.5 + pulse : chosen ? 0.55 : this.picking.includes(i) ? pulse : 0;
     });
+    const path = this.routePath;
+    if (path)
+      this.routeDots.forEach((d, k) => {
+        d.position.copy(path.getPoint((ms / 1400 + k / this.routeDots.length) % 1));
+      });
     for (const [k, a] of this.arrows.entries())
       a.position.y = BOARD_H + 0.45 + Math.abs(Math.sin(ms / 260 + k * 0.5)) * 0.25;
     const lit = ms < this.neonUntil ? (Math.floor(ms / 110) % 2 === 0 ? 1 : 0.25) : 0;
