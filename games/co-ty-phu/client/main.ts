@@ -3,7 +3,8 @@
  * computer's moves arrive at once; 2× under "Tốc độ" Nhanh), then shows the decision of the
  * newest view. Every `init` redraws everything from its view, and a Match already over is drawn
  * ended at once (one that ends while playing gets its fanfare). The Hub's Đồ họa level picks the
- * board's graphics.
+ * board's graphics. The only person at a table of computers may pause: what is playing ends, the
+ * rest waits, and the server stops the clock and the computer.
  */
 import {
   BRIDGE_RESET,
@@ -14,16 +15,33 @@ import {
   createGameBridge,
 } from '@xomdao/bridge';
 import { BOARD } from '../server/game/board.js';
-import { cardOf } from '../server/game/cards.js';
-import { HOTEL, type View } from '../server/game/model.js';
+import { type CardId, cardOf } from '../server/game/cards.js';
+import { stationRent } from '../server/game/economy.js';
+import { HOTEL, type Sale, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
+import { CardMoments } from './cardmoments.js';
 import { CardShow } from './cardshow.js';
-import { type Button, decide, decider, levelName, money, type Panel } from './decisions.js';
+import {
+  type Button,
+  CHOOSE_SALE,
+  decide,
+  decider,
+  freeSale,
+  levelName,
+  money,
+  nextSale,
+  type Panel,
+  partLabel,
+  partValue,
+} from './decisions.js';
 import { Hud } from './hud.js';
 import { Moments } from './moments.js';
+import { LOW_STRIKES, MonopolyShow, STRIKES } from './monopoly.js';
 import { type Change, changes, grandeur, pace } from './present.js';
 import { BoardView, SEAT_COLORS } from './scene.js';
+import { type Stage, showcase } from './showcase.js';
 import { Sounds, ticks } from './sound.js';
+import { Verdict } from './verdict.js';
 
 /** How long the end of the Match shows before the Hub is told. */
 const END_MS = 5000;
@@ -42,11 +60,16 @@ const board = new BoardView(canvas);
 const hud = new Hud();
 const cards = new CardShow();
 const moments = new Moments();
+const crowning = new MonopolyShow();
+const verdict = new Verdict();
+const cardMoments = new CardMoments();
 const sounds = new Sounds();
 
 let myId = '';
 let me = -1;
 let names: string[] = [];
+/** Each seat's picture: the account's avatar id, `bot` for the computer. */
+let avatars: (string | undefined)[] = [];
 let matchId: string | null = null;
 /** The view on screen. */
 let shown: View | null = null;
@@ -60,6 +83,10 @@ let timer: { ms: number; at: number } | null = null;
 /** The ms left on the clock when it was last drawn, for its ticks. */
 let clockLeft = Infinity;
 let panel: Panel | null = null;
+/** What the player has picked to Sell during their Debt. */
+let sale: Sale[] = [];
+/** The Tile the player last tapped, whose deed is open: their own Lot offers a "Bán" button. */
+let chosen: number | null = null;
 let sending = false;
 let endedAt: number | null = null;
 let doneFor: string | null = null;
@@ -68,17 +95,65 @@ let hidden = false;
 /** The player may tap the dice to roll. */
 let rolling = false;
 const rollButton = document.getElementById('roll') as HTMLButtonElement;
+const pauseButton = document.getElementById('pause') as HTMLButtonElement;
+const halt = document.getElementById('halt') as HTMLElement;
+/** The board draws less: the Hub's Đồ họa is low, or the player asked for fewer effects. */
 let low = false;
+let hubLow = false;
+
+/** A switch the player keeps on this device; storage may be missing. */
+const kept = (key: string) => {
+  try {
+    return localStorage.getItem(`co-ty-phu:${key}`) === '1';
+  } catch {
+    return false;
+  }
+};
+const keep = (key: string, on: boolean) => {
+  try {
+    localStorage.setItem(`co-ty-phu:${key}`, on ? '1' : '0');
+  } catch {}
+};
+/** Fewer effects: low graphics and no bulbs round the board. */
+let calm = kept('calm');
+/** Every move plays twice as fast. */
+let quick = kept('quick');
+const calmButton = document.getElementById('calm') as HTMLButtonElement;
+const quickButton = document.getElementById('quick') as HTMLButtonElement;
+/** Everyone else at the table is the computer. */
+let solo = false;
+/** Paused: the queued views wait and no decision shows. */
+let held = false;
+let release: (() => void) | null = null;
 
 const isOver = (view: View) => view.bankrupt.length >= view.players.length - 1;
 
 /** The Hub's graphics level and the player's preferences (`manifest.ts`). */
 const applySettings = (settings: BridgeSettings) => {
   sounds.apply(settings);
-  low = settings.graphics === 'low';
-  board.setGraphics(low ? 'low' : 'high');
+  hubLow = settings.graphics === 'low';
+  look();
   board.setFollowing(settings.preferences?.follow !== false);
 };
+
+/** The graphics and the tools' switches, from the Hub's level and the player's own. */
+function look() {
+  low = hubLow || calm;
+  board.setGraphics(low ? 'low' : 'high');
+  calmButton.setAttribute('aria-pressed', String(calm));
+  quickButton.setAttribute('aria-pressed', String(quick));
+}
+
+calmButton.addEventListener('click', () => {
+  calm = !calm;
+  keep('calm', calm);
+  look();
+});
+quickButton.addEventListener('click', () => {
+  quick = !quick;
+  keep('quick', quick);
+  look();
+});
 
 const bridge = createGameBridge({
   onInit(init) {
@@ -87,7 +162,9 @@ const bridge = createGameBridge({
     myId = init.player.id;
     const seats: BridgeSeat[] = init.room.seats;
     names = seats.map((s) => s.name);
+    avatars = seats.map((s) => (s.bot ? 'bot' : s.avatar));
     me = seats.findIndex((s) => s.id === myId);
+    solo = seats.every((s) => s.bot || s.id === myId);
     matchId = null;
     timer = null;
     clearTimeout(doneTimer);
@@ -95,25 +172,33 @@ const bridge = createGameBridge({
     endedAt = null;
     hud.tile(null, null, names);
     const view = (init.match as View | null) ?? null;
-    hud.seats(view ? names.slice(0, view.players.length) : names);
+    held = !!view?.paused;
+    halt.hidden = !held;
+    hud.seats(view ? names.slice(0, view.players.length) : names, avatars);
     present(view);
+    joined = !!view;
+    if (view) startShowcase(view);
   },
   onMessage(event, data) {
     if (event !== 'match:state') return;
     const push = data as MatchPush;
     const fresh = push.matchId !== matchId;
+    /** Under `?showcase`, the first push after `init` is taken for the Match `init` put on the board. */
+    const known = SHOWCASE && fresh && matchId === null && joined;
+    joined = false;
     if (fresh) {
       matchId = push.matchId;
       clearTimeout(doneTimer);
       doneFor = null;
       if (push.status !== 'over') endedAt = null;
-      restart();
+      if (!known) restart();
     }
     timer = push.timer ? { ms: push.timer.ms, at: Date.now() } : null;
     if (push.view) {
-      if (fresh || !shown || shown.players.length !== push.view.players.length) {
-        hud.seats(names.slice(0, push.view.players.length));
+      if ((fresh && !known) || !shown || shown.players.length !== push.view.players.length) {
+        hud.seats(names.slice(0, push.view.players.length), avatars);
         present(push.view);
+        if (startShowcase(push.view)) return;
       } else queue.push(push.view);
       play();
     }
@@ -132,6 +217,10 @@ const bridge = createGameBridge({
 /** Stops what is playing and drops the queued views: an `init` or a new Match redraws. */
 function restart() {
   epoch++;
+  held = false;
+  halt.hidden = true;
+  release?.();
+  release = null;
   queue.length = 0;
   playing = false;
   sending = false;
@@ -139,6 +228,9 @@ function restart() {
   sounds.stop();
   cards.hide();
   moments.clear();
+  crowning.hide();
+  verdict.hide();
+  cardMoments.clear();
 }
 
 /** Redraws everything from `view` at once; `fanfare` when the Match just ended on screen. */
@@ -155,6 +247,10 @@ function present(view: View | null, fanfare = false) {
     return;
   }
   board.show(view);
+  const exempt = view.players[me]?.effects.some((e) => e.id === 'exempt') ?? false;
+  board.exempt(
+    exempt ? view.lots.flatMap((lot, tile) => (lot && lot.owner !== me ? [tile] : [])) : [],
+  );
   hud.players(view);
   if (isOver(view)) {
     endedAt ??= performance.now() - END_MS;
@@ -168,6 +264,8 @@ function present(view: View | null, fanfare = false) {
 
 /** Clears the decision on screen while moves play: its buttons, the roll and its line on the board. */
 function idle() {
+  board.selling([]);
+  board.aim(null);
   hud.show([]);
   board.status(null);
   rolling = false;
@@ -179,8 +277,15 @@ function idle() {
  * others); the player deciding gets its buttons, or the dice to tap and a blinking line for a roll.
  */
 function ask(view: View) {
-  panel = decide(view, me, names);
+  if (view.phase !== 'debt' || view.debt?.from !== me) sale = [];
+  panel = decide(view, me, names, sale);
   sending = false;
+  if (held) {
+    idle();
+    cards.hide();
+    board.highlight([]);
+    return;
+  }
   const mine = panel.buttons.some((b) => !b.disabled) || !!panel.pick;
   idle();
   if (view.phase === 'quiz' && view.quiz) {
@@ -209,9 +314,62 @@ function ask(view: View) {
         ? { title: roll.label, sub: panel.title, tone: 'gold', blink: true }
         : { title: panel.title, ...(panel.text && { sub: panel.text }) },
     );
-    hud.show(mine ? panel.buttons.filter((b) => b.event !== 'roll') : []);
+    const own = mine ? panel.buttons.filter((b) => b.event !== 'roll') : [];
+    const selling = freeSale(view, me, chosen);
+    hud.show(selling ? [...own, selling] : own);
   }
-  board.highlight(panel.pick?.tiles ?? []);
+  const offered = chosen !== null && !panel.pick && freeSale(view, me, chosen);
+  board.highlight(panel.pick?.tiles ?? (offered && chosen !== null ? [chosen] : []));
+  if (mine && panel.pick?.event === CHOOSE_SALE)
+    board.selling(
+      panel.pick.tiles,
+      sale.map((part) => ({
+        tile: part.tile,
+        label: partLabel(part),
+        value: `+${money(partValue(view, part))}`,
+      })),
+    );
+}
+
+/**
+ * The Lots a Card that counts Lots, houses or Hotels charges or pays for, drawn by `seat`: every
+ * Lot of the drawer (Được mùa, Phí bảo trì), the drawer's Cities with their Levels (Du lịch, Sửa nhà), or the Hotels of whoever pays Thuế Khách sạn, who lost
+ * cash between the view on the board and `after`. `null` for any other Card.
+ */
+function levied(id: CardId, seat: number, after: View) {
+  const { action } = cardOf(TUNING, id);
+  const sign = (n: number) => (n > 0 ? '+' : '−');
+  if (action.kind === 'per-lot') {
+    const tiles = after.lots.flatMap((lot, tile) =>
+      lot?.owner === seat
+        ? [{ tile, text: `${sign(action.amount)}${money(Math.abs(action.amount))}` }]
+        : [],
+    );
+    return tiles.length > 0 ? { tiles, good: action.amount > 0 } : null;
+  }
+  if (action.kind === 'per-level') {
+    const tiles = after.lots.flatMap((lot, tile) =>
+      lot?.owner === seat && BOARD[tile]?.kind === 'city'
+        ? [{ tile, text: `${sign(action.amount)}${money(Math.abs(action.amount) * lot.level)}` }]
+        : [],
+    );
+    return tiles.length > 0 ? { tiles, good: action.amount > 0 } : null;
+  }
+  if (action.kind === 'hotel-tax') {
+    const payer = after.players.findIndex(
+      (p, s) =>
+        p.cash < (shown?.players[s]?.cash ?? p.cash) &&
+        after.lots.some((l) => l?.owner === s && l.level >= HOTEL),
+    );
+    if (payer < 0) return null;
+    const tiles = after.lots.flatMap((lot, tile) =>
+      lot?.owner === payer && lot.level >= HOTEL
+        ? [{ tile, text: `−${money(action.amount)}` }]
+        : [],
+    );
+    return { tiles, good: false };
+  }
+  return null;
 }
 
 /** The winner's token in a beam of light, and confetti over everything. */
@@ -229,6 +387,8 @@ async function play() {
   playing = true;
   const mine = epoch;
   while (queue.length > 0 && mine === epoch) {
+    if (held) await new Promise<void>((go) => (release = go));
+    if (mine !== epoch) break;
     const next = queue.shift() as View;
     const before = shown;
     if (!before) {
@@ -237,13 +397,52 @@ async function play() {
     }
     idle();
     board.highlight([]);
-    await animate(next, changes(before, next), pace(next, queue.length), () => mine === epoch);
+    await animate(
+      next,
+      changes(before, next),
+      pace(next, queue.length) * (quick ? 0.5 : 1),
+      () => mine === epoch,
+    );
     if (mine !== epoch) break;
     const ended = isOver(next) && endedAt === null;
     if (ended) endedAt = performance.now();
     present(next, ended);
   }
   if (mine === epoch) playing = false;
+}
+
+/** `?showcase` on the page plays the moments a Match seldom reaches first (`showcase.ts`). */
+const SHOWCASE = new URLSearchParams(location.search).has('showcase');
+
+let showcased = false;
+/** `init` put a Match on the board that no push has named yet. */
+let joined = false;
+
+/** Starts the showcase on `view` once per page with `?showcase`, holding the moves that arrive meanwhile. */
+function startShowcase(view: View) {
+  if (!SHOWCASE || showcased || isOver(view)) return false;
+  showcased = true;
+  const mine = epoch;
+  playing = true;
+  const stage: Stage = {
+    board,
+    sounds,
+    hud,
+    moments,
+    cardMoments,
+    verdict,
+    names,
+    low,
+    wait,
+    animate,
+    rollBeats,
+    present,
+  };
+  void showcase(view, () => mine === epoch, stage).then(() => {
+    if (mine === epoch) playing = false;
+    play();
+  });
+  return true;
 }
 
 const wait = (ms: number) => new Promise((done) => setTimeout(done, hidden ? 0 : ms));
@@ -265,12 +464,18 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
     if (!live()) return;
     switch (step.kind) {
       case 'dice':
-        rollBeats(step.dice.length, ms);
+        rollBeats(2, ms);
+        if (step.dice.length === 1) {
+          sounds.play('horn', { at: ms(90) });
+          sounds.play('slam', { at: ms(495), gain: 0.8 });
+        }
         await board.roll(step.dice, ms(900));
         break;
       case 'walk':
         for (let k = 1; k <= step.steps; k++) sounds.play('step', { at: k * ms(170) });
-        await board.walk(step.seat, step.from, step.steps, ms(170));
+        if (step.from + step.steps >= BOARD.length)
+          sounds.play('coins', { at: (BOARD.length - step.from) * ms(170) });
+        await board.walk(step.seat, step.from, step.steps, ms(170), TUNING.startBonus);
         break;
       case 'release':
         board.say(`${names[step.seat] ?? ''} ra tù`);
@@ -278,13 +483,26 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         await board.release(step.seat, ms(650));
         break;
       case 'jump':
+        if (step.how === 'jail' && show > 0) {
+          board.follow(null);
+          sounds.play('guilty', { rate: 1 / show });
+          await verdict.play(names[step.seat] ?? '', show, low);
+          if (!live()) return;
+        }
         if (step.how === 'jail') board.say(`${names[step.seat] ?? ''} vào tù`, { tone: 'bad' });
         if (step.how === 'flight') {
           sounds.play('plane', { rate: 1 / pace });
           sounds.play('slam', { at: ms(1400), gain: 0.7 });
         } else if (step.how === 'jail') sounds.play('jail', { at: ms(560 + 504 * BOUNCE_LAND) });
         else sounds.play('step', { at: ms(560) });
-        await board.jump(step.seat, step.to, ms(step.how === 'flight' ? 1400 : 560), step.how);
+        if (step.how === 'flight' && step.to === 0) sounds.play('coins', { at: ms(1400) });
+        await board.jump(
+          step.seat,
+          step.to,
+          ms(step.how === 'flight' ? 1400 : 560),
+          step.how,
+          step.how === 'flight' ? TUNING.startBonus : 0,
+        );
         break;
       case 'card': {
         board.follow(null);
@@ -297,6 +515,43 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           after.card?.seat === me &&
           decide(after, me, names).buttons.length > 0;
         if (!choosing && live()) await cards.hold(Math.round(1800 * speed));
+        if (!live()) return;
+        const { action } = cardOf(TUNING, step.id);
+        if (action.kind === 'cash-share' && action.share < 0) {
+          sounds.play('crow');
+          cardMoments.crow(show);
+        }
+        if (action.kind === 'effect' && action.effect === 'sick') {
+          sounds.play('wrong', { gain: 0.7 });
+          await cardMoments.sick(show);
+        }
+        if (action.kind === 'jail-free') {
+          sounds.play('stamp', { at: 900 * show });
+          await cardMoments.ticket(names[step.seat] ?? '', show);
+        }
+        if (!live()) return;
+        const levy = levied(step.id, step.seat, after);
+        if (levy && action.kind === 'per-lot' && !levy.good) {
+          sounds.play('hammer', { at: ms(160), gain: 0.9 });
+          await board.knock(levy.tiles);
+          await wait(ms(400));
+        } else if (levy) {
+          sounds.play(levy.good ? 'coins' : 'crumble', { gain: 0.8 });
+          board.levy(levy.tiles, levy.good);
+          await wait(ms(1300));
+        }
+        if (action.kind === 'cash-share' && action.share > 0 && show > 0) {
+          const gain =
+            (after.players[step.seat]?.cash ?? 0) - (shown?.players[step.seat]?.cash ?? 0);
+          if (gain > 0) {
+            sounds.play('coins', { at: ms(300) });
+            const from = board.vault();
+            await wait(ms(450));
+            await moments.shower(from, hud.card(step.seat), grandeur(gain), show, low, () =>
+              sounds.play('coin', { gain: 0.5 }),
+            );
+          }
+        }
         break;
       }
       case 'lot':
@@ -328,6 +583,41 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         });
         await board.fullSet(step.tiles, step.seat, ms(1400));
         break;
+      case 'monopoly': {
+        await building;
+        if (!live()) return;
+        board.follow(null);
+        const title = step.of === 'station' ? 'Ông hoàng vận tải!' : 'Con cưng Nhà nước!';
+        const sub = `${names[step.seat] ?? ''} · ${
+          step.of === 'station'
+            ? `mỗi bến thu ${money(stationRent(TUNING, step.tiles.length))}`
+            : `thu xúc xắc ×${TUNING.utilityRent[1]}`
+        }`;
+        if (show > 0 && step.of === 'station') sounds.play('convoy', { rate: 1 / show });
+        if (show > 0 && step.of === 'utility') {
+          sounds.play('rain', { rate: 1 / show });
+          for (const at of low ? LOW_STRIKES : STRIKES) sounds.play('thunder', { at: at * show });
+        }
+        await crowning.play(step.of, title, sub, SEAT_COLORS[step.seat] ?? '#e8c04a', show, low);
+        if (!live()) return;
+        fullSetBeats(step.tiles.length, ms);
+        board.say(title, {
+          sub,
+          tone: 'gold',
+          big: true,
+          ms: 2800,
+        });
+        if (!hidden)
+          moments.confetti(
+            [SEAT_COLORS[step.seat] ?? '#e8c04a', '#f6d77a', '#fff2c2'],
+            pace,
+            low,
+            60,
+          );
+        board.shake(0.08, 500);
+        await board.fullSet(step.tiles, step.seat, ms(2000), true);
+        break;
+      }
       case 'quiz':
         if (after.quiz) await revealQuiz(after, step.right, ms, show, live);
         break;
@@ -337,13 +627,18 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         if (!live()) return;
         board.follow(null);
         if (grand >= 2) board.shake(grand >= 3 ? 0.18 : 0.08, grand >= 3 ? 900 : 500);
+        const { from, to, amount } = step;
+        /** What the owner's Thần tài added to the rent: it shows at the Thần tài, not on the bill. */
+        const lucky =
+          step.why === 'rent' && !!shown?.players[to]?.effects.some((e) => e.id === 'lucky');
+        const extra = lucky ? amount - Math.round(amount / TUNING.luckyRent) : 0;
         const bill = {
           title: billTitle(step, after),
           from: names[step.from] ?? '',
           to: names[step.to] ?? '',
-          amount: step.amount,
+          amount: amount - extra,
+          ...(extra > 0 && { note: `Thần tài thu thêm ${money(extra)}` }),
         };
-        const { from, to, amount } = step;
         await moments.pay(hud.card(from), hud.card(to), bill, grand, show, {
           low,
           payer: from === me,
@@ -351,11 +646,49 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           onCoin: () => sounds.play('coin', { gain: 0.55, rate: 0.9 + Math.random() * 0.35 }),
           onFly: (flight) => {
             hud.delta(from, -amount, flight);
-            hud.delta(to, amount, flight);
+            hud.delta(to, amount - extra, flight);
             counted[from] = (counted[from] ?? 0) - amount;
             counted[to] = (counted[to] ?? 0) + amount;
           },
         });
+        if (extra > 0 && live()) {
+          sounds.play('coins');
+          board.luck(to, extra);
+          hud.delta(to, extra, ms(700));
+          await wait(ms(900));
+        }
+        break;
+      }
+      case 'tax': {
+        await building;
+        if (!live()) return;
+        const name = BOARD[step.tile]?.name ?? 'Thuế';
+        const note = taxNote(step);
+        const announce = () => board.say(name, { sub: note, tone: 'bad', ms: 2600 });
+        if (!step.paid) {
+          announce();
+          break;
+        }
+        const { seat, amount } = step;
+        board.follow(null);
+        await moments.pay(
+          hud.card(seat),
+          undefined,
+          { title: name, note, from: names[seat] ?? '', to: 'Ngân hàng', amount },
+          grandeur(amount),
+          show,
+          {
+            low,
+            payer: seat === me,
+            onPaid: () => sounds.play('stamp'),
+            onCoin: () => sounds.play('coin', { gain: 0.55, rate: 0.9 + Math.random() * 0.35 }),
+            onFly: (flight) => {
+              hud.delta(seat, -amount, flight);
+              counted[seat] = (counted[seat] ?? 0) - amount;
+            },
+          },
+        );
+        announce();
         break;
       }
       case 'cash': {
@@ -433,7 +766,7 @@ function announceLot(step: Extract<Change, { kind: 'lot' }>) {
   const name = BOARD[step.tile]?.name ?? '';
   const who = (seat: number) => names[seat] ?? '';
   const { before: was, after: now } = step;
-  if (!now) board.say(`${name} về ngân hàng`);
+  if (!now) board.say(was ? `${who(was.owner)} bán ${name}` : `${name} về ngân hàng`);
   else if (!was) board.say(`${who(now.owner)} mua ${name}`);
   else if (was.owner !== now.owner)
     board.say('Mua lại!', {
@@ -451,6 +784,14 @@ function announceLot(step: Extract<Change, { kind: 'lot' }>) {
     });
   else if (now.level > was.level) board.say(`${name} lên ${levelName(now.level)}`);
   else board.say(`${who(now.owner)} bán bớt nhà ở ${name}`);
+}
+
+/** How a Thuế was worked out: its rate of the cash on landing, raised to its minimum. */
+function taxNote({ base, rate, min, amount }: Extract<Change, { kind: 'tax' }>) {
+  const share = `${Math.round(rate * 100)}% × ${money(base)} = ${money(Math.floor(rate * Math.max(0, base)))}`;
+  return amount > Math.floor(rate * Math.max(0, base))
+    ? `${share}, thấp hơn mức tối thiểu → ${money(min)}`
+    : share;
 }
 
 /** What a bill is for: the rent or Takeover of a Lot, the Card drawn, or a Debt. */
@@ -489,6 +830,7 @@ async function revealQuiz(
   const answer = asked.buttons[quiz.answer ?? 0]?.label ?? '';
   if (right) {
     board.say('Đúng rồi!', { sub: `+${money(won)}`, tone: 'good', big: true, ms: 2000 });
+    board.cheer();
     moments.confetti(['#58b368', '#f6d77a', '#fff2c2'], pace, low, 45);
   } else
     board.say(quiz.picked === null ? 'Hết giờ!' : 'Sai mất rồi', {
@@ -540,10 +882,54 @@ function send(event: string, payload?: Record<string, unknown>) {
   });
 }
 
-hud.onButton = (button: Button) => send(button.event, button.payload);
+/** Shows the pause, or takes it away and plays on. */
+function hold(on: boolean) {
+  held = on;
+  halt.hidden = !on;
+  if (on) return;
+  release?.();
+  release = null;
+  if (shown && !playing && queue.length === 0 && !isOver(shown)) ask(shown);
+}
+
+pauseButton.addEventListener('click', () => {
+  hold(true);
+  if (shown && !playing) ask(shown);
+  bridge.send('pause', {}).catch((error: unknown) => {
+    hold(false);
+    if (error instanceof BridgeError) hud.refuse(error.code);
+  });
+});
+(document.getElementById('resume') as HTMLButtonElement).addEventListener('click', () => {
+  hold(false);
+  bridge.send('resume', {}).catch(() => {});
+});
+
+hud.onButton = (button: Button) => {
+  if (button.event === 'sell') {
+    chosen = null;
+    hud.tile(null, null, names);
+  }
+  send(button.event, button.payload);
+};
 rollButton.addEventListener('click', () => {
   if (rolling && !playing) send('roll');
 });
+
+canvas.addEventListener('pointermove', (event) => {
+  if (event.pointerType !== 'mouse') return;
+  const pick = panel?.pick;
+  if (pick?.event !== 'fly' || sending || playing) {
+    board.aim(null);
+    canvas.style.cursor = '';
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const tile = board.tileAt(event.clientX - rect.left, event.clientY - rect.top);
+  board.aim(tile !== null && pick.tiles.includes(tile) ? tile : null);
+  canvas.style.cursor = tile !== null && pick.tiles.includes(tile) ? 'pointer' : '';
+});
+canvas.addEventListener('pointerleave', () => board.aim(null));
 
 canvas.addEventListener('pointerdown', (event) => {
   const rect = canvas.getBoundingClientRect();
@@ -551,16 +937,28 @@ canvas.addEventListener('pointerdown', (event) => {
   const pick = panel?.pick;
   if (tile !== null && pick && !sending && !playing && pick.tiles.includes(tile)) {
     hud.tile(null, null, names);
+    chosen = null;
+    if (pick.event === CHOOSE_SALE && shown) {
+      sale = nextSale(shown, sale, tile);
+      sounds.play('coin', { gain: 0.6 });
+      ask(shown);
+      return;
+    }
     send(pick.event, pick.payload(tile));
     return;
   }
   hud.tile(shown, tile, names);
+  const was = chosen;
+  chosen = tile;
+  const offers = (at: number | null) => !!shown && !!freeSale(shown, me, at);
+  if (shown && !playing && !sending && !held && (offers(tile) || offers(was))) ask(shown);
 });
 
 /** The turn clock, from the last push's timer. */
 function clock() {
   requestAnimationFrame(clock);
-  rollButton.hidden = !rolling || playing || sending;
+  rollButton.hidden = !rolling || playing || sending || held;
+  pauseButton.hidden = !solo || held || !shown || isOver(shown);
   if (!rollButton.hidden) {
     const r = board.diceRect();
     Object.assign(rollButton.style, {
@@ -570,7 +968,7 @@ function clock() {
       height: `${r.height}px`,
     });
   }
-  if (!timer || !shown || isOver(shown) || playing) {
+  if (!timer || !shown || isOver(shown) || playing || held) {
     clockLeft = Infinity;
     hud.timer(null, -1);
     cards.timer(null);

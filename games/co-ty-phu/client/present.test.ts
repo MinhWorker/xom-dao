@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BOARD, tilesOf } from '../server/game/board.js';
 import type { CardId } from '../server/game/cards.js';
 import type { State } from '../server/game/model.js';
 import { all, open, own, player, viewOf } from '../server/game/test-match.js';
@@ -18,6 +19,23 @@ describe('what a new view shows', () => {
       { kind: 'dice', dice: [1, 2] },
       { kind: 'walk', seat: 0, from: 0, steps: 3 },
     ]);
+  });
+
+  it('bills Thuế thu nhập on landing: a tenth of the cash, but at least its minimum', () => {
+    expect(roll([1, 3]).slice(2)).toEqual([
+      {
+        kind: 'tax',
+        seat: 0,
+        tile: 4,
+        base: 1000,
+        rate: 0.1,
+        min: 100,
+        amount: 100,
+        paid: true,
+      },
+      { kind: 'cash', seat: 0, delta: -100 },
+    ]);
+    expect(roll([1, 3], player(0, { cash: 2000 }))[2]).toMatchObject({ base: 2000, amount: 200 });
   });
 
   it('sends the rent from the payer to the owner after the token lands', () => {
@@ -99,6 +117,7 @@ describe('what a new view shows', () => {
       { kind: 'walk', seat: 0, from: 0, steps: 7 },
       { kind: 'card', seat: 0, id: 'chance-back' },
       { kind: 'jump', seat: 0, to: 4, how: 'move' },
+      { kind: 'tax', seat: 0, tile: 4, base: 1000, rate: 0.1, min: 100, amount: 100, paid: true },
       { kind: 'cash', seat: 0, delta: -100 },
     ]);
   });
@@ -127,6 +146,50 @@ describe('what a new view shows', () => {
     game.send('a', 'fly', { to: 39 });
     expect(changes(before, viewOf(game, 'a')).slice(0, 1)).toEqual([
       { kind: 'jump', seat: 0, to: 39, how: 'flight' },
+    ]);
+  });
+
+  it('flies to Vào tù before going to jail from it', () => {
+    const goJail = BOARD.findIndex((t) => t.kind === 'go-jail');
+    const game = open({ rolls: [[1, 2]], arrange: player(0, { tile: 17 }) }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'fly', { to: goJail });
+    expect(changes(before, viewOf(game, 'a')).slice(0, 2)).toEqual([
+      { kind: 'jump', seat: 0, to: goJail, how: 'flight' },
+      { kind: 'jump', seat: 0, to: 10, how: 'jail' },
+    ]);
+  });
+
+  it('flies to Khí vận, draws a Card sending to jail, and goes there straight', () => {
+    const chest = BOARD.findIndex((t, i) => i > 20 && t.kind === 'chest');
+    const game = open({
+      rolls: [[1, 2]],
+      chest: ['chest-jailed'],
+      arrange: player(0, { tile: 17 }),
+    }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'fly', { to: chest });
+    expect(
+      changes(before, viewOf(game, 'a')).filter((s) => s.kind === 'jump' || s.kind === 'card'),
+    ).toEqual([
+      { kind: 'jump', seat: 0, to: chest, how: 'flight' },
+      { kind: 'card', seat: 0, id: 'chest-jailed' },
+      { kind: 'jump', seat: 0, to: 10, how: 'jail' },
+    ]);
+  });
+
+  it('flies to a Cơ hội before its Card is drawn there', () => {
+    const chance = BOARD.findIndex((t, i) => i > 20 && t.kind === 'chance');
+    const game = open({
+      rolls: [[1, 2]],
+      chance: ['chance-interest'],
+      arrange: player(0, { tile: 17 }),
+    }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'fly', { to: chance });
+    expect(changes(before, viewOf(game, 'a')).slice(0, 2)).toEqual([
+      { kind: 'jump', seat: 0, to: chance, how: 'flight' },
+      { kind: 'card', seat: 0, id: 'chance-interest' },
     ]);
   });
 
@@ -169,6 +232,37 @@ describe('what a new view shows', () => {
       },
       { kind: 'cash', seat: 0, delta: -90 },
     ]);
+  });
+
+  it('crowns the owner of all four bến xe once', () => {
+    const game = open({ rolls: [[2, 3]], arrange: own(0, [15, 25, 35], 0) }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'buy');
+    const after = viewOf(game, 'a');
+    const steps = changes(before, after);
+    expect(steps.find((s) => s.kind === 'monopoly')).toEqual({
+      kind: 'monopoly',
+      seat: 0,
+      tiles: [5, 15, 25, 35],
+      of: 'station',
+    });
+    expect(changes(after, after).some((s) => s.kind === 'monopoly')).toBe(false);
+  });
+
+  it('hails the owner of both Điện lực and Cấp nước', () => {
+    const [power, water] = tilesOf('utility') as [number, number];
+    const game = open({
+      rolls: [[1, 2]],
+      arrange: all(own(0, [power], 0), player(0, { tile: water - 3 })),
+    }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'buy');
+    expect(changes(before, viewOf(game, 'a')).find((s) => s.kind === 'monopoly')).toEqual({
+      kind: 'monopoly',
+      seat: 0,
+      tiles: [power, water],
+      of: 'utility',
+    });
   });
 
   it('lights up a Colour set when its third City is bought', () => {

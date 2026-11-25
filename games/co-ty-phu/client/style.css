@@ -1,8 +1,52 @@
+/* Be Vietnam Pro (SIL OFL, from @fontsource/be-vietnam-pro): the HUD's lettering. */
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url("./fonts/be-vietnam-pro-vietnamese-800-normal.woff2") format("woff2");
+  unicode-range:
+    U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url("./fonts/be-vietnam-pro-latin-800-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 900;
+  src: url("./fonts/be-vietnam-pro-vietnamese-900-normal.woff2") format("woff2");
+  unicode-range:
+    U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 900;
+  src: url("./fonts/be-vietnam-pro-latin-900-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --ink: #17110c;
   --paper: #f4ecd8;
   --gold: #f6d77a;
   --panel: rgba(18, 14, 30, 0.9);
+  --rim: #e2b84f;
+  --plaque: linear-gradient(180deg, #3d2c1d 0%, #23180f 55%, #170f09 100%);
+  --display: "Be Vietnam Pro", system-ui, sans-serif;
   color-scheme: dark;
 }
 
@@ -42,27 +86,61 @@ body {
   pointer-events: none;
 }
 
+/* A player's card: a lacquered plaque with a gold rim, their medallion overhanging its outer end. */
 .seat {
   position: absolute;
   display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 8px;
-  align-items: center;
-  width: min(19vw, 168px);
-  padding: 6px 10px 6px 6px;
-  border-radius: 18px;
-  background: rgba(23, 17, 12, 0.8);
-  border: 2px solid color-mix(in srgb, var(--seat) 60%, transparent);
+  grid-template-columns: 1fr;
+  row-gap: 1px;
+  width: min(18vw, 180px);
+  min-height: 52px;
+  padding: 7px 12px 7px 48px;
+  border-radius: 12px;
+  background: var(--plaque);
+  border: 2px solid color-mix(in srgb, var(--rim) 70%, #000);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 180, 0.3),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.35),
+    0 4px 0 #0b0704,
+    0 8px 18px rgba(0, 0, 0, 0.5);
+  font-family: var(--display);
   transition:
-    box-shadow 0.2s,
+    box-shadow 0.25s,
+    translate 0.25s,
     opacity 0.3s;
 }
 
+/* The seat's colour as a band along the plaque's top. */
+.seat::before {
+  content: "";
+  position: absolute;
+  inset: 3px 10px auto 44px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--seat);
+  opacity: 0.85;
+}
+
+.seat-2,
+.seat-3 {
+  padding: 7px 48px 7px 12px;
+  text-align: right;
+}
+
+.seat-2::before,
+.seat-3::before {
+  inset: 3px 44px auto 10px;
+}
+
 .seat.turn {
-  border-color: var(--seat);
+  border-color: var(--rim);
+  translate: 0 -2px;
   box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--seat) 35%, transparent),
-    0 0 18px var(--seat);
+    inset 0 1px 0 rgba(255, 236, 180, 0.4),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.35),
+    0 4px 0 #0b0704,
+    0 0 0 3px color-mix(in srgb, var(--seat) 55%, transparent),
+    0 0 22px color-mix(in srgb, var(--seat) 80%, transparent);
 }
 
 .seat.out > :not(.stamp) {
@@ -148,60 +226,133 @@ body {
 }
 
 .seat-0 {
-  left: max(12px, env(safe-area-inset-left));
-  bottom: 12px;
+  left: max(24px, calc(env(safe-area-inset-left) + 14px));
+  bottom: 14px;
 }
 
 .seat-1 {
-  left: max(12px, env(safe-area-inset-left));
-  top: 12px;
+  left: max(24px, calc(env(safe-area-inset-left) + 14px));
+  top: 14px;
 }
 
 .seat-2 {
-  right: max(12px, env(safe-area-inset-right));
-  top: 60px;
+  right: max(24px, calc(env(safe-area-inset-right) + 14px));
+  top: 64px;
 }
 
 .seat-3 {
-  right: max(12px, env(safe-area-inset-right));
-  bottom: 12px;
+  right: max(24px, calc(env(safe-area-inset-right) + 14px));
+  bottom: 14px;
 }
 
+/* The medallion: the seat's colour under glass in a gold ring. */
 .avatar {
-  grid-row: span 2;
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  margin-top: -27px;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  background: var(--seat);
+  background: radial-gradient(
+    circle at 35% 28%,
+    color-mix(in srgb, var(--seat) 45%, #fff) 0%,
+    var(--seat) 45%,
+    color-mix(in srgb, var(--seat) 55%, #000) 100%
+  );
+  border: 3px solid var(--seat);
+  box-shadow:
+    0 0 0 2px var(--rim),
+    0 0 0 3px #3a2507,
+    0 3px 0 3px #22160a,
+    0 6px 12px rgba(0, 0, 0, 0.6),
+    inset 0 -5px 8px rgba(0, 0, 0, 0.3),
+    inset 0 3px 4px rgba(255, 255, 255, 0.35);
   color: #fff;
-  font-weight: 800;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  font-weight: 900;
+  font-size: 22px;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  z-index: 1;
+}
+
+.seat-2 .avatar,
+.seat-3 .avatar {
+  left: auto;
+  right: -14px;
+}
+
+/* The account's picture fills the medallion; its letter shows until it loads, or without one. */
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* The computer's picture comes in its own frame: cropped to the robot. */
+.avatar img.bot {
+  scale: 1.3;
 }
 
 .who {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
   min-width: 0;
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e9d9b4;
 }
 
 .who b {
+  display: block;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  font-weight: inherit;
 }
 
+/* Cash: a gold coin and the sum stamped in gold. */
 .cash {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--gold);
-  font-weight: 800;
-  font-size: 16px;
+  font-weight: 900;
+  font-size: 19px;
+  line-height: 1.1;
+  text-shadow:
+    0 2px 0 #4a3000,
+    0 0 10px rgba(246, 215, 122, 0.25);
+}
+
+.seat-2 .cash,
+.seat-3 .cash {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+.cash::before {
+  content: "";
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff4c2, #f2c443 45%, #b07d12);
+  box-shadow:
+    0 0 0 1.5px #7a5200,
+    0 1px 0 1.5px #3a2600;
+}
+
+.seat.out .cash::before {
+  display: none;
 }
 
 .tags {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -212,15 +363,22 @@ body {
   display: none;
 }
 
+.seat-2 .tags,
+.seat-3 .tags {
+  justify-content: flex-end;
+}
+
 .tag {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   padding: 1px 6px 1px 3px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(226, 184, 79, 0.35);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .tag svg {
@@ -229,20 +387,39 @@ body {
 }
 
 .tag.bad {
-  background: rgba(224, 85, 61, 0.28);
+  background: rgba(120, 30, 18, 0.6);
+  border-color: rgba(255, 120, 90, 0.5);
 }
 
 .tag.good {
-  background: rgba(88, 179, 104, 0.3);
+  background: rgba(30, 90, 40, 0.6);
+  border-color: rgba(140, 230, 150, 0.45);
 }
 
+/* The turn clock: a ring round the medallion running down, red at the end. */
 .seat .timer {
-  grid-column: 1 / -1;
-  height: 3px;
-  margin-top: 5px;
-  border-radius: 2px;
-  background: var(--seat);
-  transform-origin: left;
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  width: 66px;
+  height: 66px;
+  margin-top: -33px;
+  border-radius: 50%;
+  background: conic-gradient(var(--ring, var(--gold)) calc(var(--left, 1) * 1turn), transparent 0);
+  mask: radial-gradient(circle, transparent 29px, #000 30px);
+  filter: drop-shadow(0 0 4px var(--ring, var(--gold)));
+  z-index: 2;
+  pointer-events: none;
+}
+
+.seat .timer[hidden] {
+  display: none;
+}
+
+.seat-2 .timer,
+.seat-3 .timer {
+  left: auto;
+  right: -20px;
 }
 
 .delta {
@@ -276,7 +453,6 @@ body {
 
 /* The decision's buttons sit at the bottom between the player cards; what it is about is printed on the board. */
 .panel,
-.info,
 .end {
   position: fixed;
   left: 50%;
@@ -291,12 +467,16 @@ body {
   text-align: center;
 }
 
+/* The decision's buttons stand on their own at the bottom, the clock a fuse burning above them. */
 .panel {
   top: auto;
-  bottom: 12px;
+  bottom: 16px;
   transform: translateX(-50%);
-  width: min(46vw, 360px);
-  padding: 8px 12px 10px;
+  width: min(48vw, 380px);
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
 }
 
 .title {
@@ -317,80 +497,323 @@ body {
   display: none;
 }
 
+/* A game button: raised on a thick edge, pressed down into it. */
 .buttons button {
   flex: 1 1 40%;
-  min-height: 40px;
-  padding: 6px 12px;
-  border: 0;
-  border-radius: 12px;
-  background: #e8c04a;
-  color: var(--ink);
-  font: inherit;
-  font-weight: 800;
+  min-height: 46px;
+  padding: 6px 14px 8px;
+  border: 2px solid #fff0b8;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffe58e 0%, #f5c232 50%, #dc9c12 100%);
+  color: #3b2300;
+  font-family: var(--display);
+  font-weight: 900;
   font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -3px 0 rgba(120, 70, 0, 0.25),
+    0 5px 0 #8a5806,
+    0 9px 14px rgba(0, 0, 0, 0.5);
   cursor: pointer;
+  transition:
+    translate 0.08s,
+    box-shadow 0.08s,
+    filter 0.15s;
+}
+
+.buttons button:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.buttons button:active:not(:disabled) {
+  translate: 0 4px;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 0 rgba(120, 70, 0, 0.25),
+    0 1px 0 #8a5806,
+    0 3px 6px rgba(0, 0, 0, 0.5);
 }
 
 .buttons button.quiet {
-  background: rgba(255, 255, 255, 0.14);
-  color: var(--paper);
+  border-color: #9fb0d4;
+  background: linear-gradient(180deg, #6b7ca3 0%, #46557a 50%, #323e5c 100%);
+  color: #f4ecd8;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.2),
+    0 5px 0 #1b2236,
+    0 9px 14px rgba(0, 0, 0, 0.5);
+}
+
+.buttons button.quiet:active:not(:disabled) {
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.25),
+    0 1px 0 #1b2236,
+    0 3px 6px rgba(0, 0, 0, 0.5);
 }
 
 .buttons button:disabled {
-  opacity: 0.45;
+  filter: grayscale(0.7) brightness(0.7);
   cursor: default;
 }
 
 .clock {
-  height: 4px;
-  margin: -4px 0 8px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.12);
+  height: 8px;
+  margin: 0 6px 12px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(226, 184, 79, 0.45);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8);
   overflow: hidden;
 }
 
 .clock i {
   display: block;
   height: 100%;
-  background: var(--gold);
+  background: linear-gradient(90deg, #e0553d, #f5a524 40%, #ffe58e);
+  box-shadow: 0 0 8px rgba(255, 200, 80, 0.7);
   transform-origin: left;
 }
 
+/* A Tile's details: a land deed torn in two, each half on its side of the board, leaning in. */
 .info {
-  width: min(40vw, 300px);
-  text-align: left;
-  font-size: 13px;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  perspective: 1000px;
 }
 
-.info h2 {
-  margin: 0 0 2px;
+.info[hidden] {
+  display: none;
+}
+
+.deed {
+  position: absolute;
+  top: 50%;
+  width: min(22vw, 236px);
+  max-height: calc(100% - 150px);
+  overflow: hidden;
+  padding: 0 0 10px;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.5), transparent 60%),
+    linear-gradient(180deg, #f8f0dc, #ead9b2);
+  color: #2b1f12;
+  outline: 1.5px solid rgba(120, 88, 40, 0.55);
+  outline-offset: -6px;
+  box-shadow:
+    0 0 0 1px #8a6d3b,
+    0 3px 0 #6b5330,
+    0 18px 34px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+  font-size: 12px;
+  animation: deal 0.25s ease-out;
+}
+
+.deed.left {
+  left: max(24px, calc(env(safe-area-inset-left) + 14px));
+  transform: translateY(-50%) rotateY(16deg);
+  transform-origin: left center;
+}
+
+/* Lower than the left one: the top right player card sits below the Hub's corner. */
+.deed.right {
+  top: calc(50% + 24px);
+  right: max(24px, calc(env(safe-area-inset-right) + 14px));
+  transform: translateY(-50%) rotateY(-16deg);
+  transform-origin: right center;
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+.deed header {
+  margin: 0 0 8px;
+  padding: 8px 12px 7px;
+  background: var(--band);
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.25);
+}
+
+.deed header span {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.deed h2 {
+  margin: 1px 0 0;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.deed dl {
+  margin: 0 14px;
+}
+
+.facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dotted rgba(90, 64, 30, 0.35);
+}
+
+.deed dt {
+  color: #6b5330;
+}
+
+.deed dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+/* The owner's seal, in their seat's colour; a dashed blank while nobody owns it. */
+.seal {
+  margin: 8px 14px 0;
+  padding: 5px 8px;
+  border: 2px solid var(--seat);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--seat) 16%, transparent);
+  text-align: center;
+  rotate: -2deg;
+}
+
+.deed .seal span {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b5330;
+}
+
+.seal b {
+  display: block;
+  font-family: var(--display);
   font-size: 16px;
+  font-weight: 900;
+  color: color-mix(in srgb, var(--seat) 70%, #000);
 }
 
-.info .band {
-  height: 6px;
-  margin: -12px -14px 10px;
-  border-radius: 16px 16px 0 0;
+.seal i {
+  font-style: normal;
+  font-weight: 800;
 }
 
-.info table {
-  width: 100%;
-  margin-top: 6px;
+.seal.free {
+  border-style: dashed;
+  border-color: rgba(90, 64, 30, 0.45);
+  background: none;
+}
+
+.seal.free b {
+  color: #8a7350;
+}
+
+.set {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  margin: 8px 14px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  color: #6b5330;
+}
+
+.set li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.set li.me {
+  color: #2b1f12;
+  font-weight: 800;
+}
+
+.set i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--seat);
+  border: 1px solid rgba(60, 40, 15, 0.6);
+}
+
+.deed .mark {
+  margin: 6px 14px 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(176, 39, 30, 0.12);
+  color: #8a2418;
+  font-weight: 800;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* What the Tile charges; the row in force lit gold with a marker. */
+.deed table {
+  width: calc(100% - 20px);
+  margin: 0 10px 4px;
   border-collapse: collapse;
 }
 
-.info td {
-  padding: 1px 0;
+.deed td {
+  padding: 3px 6px;
+  border-bottom: 1px dotted rgba(90, 64, 30, 0.35);
 }
 
-.info td:last-child {
+.deed td:last-child {
   text-align: right;
-  color: var(--gold);
-  font-weight: 700;
+  font-weight: 800;
 }
 
-.info .owner {
-  color: #cfc4ad;
+.deed .die svg {
+  width: 1.05em;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: -0.18em;
+}
+
+.deed tr.now td {
+  background: linear-gradient(180deg, #ffe58e, #f2bd2c);
+  font-weight: 900;
+  border-bottom-color: transparent;
+}
+
+.deed tr.now td:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.deed tr.now td:first-child::before {
+  content: "▶ ";
+  font-size: 9px;
+}
+
+.deed tr.now td:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.deed table + .facts {
+  margin-top: 6px;
 }
 
 .toast {
@@ -797,6 +1220,18 @@ html.paused * {
   text-align: center;
 }
 
+/* How the amount was worked out, as a line of small print under the title. */
+.bill .note {
+  margin-top: 2px;
+  font-size: 0.78em;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.bill .note:empty {
+  display: none;
+}
+
 .bill dl {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -834,23 +1269,33 @@ html.paused * {
   font-size: 32px;
 }
 
+/* The paid stamp: two lines inside the bill's width, over the middle of it. */
 .bill .seal {
   position: absolute;
   left: 50%;
-  top: 52%;
-  padding: 4px 12px;
+  top: 55%;
+  padding: 6px 10px 4px;
   border: 4px double #c0262d;
   border-radius: 10px;
   color: #c0262d;
+  font-family: var(--display);
   font-style: normal;
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 900;
+  line-height: 1.3;
   letter-spacing: 0.04em;
+  text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
   opacity: 0;
   transform: translate(-50%, -50%) rotate(-14deg);
   mix-blend-mode: multiply;
+}
+
+.bill .seal span {
+  display: block;
+  font-size: 0.8em;
+  letter-spacing: 0.2em;
 }
 
 .bill.paid .seal {
@@ -1182,4 +1627,969 @@ body.quake .roster {
   color: color-mix(in srgb, var(--deck) 80%, #000);
   font-weight: 900;
   font-size: 1.15em;
+}
+
+/* The tools at the top middle, medallions: fewer effects, pause (alone with the computer), ×2. */
+.tools {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 28px;
+  z-index: 7;
+}
+
+.tool {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--rim);
+  border-radius: 50%;
+  background: var(--plaque);
+  color: var(--gold);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 180, 0.35),
+    0 4px 0 #0b0704,
+    0 7px 12px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  font-family: var(--display);
+  transition:
+    translate 0.08s,
+    box-shadow 0.08s,
+    background 0.15s;
+}
+
+.tool:active {
+  translate: 0 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 180, 0.35),
+    0 1px 0 #0b0704;
+}
+
+.tool[hidden] {
+  display: none;
+}
+
+.tools .tool svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  filter: drop-shadow(0 1px 0 #3a2600);
+}
+
+.tools .x2 {
+  font-size: 15px;
+  font-weight: 900;
+  text-shadow: 0 1px 0 #3a2600;
+}
+
+.tools .tool .slash {
+  display: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Switched on: lit gold, the effects icon struck through. */
+.tool[aria-pressed="true"] {
+  background: linear-gradient(180deg, #ffe58e, #dc9c12);
+  color: #3b2300;
+}
+
+.tools .tool[aria-pressed="true"] svg,
+.tools [aria-pressed="true"] .x2 {
+  filter: none;
+  text-shadow: none;
+}
+
+.tools .tool[aria-pressed="true"] .slash {
+  display: inline;
+}
+
+.halt[hidden] {
+  display: none;
+}
+
+.halt {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 18px;
+  background: radial-gradient(circle, rgba(4, 4, 11, 0.45), rgba(4, 4, 11, 0.8));
+  text-align: center;
+  font-family: var(--display);
+  z-index: 8;
+}
+
+.halt .title {
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-shadow:
+    0 3px 0 #6b4a12,
+    0 6px 16px rgba(0, 0, 0, 0.7);
+}
+
+.halt .buttons button {
+  min-width: 180px;
+}
+
+/* Phones on their side: smaller plaques, medallions and buttons, so the board's edge stays clear. */
+@media (max-height: 480px) {
+  .seat {
+    min-height: 44px;
+    padding: 5px 10px 5px 38px;
+  }
+
+  .seat-2,
+  .seat-3 {
+    padding: 5px 38px 5px 10px;
+  }
+
+  .seat::before {
+    inset: 3px 8px auto 34px;
+  }
+
+  .seat-2::before,
+  .seat-3::before {
+    inset: 3px 34px auto 8px;
+  }
+
+  .seat-2 {
+    top: 58px;
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    margin-top: -22px;
+    left: -12px;
+    font-size: 18px;
+  }
+
+  .seat-2 .avatar,
+  .seat-3 .avatar {
+    right: -12px;
+  }
+
+  .seat .timer {
+    width: 54px;
+    height: 54px;
+    margin-top: -27px;
+    left: -17px;
+    mask: radial-gradient(circle, transparent 23px, #000 24px);
+  }
+
+  .seat-2 .timer,
+  .seat-3 .timer {
+    right: -17px;
+  }
+
+  .who {
+    font-size: 10px;
+  }
+
+  .cash {
+    font-size: 16px;
+  }
+
+  .buttons button {
+    min-height: 40px;
+    font-size: 13px;
+  }
+
+  .tools {
+    top: 4px;
+    gap: 22px;
+  }
+
+  .tool {
+    width: 36px;
+    height: 36px;
+  }
+
+  .tools .tool svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .tools .x2 {
+    font-size: 12px;
+  }
+}
+
+@media (max-height: 480px) {
+  .deed {
+    width: min(20vw, 180px);
+    max-height: calc(100% - 136px);
+    padding-bottom: 6px;
+    font-size: 10px;
+  }
+
+  .deed.left {
+    left: max(10px, env(safe-area-inset-left));
+  }
+
+  .deed.right {
+    right: max(10px, env(safe-area-inset-right));
+  }
+
+  .deed h2 {
+    font-size: 13px;
+  }
+
+  .deed header span {
+    font-size: 8px;
+  }
+
+  .deed dl,
+  .seal,
+  .set,
+  .deed .mark {
+    margin-inline: 10px;
+  }
+
+  .set {
+    margin-top: 5px;
+    font-size: 10px;
+  }
+
+  .deed td {
+    padding: 1px 4px;
+  }
+
+  .deed header {
+    padding: 5px 10px 4px;
+    margin-bottom: 5px;
+  }
+
+  .facts > div {
+    padding-block: 1px;
+  }
+
+  .seal {
+    margin-top: 5px;
+    padding: 3px 6px;
+  }
+
+  .seal b {
+    font-size: 13px;
+  }
+}
+
+/* A monopoly's moment (monopoly.ts) */
+.monopoly {
+  --pace: 1;
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  animation: fade-in calc(0.2s * var(--pace)) ease-out;
+}
+
+.monopoly[hidden] {
+  display: none;
+}
+
+.monopoly.leaving {
+  animation: mono-out calc(0.28s * var(--pace)) ease-in forwards;
+}
+
+@keyframes mono-out {
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+.monopoly[data-of="station"] {
+  background: radial-gradient(circle at 50% 45%, rgba(70, 44, 4, 0.94), rgba(6, 5, 16, 0.97) 70%);
+}
+
+.monopoly .rays {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 220vmax;
+  height: 220vmax;
+  margin: -110vmax 0 0 -110vmax;
+  background: repeating-conic-gradient(rgba(255, 210, 31, 0.16) 0 7deg, transparent 7deg 18deg);
+  animation: mono-spin calc(14s * var(--pace)) linear infinite;
+}
+
+@keyframes mono-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.monopoly .road {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: min(46vh, 340px);
+  background:
+    linear-gradient(transparent 49%, rgba(255, 210, 31, 0.9) 49% 51%, transparent 51%) 0 0 / 60px
+    100%,
+    linear-gradient(#3a3a46, #24242e);
+  background-repeat: repeat-x, no-repeat;
+  box-shadow:
+    0 -6px 0 #e8ecf2,
+    0 6px 0 #e8ecf2,
+    0 0 40px rgba(0, 0, 0, 0.6);
+  transform: translateY(-20%) scaleY(0);
+  animation: mono-road calc(0.35s * var(--pace)) cubic-bezier(0.2, 0.9, 0.3, 1.3) forwards;
+}
+
+@keyframes mono-road {
+  to {
+    transform: translateY(-20%) scaleY(1);
+  }
+}
+
+.monopoly .vehicle {
+  position: absolute;
+  left: 0;
+  width: min(46vh, 360px);
+  filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.5));
+}
+
+.monopoly .vehicle.near {
+  bottom: 4%;
+  z-index: 2;
+}
+
+.monopoly .vehicle.far {
+  top: 2%;
+  width: min(32vh, 250px);
+  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.5)) brightness(0.85);
+}
+
+.monopoly .vehicle .art {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: mono-bump calc(0.18s * var(--pace)) ease-in-out infinite alternate;
+}
+
+@keyframes mono-bump {
+  to {
+    transform: translateY(-2px);
+  }
+}
+
+.monopoly .vehicle .spin {
+  animation: mono-spin calc(0.3s * var(--pace)) linear infinite;
+}
+
+.monopoly .vehicle .lines {
+  position: absolute;
+  right: 100%;
+  top: 22%;
+  width: 70%;
+  height: 50%;
+  background: repeating-linear-gradient(transparent 0 8px, rgba(255, 255, 255, 0.55) 8px 10px);
+  mask-image: linear-gradient(90deg, transparent, #000);
+}
+
+.monopoly .banner {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin-top: -50vh;
+  font-family: var(--display);
+  text-align: center;
+  animation: mono-slam calc(0.55s * var(--pace)) cubic-bezier(0.2, 1.6, 0.4, 1)
+    calc(0.25s * var(--pace)) both;
+}
+
+.monopoly .banner-title {
+  padding: 6px 28px 10px;
+  font-size: clamp(30px, 8vh, 64px);
+  font-weight: 900;
+  line-height: 1.05;
+  color: #fff6c2;
+  background: linear-gradient(180deg, #c0392b, #8e1f14);
+  border: 3px solid #ffd21f;
+  border-radius: 10px;
+  text-shadow:
+    0 3px 0 #6b1208,
+    0 0 18px rgba(255, 210, 31, 0.6);
+  box-shadow:
+    0 6px 0 #5a0f06,
+    0 12px 30px rgba(0, 0, 0, 0.5);
+  transform: rotate(-2deg);
+}
+
+.monopoly .banner span {
+  padding: 4px 14px;
+  font-size: clamp(14px, 3.4vh, 22px);
+  font-weight: 800;
+  color: #1d1406;
+  background: #ffd21f;
+  border-radius: 999px;
+  box-shadow: 0 3px 0 #b8860b;
+}
+
+@keyframes mono-slam {
+  from {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.monopoly[data-of="utility"] {
+  background: linear-gradient(180deg, rgba(8, 14, 34, 0.97), rgba(18, 34, 58, 0.95));
+}
+
+.monopoly[data-of="utility"] .banner {
+  margin-top: 22vh;
+  justify-self: end;
+  margin-right: 8vw;
+}
+
+.monopoly[data-of="utility"] .banner-title {
+  background: linear-gradient(180deg, #2f80ed, #1a4fa0);
+  text-shadow:
+    0 3px 0 #0e2d5e,
+    0 0 18px rgba(255, 246, 194, 0.6);
+  box-shadow:
+    0 6px 0 #0e2d5e,
+    0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.monopoly .clouds {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 32%;
+  z-index: 1;
+}
+
+.monopoly .cloud {
+  position: absolute;
+  top: calc(-4% + var(--k) * 3%);
+  width: 32%;
+  color: #2a3348;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+  animation: mono-drift calc(3s * var(--pace)) ease-in-out infinite alternate;
+}
+
+.monopoly .cloud:nth-child(even) {
+  color: #354059;
+  animation-direction: alternate-reverse;
+}
+
+.monopoly .cloud .art {
+  display: block;
+  width: 100%;
+}
+
+@keyframes mono-drift {
+  from {
+    transform: translate(-3%, -30%);
+  }
+  to {
+    transform: translate(3%, 0);
+  }
+}
+
+.monopoly .rain {
+  position: absolute;
+  inset: 0;
+}
+
+.monopoly .drop {
+  position: absolute;
+  top: -12%;
+  width: 2px;
+  height: 9vh;
+  background: linear-gradient(transparent, rgba(190, 220, 255, 0.9));
+  transform: rotate(12deg);
+  animation: mono-rain 0.6s linear infinite;
+}
+
+@keyframes mono-rain {
+  to {
+    transform: translate(-22vh, 115vh) rotate(12deg);
+  }
+}
+
+.monopoly .flash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #eaf3ff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.monopoly .bolt {
+  position: absolute;
+  top: 8%;
+  z-index: 2;
+  width: min(12vh, 70px);
+  opacity: 0;
+  filter: drop-shadow(0 0 14px #fff2a0) drop-shadow(0 0 30px #ffd21f);
+}
+
+.monopoly .bolt .art {
+  display: block;
+  width: 100%;
+}
+
+.monopoly .engineer {
+  position: absolute;
+  left: 10vw;
+  bottom: -2%;
+  z-index: 3;
+  height: 82vh;
+  aspect-ratio: 2 / 3;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6));
+  animation:
+    mono-rise calc(0.6s * var(--pace)) cubic-bezier(0.2, 1.4, 0.4, 1) calc(0.1s * var(--pace)) both,
+    mono-breathe calc(1.2s * var(--pace)) ease-in-out calc(0.7s * var(--pace)) infinite alternate;
+}
+
+.monopoly .engineer .art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes mono-rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes mono-breathe {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-1.5%);
+  }
+}
+
+.monopoly.low .rays,
+.monopoly.low .cloud {
+  animation: none;
+}
+
+/* "Có tội!!!" before jail (verdict.ts) */
+.verdict {
+  --pace: 1;
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  background: radial-gradient(circle at 70% 45%, rgba(120, 16, 12, 0.92), rgba(20, 4, 6, 0.96) 70%);
+  animation: fade-in calc(0.12s * var(--pace)) ease-out;
+}
+
+.verdict[hidden] {
+  display: none;
+}
+
+.verdict.leaving {
+  animation: mono-out calc(0.22s * var(--pace)) ease-in forwards;
+}
+
+.verdict .burst-lines {
+  position: absolute;
+  left: 70%;
+  top: 45%;
+  width: 240vmax;
+  height: 240vmax;
+  margin: -120vmax 0 0 -120vmax;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.12) 0 2deg, transparent 2deg 9deg);
+  animation: verdict-zoom calc(0.5s * var(--pace)) ease-out both;
+}
+
+@keyframes verdict-zoom {
+  from {
+    transform: scale(0.3) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+.verdict .lawyer {
+  position: absolute;
+  left: -2vw;
+  bottom: -4%;
+  width: min(118vh, 78vw);
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6));
+  animation: verdict-swing calc(0.38s * var(--pace)) cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  transform-origin: 15% 90%;
+}
+
+.verdict .lawyer .art {
+  display: block;
+  width: 100%;
+}
+
+@keyframes verdict-swing {
+  from {
+    transform: translateX(-60%) rotate(-10deg);
+  }
+}
+
+.verdict .shout {
+  position: absolute;
+  right: 3vw;
+  top: 6vh;
+  width: min(62vh, 44vw);
+  display: grid;
+  place-items: center;
+  animation:
+    verdict-slam calc(0.32s * var(--pace)) cubic-bezier(0.2, 1.8, 0.4, 1) calc(0.26s * var(--pace))
+    both,
+    verdict-shake calc(0.06s * var(--pace)) linear calc(0.58s * var(--pace)) 6;
+}
+
+.verdict .shout .art {
+  grid-area: 1 / 1;
+  display: block;
+  width: 100%;
+}
+
+.verdict .shout-title {
+  grid-area: 1 / 1;
+  font-family: var(--display);
+  font-size: min(10vh, 7vw);
+  font-weight: 900;
+  font-style: italic;
+  color: #e3241b;
+  letter-spacing: -0.02em;
+  transform: rotate(-8deg) skewX(-10deg);
+  -webkit-text-stroke: 2px #7a0c06;
+  text-shadow:
+    3px 3px 0 #7a0c06,
+    0 0 1px #fff;
+  white-space: nowrap;
+}
+
+@keyframes verdict-slam {
+  from {
+    transform: scale(3) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes verdict-shake {
+  25% {
+    transform: translate(-4px, 2px);
+  }
+  75% {
+    transform: translate(4px, -2px);
+  }
+}
+
+.verdict .who {
+  position: absolute;
+  right: 6vw;
+  bottom: 8vh;
+  margin: 0;
+  padding: 4px 16px;
+  font-family: var(--display);
+  font-size: clamp(14px, 3.4vh, 22px);
+  font-weight: 800;
+  color: #fff6c2;
+  background: #14141c;
+  border: 2px solid #d1312a;
+  border-radius: 999px;
+  animation: fade-in calc(0.2s * var(--pace)) ease-out calc(0.5s * var(--pace)) both;
+}
+
+.verdict.low .burst-lines {
+  animation: none;
+}
+
+/* A few Cards' moments (cardmoments.ts) */
+.card-moments {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.card-moments .crow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: min(30vh, 220px);
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.5));
+}
+
+.card-moments .crow .art {
+  display: block;
+  width: 100%;
+}
+
+.card-moments .crow .wing {
+  transform-box: fill-box;
+  transform-origin: 90% 95%;
+  animation: crow-flap calc(0.22s * var(--pace)) ease-in-out infinite alternate;
+}
+
+.card-moments .crow .wing.back {
+  animation-delay: calc(-0.05s * var(--pace));
+}
+
+@keyframes crow-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(-0.55);
+  }
+}
+
+.card-moments .sick {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, transparent 45%, rgba(40, 90, 20, 0.45));
+  animation: fade-in calc(0.3s * var(--pace)) ease-out;
+}
+
+.card-moments .sick.leaving {
+  animation: mono-out calc(0.35s * var(--pace)) ease-in forwards;
+}
+
+.card-moments .virus {
+  position: absolute;
+  width: calc(min(14vh, 90px) * var(--s));
+  margin: calc(min(-7vh, -45px) * var(--s)) 0 0 calc(min(-7vh, -45px) * var(--s));
+  animation:
+    virus-in calc(0.5s * var(--pace)) cubic-bezier(0.2, 1.5, 0.4, 1)
+    calc(var(--k) * 0.04s * var(--pace)) both,
+    virus-wobble calc(1.4s * var(--pace)) ease-in-out infinite alternate;
+}
+
+.card-moments .virus .art {
+  display: block;
+  width: 100%;
+}
+
+@keyframes virus-in {
+  from {
+    transform: scale(0) rotate(-90deg);
+  }
+}
+
+@keyframes virus-wobble {
+  to {
+    rotate: 25deg;
+    translate: 0 6px;
+  }
+}
+
+.card-moments .sick-word {
+  font-family: var(--display);
+  font-size: min(12vh, 84px);
+  font-weight: 900;
+  color: #dff7c8;
+  -webkit-text-stroke: 3px #1f4d1a;
+  text-shadow:
+    0 5px 0 #1f4d1a,
+    0 0 24px rgba(124, 207, 79, 0.7);
+  animation: verdict-slam calc(0.4s * var(--pace)) cubic-bezier(0.2, 1.6, 0.4, 1)
+    calc(0.15s * var(--pace)) both;
+}
+
+.card-moments .pass {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 5, 16, 0.55);
+  pointer-events: auto;
+  animation: fade-in calc(0.2s * var(--pace)) ease-out;
+}
+
+.card-moments .pass.leaving {
+  animation: mono-out calc(0.3s * var(--pace)) ease-in forwards;
+}
+
+.card-moments .pass-card {
+  width: min(86vw, 120vh, 560px);
+  aspect-ratio: 2.1 / 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 14px 20px 10px;
+  box-sizing: border-box;
+  color: #2b2116;
+  background:
+    repeating-linear-gradient(45deg, rgba(120, 90, 40, 0.06) 0 6px, transparent 6px 12px),
+    linear-gradient(180deg, #fbf3dc, #efe0b8);
+  border: 3px solid #8a6a2e;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 5px #fbf3dc,
+    inset 0 0 0 7px #b08a42,
+    0 18px 40px rgba(0, 0, 0, 0.55);
+  font-family: var(--display);
+  animation: pass-in calc(0.45s * var(--pace)) cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes pass-in {
+  from {
+    transform: translateY(40vh) rotate(-12deg) scale(0.6);
+    opacity: 0;
+  }
+}
+
+.card-moments .pass-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid #b08a42;
+  padding-bottom: 4px;
+}
+
+.card-moments .pass-head span {
+  font-size: min(2.6vh, 13px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a5a24;
+}
+
+.card-moments .pass-title {
+  font-size: min(6vh, 30px);
+  font-weight: 900;
+  color: #8e1f14;
+}
+
+.card-moments .pass-body {
+  margin: 8px 0 0;
+  font-size: min(3.2vh, 16px);
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.card-moments .pass-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+}
+
+.card-moments .pass-door {
+  width: min(9vh, 48px);
+}
+
+.card-moments .pass-door .art,
+.card-moments .pass-sign .art {
+  display: block;
+  width: 100%;
+}
+
+.card-moments .pass-sign {
+  display: grid;
+  justify-items: center;
+  width: min(30vh, 160px);
+  border-top: 1px dashed #8a6a2e;
+}
+
+.card-moments .pass-sign .art {
+  margin-top: -36px;
+}
+
+.card-moments .pass-sign em {
+  font-size: min(2.2vh, 11px);
+  font-style: normal;
+  font-weight: 700;
+  color: #7a5a24;
+}
+
+.card-moments .pass-sign .ink {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: pass-sign calc(0.9s * var(--pace)) ease-out calc(0.6s * var(--pace)) forwards;
+}
+
+@keyframes pass-sign {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Khởi nghiệp: a halo of fire burning round the player's card while it lasts. */
+.seat.aflame {
+  animation: aflame 0.45s ease-in-out infinite alternate;
+}
+
+.seat.aflame::after {
+  content: "";
+  position: absolute;
+  inset: -16px -10px -6px;
+  z-index: -1;
+  border-radius: 20px;
+  background:
+    radial-gradient(14px 26px at 12% 100%, #ffd21f, transparent 70%) 0 0 / 34px 100% repeat-x,
+    radial-gradient(10px 22px at 50% 100%, #ff7a1a, transparent 70%) 17px 0 / 34px 100% repeat-x,
+    radial-gradient(closest-side, rgba(255, 122, 26, 0.6), transparent);
+  filter: blur(3px);
+  animation: flames 0.6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes aflame {
+  from {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 236, 180, 0.3),
+      0 0 10px 3px rgba(255, 138, 31, 0.75),
+      0 -6px 18px 4px rgba(255, 210, 31, 0.45);
+  }
+  to {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 236, 180, 0.3),
+      0 0 16px 6px rgba(255, 90, 20, 0.8),
+      0 -10px 26px 8px rgba(255, 200, 40, 0.55);
+  }
+}
+
+@keyframes flames {
+  0% {
+    background-position:
+      0 4px,
+      17px 8px,
+      0 0;
+    opacity: 0.85;
+  }
+  50% {
+    background-position:
+      -6px -3px,
+      11px 1px,
+      0 0;
+    opacity: 1;
+  }
+  100% {
+    background-position:
+      -12px 4px,
+      5px 8px,
+      0 0;
+    opacity: 0.85;
+  }
 }

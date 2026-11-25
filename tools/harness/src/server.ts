@@ -16,6 +16,8 @@ export interface ServeOptions {
   gameDir: string;
   /** Where the debug page loads the Game client from instead, such as a Vite dev server. */
   client?: string;
+  /** The accounts' pictures (`assets/app/images`), served at `/avatars/<id>.webp` as the Hub does. */
+  avatarDir?: string;
 }
 
 const TYPES: Record<string, string> = {
@@ -129,7 +131,7 @@ async function sendFile(res: ServerResponse, root: string, path: string) {
 /** Starts the Harness' HTTP API, debug page and Bridge WebSocket. Resolves once listening. */
 export function serve(
   harness: Harness,
-  { port, host: listenOn = '127.0.0.1', gameDir, client }: ServeOptions,
+  { port, host: listenOn = '127.0.0.1', gameDir, client, avatarDir }: ServeOptions,
 ) {
   const sockets = new Map<number, WebSocket>();
 
@@ -167,6 +169,12 @@ export function serve(
         reply(res, 200, await runCommand(harness, name, args));
       } else if (req.method === 'GET' && url.pathname.startsWith('/game/')) {
         await sendFile(res, gameDir, url.pathname.slice('/game'.length));
+      } else if (
+        req.method === 'GET' &&
+        avatarDir &&
+        /^\/avatars\/[a-z0-9-]+\.webp$/.test(url.pathname)
+      ) {
+        await sendFile(res, avatarDir, `/avatar-${url.pathname.slice('/avatars/'.length)}`);
       } else {
         reply(res, 404, { error: 'Not found' });
       }

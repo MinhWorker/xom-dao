@@ -139,8 +139,8 @@ const wrap = (ctx: CanvasRenderingContext2D, name: string, maxW: number, size: n
   return [words.slice(0, bestSplit).join(' '), words.slice(bestSplit).join(' ')];
 };
 
-/** Draws an icon `s` pixels across, centred on the origin. */
-type Icon = (ctx: CanvasRenderingContext2D, s: number) => void;
+/** Draws an icon `s` pixels across, centred on the origin; `t` seconds in moves it, if it moves. */
+type Icon = (ctx: CanvasRenderingContext2D, s: number, t?: number) => void;
 
 const ICONS: Partial<Record<Tile['kind'], Icon>> = {
   station: (ctx, s) => {
@@ -159,8 +159,7 @@ const ICONS: Partial<Record<Tile['kind'], Icon>> = {
   },
 };
 
-const bolt: Icon = (ctx, s) => {
-  ctx.fillStyle = '#f2b705';
+const boltPath = (ctx: CanvasRenderingContext2D, s: number) => {
   ctx.beginPath();
   ctx.moveTo(s * 0.1, -s * 0.5);
   ctx.lineTo(-s * 0.3, s * 0.06);
@@ -169,17 +168,88 @@ const bolt: Icon = (ctx, s) => {
   ctx.lineTo(s * 0.32, -s * 0.08);
   ctx.lineTo(s * 0.04, -s * 0.08);
   ctx.closePath();
-  ctx.fill();
 };
 
-const drop: Icon = (ctx, s) => {
-  ctx.fillStyle = '#2b8fd6';
+/** Seconds between the bolt's flashes. */
+const ZAP = 2.2;
+
+/** Điện lực: the bolt flashes now and then, flickering, with sparks flying off it. */
+const bolt: Icon = (ctx, s, t) => {
+  const k = t === undefined ? 1 : (t % ZAP) / ZAP;
+  const flash = t === undefined ? 0 : k < 0.18 ? Math.abs(Math.sin(k * 60)) * (1 - k / 0.18) : 0;
+  ctx.save();
+  if (flash > 0) {
+    ctx.shadowColor = '#fff3a0';
+    ctx.shadowBlur = s * 0.5 * flash;
+    ctx.scale(1 + flash * 0.12, 1 + flash * 0.12);
+  }
+  ctx.fillStyle = flash > 0.5 ? '#fff3a0' : '#f2b705';
+  boltPath(ctx, s);
+  ctx.fill();
+  ctx.restore();
+  if (t === undefined || k > 0.35) return;
+  const u = k / 0.35;
+  ctx.fillStyle = '#ffd23a';
+  for (const [n, a] of [-2.4, -0.6, 0.5, 2.1, 2.9].entries()) {
+    const r = s * (0.3 + u * 0.35 + n * 0.02);
+    ctx.globalAlpha = 1 - u;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * r, Math.sin(a) * r, s * 0.045 * (1 - u * 0.5), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+};
+
+const dropPath = (ctx: CanvasRenderingContext2D, s: number) => {
   ctx.beginPath();
   ctx.moveTo(0, -s * 0.5);
   ctx.bezierCurveTo(s * 0.2, -s * 0.2, s * 0.38, 0, s * 0.38, s * 0.14);
   ctx.arc(0, s * 0.14, s * 0.38, 0, Math.PI);
   ctx.bezierCurveTo(-s * 0.38, 0, -s * 0.2, -s * 0.2, 0, -s * 0.5);
+};
+
+/** Seconds a drip takes from the tap to its ripple fading. */
+const DRIP = 2.4;
+
+/** Cấp nước: the drop wobbles as a small drip falls from it into widening ripples. */
+const drop: Icon = (ctx, s, t) => {
+  const k = t === undefined ? 1 : (t % DRIP) / DRIP;
+  ctx.save();
+  ctx.translate(0, -s * 0.12);
+  ctx.scale(0.78, 0.78);
+  if (t !== undefined) ctx.scale(1 + Math.sin(t * 5) * 0.03, 1 - Math.sin(t * 5) * 0.03);
+  ctx.fillStyle = '#2b8fd6';
+  dropPath(ctx, s);
   ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.14, s * 0.06, s * 0.07, s * 0.13, -0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  if (t === undefined) return;
+  const tip = s * 0.29;
+  const floor = s * 0.44;
+  if (k < 0.45) {
+    const u = k / 0.45;
+    const y = tip + (floor - tip) * u * u;
+    ctx.fillStyle = '#2b8fd6';
+    ctx.beginPath();
+    ctx.ellipse(0, y, s * 0.04, s * 0.055, 0, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  const u = (k - 0.45) / 0.55;
+  ctx.strokeStyle = '#2b8fd6';
+  ctx.lineWidth = s * 0.035;
+  for (const lag of [0, 0.3]) {
+    const v = u - lag;
+    if (v <= 0) continue;
+    ctx.globalAlpha = 1 - v;
+    ctx.beginPath();
+    ctx.ellipse(0, floor, s * (0.08 + v * 0.4), s * (0.02 + v * 0.05), 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 };
 
 const iconOf = (tile: Tile): Icon | undefined => {
@@ -187,7 +257,23 @@ const iconOf = (tile: Tile): Icon | undefined => {
   return ICONS[tile.kind];
 };
 
-const priceOf = (i: number) => landPrice(TUNING, i) || undefined;
+/** What a Tile prints under its name: its price, or for Điện lực and Cấp nước what they charge per point rolled. */
+const priceOf = (i: number) =>
+  BOARD[i]?.kind === 'utility' ? `${TUNING.utilityRent[0]} ×` : landPrice(TUNING, i) || undefined;
+
+/** A flat dark die, `s` pixels across, centred on (`x`, `y`). */
+function printDie(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  ctx.fillStyle = '#3b3026';
+  ctx.beginPath();
+  ctx.roundRect(x - s / 2, y - s / 2, s, s, s * 0.22);
+  ctx.fill();
+  ctx.fillStyle = '#f3ead8';
+  for (const k of [-1, 0, 1]) {
+    ctx.beginPath();
+    ctx.arc(x + k * s * 0.27, y + k * s * 0.27, s * 0.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
 
 /** Draws one Tile's face in its own text frame, centred on the origin, `w`×`h` pixels. */
 const drawFace = (
@@ -198,6 +284,8 @@ const drawFace = (
   band: { x: number; y: number } | undefined,
   px: number,
   t?: number,
+  neon?: number,
+  struck?: boolean,
 ) => {
   const tile = BOARD[i] as Tile;
   let area = { x: -w / 2, y: -h / 2, w, h };
@@ -265,17 +353,41 @@ const drawFace = (
     y += px * 0.04;
     ctx.save();
     ctx.translate(cx, y + iconS / 2);
-    if (special) drawSpecial(ctx, tile.kind, iconS, CREAM, special, t);
-    else icon?.(ctx, iconS);
+    if (special) drawSpecial(ctx, tile.kind, iconS, CREAM, special, t, neon);
+    else icon?.(ctx, iconS, t);
     ctx.restore();
     y += iconS + px * 0.04;
   }
   if (price) {
-    ctx.fillStyle = '#6b5a48';
     ctx.font = `700 ${priceSize}px system-ui, "Segoe UI", Roboto, sans-serif`;
-    ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(`${price}`, cx, y + priceSize * 0.2);
+    ctx.textAlign = 'left';
+    const label = `${price}`;
+    const text = ctx.measureText(label).width;
+    const die = tile.kind === 'utility' ? priceSize * 1.05 : 0;
+    const gap = die ? priceSize * 0.25 : 0;
+    const width = text + gap + die;
+    const space = priceSize * 0.3;
+    ctx.font = `900 ${priceSize * 1.3}px system-ui, "Segoe UI", Roboto, sans-serif`;
+    const zero = struck ? space + ctx.measureText('0').width : 0;
+    ctx.font = `700 ${priceSize}px system-ui, "Segoe UI", Roboto, sans-serif`;
+    const left = cx - (width + zero) / 2;
+    const top = y + priceSize * 0.2;
+    ctx.fillStyle = struck ? '#a3937e' : '#6b5a48';
+    ctx.fillText(label, left, top);
+    if (die) printDie(ctx, left + text + gap + die / 2, top + priceSize * 0.5, die);
+    if (struck) {
+      ctx.strokeStyle = '#d1312a';
+      ctx.lineWidth = priceSize * 0.13;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(left - priceSize * 0.1, top + priceSize * 0.58);
+      ctx.lineTo(left + width + priceSize * 0.1, top + priceSize * 0.42);
+      ctx.stroke();
+      ctx.fillStyle = '#2f9e44';
+      ctx.font = `900 ${priceSize * 1.3}px system-ui, "Segoe UI", Roboto, sans-serif`;
+      ctx.fillText('0', left + width + space, top - priceSize * 0.06);
+    }
   }
 };
 
@@ -311,14 +423,24 @@ const drawCentre = (ctx: CanvasRenderingContext2D, px: number, title: boolean) =
   ctx.restore();
 };
 
-/** Paints Tile `i` with its top-left corner at the origin; `t` sets a special icon moving. */
-export const paintTile = (ctx: CanvasRenderingContext2D, i: number, px: number, t?: number) => {
+/**
+ * Paints Tile `i` with its top-left corner at the origin; `t` sets its icon moving, if it moves,
+ * `neon` (0 to 1) lights its outline, and `struck` crosses its price out for a 0 (Miễn thuê).
+ */
+export const paintTile = (
+  ctx: CanvasRenderingContext2D,
+  i: number,
+  px: number,
+  t?: number,
+  neon?: number,
+  struck?: boolean,
+) => {
   const p = placement(i);
   ctx.fillStyle = PAPER;
   ctx.fillRect(0, 0, p.w * px, p.h * px);
   ctx.save();
   ctx.translate((p.w / 2) * px, (p.h / 2) * px);
-  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t);
+  drawFace(ctx, i, p.w * px, p.h * px, p.corner ? undefined : p.inward, px, t, neon, struck);
   ctx.restore();
   ctx.strokeStyle = LINE;
   ctx.lineWidth = px * 0.02;
@@ -344,10 +466,34 @@ export const printBoard = (px = 336, title = true): HTMLCanvasElement => {
     paintTile(ctx, i, px);
     ctx.restore();
   });
-  ctx.lineWidth = px * 0.05;
-  ctx.strokeRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeRect(CORNER * px, CORNER * px, (SIDE - 2 * CORNER) * px, (SIDE - 2 * CORNER) * px);
+  frame(ctx, px);
   return canvas;
+};
+
+/** The board's thick outer and inner edges. */
+const frame = (ctx: CanvasRenderingContext2D, px: number) => {
+  ctx.strokeStyle = LINE;
+  ctx.lineWidth = px * 0.05;
+  ctx.strokeRect(0, 0, SIDE * px, SIDE * px);
+  ctx.strokeRect(CORNER * px, CORNER * px, (SIDE - 2 * CORNER) * px, (SIDE - 2 * CORNER) * px);
+};
+
+/** Paints `tiles` again on a board `printBoard` drew at `px`, those in `struck` crossed out. */
+export const reprint = (
+  canvas: HTMLCanvasElement,
+  tiles: Iterable<number>,
+  struck: ReadonlySet<number>,
+  px = 336,
+) => {
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  for (const i of tiles) {
+    const p = placement(i);
+    ctx.save();
+    ctx.translate(p.x * px, p.y * px);
+    paintTile(ctx, i, px, undefined, 0, struck.has(i));
+    ctx.restore();
+  }
+  frame(ctx, px);
 };
 
 /** The back of a Cơ hội or Khí vận card: the deck colour with its icon repeated small. */

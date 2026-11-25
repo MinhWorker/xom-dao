@@ -26,6 +26,28 @@ export function saleProblem(state: BoardState, seat: number, sale: readonly Sale
   return null;
 }
 
+/** The phases in which the turn player may Sell their own Lots outside a Debt. */
+const FREE_SALE: readonly State['phase'][] = ['roll', 'buy', 'upgrade', 'takeover', 'fly'];
+
+/**
+ * Why `seat` cannot Sell `sale` of their own will now, or `null`: only in their turn, between
+ * decisions that touch no Lot of theirs, and never the City they are offered to upgrade.
+ */
+export function freeSaleProblem(
+  state: BoardState & Pick<State, 'turn' | 'phase' | 'paused'>,
+  seat: number,
+  sale: readonly Sale[],
+): string | null {
+  if (state.paused) return 'Ván đang tạm dừng';
+  if (sale.length === 0) return 'Chưa chọn ô để bán';
+  if (state.turn !== seat) return 'Chưa tới lượt bạn';
+  if (!FREE_SALE.includes(state.phase)) return 'Chưa thể làm việc này lúc này';
+  const here = state.players[seat]?.tile;
+  if (state.phase === 'upgrade' && sale.some((s) => s.tile === here))
+    return 'Không bán được ô đang nâng cấp';
+  return saleProblem(state, seat, sale);
+}
+
 /** `seat` Sells `sale` (checked with `saleProblem`) to the bank. */
 export function sell(t: Tuning, state: State, seat: number, sale: readonly Sale[]): State {
   let raised = 0;

@@ -6,8 +6,8 @@
 import { AIRPORT_TILE, BOARD } from '../server/game/board.js';
 import { type CardAction, type CardId, cardOf, picksOf } from '../server/game/cards.js';
 import { landPrice, takeoverPrice, upgradeCost } from '../server/game/economy.js';
-import { HOTEL, JAIL_TRIES, type Player, type View } from '../server/game/model.js';
-import { levelValue, lotValue } from '../server/game/selling.js';
+import { HOTEL, JAIL_TRIES, type Player, type Sale, type View } from '../server/game/model.js';
+import { freeSaleProblem, levelValue, lotValue } from '../server/game/selling.js';
 import { TUNING } from '../server/game/tuning.js';
 
 export interface Button {
@@ -52,7 +52,46 @@ const PASS: Button = { label: 'Bỏ qua', event: 'pass' };
 export const decider = (view: View) =>
   view.phase === 'debt' && view.debt ? view.debt.from : view.turn;
 
-export function decide(view: View, me: number, names: readonly string[]): Panel {
+/** The event a tap on a Lot sends during a Debt: it changes the sale being chosen, never the server. */
+export const CHOOSE_SALE = 'choose-sale';
+
+/** What one part of a sale fetches: Levels off a City, or the whole Lot. */
+export const partValue = (view: View, { tile, levels }: Sale) =>
+  levels === undefined ? lotValue(t, view, tile) : levels * levelValue(t, tile);
+
+/** What a tap on `tile` makes of its part of `sale`: one more Level off, then the whole Lot, then nothing. */
+export function nextSale(view: View, sale: readonly Sale[], tile: number): Sale[] {
+  const lot = view.lots[tile];
+  const rest = sale.filter((s) => s.tile !== tile);
+  if (!lot) return rest;
+  const now = sale.find((s) => s.tile === tile);
+  const off = now === undefined ? 0 : now.levels === undefined ? Infinity : now.levels;
+  if (off === Infinity) return rest;
+  if (off + 1 <= lot.level - 1) return [...rest, { tile, levels: off + 1 }];
+  return [...rest, { tile }];
+}
+
+/** How a part of a sale reads on its Lot. */
+export const partLabel = ({ levels }: Sale) =>
+  levels === undefined ? 'Bán đất' : `Bớt ${levels} cấp`;
+
+/** The button that Sells `tile` whole for `me` of their own will, with what it fetches, or `null` when they cannot now. */
+export function freeSale(view: View, me: number, tile: number | null): Button | null {
+  if (tile === null || freeSaleProblem(view, me, [{ tile }])) return null;
+  return {
+    label: `Bán · nhận ${money(lotValue(t, view, tile))}`,
+    event: 'sell',
+    payload: { sale: [{ tile }] },
+  };
+}
+
+/** The decision of `view` for seat `me`; `sale` is what the debtor has picked to Sell so far. */
+export function decide(
+  view: View,
+  me: number,
+  names: readonly string[],
+  sale: readonly Sale[] = [],
+): Panel {
   const seat = decider(view);
   const mine = seat === me;
   const who = names[seat] ?? '';
@@ -88,17 +127,17 @@ export function decide(view: View, me: number, names: readonly string[]): Panel 
       const debt = view.debt;
       if (!debt) break;
       const to = debt.to === null ? 'ngân hàng' : (names[debt.to] ?? '');
-      const parts = debt.suggested.map(({ tile, levels }) => {
-        const name = BOARD[tile]?.name ?? '';
-        return levels === undefined
-          ? `${name} (+${money(lotValue(t, view, tile))})`
-          : `${name} bớt ${levels} cấp (+${money(levels * levelValue(t, tile))})`;
-      });
+      const short = Math.max(0, debt.amount - player.cash);
+      const raised = sale.reduce((sum, part) => sum + partValue(view, part), 0);
+      const lots = view.lots.flatMap((l, tile) => (l?.owner === seat ? [tile] : []));
       return ask(
         `Nợ ${to} ${money(debt.amount)}`,
         'đang bán đất trả nợ',
-        [{ label: 'Bán theo gợi ý', event: 'sell', payload: { sale: debt.suggested } }],
-        { text: `Gợi ý: ${parts.join(', ')}` },
+        [{ label: 'Bán', event: 'sell', payload: { sale: [...sale] }, disabled: raised < short }],
+        {
+          text: `Đã chọn ${money(raised)} / ${money(short)}`,
+          pick: { tiles: lots, event: CHOOSE_SALE, payload: (tile) => ({ tile }) },
+        },
       );
     }
     case 'buy':

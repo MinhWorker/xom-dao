@@ -29,6 +29,14 @@ export function isFullSet(state: BoardState, tile: number) {
   return owner !== undefined && setTiles(city.set).every((i) => state.lots[i]?.owner === owner);
 }
 
+/** The owner of a bến xe has all four, or of Điện lực or Cấp nước both: a monopoly. */
+export function isMonopoly(state: BoardState, tile: number) {
+  const kind = BOARD[tile]?.kind;
+  if (kind !== 'station' && kind !== 'utility') return false;
+  const owner = state.lots[tile]?.owner;
+  return owner !== undefined && tilesOf(kind).every((i) => state.lots[i]?.owner === owner);
+}
+
 /**
  * What landing on an owned Lot costs; `diceSum` prices a utility. 0 when nobody owns it or it is
  * in a Blackout; doubled by a Festival and by its owner's Thần tài.

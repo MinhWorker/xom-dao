@@ -19,6 +19,8 @@ const PAYER_MS = 5000;
 /** What a bill says: why, who pays whom, and how much. */
 export interface Bill {
   title: string;
+  /** How the amount was worked out, under the title. */
+  note?: string;
   from: string;
   to: string;
   amount: number;
@@ -59,7 +61,7 @@ export class Moments {
    * `grandeur(amount)`, 0 to 3); from 2 the screen shakes and its edge glows red. The `payer`
    * taps "Thanh toán" (or it pays itself after 5 s); for the others it shows a moment, or until a
    * tap. Then it is stamped "Đã thanh toán" as the payer's card shudders, and flies off while its
-   * money flies from card `from` to card `to`. `onPaid` is told at the stamp, `onCoin` as each
+   * money flies from card `from` to card `to` (no `to`: the bank, the middle of the board). `onPaid` is told at the stamp, `onCoin` as each
    * coin lands and `onFly` how long the flight takes. Resolves when the last coin lands.
    */
   async pay(
@@ -82,7 +84,7 @@ export class Moments {
       onFly: (ms: number) => void;
     },
   ) {
-    if (!from || !to || pace <= 0) {
+    if (!from || pace <= 0) {
       onFly(0);
       return;
     }
@@ -117,7 +119,7 @@ export class Moments {
     paper.dataset.tier = String(tier);
     paper.style.setProperty('--pace', String(pace));
     paper.innerHTML =
-      '<b class="head">Hóa đơn</b><span class="what"></span><dl><dt>Người trả</dt><dd class="from"></dd><dt>Người nhận</dt><dd class="to"></dd></dl><div class="total"><span>Tổng</span><b></b></div><i class="seal">Đã thanh toán</i>';
+      '<b class="head">Hóa đơn</b><span class="what"></span><span class="note"></span><dl><dt>Người trả</dt><dd class="from"></dd><dt>Người nhận</dt><dd class="to"></dd></dl><div class="total"><span>Tổng</span><b></b></div><i class="seal"><span>Đã</span>thanh toán</i>';
     if (payer) {
       const button = el('button', 'settle');
       (button as HTMLButtonElement).type = 'button';
@@ -128,6 +130,7 @@ export class Moments {
       (paper.querySelector(selector) as HTMLElement).textContent = text;
     };
     put('.what', bill.title);
+    put('.note', bill.note ?? '');
     put('.from', bill.from);
     put('.to', bill.to);
     put('.total b', money(bill.amount));
@@ -138,7 +141,7 @@ export class Moments {
   /** Coins (and notes, once it is more) fly in an arc from card `from` to card `to`. */
   private async fly(
     from: HTMLElement,
-    to: HTMLElement,
+    to: HTMLElement | undefined,
     tier: 0 | 1 | 2 | 3,
     pace: number,
     low: boolean,
@@ -147,8 +150,8 @@ export class Moments {
   ) {
     const stagger = STAGGER[tier] * pace;
     const a = centre(from);
-    const b = centre(to);
     const mid = { x: innerWidth / 2, y: innerHeight / 2 };
+    const b = to ? centre(to) : mid;
     const ms = FLIGHT_MS[tier] * pace;
     const n = (low ? LOW_COINS : COINS)[tier];
     onFly(ms + (n - 1) * stagger);
@@ -184,13 +187,39 @@ export class Moments {
         flight.finished
           .then(() => {
             onCoin?.();
-            if (k === 0) replay(to, 'earning');
+            if (k === 0 && to) replay(to, 'earning');
           })
           .catch(() => {})
           .finally(() => coin.remove()),
       );
     }
     await Promise.all(flights);
+  }
+
+  /**
+   * Money flies from a point of the screen (`from`, CSS pixels: a hoard on the board) to card `to`;
+   * `onCoin` is told as each coin lands. Resolves when the last one lands.
+   */
+  async shower(
+    from: { x: number; y: number },
+    to: HTMLElement | undefined,
+    grand: number,
+    pace: number,
+    low: boolean,
+    onCoin?: () => void,
+  ) {
+    if (pace <= 0) return;
+    const anchor = el('i', 'anchor');
+    Object.assign(anchor.style, {
+      position: 'fixed',
+      left: `${from.x}px`,
+      top: `${from.y}px`,
+      width: '0',
+      height: '0',
+    });
+    this.layer.append(anchor);
+    await this.fly(anchor, to, grand as 0 | 1 | 2 | 3, pace, low, () => {}, onCoin);
+    anchor.remove();
   }
 
   /** Confetti in `colors` falling over the whole screen; none on low graphics. */

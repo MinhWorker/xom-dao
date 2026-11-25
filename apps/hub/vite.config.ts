@@ -75,8 +75,35 @@ function gameBundles(): Plugin {
   };
 }
 
+const images = resolve(games, '../assets/app/images');
+
+/** Serves /avatars/<id>.webp, the accounts' pictures Games show, in dev and copies them into the build. */
+function avatarImages(): Plugin {
+  let outDir = 'dist';
+  const avatars = () => readdirSync(images).filter((f) => /^avatar-[a-z0-9-]+\.webp$/.test(f));
+  return {
+    name: 'xomdao-avatar-images',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    configureServer(dev) {
+      dev.middlewares.use('/avatars', async (req, res, next) => {
+        const { readFile } = await import('node:fs/promises');
+        const name = `avatar-${(req.url ?? '').split('?')[0]?.replace(/^\//, '')}`;
+        if (!avatars().includes(name)) return next();
+        res.setHeader('Content-Type', 'image/webp');
+        res.end(await readFile(join(images, name)));
+      });
+    },
+    closeBundle() {
+      for (const file of avatars())
+        cpSync(join(images, file), join(outDir, 'avatars', file.slice('avatar-'.length)));
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), gameBundles()],
+  plugins: [react(), gameBundles(), avatarImages()],
   resolve: { conditions: ['xomdao-source'] },
   define: {
     /** The repo's version, which release-please keeps. */

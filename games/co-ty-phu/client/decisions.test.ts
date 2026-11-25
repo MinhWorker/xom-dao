@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { CardId } from '../server/game/cards.js';
 import type { State } from '../server/game/model.js';
+import { lotValue } from '../server/game/selling.js';
 import { all, open, own, player, viewOf } from '../server/game/test-match.js';
-import { decide, money } from './decisions.js';
+import { TUNING } from '../server/game/tuning.js';
+import { CHOOSE_SALE, decide, freeSale, money, nextSale } from './decisions.js';
 
 /** `a` rolls onto Cơ hội (7) and draws `id`. */
 const draw = (id: CardId, arrange = (s: State) => s) =>
@@ -144,17 +146,44 @@ describe('the decision panel', () => {
     expect(theirs.buttons.every((b) => b.disabled)).toBe(true);
   });
 
-  it('shows the Debt and the suggested sale, sold with one tap', () => {
+  it('shows the Debt, the Lots of the debtor to pick and Sells what they picked once it covers it', () => {
     const game = open({
       rolls: [[1, 2]],
-      arrange: all(own(1, [3], 1), own(0, [6], 2), player(0, { cash: 10 })),
+      arrange: all(own(1, [3], 1), own(0, [6], 2), own(0, [8], 1), player(0, { cash: 10 })),
     }).send('a', 'roll');
-    const panel = decide(viewOf(game, 'a'), 0, NAMES);
+    const view = viewOf(game, 'a');
+    const panel = decide(view, 0, NAMES);
     expect(panel.title).toBe('Nợ Bình 72');
-    expect(panel.text).toBe('Gợi ý: Hạ Long bớt 1 cấp (+70)');
+    expect(panel.text).toBe('Đã chọn 0 / 62');
+    expect(panel.pick?.tiles).toEqual([6, 8]);
+    expect(panel.pick?.event).toBe(CHOOSE_SALE);
     expect(panel.buttons).toEqual([
-      { label: 'Bán theo gợi ý', event: 'sell', payload: { sale: [{ tile: 6, levels: 1 }] } },
+      { label: 'Bán', event: 'sell', payload: { sale: [] }, disabled: true },
     ]);
+    let sale = nextSale(view, [], 6);
+    expect(sale).toEqual([{ tile: 6, levels: 1 }]);
+    const picked = decide(view, 0, NAMES, sale);
+    expect(picked.text).toBe('Đã chọn 70 / 62');
+    expect(picked.buttons[0]).toMatchObject({ disabled: false, payload: { sale } });
+    sale = nextSale(view, sale, 6);
+    expect(sale).toEqual([{ tile: 6 }]);
+    expect(nextSale(view, sale, 6)).toEqual([]);
+    expect(nextSale(view, [], 8)).toEqual([{ tile: 8 }]);
     expect(decide(viewOf(game, 'b'), 1, NAMES).title).toBe('An đang bán đất trả nợ');
+  });
+});
+
+describe('freeSale', () => {
+  it('offers the turn player their own Lot whole, with what it fetches', () => {
+    const game = open({ arrange: all(own(0, [1], 3, 200), own(1, [5], 0)) });
+    const view = viewOf(game, 'a');
+    expect(freeSale(view, 0, 1)).toEqual({
+      label: `Bán · nhận ${money(lotValue(TUNING, view, 1))}`,
+      event: 'sell',
+      payload: { sale: [{ tile: 1 }] },
+    });
+    expect(freeSale(view, 0, 5)).toBeNull();
+    expect(freeSale(view, 1, 5)).toBeNull();
+    expect(freeSale(view, 0, null)).toBeNull();
   });
 });

@@ -56,10 +56,11 @@ export interface Effect {
 
 export type Deck = 'chance' | 'chest';
 
-/** The last Card drawn, by `seat`; `draw` counts the draws of the Match, from 1. */
+/** The last Card drawn, by `seat` standing on `tile`; `draw` counts the draws of the Match, from 1. */
 export interface Drawn {
   id: CardId;
   seat: number;
+  tile: number;
   draw: number;
 }
 
@@ -130,6 +131,8 @@ export interface State {
   festival: number | null;
   /** A Lot charging no rent until the turn of `by` comes again. */
   blackout: { tile: number; by: number } | null;
+  /** The only person at a table of computers paused: no clock, the computer waits. */
+  paused: boolean;
 }
 
 /** What prices and rents depend on: a `State` or a `View`. */

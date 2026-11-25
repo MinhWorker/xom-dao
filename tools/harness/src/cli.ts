@@ -196,6 +196,7 @@ async function runServe(flags: Record<string, string>) {
     address: `http://localhost:${port}`,
   });
   const listening = await serve(harness, {
+    avatarDir: `${root}assets/app/images`,
     port,
     gameDir,
     ...(flags.host && { host: flags.host }),

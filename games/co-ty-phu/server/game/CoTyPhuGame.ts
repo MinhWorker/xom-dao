@@ -4,6 +4,9 @@
  * `use-card` before rolling. Every decision runs the clock of the Room's "Tốc độ"; when it runs
  * out the safe choice is made (`timeout`): roll, or pass the offer.
  *
+ * In their turn, between decisions, a player may also `sell` Lots of their own will
+ * (`freeSaleProblem`).
+ *
  * A payment larger than the payer's cash is a Debt (phase `debt`): the debtor `sell`s Levels or
  * Lots to the bank (selling.ts) until it is covered, or the suggested sale is made when the clock
  * runs out. When even Selling everything is not enough the payer is bankrupt at once.
@@ -56,7 +59,7 @@ import {
   type View,
 } from './model.js';
 import { makeQuiz } from './quiz.js';
-import { saleProblem, sell, suggestSale, unmark, wholeLots } from './selling.js';
+import { freeSaleProblem, saleProblem, sell, suggestSale, unmark, wholeLots } from './selling.js';
 import { TUNING, type Tuning } from './tuning.js';
 
 type Ctx = GameContext<State, Options>;
@@ -93,6 +96,8 @@ export class CoTyPhuGame extends Game<State, Options, View> {
     sell: sale,
     pick,
     answer,
+    pause: z.object({}),
+    resume: z.object({}),
   };
   private readonly t: Tuning;
   private readonly dice: (rng: Rng, roll: number) => [number, number];
@@ -133,6 +138,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
       quiz: null,
       festival: null,
       blackout: null,
+      paused: false,
     });
     ctx.setTimer(CLOCK_MS[state.speed], 'timeout');
     return state;
@@ -195,7 +201,21 @@ export class CoTyPhuGame extends Game<State, Options, View> {
     const state = withPlayer(ctx.state, seat, { ...me, cash, tile: to });
     return this.settle(ctx, this.land(state, seat));
   }
+  /** Only the one person at a table of computers may pause: the clock stops and they wait. */
+  onPause(ctx: Move): State {
+    const people = ctx.players.filter((p) => !p.bot && !p.left);
+    if (people.length !== 1 || people[0]?.id !== ctx.player.id)
+      ctx.reject('Chỉ tạm dừng được khi chơi với máy');
+    if (ctx.state.paused) return ctx.state;
+    ctx.clearTimer();
+    return { ...ctx.state, paused: true };
+  }
+  onResume(ctx: Move): State {
+    if (!ctx.state.paused) return ctx.state;
+    return this.settle(ctx, { ...ctx.state, paused: false });
+  }
   onPass(ctx: Move): State {
+    if (ctx.state.paused) ctx.reject('Ván đang tạm dừng');
     if (ctx.state.turn !== ctx.player.seat) ctx.reject('Chưa tới lượt bạn');
     if (ctx.state.phase === 'roll') ctx.reject('Hãy gieo xúc xắc');
     if (ctx.state.phase === 'debt') ctx.reject('Hãy bán đất để trả nợ');
@@ -218,7 +238,13 @@ export class CoTyPhuGame extends Game<State, Options, View> {
 
   onSell(ctx: Move<z.infer<typeof sale>>): State {
     const { debt } = ctx.state;
-    if (ctx.state.phase !== 'debt' || !debt) ctx.reject('Chưa thể làm việc này lúc này');
+    if (ctx.state.phase !== 'debt') {
+      const problem = freeSaleProblem(ctx.state, ctx.player.seat, ctx.payload.sale);
+      if (problem) ctx.reject(problem);
+      return this.settle(ctx, sell(this.t, ctx.state, ctx.player.seat, ctx.payload.sale));
+    }
+    if (ctx.state.paused) ctx.reject('Ván đang tạm dừng');
+    if (!debt) ctx.reject('Chưa thể làm việc này lúc này');
     if (debt.from !== ctx.player.seat) ctx.reject('Bạn không có nợ');
     const problem = saleProblem(ctx.state, debt.from, ctx.payload.sale);
     if (problem) ctx.reject(problem);
@@ -229,6 +255,7 @@ export class CoTyPhuGame extends Game<State, Options, View> {
   /** The clock ran out: the safe choice. */
   onTimeout(ctx: Ctx): State {
     const { state } = ctx;
+    if (state.paused) return state;
     if (state.phase === 'roll') return this.settle(ctx, this.roll(ctx, state));
     if (state.phase === 'debt' && state.debt)
       return this.settle(
@@ -257,10 +284,12 @@ export class CoTyPhuGame extends Game<State, Options, View> {
 
   /** A computer seat plays sensibly (bot.ts). */
   bot(ctx: BotContext<State, Options>): GameEvent | null {
+    if (ctx.state.paused) return null;
     return botMove(this.t, ctx.state, ctx.player.seat, ctx.rng);
   }
-  /** Refuses a move out of turn or out of `phase`; the turn player otherwise. */
+  /** Refuses a move while paused, out of turn or out of `phase`; the turn player otherwise. */
   private check(ctx: Move<unknown>, phase: State['phase']): Player {
+    if (ctx.state.paused) ctx.reject('Ván đang tạm dừng');
     if (ctx.state.turn !== ctx.player.seat) ctx.reject('Chưa tới lượt bạn');
     if (ctx.state.phase !== phase) ctx.reject('Chưa thể làm việc này lúc này');
     return ctx.state.players[ctx.player.seat] as Player;
@@ -364,7 +393,12 @@ export class CoTyPhuGame extends Game<State, Options, View> {
     const drawn: State = {
       ...state,
       decks: { ...state.decks, [deck]: kept ? rest : [...rest, id] },
-      card: { id, seat, draw: (state.card?.draw ?? 0) + 1 },
+      card: {
+        id,
+        seat,
+        tile: (state.players[seat] as Player).tile,
+        draw: (state.card?.draw ?? 0) + 1,
+      },
     };
     if (!asks(action)) return this.applyCard(drawn, seat, action);
     return picksOf(drawn, seat, action).length > 0 ? { ...drawn, phase: 'card' } : this.next(drawn);

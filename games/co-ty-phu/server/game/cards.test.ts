@@ -63,7 +63,7 @@ describe('the decks', () => {
   it('puts a drawn Card at the bottom and shows who drew what', () => {
     const game = draw('chance-interest');
     expect(game.state.decks.chance).toEqual(['chance-interest', 'chance-interest']);
-    expect(game.state.card).toEqual({ id: 'chance-interest', seat: 0, draw: 1 });
+    expect(game.state.card).toMatchObject({ id: 'chance-interest', seat: 0, draw: 1 });
   });
 });
 

@@ -31,7 +31,7 @@ src/sound/         Interface sounds on Web Audio (`sounds.ts`, faked in tests; `
 src/settings/      Each Game's preferences (`preferences`, `usePreferences`), graphics choices (`graphics`, `useGraphics`, `transitionsAllowed`, level, HUD scale, margin, frame: `frame.ts` has the screen shapes and `fitFrame`) and the Bến's character and backdrop (`harbour`, `useHarbourLook`), kept in localStorage
 src/styles/        tokens.css (colours, type, spacing, `.cut-br`, `.glass`, `data-loop`), base.css (hand cursor), fonts.ts (@fontsource)
 public/            `manifest.webmanifest` and `icons/` (PWA), copied to the build root
-vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build
+vite.config.ts     Dev proxy, /games/<id>/ in dev, copies each Game's dist/ (minus server/) into the build; /avatars/<id>.webp (the account pictures, from assets/app/images/avatar-<id>.webp) for Games to show a seat's `avatar`
 ```
 
 ## Working on it

@@ -27,6 +27,13 @@ const FILES = {
   crumble: file('crumble'),
   bankrupt: file('bankrupt'),
   victory: file('victory'),
+  convoy: file('convoy'),
+  rain: file('rain'),
+  thunder: file('thunder'),
+  guilty: file('guilty'),
+  horn: file('horn'),
+  crow: file('crow'),
+  hammer: file('hammer'),
   tick: file('tick'),
 };
 

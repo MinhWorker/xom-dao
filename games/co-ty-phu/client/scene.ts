@@ -27,22 +27,48 @@ import {
   PerspectiveCamera,
   Plane,
   PlaneGeometry,
+  QuadraticBezierCurve3,
   Raycaster,
   RingGeometry,
   Scene,
   SphereGeometry,
+  Sprite,
+  SpriteMaterial,
   SRGBColorSpace,
+  TubeGeometry,
   Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { BOARD } from '../server/game/board.js';
-import { isFullSet } from '../server/game/economy.js';
+import { AIRPORT_TILE, BOARD } from '../server/game/board.js';
+import { isFullSet, isMonopoly } from '../server/game/economy.js';
 import { HOTEL, type Lot, type View } from '../server/game/model.js';
 import { ambience } from './ambience.js';
-import { cage, DIE, die, hotel, house, plane, token, WINGTIPS } from './pieces.js';
+import { Marquee } from './lights.js';
+import {
+  cage,
+  car,
+  DIE,
+  die,
+  godOfWealth,
+  hotel,
+  house,
+  plane,
+  token,
+  WINGTIPS,
+} from './pieces.js';
 import type { Change } from './present.js';
-import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from './print.js';
+import {
+  BAND,
+  bandRect,
+  CORNER,
+  cardBack,
+  placement,
+  printBoard,
+  reprint,
+  SET_COLORS,
+  SIDE,
+} from './print.js';
 
 export const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
@@ -218,6 +244,8 @@ type Say = Omit<Line, 'title' | 'blink'> & { ms?: number };
 const DUST = new SphereGeometry(0.05, 8, 6);
 const RING = new RingGeometry(0.32, 0.42, 40);
 const SPARK = new PlaneGeometry(0.07, 0.11);
+/** A light running along a flight's aim. */
+const DOT = new SphereGeometry(0.05, 10, 8);
 const BEAM = new CylinderGeometry(0.34, 0.5, 4, 24, 1, true);
 BEAM.translate(0, 2, 0);
 const CONFETTI = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368', '#fff2c2', '#e6b422'];
@@ -245,18 +273,43 @@ export class BoardView {
   private readonly tokens: Group[] = [];
   private readonly cages: ReturnType<typeof cage>[] = [];
   private readonly dice: Mesh[];
+  /** The dice cast no shadow: a soft dark patch under each, darkest on the board, fading as it rises. */
+  private readonly contacts: Mesh[];
   private readonly glow: Mesh[] = [];
-  private readonly tick: (t?: number) => void;
+  private readonly tick: (t?: number, neon?: number, struck?: ReadonlySet<number>) => void;
+  /** The printed board, repainted where prices are crossed out (`exempt`). */
+  private readonly printed: CanvasTexture;
+  /** The Tiles whose price the player sees crossed out for a 0 under Miễn thuê. */
+  private struck: ReadonlySet<number> = new Set();
   private readonly tweens: Tween[] = [];
   private readonly ray = new Raycaster();
   private readonly ground = new Plane(new Vector3(0, 1, 0), -BOARD_H);
   /** Where each seat's token stands, `null` when it is off the board. */
   private spots: (number | null)[] = [];
   private picking: number[] = [];
+  /** Tiles picked for a sale: a steady gold glow and their tags. */
+  private chosen: number[] = [];
+  /** The Tile a flight is aimed at under the mouse (`aim`): lit, with an arc to it from Sân bay. */
+  private aimed: number | null = null;
+  private readonly route = new Group();
+  private routePath: QuadraticBezierCurve3 | null = null;
+  private readonly routeDots: Mesh[] = [];
+  /** The arrows bobbing over the Tiles to pick for a sale, and the tags over those picked. */
+  private readonly pointers = new Group();
+  private arrows: Sprite[] = [];
   private paused = false;
   /** Bumped by `stop`: a walk under way gives up. */
   private generation = 0;
   private low = false;
+  /** Each seat's Thần tài, sitting in a corner of the board while they hold the Effect. */
+  private readonly gods = new Map<number, Group>();
+  /** The turn of the view on the board, whose player a Kẹt xe taxi parks for. */
+  private turnShown = 0;
+  /** A Kẹt xe roll's taxi, parked on the board until `seat`'s turn is over. */
+  private parked: { taxi: Group; seat: number } | null = null;
+  /** Until when (ms) Xuất phát's arrow blinks neon, while it pays (`payday`). */
+  private neonUntil = 0;
+  private wasLit = false;
   /** Whether the camera follows what moves (the player's preference). */
   private following = true;
   /** How fast moves play (1 is normal, lower is faster): the camera and dust keep up with it. */
@@ -269,6 +322,8 @@ export class BoardView {
   private zoom = 0;
   private readonly look = new Vector3();
   private lastFrame = 0;
+  /** The marquee bulbs round the board's rim (`lights.ts`), which the big moments take over. */
+  private readonly marquee = new Marquee(halo());
   /** The middle of the board, where events are printed (`say`). */
   private readonly notice: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly noticeInk: CanvasRenderingContext2D;
@@ -309,6 +364,7 @@ export class BoardView {
     sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
     this.scene.add(this.world);
+    this.marquee.setHeight(BOARD_H);
 
     const base = new Mesh(
       new BoxGeometry(SIDE + 0.4, BOARD_H, SIDE + 0.4),
@@ -319,6 +375,7 @@ export class BoardView {
     const printed = new CanvasTexture(printBoard(336, false));
     printed.colorSpace = SRGBColorSpace;
     printed.anisotropy = anisotropy;
+    this.printed = printed;
     const top = new Mesh(
       new PlaneGeometry(SIDE, SIDE),
       new MeshStandardMaterial({ roughness: 0.85, map: printed }),
@@ -342,7 +399,18 @@ export class BoardView {
     this.notice.rotation.x = -Math.PI / 2;
     this.notice.position.set(0, BOARD_H + 0.006, NOTICE.z);
     this.notice.renderOrder = 3;
-    this.world.add(base, top, this.notice, this.lots, this.marks, this.fx, this.aircraft);
+    this.world.add(
+      base,
+      top,
+      this.route,
+      this.marquee.group,
+      this.pointers,
+      this.notice,
+      this.lots,
+      this.marks,
+      this.fx,
+      this.aircraft,
+    );
 
     for (const [x, kind, turn] of [
       [-1.6, 'chance', 0.12],
@@ -377,12 +445,29 @@ export class BoardView {
 
     this.dice = DIE_REST.map((rest) => {
       const d = die();
+      d.castShadow = false;
       d.rotation.order = 'YXZ';
       d.position.set(rest.x, BOARD_H + DIE / 2, rest.z);
       this.world.add(d);
       return d;
     });
     this.setDice([3, 4]);
+    const soft = new CanvasTexture(contactShadow());
+    this.contacts = this.dice.map(() => {
+      const c = new Mesh(
+        new PlaneGeometry(DIE * 1.45, DIE * 1.45),
+        new MeshBasicMaterial({
+          map: soft,
+          color: '#000000',
+          transparent: true,
+          depthWrite: false,
+        }),
+      );
+      c.rotation.x = -Math.PI / 2;
+      c.renderOrder = 1;
+      this.world.add(c);
+      return c;
+    });
 
     this.tick = ambience(this.world, at, anisotropy);
     r.setAnimationLoop((ms) => this.frame(ms));
@@ -406,6 +491,8 @@ export class BoardView {
     this.generation++;
     this.finish(false);
     clear(this.fx);
+    this.parked = null;
+    this.marquee.stop();
     this.aircraft.visible = false;
     this.shaking.until = 0;
     this.saying++;
@@ -427,6 +514,7 @@ export class BoardView {
     if (low === this.low) return;
     this.low = low;
     this.sun.castShadow = !low;
+    this.marquee.group.visible = !low;
     this.renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(this.size[0], this.size[1], false);
     if (low) this.tick();
@@ -439,6 +527,27 @@ export class BoardView {
 
   setPace(pace: number) {
     this.pace = pace;
+  }
+
+  /**
+   * Miễn thuê, as its holder sees it: the price on each of `tiles` (Lots of others) crossed out
+   * in red with a green 0 beside it, like a discount; an empty list prints them as they are.
+   */
+  exempt(tiles: readonly number[]) {
+    const next = new Set(tiles);
+    const changed = [...new Set([...this.struck, ...next])].filter(
+      (i) => this.struck.has(i) !== next.has(i),
+    );
+    if (changed.length === 0) return;
+    this.struck = next;
+    reprint(this.printed.image as HTMLCanvasElement, changed, next);
+    this.printed.needsUpdate = true;
+    this.tick(undefined, 0, next);
+  }
+
+  /** A Quiz answered right: the rim's bulbs celebrate (`Marquee`). */
+  cheer(ms = 2400) {
+    this.marquee.play({ kind: 'quiz', ms: ms * this.pace });
   }
 
   /** The camera follows `seat`'s token, or goes back over the whole board. */
@@ -455,6 +564,9 @@ export class BoardView {
 
   /** Puts everything where `view` says, at once. */
   show(view: View) {
+    this.turnShown = view.turn;
+    this.seatGods(view);
+    if (this.parked && this.parked.seat !== view.turn) this.leaveParked();
     this.showLots(view);
     this.spots = view.players.map((p) => (p.bankrupt ? null : p.tile));
     while (this.tokens.length < view.players.length) {
@@ -481,7 +593,7 @@ export class BoardView {
     clear(this.marks);
     view.lots.forEach((lot, i) => {
       if (!lot) return;
-      const g = lotPieces(i, lot.owner, lot.level, isFullSet(view, i));
+      const g = lotPieces(i, lot.owner, lot.level, isFullSet(view, i) || isMonopoly(view, i));
       g.userData.tile = i;
       this.lots.add(g);
     });
@@ -522,7 +634,7 @@ export class BoardView {
       const rising = g.children.filter(
         (c) => has.includes(c.userData.building) && !(kept && had.includes(c.userData.building)),
       );
-      if (rising.length > 0) this.focus = g;
+      if (rising.length > 0 && topped) this.focus = g;
       rising.forEach((b, k) => {
         jobs.push(this.rise(b, k * Math.round(ms * 0.18), ms));
       });
@@ -542,7 +654,9 @@ export class BoardView {
         jobs.push(this.sink(ghost, !now, ms));
       }
     }
-    return Promise.all(jobs).then(() => {});
+    return Promise.all(jobs).then(() => {
+      if (g && this.focus === g) this.focus = null;
+    });
   }
 
   /**
@@ -593,6 +707,7 @@ export class BoardView {
         this.shake(0.07, 280);
       }
     });
+    if (this.focus === g) this.focus = null;
   }
 
   /** A sheet of `color` light over a Tile that fades. */
@@ -649,6 +764,144 @@ export class BoardView {
   }
 
   /** `n` sparks shot up from `where` that tumble and fall back. */
+  /**
+   * Xuất phát pays `amount`: its Tile flashes gold, sparks burst off it and "+amount" floats up from
+   * it, whether a token lands there or passes.
+   */
+  payday(amount: number, ms = 1800) {
+    ms *= this.pace;
+    this.neonUntil = performance.now() + ms;
+    const p = placement(0);
+    const where = at(p.x + p.w / 2, p.y + p.h / 2);
+    this.flash(0, GOLD, ms * 0.4);
+    this.sparks(where, 18, [GOLD, '#fff2c2', '#58b368'], ms * 0.7, 1.8);
+    this.floatText(where, `+${amount.toLocaleString('vi-VN')}`, true, ms);
+  }
+
+  /**
+   * A Card that counts houses and Hotels (Du lịch, Sửa nhà, Thuế Khách sạn) touches each of
+   * `tiles` at once: it flashes, throws up sparks (gold and green when `good`, red brick dust
+   * when not) and its share of the amount, `text`, floats up from it.
+   */
+  levy(tiles: { tile: number; text: string }[], good: boolean, ms = 1600) {
+    ms *= this.pace;
+    for (const { tile, text } of tiles) {
+      const p = placement(tile);
+      const where = at(p.x + p.w / 2, p.y + p.h / 2);
+      this.flash(tile, good ? GOLD : '#e0553d', ms * 0.4);
+      this.sparks(
+        where,
+        12,
+        good ? [GOLD, '#fff2c2', '#58b368'] : ['#e0553d', '#8a8f9c', '#c46a3a'],
+        ms * 0.6,
+        good ? 1.6 : 1.1,
+      );
+      this.floatText(where, text, good, ms, 0.8);
+    }
+  }
+
+  /**
+   * Phí bảo trì: a hammer swings down on each of `tiles` three times at once, a puff of dust and
+   * smoke at every knock, then the Lot's share, `text`, floats up red.
+   */
+  async knock(tiles: { tile: number; text: string }[], ms = 1300) {
+    ms *= this.pace;
+    const knocks = 3;
+    const jobs = tiles.map(async ({ tile, text }, n) => {
+      const p = placement(tile);
+      const where = at(p.x + p.w / 2, p.y + p.h / 2);
+      const material = new SpriteMaterial({ map: HAMMER, transparent: true, depthTest: false });
+      const hammer = new Sprite(material);
+      hammer.center.set(0.5, 0.08);
+      hammer.scale.set(0.9, 0.9, 1);
+      hammer.renderOrder = 9;
+      hammer.position.set(where.x + 0.25, BOARD_H + 0.05, where.z);
+      this.fx.add(hammer);
+      let struck = 0;
+      await this.wait(n * 40);
+      await this.tween(ms, (u) => {
+        const beat = u * knocks;
+        const k = beat % 1;
+        material.rotation = k < 0.6 ? 0.2 + (k / 0.6) * 0.9 : 1.1 - ((k - 0.6) / 0.4) * 1.3;
+        material.opacity = u > 0.9 ? (1 - u) * 10 : Math.min(1, u * 8);
+        if (Math.floor(beat + 0.4) > struck && struck < knocks) {
+          struck++;
+          this.puff(new Vector3(where.x, BOARD_H, where.z), 6, 420);
+          this.sparks(where, 5, ['#8a8f9c', '#b9a58a', '#5a5e68'], 500, 0.7);
+          if (struck === knocks) this.flash(tile, '#e0553d', 300 * this.pace);
+        }
+      });
+      this.fx.remove(hammer);
+      material.dispose();
+      this.floatText(where, text, false, ms * 1.1, 0.8);
+    });
+    await Promise.all(jobs);
+  }
+
+  /**
+   * Lãi tiết kiệm: a little hoard of gold pops up in the middle of the board; returns where it
+   * shows on the screen (CSS pixels) for the money to fly out of, and takes it away after `ms`.
+   */
+  vault(ms = 2200) {
+    ms *= this.pace;
+    const g = hoard();
+    const where = new Vector3(0, BOARD_H, 0.4);
+    g.position.copy(where);
+    g.scale.setScalar(0.001);
+    this.fx.add(g);
+    this.sparks(where, 16, [GOLD, '#fff2c2'], 700 * this.pace, 1.6);
+    this.tween(ms, (u) => {
+      const grow = u < 0.18 ? backOut(u / 0.18) : u > 0.85 ? 1 - (u - 0.85) / 0.15 : 1;
+      g.scale.setScalar(Math.max(0.001, grow));
+      g.rotation.y = u * 0.8;
+    }).then(() => drop(this.fx, g));
+    const p = where
+      .clone()
+      .setY(BOARD_H + 0.5)
+      .project(this.camera);
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: rect.left + ((p.x + 1) / 2) * rect.width,
+      y: rect.top + ((1 - p.y) / 2) * rect.height,
+    };
+  }
+
+  /** `text` pops up over `where` and floats away: gold when `good`, red when not; `size` scales it. */
+  private floatText(where: Vector3, text: string, good: boolean, ms: number, size = 1) {
+    const c = document.createElement('canvas');
+    c.width = 320;
+    c.height = 120;
+    const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+    ctx.font = '900 92px "Be Vietnam Pro", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = good ? '#3a2606' : '#3a0a06';
+    ctx.strokeText(text, 160, 62);
+    const fill = ctx.createLinearGradient(0, 20, 0, 104);
+    fill.addColorStop(0, good ? '#fff2c2' : '#ffd0c4');
+    fill.addColorStop(1, good ? GOLD : '#e0553d');
+    ctx.fillStyle = fill;
+    ctx.fillText(text, 160, 62);
+    const map = new CanvasTexture(c);
+    map.colorSpace = SRGBColorSpace;
+    const material = new SpriteMaterial({ map, transparent: true, depthTest: false });
+    const label = new Sprite(material);
+    label.renderOrder = 10;
+    this.fx.add(label);
+    this.tween(ms, (u) => {
+      const pop = u < 0.15 ? 0.6 + (u / 0.15) * 0.5 : 1.1 - Math.min(1, (u - 0.15) * 4) * 0.1;
+      label.scale.set(1.5 * pop * size, 0.56 * pop * size, 1);
+      label.position.set(where.x, BOARD_H + 0.5 + ease(u) * 1.3 * size, where.z);
+      material.opacity = u < 0.7 ? 1 : (1 - u) / 0.3;
+    }).then(() => {
+      this.fx.remove(label);
+      material.dispose();
+      map.dispose();
+    });
+  }
+
   private sparks(where: Vector3, n: number, colors: readonly string[], ms: number, up = 2.2) {
     if (this.low || this.paused) return;
     for (let k = 0; k < n; k++) {
@@ -682,16 +935,31 @@ export class BoardView {
 
   /**
    * A Full set: its Tiles light up one after another in the owner's colour, then all three flash
-   * gold together and throw up sparks. The camera comes over the middle one.
+   * gold together and throw up sparks, while the rim's bulbs play along (`Marquee`). The camera comes over the middle one, or stays back over
+   * the whole board when `whole` (Tiles round it, as the four bến xe).
    */
-  async fullSet(tiles: number[], seat: number, ms = 1400) {
+  async fullSet(tiles: number[], seat: number, ms = 1400, whole = false) {
     const color = SEAT_COLORS[seat] as string;
+    const first = BOARD[tiles[0] ?? 0];
+    if (first?.kind === 'city')
+      this.marquee.play({
+        kind: 'set',
+        tiles,
+        color: SET_COLORS[first.set],
+        step: ms * 0.18,
+        ms: ms * 1.6,
+      });
+    else if (first?.kind === 'station' || first?.kind === 'utility')
+      this.marquee.play({
+        kind: first.kind === 'station' ? 'transport' : 'utility',
+        ms: Math.max(ms * 1.3, 2600 * this.pace),
+      });
     const middle = tiles[Math.floor(tiles.length / 2)] as number;
     const p = placement(middle);
     const marker = new Group();
     marker.position.copy(at(p.x + p.w / 2, p.y + p.h / 2));
     this.fx.add(marker);
-    this.focus = marker;
+    this.focus = whole ? null : marker;
     const mine = this.generation;
     const step = ms * 0.18;
     await Promise.all(
@@ -845,6 +1113,7 @@ export class BoardView {
   /** Throws the dice from the far side: they bounce twice and settle on `values`. One die shows under Kẹt xe. */
   roll(values: number[], ms = 900) {
     this.inviteRoll(false);
+    if (values.length === 1) return this.jammed(values[0] ?? 1, ms);
     const throws = this.dice.map((_, i) => {
       const rest = DIE_REST[i] as Vector3;
       const sign = Math.random() < 0.5 ? -1 : 1;
@@ -883,8 +1152,161 @@ export class BoardView {
     }).then(() => this.setDice(values));
   }
 
-  /** Walks a token `steps` Tiles ahead from `from`, a hop per Tile, the camera following. */
-  async walk(seat: number, from: number, steps: number, perStep = 170) {
+  /**
+   * A roll under Kẹt xe: both dice are thrown, but a taxi pops up out of nowhere on the board,
+   * drives into the second while it still rolls and knocks it off the screen, where it vanishes;
+   * the taxi pulls up and stays parked until the player's turn is over. `value` is the die that counts.
+   */
+  private async jammed(value: number, ms: number) {
+    const spare = 1 + Math.floor(Math.random() * 6);
+    const hitAt = 0.55;
+    const struck = this.dice[1];
+    const throws = this.dice.map((_, i) => {
+      const rest = DIE_REST[i] as Vector3;
+      const sign = Math.random() < 0.5 ? -1 : 1;
+      return {
+        from: new Vector3(rest.x + (Math.random() - 0.5) * 1.4, 0, rest.z - 2.8),
+        rest,
+        spin: [(Math.random() * 2 + 3) * Math.PI * sign, (Math.random() * 2 + 3) * Math.PI],
+      };
+    });
+    const place = (i: number, k: number, v: number) => {
+      const d = this.dice[i];
+      const th = throws[i];
+      if (!d || !th) return;
+      const [x, z] = FACE_UP[v] as [number, number];
+      const e = ease(Math.min(1, k * 1.15));
+      const left = 1 - e;
+      d.position.set(
+        th.from.x + (th.rest.x - th.from.x) * e,
+        BOARD_H + DIE / 2 + bounce(k),
+        th.from.z + (th.rest.z - th.from.z) * e,
+      );
+      d.rotation.set(
+        x + (th.spin[0] as number) * left,
+        0.4 - i * 0.7 + left * 2,
+        z + (th.spin[1] as number) * left,
+      );
+    };
+    for (const d of this.dice) d.visible = true;
+    place(1, hitAt, spare);
+    const hit = struck?.position.clone() ?? new Vector3();
+    this.leaveParked();
+    const taxi = car();
+    taxi.rotation.y = -Math.PI / 2;
+    const run = 2.4;
+    const park = 1.1;
+    /** The taxi drives towards the viewer, reaching the die halfway along its drive, then pulls up. */
+    const along = (u: number) =>
+      new Vector3(
+        hit.x,
+        BOARD_H,
+        u < 0.5 ? hit.z - run + (u / 0.5) * run : hit.z + ease((u - 0.5) / 0.5) * park,
+      );
+    taxi.position.copy(along(0));
+    taxi.scale.setScalar(0.001);
+    this.fx.add(taxi);
+    const wheels = taxi.userData.wheels as Mesh[];
+    const drive = ms * 0.9;
+    const start = ms * hitAt - drive / 2;
+    const total = start + drive;
+    let landed = false;
+    let struckAt: Vector3 | null = null;
+    await this.tween(total, (k) => {
+      const t = k * total;
+      const r = Math.min(1, t / ms);
+      place(0, r, value);
+      if (!landed && r >= 0.45) {
+        landed = true;
+        const d0 = this.dice[0];
+        if (d0) this.puff(new Vector3(d0.position.x, BOARD_H, d0.position.z), 8);
+      }
+      if (r < hitAt) place(1, r, spare);
+      else if (struck?.visible) {
+        if (!struckAt) {
+          struckAt = struck.position.clone();
+          this.shake(0.06, 220);
+          this.puff(new Vector3(struckAt.x, BOARD_H, struckAt.z), 12, 380);
+        }
+        const sec = (t - ms * hitAt) / 1000;
+        struck.position.set(
+          struckAt.x + sec * 2,
+          struckAt.y + sec * 8 - sec * sec * 5,
+          struckAt.z + sec * 10,
+        );
+        struck.rotation.x += 0.5;
+        struck.rotation.z += 0.35;
+        const fade = Math.max(0, 1 - sec / 0.45);
+        struck.scale.setScalar(Math.max(0.001, fade));
+        if (fade <= 0) struck.visible = false;
+      }
+      const u = Math.max(0, Math.min(1, (t - start) / drive));
+      taxi.position.copy(along(u));
+      taxi.scale.setScalar(Math.max(0.001, backOut(Math.min(1, u / 0.12))));
+      const speed = u < 0.5 ? 1 : 1 - (u - 0.5) / 0.5;
+      for (const w of wheels) w.rotation.z -= 0.45 * speed;
+    });
+    struck?.scale.setScalar(1);
+    this.setDice([value]);
+    this.parked = { taxi, seat: this.turnShown };
+  }
+
+  /** A Thần tài sits down in their corner for each seat holding the Effect, and leaves when it ends. */
+  private seatGods(view: View) {
+    view.players.forEach((p, seat) => {
+      const lucky = !p.bankrupt && p.effects.some((e) => e.id === 'lucky');
+      const sitting = this.gods.get(seat);
+      if (lucky && !sitting) {
+        const god = godOfWealth(SEAT_COLORS[seat] as string);
+        god.position.copy(godSpot(seat));
+        god.scale.setScalar(0.001);
+        this.world.add(god);
+        this.gods.set(seat, god);
+        this.sparks(god.position, 14, [GOLD, '#fff2c2'], 700 * this.pace, 1.4);
+        this.tween(420 * this.pace, (u) => god.scale.setScalar(Math.max(0.001, backOut(u) * GOD)));
+      } else if (!lucky && sitting) {
+        this.gods.delete(seat);
+        this.puff(sitting.position, 10, 420);
+        this.tween(320 * this.pace, (u) =>
+          sitting.scale.setScalar(Math.max(0.001, (1 - ease(u)) * GOD)),
+        ).then(() => drop(this.world, sitting));
+      }
+    });
+  }
+
+  /** The extra a Thần tài brought `seat`: gold bursts off them and "+amount" floats up there. */
+  luck(seat: number, amount: number, ms = 1500) {
+    const god = this.gods.get(seat);
+    if (!god) return;
+    ms *= this.pace;
+    this.sparks(god.position, 18, [GOLD, '#fff2c2', SEAT_COLORS[seat] as string], ms * 0.6, 1.6);
+    this.floatText(
+      god.position.clone().setY(BOARD_H + 0.9),
+      `+${amount.toLocaleString('vi-VN')}`,
+      true,
+      ms,
+      0.8,
+    );
+    this.tween(ms * 0.4, (u) => god.scale.setScalar(GOD * (1 + Math.sin(u * Math.PI) * 0.25)));
+  }
+
+  /** The taxi of a Kẹt xe roll pops away, as its player's turn is over. */
+  private leaveParked() {
+    const parked = this.parked;
+    if (!parked) return;
+    this.parked = null;
+    const { taxi } = parked;
+    this.puff(new Vector3(taxi.position.x, BOARD_H, taxi.position.z), 10, 380);
+    this.tween(260 * this.pace, (u) => taxi.scale.setScalar(Math.max(0.001, 1 - ease(u)))).then(
+      () => drop(this.fx, taxi),
+    );
+  }
+
+  /**
+   * Walks a token `steps` Tiles ahead from `from`, a hop per Tile, the camera following until it
+   * stands; Xuất phát pays `bonus` (`payday`) as the token reaches it.
+   */
+  async walk(seat: number, from: number, steps: number, perStep = 170, bonus = 0) {
     const t = this.tokens[seat];
     if (!t) return;
     const mine = this.generation;
@@ -901,25 +1323,32 @@ export class BoardView {
         t.scale.set(base * (1 - lift * 0.08), base * (1 + lift * 0.14), base * (1 - lift * 0.08));
       });
       this.puff(b, 4, 300);
+      if (bonus > 0 && (from + k) % 40 === 0) this.payday(bonus);
     }
     if (mine !== this.generation) return;
     this.spots[seat] = (from + steps) % 40;
     this.placeTokens(seat);
+    if (this.focus === t) this.focus = null;
   }
 
   /**
    * Takes a token straight to `to`: a hop for a Card's move, a flight from Sân bay that lifts off,
    * crosses the board high with a trail and lands, or into jail, where the bars come down on it.
    */
-  async jump(seat: number, to: number, ms = 560, how: JumpHow = 'move') {
+  async jump(seat: number, to: number, ms = 560, how: JumpHow = 'move', bonus = 0) {
     const t = this.tokens[seat];
     if (!t) return;
     const mine = this.generation;
     const a = t.position.clone();
     const b = spot(to, 0, 1);
     this.focus = t;
-    if (how === 'flight') await this.fly(t, a, b, ms);
-    else
+    if (how === 'jail') this.marquee.play({ kind: 'jail', ms: ms * 2.4 + 400 * this.pace });
+    if (how === 'flight') {
+      this.marquee.play({ kind: 'dark', ms: ms * 4 });
+      await this.fly(t, a, b, ms);
+      if (mine === this.generation)
+        this.marquee.play({ kind: 'wave', tile: to, ms: 1100 * this.pace });
+    } else
       await this.tween(ms, (u) => {
         t.position.lerpVectors(a, b, ease(u));
         t.position.y = a.y + Math.sin(u * Math.PI) * 1.6;
@@ -928,7 +1357,9 @@ export class BoardView {
     if (how !== 'flight') this.puff(b, 8);
     this.spots[seat] = to;
     this.placeTokens(seat);
+    if (bonus > 0 && to === 0) this.payday(bonus);
     if (how === 'jail') await this.lock(seat, Math.round(ms * 0.9));
+    if (this.focus === t) this.focus = null;
   }
 
   /**
@@ -1168,7 +1599,6 @@ export class BoardView {
     const bars = this.cages[seat];
     if (!bars?.group.visible) return Promise.resolve();
     const { group, iron } = bars;
-    this.focus = this.tokens[seat] ?? null;
     return this.tween(ms, (u) => {
       group.position.y = ease(u) * 1.2;
       iron.opacity = 1 - u * u;
@@ -1224,9 +1654,88 @@ export class BoardView {
     });
   }
 
+  /**
+   * A sale being chosen: an arrow bobbing over each Tile in `tiles` not yet picked, and over each
+   * one in `picked` a gold tag with what it is and fetches. No `tiles` clears them.
+   */
+  selling(tiles: number[], picked: { tile: number; label: string; value: string }[] = []) {
+    clear(this.pointers);
+    this.arrows = [];
+    this.chosen = picked.map((p) => p.tile);
+    for (const tile of tiles) {
+      const p = placement(tile);
+      const where = at(p.x + p.w / 2, p.y + p.h / 2);
+      const tag = picked.find((q) => q.tile === tile);
+      if (tag) {
+        const sprite = saleTag(tag.label, tag.value);
+        sprite.position.set(where.x, BOARD_H + 0.6, where.z);
+        this.pointers.add(sprite);
+      } else {
+        const arrow = pointer();
+        arrow.position.set(where.x, BOARD_H + 0.55, where.z);
+        this.arrows.push(arrow);
+        this.pointers.add(arrow);
+      }
+    }
+  }
+
   /** Lights up the Tiles a tap may pick; none clears them. */
   highlight(tiles: number[]) {
     this.picking = tiles;
+    if (this.aimed !== null && !tiles.includes(this.aimed)) this.aim(null);
+  }
+
+  /**
+   * Aims a flight at `tile` from under the mouse: the Tile lights gold and an arc rises from Sân
+   * bay to it, higher the farther it goes, with lights running along it. `null` takes it away.
+   */
+  aim(tile: number | null) {
+    if (tile === this.aimed) return;
+    this.aimed = tile;
+    for (const c of this.route.children as Mesh[]) {
+      if (c.geometry instanceof TubeGeometry) c.geometry.dispose();
+      (c.material as MeshBasicMaterial).dispose();
+    }
+    clear(this.route);
+    this.routeDots.length = 0;
+    this.routePath = null;
+    if (tile === null) return;
+    const centre = (i: number) => {
+      const p = placement(i);
+      return at(p.x + p.w / 2, p.y + p.h / 2, 0.05);
+    };
+    const from = centre(AIRPORT_TILE);
+    const to = centre(tile);
+    const lift = 0.8 + from.distanceTo(to) * 0.32;
+    const mid = from.clone().lerp(to, 0.5);
+    mid.y += lift * 2;
+    const path = new QuadraticBezierCurve3(from, mid, to);
+    this.routePath = path;
+    const tube = new Mesh(
+      new TubeGeometry(path, 48, 0.045, 6),
+      new MeshBasicMaterial({
+        color: GOLD,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      }),
+    );
+    this.route.add(tube);
+    const dot = new MeshBasicMaterial({ color: '#fff2c2', blending: AdditiveBlending });
+    for (let k = 0; k < 8; k++) {
+      const d = new Mesh(DOT, dot);
+      this.route.add(d);
+      this.routeDots.push(d);
+    }
+    const ring = new Mesh(
+      RING,
+      new MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.8, depthWrite: false }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(to);
+    ring.scale.setScalar(0.7);
+    this.route.add(ring);
   }
 
   /** The Tile under a point of the canvas, in CSS pixels from its top-left. */
@@ -1298,11 +1807,26 @@ export class BoardView {
       }
     }
     if (this.paused) return;
+    if (!this.low) this.marquee.paint(performance.now());
     const pulse = this.low ? 0.28 : 0.22 + Math.sin(ms / 220) * 0.12;
     this.glow.forEach((g, i) => {
-      (g.material as MeshBasicMaterial).opacity = this.picking.includes(i) ? pulse : 0;
+      const material = g.material as MeshBasicMaterial;
+      const chosen = this.chosen.includes(i);
+      const aimed = i === this.aimed;
+      material.color.set(chosen || aimed ? GOLD : '#ffffff');
+      material.opacity = aimed ? 0.5 + pulse : chosen ? 0.55 : this.picking.includes(i) ? pulse : 0;
     });
-    if (!this.low) this.tick(ms / 1000);
+    const path = this.routePath;
+    if (path)
+      this.routeDots.forEach((d, k) => {
+        d.position.copy(path.getPoint((ms / 1400 + k / this.routeDots.length) % 1));
+      });
+    for (const [k, a] of this.arrows.entries())
+      a.position.y = BOARD_H + 0.45 + Math.abs(Math.sin(ms / 260 + k * 0.5)) * 0.25;
+    const lit = ms < this.neonUntil ? (Math.floor(ms / 110) % 2 === 0 ? 1 : 0.25) : 0;
+    if (!this.low || lit > 0 || this.wasLit)
+      this.tick(this.low ? undefined : ms / 1000, lit, this.struck);
+    this.wasLit = lit > 0;
     if (!this.speaking && this.standing?.blink)
       this.notice.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(ms / 170));
     if (this.inviting && !this.low)
@@ -1310,7 +1834,21 @@ export class BoardView {
         d.position.y = BOARD_H + DIE / 2 + Math.abs(Math.sin(ms / 240 + i * 0.9)) * 0.16;
       });
     this.steer(dt);
+    this.placeContacts();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Puts each die's contact shadow under it: dark and tight on the board, faint and wide in the air. */
+  private placeContacts() {
+    this.dice.forEach((d, i) => {
+      const c = this.contacts[i];
+      if (!c) return;
+      c.visible = d.visible;
+      const k = MathUtils.clamp((d.position.y - BOARD_H - DIE / 2) / 1.4, 0, 1);
+      c.position.set(d.position.x, BOARD_H + 0.003, d.position.z);
+      c.scale.setScalar(1 + k * 0.6);
+      (c.material as MeshBasicMaterial).opacity = 0.6 * (1 - k) ** 1.5;
+    });
   }
 
   /** Eases the camera towards the token it follows, nearer and looking at it, or back home. */
@@ -1422,11 +1960,21 @@ const flat = (w: number, h: number, color: string, opacity = 1) => {
   return m;
 };
 
+/** Takes `obj` off `parent` and frees the geometry and materials it was built with. */
+function drop(parent: Object3D, obj: Object3D) {
+  parent.remove(obj);
+  obj.traverse((o) => {
+    if (!(o instanceof Mesh)) return;
+    o.geometry.dispose();
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.dispose();
+  });
+}
+
 function clear(group: Object3D) {
   for (const child of [...group.children]) group.remove(child);
 }
 
-/** An owned Lot: a tint and an outer strip in the owner's colour, its houses or Hotel, a gold rim in a Full set. */
+/** An owned Lot: a tint and an outer strip in the owner's colour, its houses or Hotel, a gold rim in a Full set or a monopoly. */
 function lotPieces(i: number, owner: number, level: number, full: boolean) {
   const g = new Group();
   const p = placement(i);
@@ -1500,4 +2048,177 @@ function lotPieces(i: number, owner: number, level: number, full: boolean) {
     g.add(h);
   }
   return g;
+}
+
+/** A soft round glow, white in the middle. */
+function halo() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255, 236, 170, 1)');
+  r.addColorStop(0.35, 'rgba(255, 190, 70, 0.45)');
+  r.addColorStop(1, 'rgba(255, 160, 40, 0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
+  return new CanvasTexture(c);
+}
+
+/** How large a Thần tài sits on the board. */
+const GOD = 1.6;
+
+/** Where seat `seat`'s Thần tài sits: an empty corner of the middle of the board. */
+const godSpot = (seat: number) => {
+  const r = SIDE / 2 - CORNER - 0.75;
+  const [x, z] = ([
+    [-1, 1],
+    [1, -1],
+    [-1, -1],
+    [1, 1],
+  ][seat % 4] ?? [1, 1]) as [number, number];
+  return new Vector3(x * r, BOARD_H, z * r);
+};
+
+/** A claw hammer, its head up and its handle down, drawn once for Phí bảo trì. */
+const HAMMER = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  g.lineJoin = 'round';
+  g.lineWidth = 6;
+  g.strokeStyle = '#1b1b22';
+  g.fillStyle = '#a8703a';
+  g.beginPath();
+  g.roundRect(56, 34, 16, 88, 6);
+  g.fill();
+  g.stroke();
+  g.fillStyle = '#9aa0ac';
+  g.beginPath();
+  g.moveTo(24, 14);
+  g.lineTo(96, 14);
+  g.lineTo(104, 22);
+  g.lineTo(104, 40);
+  g.lineTo(24, 40);
+  g.quadraticCurveTo(10, 28, 24, 14);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.fillStyle = '#d9dde4';
+  g.fillRect(30, 18, 60, 6);
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+})();
+
+/** A little hoard of gold: bars stacked in a pyramid and a few coins round it. */
+function hoard() {
+  const g = new Group();
+  const gold = new MeshStandardMaterial({
+    color: '#f2c033',
+    emissive: '#5a3c00',
+    roughness: 0.25,
+    metalness: 0.8,
+  });
+  const bar = new BoxGeometry(0.42, 0.16, 0.2);
+  const rows = [[-0.46, 0, 0.46], [-0.23, 0.23], [0]];
+  rows.forEach((xs, y) => {
+    for (const x of xs)
+      for (const z of y === 2 ? [0] : [-0.13, 0.13]) {
+        const m = new Mesh(bar, gold);
+        m.position.set(x, 0.08 + y * 0.16, z);
+        m.castShadow = true;
+        g.add(m);
+      }
+  });
+  const coin = new CylinderGeometry(0.12, 0.12, 0.035, 20);
+  for (let k = 0; k < 7; k++) {
+    const m = new Mesh(coin, gold);
+    const a = (k / 7) * Math.PI * 2;
+    m.position.set(Math.cos(a) * 0.85, 0.02 + (k % 3) * 0.035, Math.sin(a) * 0.5);
+    m.rotation.z = (k % 2) * 0.4;
+    g.add(m);
+  }
+  return g;
+}
+
+/** A gold arrow pointing down at a Tile, always facing the camera. */
+function pointer() {
+  const c = document.createElement('canvas');
+  c.width = 96;
+  c.height = 128;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  const shape = () => {
+    g.beginPath();
+    g.moveTo(30, 8);
+    g.lineTo(66, 8);
+    g.lineTo(66, 62);
+    g.lineTo(90, 62);
+    g.lineTo(48, 120);
+    g.lineTo(6, 62);
+    g.lineTo(30, 62);
+    g.closePath();
+  };
+  shape();
+  g.lineJoin = 'round';
+  g.lineWidth = 10;
+  g.strokeStyle = '#3a2507';
+  g.stroke();
+  const face = g.createLinearGradient(0, 8, 0, 120);
+  face.addColorStop(0, '#fff2b0');
+  face.addColorStop(0.5, '#f5c232');
+  face.addColorStop(1, '#c98a0c');
+  g.fillStyle = face;
+  shape();
+  g.fill();
+  const map = new CanvasTexture(c);
+  map.colorSpace = SRGBColorSpace;
+  const sprite = new Sprite(new SpriteMaterial({ map, depthTest: false }));
+  sprite.scale.set(0.34, 0.45, 1);
+  sprite.renderOrder = 5;
+  return sprite;
+}
+
+/** A gold tag standing over a Tile picked for a sale: what is Sold and what it fetches. */
+function saleTag(label: string, value: string) {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 112;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  g.fillStyle = '#3a2507';
+  g.beginPath();
+  g.roundRect(4, 4, 248, 104, 22);
+  g.fill();
+  const face = g.createLinearGradient(0, 8, 0, 100);
+  face.addColorStop(0, '#ffe58e');
+  face.addColorStop(1, '#dc9c12');
+  g.fillStyle = face;
+  g.beginPath();
+  g.roundRect(10, 10, 236, 88, 18);
+  g.fill();
+  g.fillStyle = '#3b2300';
+  g.textAlign = 'center';
+  g.font = '900 34px "Be Vietnam Pro", system-ui, sans-serif';
+  g.fillText(label.toUpperCase(), 128, 50);
+  g.font = '900 30px "Be Vietnam Pro", system-ui, sans-serif';
+  g.fillText(value, 128, 86);
+  const map = new CanvasTexture(c);
+  map.colorSpace = SRGBColorSpace;
+  const sprite = new Sprite(new SpriteMaterial({ map, depthTest: false }));
+  sprite.scale.set(1.45, 0.64, 1);
+  sprite.renderOrder = 5;
+  return sprite;
+}
+
+/** A round soft shadow: dark in the middle, gone at the rim. */
+function contactShadow() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  const r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  r.addColorStop(0.55, 'rgba(255, 255, 255, 0.75)');
+  r.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 64, 64);
+  return c;
 }
