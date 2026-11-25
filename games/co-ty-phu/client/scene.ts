@@ -44,9 +44,10 @@ import { AIRPORT_TILE, BOARD } from '../server/game/board.js';
 import { isFullSet, isMonopoly } from '../server/game/economy.js';
 import { HOTEL, type Lot, type View } from '../server/game/model.js';
 import { ambience } from './ambience.js';
+import { Marquee } from './lights.js';
 import { cage, DIE, die, hotel, house, plane, token, WINGTIPS } from './pieces.js';
 import type { Change } from './present.js';
-import { BAND, bandRect, cardBack, placement, printBoard, SIDE } from './print.js';
+import { BAND, bandRect, cardBack, placement, printBoard, SET_COLORS, SIDE } from './print.js';
 
 export const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
@@ -57,10 +58,6 @@ const FIT = [0.62, 0.98] as const;
 const PIECE_TOP = 0.8;
 const BOARD_H = 0.22;
 const GOLD = '#e6b422';
-const BULB_ON = '#fff1b8';
-const BULB_OFF = '#5a4310';
-/** About how far apart the bulbs stand along the rim. */
-const BULB_GAP = 0.34;
 /** How much nearer the camera comes to a token it follows (0 stays, 1 is on it). */
 const CLOSE = 0.32;
 
@@ -294,22 +291,8 @@ export class BoardView {
   private zoom = 0;
   private readonly look = new Vector3();
   private lastFrame = 0;
-  /** The marquee bulbs round the board's rim: every other one lit, swapping (`marquee`). */
-  private readonly marquee: Group;
-  private readonly bulbs = [
-    new MeshBasicMaterial({ color: BULB_ON }),
-    new MeshBasicMaterial({ color: BULB_OFF }),
-  ];
-  /** Each bulb's glow on the rim, lit with it. */
-  private readonly halos = [0, 1].map(
-    () =>
-      new MeshBasicMaterial({
-        map: halo(),
-        transparent: true,
-        depthWrite: false,
-        blending: AdditiveBlending,
-      }),
-  );
+  /** The marquee bulbs round the board's rim (`lights.ts`), which the big moments take over. */
+  private readonly marquee = new Marquee(halo());
   /** The middle of the board, where events are printed (`say`). */
   private readonly notice: Mesh<PlaneGeometry, MeshBasicMaterial>;
   private readonly noticeInk: CanvasRenderingContext2D;
@@ -350,7 +333,7 @@ export class BoardView {
     sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
     this.scene.add(this.world);
-    this.marquee = marquee(this.bulbs, this.halos);
+    this.marquee.setHeight(BOARD_H);
 
     const base = new Mesh(
       new BoxGeometry(SIDE + 0.4, BOARD_H, SIDE + 0.4),
@@ -388,7 +371,7 @@ export class BoardView {
       base,
       top,
       this.route,
-      this.marquee,
+      this.marquee.group,
       this.pointers,
       this.notice,
       this.lots,
@@ -476,6 +459,7 @@ export class BoardView {
     this.generation++;
     this.finish(false);
     clear(this.fx);
+    this.marquee.stop();
     this.aircraft.visible = false;
     this.shaking.until = 0;
     this.saying++;
@@ -497,7 +481,7 @@ export class BoardView {
     if (low === this.low) return;
     this.low = low;
     this.sun.castShadow = !low;
-    this.marquee.visible = !low;
+    this.marquee.group.visible = !low;
     this.renderer.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(this.size[0], this.size[1], false);
     if (low) this.tick();
@@ -802,11 +786,25 @@ export class BoardView {
 
   /**
    * A Full set: its Tiles light up one after another in the owner's colour, then all three flash
-   * gold together and throw up sparks. The camera comes over the middle one, or stays back over
+   * gold together and throw up sparks, while the rim's bulbs play along (`Marquee`). The camera comes over the middle one, or stays back over
    * the whole board when `whole` (Tiles round it, as the four bến xe).
    */
   async fullSet(tiles: number[], seat: number, ms = 1400, whole = false) {
     const color = SEAT_COLORS[seat] as string;
+    const first = BOARD[tiles[0] ?? 0];
+    if (first?.kind === 'city')
+      this.marquee.play({
+        kind: 'set',
+        tiles,
+        color: SET_COLORS[first.set],
+        step: ms * 0.18,
+        ms: ms * 1.6,
+      });
+    else if (first?.kind === 'station' || first?.kind === 'utility')
+      this.marquee.play({
+        kind: first.kind === 'station' ? 'transport' : 'utility',
+        ms: Math.max(ms * 1.3, 2600 * this.pace),
+      });
     const middle = tiles[Math.floor(tiles.length / 2)] as number;
     const p = placement(middle);
     const marker = new Group();
@@ -1504,11 +1502,7 @@ export class BoardView {
       }
     }
     if (this.paused) return;
-    const swap = Math.floor(ms / 480) % 2 === 1;
-    this.bulbs[0]?.color.set(swap ? BULB_OFF : BULB_ON);
-    this.bulbs[1]?.color.set(swap ? BULB_ON : BULB_OFF);
-    if (this.halos[0]) this.halos[0].opacity = swap ? 0 : 0.9;
-    if (this.halos[1]) this.halos[1].opacity = swap ? 0.9 : 0;
+    if (!this.low) this.marquee.paint(performance.now());
     const pulse = this.low ? 0.28 : 0.22 + Math.sin(ms / 220) * 0.12;
     this.glow.forEach((g, i) => {
       const material = g.material as MeshBasicMaterial;
@@ -1752,35 +1746,6 @@ function halo() {
   g.fillStyle = r;
   g.fillRect(0, 0, 64, 64);
   return new CanvasTexture(c);
-}
-
-/** Bulbs all round the rim of the board's base, alternately in `materials[0]` and `[1]`, each glowing in `halos`. */
-function marquee(materials: MeshBasicMaterial[], halos: MeshBasicMaterial[]) {
-  const group = new Group();
-  const half = SIDE / 2 + 0.1;
-  const per = Math.round((2 * half) / BULB_GAP);
-  const bulb = new SphereGeometry(0.06, 12, 8);
-  const glow = new PlaneGeometry(0.42, 0.42);
-  let n = 0;
-  for (let side = 0; side < 4; side++) {
-    for (let i = 0; i < per; i++) {
-      const t = -half + (i * 2 * half) / per;
-      const [x, z] = [
-        [t, half],
-        [half, -t],
-        [-t, -half],
-        [-half, t],
-      ][side] as [number, number];
-      const m = new Mesh(bulb, materials[n % 2]);
-      m.position.set(x, BOARD_H + 0.03, z);
-      const g = new Mesh(glow, halos[n % 2]);
-      g.rotation.x = -Math.PI / 2;
-      g.position.set(x, BOARD_H + 0.004, z);
-      group.add(m, g);
-      n++;
-    }
-  }
-  return group;
 }
 
 /** A gold arrow pointing down at a Tile, always facing the camera. */

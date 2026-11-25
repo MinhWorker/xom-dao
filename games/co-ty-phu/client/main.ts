@@ -14,7 +14,7 @@ import {
   type BridgeSettings,
   createGameBridge,
 } from '@xomdao/bridge';
-import { BOARD, tilesOf } from '../server/game/board.js';
+import { BOARD, setTiles, tilesOf } from '../server/game/board.js';
 import { cardOf } from '../server/game/cards.js';
 import { stationRent } from '../server/game/economy.js';
 import { HOTEL, type Sale, type View } from '../server/game/model.js';
@@ -365,11 +365,21 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: the monopoly moments, "Có tội!!!", Xuất phát's pay and a flight's aim play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page: a Full set, the monopoly moments, "Có tội!!!", Xuất phát's pay and a flight's aim play on the first view, for a look without a Match that reaches them. */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
 
 /** Plays each monopoly moment and the jail verdict for seat 0 on `view`'s board, then puts the board back. */
 async function showcase(view: View, live: () => boolean) {
+  const set = setTiles('magenta');
+  const owned = {
+    ...view,
+    lots: view.lots.map((lot, i) => (set.includes(i) ? { owner: 0, level: 1, built: 0 } : lot)),
+  };
+  await wait(1200);
+  if (!live()) return;
+  board.showLots(owned);
+  await animate(owned, [{ kind: 'fullset', seat: 0, tiles: set }], 1, live);
+  await wait(1500);
   for (const of of ['station', 'utility'] as const) {
     const tiles = tilesOf(of);
     const lots = view.lots.map((lot, i) =>
