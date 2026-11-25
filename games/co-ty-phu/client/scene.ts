@@ -496,6 +496,11 @@ export class BoardView {
     this.pace = pace;
   }
 
+  /** A Quiz answered right: the rim's bulbs celebrate (`Marquee`). */
+  cheer(ms = 2400) {
+    this.marquee.play({ kind: 'quiz', ms: ms * this.pace });
+  }
+
   /** The camera follows `seat`'s token, or goes back over the whole board. */
   follow(seat: number | null) {
     this.focus = seat === null ? null : (this.tokens[seat] ?? null);

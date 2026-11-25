@@ -4,7 +4,9 @@
  * after another in its colour, then blinks the whole rim; the four bến xe light the rim side by side
  * and send a "O o ." run round it clockwise; Điện lực and Cấp nước crackle orange along the bottom
  * and left sides and ripple blue along the top and right. Going to jail turns the rim white; a
- * flight puts it out until the token lands, then a wave runs out from that Tile all round.
+ * flight puts it out until the token lands, then a wave runs out from that Tile all round. A Quiz
+ * answered right sets off fireworks (green and gold twinkling, thicker and thicker), then a rainbow
+ * spinning round clockwise, then three green flashes.
  */
 import {
   AdditiveBlending,
@@ -29,6 +31,7 @@ const GOLD = new Color('#ffd21f');
 const SPARK = new Color('#ffa31a');
 const WATER = new Color('#3aa0ff');
 const WHITE = new Color('#ffffff');
+const GREEN = new Color('#3ee06a');
 /** The sides of the rim in the order a clockwise run passes them, starting at the bottom. */
 const CLOCKWISE_SIDES = [0, 3, 2, 1];
 
@@ -41,7 +44,8 @@ export type LightShow =
   /** Every bulb out, while a token flies. */
   | { kind: 'dark'; ms: number }
   /** A wave out of the bulbs by `tile`, both ways round the rim. */
-  | { kind: 'wave'; tile: number; ms: number };
+  | { kind: 'wave'; tile: number; ms: number }
+  | { kind: 'quiz'; ms: number };
 
 /** A number from 0 to 1 that looks random but is the same for the same `a` and `b`. */
 const hash = (a: number, b: number) => {
@@ -63,6 +67,7 @@ export class Marquee {
   private readonly per: number;
   private readonly bulb = new Color();
   private readonly glow = new Color();
+  private readonly hue = new Color();
 
   constructor(halo: Texture) {
     const half = SIDE / 2 + 0.1;
@@ -174,6 +179,21 @@ export class Marquee {
     const side = this.side[k] as number;
     if (show.kind === 'jail') return [WHITE, 1];
     if (show.kind === 'dark') return [ON, 0];
+    if (show.kind === 'quiz') {
+      const u = t / show.ms;
+      if (u < 0.28) {
+        const bucket = Math.floor(t / 60);
+        const lit = hash(k, bucket) < 0.15 + (u / 0.28) * 0.5;
+        return [hash(k, 7) < 0.5 ? GREEN : GOLD, lit ? 1 : 0];
+      }
+      if (u < 0.78) {
+        const clockwise = (this.count - k) % this.count;
+        const spin = (u - 0.28) / 0.5;
+        this.hue.setHSL(((((clockwise * 2) / this.count - spin * 1.5) % 1) + 1) % 1, 0.9, 0.6);
+        return [this.hue, 1];
+      }
+      return [GREEN, Math.floor((u - 0.78) / (0.22 / 6)) % 2 === 0 ? 1 : 0];
+    }
     if (show.kind === 'wave') {
       const from = this.nearest.indexOf(show.tile);
       const apart = Math.abs(k - Math.max(0, from));

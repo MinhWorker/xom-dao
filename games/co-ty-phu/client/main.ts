@@ -365,7 +365,7 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: a Full set, the monopoly moments, "Có tội!!!", Xuất phát's pay, a flight's aim and the rim going to jail and flying play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page: a Full set, a Quiz answered right, the monopoly moments, "Có tội!!!", Xuất phát's pay, a flight's aim and the rim going to jail and flying play on the first view, for a look without a Match that reaches them. */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
 
 /** Plays each monopoly moment and the jail verdict for seat 0 on `view`'s board, then puts the board back. */
@@ -380,6 +380,10 @@ async function showcase(view: View, live: () => boolean) {
   board.showLots(owned);
   await animate(owned, [{ kind: 'fullset', seat: 0, tiles: set }], 1, live);
   await wait(1500);
+  if (!live()) return;
+  board.say('Đúng rồi!', { tone: 'good', big: true, ms: 2000 });
+  board.cheer();
+  await wait(2900);
   for (const of of ['station', 'utility'] as const) {
     const tiles = tilesOf(of);
     const lots = view.lots.map((lot, i) =>
@@ -747,6 +751,7 @@ async function revealQuiz(
   const answer = asked.buttons[quiz.answer ?? 0]?.label ?? '';
   if (right) {
     board.say('Đúng rồi!', { sub: `+${money(won)}`, tone: 'good', big: true, ms: 2000 });
+    board.cheer();
     moments.confetti(['#58b368', '#f6d77a', '#fff2c2'], pace, low, 45);
   } else
     board.say(quiz.picked === null ? 'Hết giờ!' : 'Sai mất rồi', {
