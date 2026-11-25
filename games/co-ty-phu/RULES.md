@@ -14,7 +14,7 @@ Trong lượt của mình, chạm một ô của bạn rồi bấm Bán để b�
 
 ## Tiền thuê và mua lại
 
-Dừng ở đất người khác thì trả tiền thuê theo cấp; đủ ba ô cùng màu thì gấp đôi. Bến xe thu 50 mỗi bến chủ có. Điện lực, Cấp nước thu xúc xắc ×4, ×10 nếu chủ có cả hai. Chủ ở tù không thu.
+Dừng ở đất người khác thì trả tiền thuê theo cấp; đủ ba ô cùng màu thì gấp đôi. Bến xe độc quyền: thu 50 × số bến chủ có. Điện lực, Cấp nước thu xúc xắc ×4, ×10 nếu chủ có cả hai. Chủ ở tù không thu.
 
 Trả xong (hay khi không phải trả), bạn được mua lại ô đó với giá 1,5 × (giá đất + tiền đã xây), kèm nhà, chủ không được từ chối. Bạn được nâng ngay một cấp. Khách sạn không mua lại được.
 

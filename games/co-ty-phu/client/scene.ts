@@ -39,7 +39,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { BOARD } from '../server/game/board.js';
-import { isFullSet } from '../server/game/economy.js';
+import { isFullSet, isMonopoly } from '../server/game/economy.js';
 import { HOTEL, type Lot, type View } from '../server/game/model.js';
 import { ambience } from './ambience.js';
 import { cage, DIE, die, hotel, house, plane, token, WINGTIPS } from './pieces.js';
@@ -539,7 +539,7 @@ export class BoardView {
     clear(this.marks);
     view.lots.forEach((lot, i) => {
       if (!lot) return;
-      const g = lotPieces(i, lot.owner, lot.level, isFullSet(view, i));
+      const g = lotPieces(i, lot.owner, lot.level, isFullSet(view, i) || isMonopoly(view, i));
       g.userData.tile = i;
       this.lots.add(g);
     });
@@ -740,16 +740,17 @@ export class BoardView {
 
   /**
    * A Full set: its Tiles light up one after another in the owner's colour, then all three flash
-   * gold together and throw up sparks. The camera comes over the middle one.
+   * gold together and throw up sparks. The camera comes over the middle one, or stays back over
+   * the whole board when `whole` (Tiles round it, as the four bến xe).
    */
-  async fullSet(tiles: number[], seat: number, ms = 1400) {
+  async fullSet(tiles: number[], seat: number, ms = 1400, whole = false) {
     const color = SEAT_COLORS[seat] as string;
     const middle = tiles[Math.floor(tiles.length / 2)] as number;
     const p = placement(middle);
     const marker = new Group();
     marker.position.copy(at(p.x + p.w / 2, p.y + p.h / 2));
     this.fx.add(marker);
-    this.focus = marker;
+    this.focus = whole ? null : marker;
     const mine = this.generation;
     const step = ms * 0.18;
     await Promise.all(
@@ -1533,7 +1534,7 @@ function clear(group: Object3D) {
   for (const child of [...group.children]) group.remove(child);
 }
 
-/** An owned Lot: a tint and an outer strip in the owner's colour, its houses or Hotel, a gold rim in a Full set. */
+/** An owned Lot: a tint and an outer strip in the owner's colour, its houses or Hotel, a gold rim in a Full set or a monopoly. */
 function lotPieces(i: number, owner: number, level: number, full: boolean) {
   const g = new Group();
   const p = placement(i);

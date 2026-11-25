@@ -16,6 +16,7 @@ import {
 } from '@xomdao/bridge';
 import { BOARD } from '../server/game/board.js';
 import { cardOf } from '../server/game/cards.js';
+import { stationRent } from '../server/game/economy.js';
 import { HOTEL, type Sale, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 import { CardShow } from './cardshow.js';
@@ -429,6 +430,27 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           ms: 2200,
         });
         await board.fullSet(step.tiles, step.seat, ms(1400));
+        break;
+      case 'monopoly':
+        await building;
+        if (!live()) return;
+        board.follow(null);
+        fullSetBeats(step.tiles.length, ms);
+        board.say('Ông hoàng vận tải!', {
+          sub: `${names[step.seat] ?? ''} · mỗi bến thu ${money(stationRent(TUNING, step.tiles.length))}`,
+          tone: 'gold',
+          big: true,
+          ms: 2800,
+        });
+        if (!hidden)
+          moments.confetti(
+            [SEAT_COLORS[step.seat] ?? '#e8c04a', '#f6d77a', '#fff2c2'],
+            pace,
+            low,
+            60,
+          );
+        board.shake(0.08, 500);
+        await board.fullSet(step.tiles, step.seat, ms(2000), true);
         break;
       case 'quiz':
         if (after.quiz) await revealQuiz(after, step.right, ms, show, live);

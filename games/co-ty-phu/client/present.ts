@@ -3,9 +3,9 @@
  * Card drawn, the Lots and marks that changed, then the money that moved and who went bankrupt.
  * The board is then redrawn from the new view.
  */
-import { BOARD, JAIL_TILE, setTiles } from '../server/game/board.js';
+import { BOARD, JAIL_TILE, setTiles, tilesOf } from '../server/game/board.js';
 import { type CardId, cardOf } from '../server/game/cards.js';
-import { isFullSet, taxOf } from '../server/game/economy.js';
+import { isFullSet, isMonopoly, taxOf } from '../server/game/economy.js';
 import { DOUBLES_TO_JAIL, type Lot, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 
@@ -21,6 +21,8 @@ export type Change =
   | { kind: 'lot'; tile: number; before: Lot | null; after: Lot | null }
   /** `seat` now owns the whole Colour set of `tiles`. */
   | { kind: 'fullset'; seat: number; tiles: number[] }
+  /** `seat` now owns all four bến xe, `tiles`. */
+  | { kind: 'monopoly'; seat: number; tiles: number[] }
   | { kind: 'festival'; tile: number | null }
   | { kind: 'blackout'; tile: number | null }
   | { kind: 'quiz'; seat: number; right: boolean }
@@ -137,6 +139,15 @@ export function changes(before: View, after: View): Change[] {
     )
       out.push({ kind: 'fullset', seat: owner, tiles });
   }
+  const stations = tilesOf('station');
+  const [station] = stations as [number];
+  const baron = after.lots[station]?.owner;
+  if (
+    baron !== undefined &&
+    isMonopoly(after, station) &&
+    !(before.lots[station]?.owner === baron && isMonopoly(before, station))
+  )
+    out.push({ kind: 'monopoly', seat: baron, tiles: stations });
   const unmarked = (tile: number | null | undefined, now: number | null) =>
     now === null && tile !== null && tile !== undefined && lost(tile);
   if (after.festival !== before.festival && !unmarked(before.festival, after.festival))

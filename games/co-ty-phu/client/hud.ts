@@ -6,6 +6,7 @@ import { BOARD, setTiles } from '../server/game/board.js';
 import {
   cityRent,
   isFullSet,
+  isMonopoly,
   landPrice,
   levelCost,
   stationRent,
@@ -283,6 +284,7 @@ export class Hud {
     if (board.kind === 'city') extra.push(['Nâng một cấp', money(levelCost(t, tile))]);
     if (board.kind === 'city' && isFullSet(view, tile))
       extra.push(['Đủ bộ màu', `thuê ×${t.fullSet}`]);
+    if (isMonopoly(view, tile)) extra.push(['Độc quyền', 'Ông hoàng vận tải']);
     const takeover = lot ? takeoverPrice(t, view, tile) : null;
     if (takeover !== null) extra.push(['Mua lại', money(takeover)]);
     const marks = [

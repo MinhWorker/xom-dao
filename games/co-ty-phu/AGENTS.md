@@ -9,7 +9,7 @@ Rules: `server/game/model.ts` first, words in `GLOSSARY.md`, numbers in `server/
 push and plays it on the board one after another (the computer's moves arrive at once; `pace`
 plays them 2× under "Tốc độ" Nhanh, which the `View` carries as `speed`, and faster while more
 wait), then shows the newest view's decision: its title and text printed on the board, the
-deciding player's buttons at the bottom, and for a roll the dice to tap (a transparent `#roll`
+deciding player's buttons at the bottom (with "Bán" and what it fetches while the deed of one of their Lots is open in their turn: `freeSale`), and for a roll the dice to tap (a transparent `#roll`
 button kept over them, wider than they are drawn). Two pure modules carry the logic, with
 tests built on real Matches (`server/game/test-match.ts`):
 
@@ -18,7 +18,7 @@ tests built on real Matches (`server/game/test-match.ts`):
   from `economy.ts`, so they match the server.
 - `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
   of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
-  a Full set made, the Quiz result, a Thuế landed on (`tax`: the cash it was worked out on, the rate and minimum, billed to Ngân hàng with its sum printed under the title), money paid from one player to another (`pay`, worked out from
+  a Full set made, all four bến xe owned (`monopoly`, hailed "Ông hoàng vận tải!" with the same lighting over the whole board and confetti), the Quiz result, a Thuế landed on (`tax`: the cash it was worked out on, the rate and minimum, billed to Ngân hàng with its sum printed under the title), money paid from one player to another (`pay`, worked out from
   the cash, with `why`: rent, a Takeover, a Card or a Debt), each player's cash, and Bankruptcy
   with the Lots it takes down. `grandeur(amount)` is how grand a payment looks (0–3).
 

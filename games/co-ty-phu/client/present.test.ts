@@ -189,6 +189,20 @@ describe('what a new view shows', () => {
     ]);
   });
 
+  it('crowns the owner of all four bến xe once', () => {
+    const game = open({ rolls: [[2, 3]], arrange: own(0, [15, 25, 35], 0) }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'buy');
+    const after = viewOf(game, 'a');
+    const steps = changes(before, after);
+    expect(steps.find((s) => s.kind === 'monopoly')).toEqual({
+      kind: 'monopoly',
+      seat: 0,
+      tiles: [5, 15, 25, 35],
+    });
+    expect(changes(after, after).some((s) => s.kind === 'monopoly')).toBe(false);
+  });
+
   it('lights up a Colour set when its third City is bought', () => {
     const game = open({ rolls: [[1, 2]], arrange: own(0, [1, 2], 1) }).send('a', 'roll');
     const before = viewOf(game, 'a');
