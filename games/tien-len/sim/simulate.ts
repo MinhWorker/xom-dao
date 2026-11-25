@@ -26,9 +26,9 @@ export interface Summary {
 }
 
 /** Plays one single-round Match with the new player in `seat`; its place and the moves made. */
-export function playRound(seats: number, seat: number, seed: number) {
+export function playRound(seats: number, seat: number, seed: number, playouts?: number) {
   const players = Array.from({ length: seats }, (_, i) => `bot${i}`);
-  const game = testGame(new TienLenGame(), players, {
+  const game = testGame(new TienLenGame({ playouts }), players, {
     options: optionsSchema(manifest).parse({ rounds: 1 }),
     bots: players,
     seed,
@@ -53,12 +53,13 @@ export function playRound(seats: number, seat: number, seed: number) {
   return { first: out[0] === seat, last: out[out.length - 1] === seat, moves };
 }
 
-export function simulate(seats: number, games: number): Summary {
+/** `playouts` as in `TienLenGame`: fewer is quicker and weaker. */
+export function simulate(seats: number, games: number, playouts?: number): Summary {
   let firsts = 0;
   let lasts = 0;
   let moves = 0;
   for (let i = 0; i < games; i++) {
-    const round = playRound(seats, i % seats, 1 + i);
+    const round = playRound(seats, i % seats, 1 + i, playouts);
     firsts += round.first ? 1 : 0;
     lasts += round.last ? 1 : 0;
     moves += round.moves;
