@@ -39,6 +39,7 @@ import { LOW_STRIKES, MonopolyShow, STRIKES } from './monopoly.js';
 import { type Change, changes, grandeur, pace } from './present.js';
 import { BoardView, SEAT_COLORS } from './scene.js';
 import { Sounds, ticks } from './sound.js';
+import { Verdict } from './verdict.js';
 
 /** How long the end of the Match shows before the Hub is told. */
 const END_MS = 5000;
@@ -58,6 +59,7 @@ const hud = new Hud();
 const cards = new CardShow();
 const moments = new Moments();
 const crowning = new MonopolyShow();
+const verdict = new Verdict();
 const sounds = new Sounds();
 
 let myId = '';
@@ -227,6 +229,7 @@ function restart() {
   cards.hide();
   moments.clear();
   crowning.hide();
+  verdict.hide();
 }
 
 /** Redraws everything from `view` at once; `fanfare` when the Match just ended on screen. */
@@ -361,10 +364,10 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: the monopoly moments play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page: the monopoly moments and "Có tội!!!" play on the first view, for a look without a Match that reaches them. */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
 
-/** Plays each monopoly moment for seat 0 on `view`'s board, then puts the board back. */
+/** Plays each monopoly moment and the jail verdict for seat 0 on `view`'s board, then puts the board back. */
 async function showcase(view: View, live: () => boolean) {
   for (const of of ['station', 'utility'] as const) {
     const tiles = tilesOf(of);
@@ -378,6 +381,9 @@ async function showcase(view: View, live: () => boolean) {
     await animate(crowned, [{ kind: 'monopoly', seat: 0, tiles, of }], 1, live);
     await wait(2500);
   }
+  if (!live()) return;
+  sounds.play('guilty');
+  await verdict.play(names[0] ?? '', 1, low);
   if (live()) present(view);
 }
 
@@ -413,6 +419,12 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         await board.release(step.seat, ms(650));
         break;
       case 'jump':
+        if (step.how === 'jail' && show > 0) {
+          board.follow(null);
+          sounds.play('guilty', { rate: 1 / show });
+          await verdict.play(names[step.seat] ?? '', show, low);
+          if (!live()) return;
+        }
         if (step.how === 'jail') board.say(`${names[step.seat] ?? ''} vào tù`, { tone: 'bad' });
         if (step.how === 'flight') {
           sounds.play('plane', { rate: 1 / pace });

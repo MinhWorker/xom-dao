@@ -2193,3 +2193,132 @@ body.quake .roster {
 .monopoly.low .cloud {
   animation: none;
 }
+
+/* "Có tội!!!" before jail (verdict.ts) */
+.verdict {
+  --pace: 1;
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  background: radial-gradient(circle at 70% 45%, rgba(120, 16, 12, 0.92), rgba(20, 4, 6, 0.96) 70%);
+  animation: fade-in calc(0.12s * var(--pace)) ease-out;
+}
+
+.verdict[hidden] {
+  display: none;
+}
+
+.verdict.leaving {
+  animation: mono-out calc(0.22s * var(--pace)) ease-in forwards;
+}
+
+.verdict .lines {
+  position: absolute;
+  left: 70%;
+  top: 45%;
+  width: 240vmax;
+  height: 240vmax;
+  margin: -120vmax 0 0 -120vmax;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.12) 0 2deg, transparent 2deg 9deg);
+  animation: verdict-zoom calc(0.5s * var(--pace)) ease-out both;
+}
+
+@keyframes verdict-zoom {
+  from {
+    transform: scale(0.3) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+.verdict .lawyer {
+  position: absolute;
+  left: -2vw;
+  bottom: -4%;
+  width: min(118vh, 78vw);
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6));
+  animation: verdict-swing calc(0.38s * var(--pace)) cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  transform-origin: 15% 90%;
+}
+
+.verdict .lawyer svg {
+  display: block;
+  width: 100%;
+}
+
+@keyframes verdict-swing {
+  from {
+    transform: translateX(-60%) rotate(-10deg);
+  }
+}
+
+.verdict .shout {
+  position: absolute;
+  right: 3vw;
+  top: 6vh;
+  width: min(62vh, 44vw);
+  display: grid;
+  place-items: center;
+  animation:
+    verdict-slam calc(0.32s * var(--pace)) cubic-bezier(0.2, 1.8, 0.4, 1) calc(0.26s * var(--pace))
+    both,
+    verdict-shake calc(0.06s * var(--pace)) linear calc(0.58s * var(--pace)) 6;
+}
+
+.verdict .shout svg {
+  grid-area: 1 / 1;
+  display: block;
+  width: 100%;
+}
+
+.verdict .shout b {
+  grid-area: 1 / 1;
+  font-family: var(--display);
+  font-size: min(10vh, 7vw);
+  font-weight: 900;
+  font-style: italic;
+  color: #e3241b;
+  letter-spacing: -0.02em;
+  transform: rotate(-8deg) skewX(-10deg);
+  -webkit-text-stroke: 2px #7a0c06;
+  text-shadow:
+    3px 3px 0 #7a0c06,
+    0 0 1px #fff;
+  white-space: nowrap;
+}
+
+@keyframes verdict-slam {
+  from {
+    transform: scale(3) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes verdict-shake {
+  25% {
+    transform: translate(-4px, 2px);
+  }
+  75% {
+    transform: translate(4px, -2px);
+  }
+}
+
+.verdict .who {
+  position: absolute;
+  right: 6vw;
+  bottom: 8vh;
+  margin: 0;
+  padding: 4px 16px;
+  font-family: var(--display);
+  font-size: clamp(14px, 3.4vh, 22px);
+  font-weight: 800;
+  color: #fff6c2;
+  background: #14141c;
+  border: 2px solid #d1312a;
+  border-radius: 999px;
+  animation: fade-in calc(0.2s * var(--pace)) ease-out calc(0.5s * var(--pace)) both;
+}
+
+.verdict.low .lines {
+  animation: none;
+}
