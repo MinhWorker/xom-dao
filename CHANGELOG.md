@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.2](https://github.com/MinhWorker/xom-dao/compare/v0.29.1...v0.29.2) (2026-11-25)
+
+
+### Bug fixes
+
+* **hub:** rebuild the Hub when the release version changes ([#379](https://github.com/MinhWorker/xom-dao/issues/379)) ([6eadcd4](https://github.com/MinhWorker/xom-dao/commit/6eadcd477520082c5aa2348cb5fa7f50d67f6f45))
+
 ## [0.29.1](https://github.com/MinhWorker/xom-dao/compare/v0.29.0...v0.29.1) (2026-11-25)
 
 
