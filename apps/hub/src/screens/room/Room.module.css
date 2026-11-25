@@ -2,7 +2,7 @@
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(250px, calc(40 * var(--vw)), 380px);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: var(--space-2) var(--space-5);
   height: var(--view-h);
   padding: var(--space-2) max(var(--space-4), calc(2 * var(--vw))) var(--space-3);
@@ -94,11 +94,79 @@
 }
 
 .side {
+  grid-row: 2 / 4;
   display: grid;
   align-content: end;
   gap: var(--space-3);
   min-height: 0;
   overflow-y: auto;
+}
+
+.watchers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  width: min(100%, 560px);
+  min-width: 0;
+}
+
+.watchersTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--label);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.watchersTitle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.watcherList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.watcherList li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: 1px solid var(--line-strong);
+  background: rgb(11 13 16 / 0.6);
+}
+
+.watcherName {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.watcherMe .watcherName {
+  color: var(--accent);
+}
+
+.stand {
+  margin-left: auto;
+}
+
+.watching {
+  margin: 0;
+  color: var(--text-dim);
 }
 
 .start {
