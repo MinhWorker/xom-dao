@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.1](https://github.com/MinhWorker/xom-dao/compare/v0.30.0...v0.30.1) (2026-11-25)
+
+
+### Performance
+
+* **co-ty-phu:** faster frames and no freezes on weak GPUs ([#383](https://github.com/MinhWorker/xom-dao/issues/383)) ([34e428a](https://github.com/MinhWorker/xom-dao/commit/34e428a4f9002e128772675fa1afa7c8fc681016))
+
 ## [0.30.0](https://github.com/MinhWorker/xom-dao/compare/v0.29.2...v0.30.0) (2026-11-25)
 
 
