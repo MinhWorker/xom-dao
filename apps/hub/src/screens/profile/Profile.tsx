@@ -1,10 +1,11 @@
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconCopy } from '@tabler/icons-react';
 import type { MatchRecord, PlayerStats } from '@xomdao/shared/client';
 import { useEffect, useState } from 'react';
 import { gameById } from '../../games.js';
-import { Button, Chip, CutPanel } from '../../kit/index.js';
+import { Button, Chip, CutPanel, toast } from '../../kit/index.js';
 import { hub, useHub } from '../../net/hub.js';
 import { navigate } from '../../router.js';
+import { avatarSrc, frameSrc } from '../harbour/portrait.js';
 import screen from '../Screen.module.css';
 import { ago, boardLabel, boardUnit, levelProgress, OUTCOME_LABEL, winPercent } from './format.js';
 import styles from './Profile.module.css';
@@ -121,6 +122,18 @@ export function Profile({ userId }: { userId?: string }) {
   const other = own ? undefined : friends.find((f) => f.id === userId);
   const name = own ? (me?.name ?? '') : (other?.name ?? 'Người chơi');
   const handle = own ? me?.username : other?.username;
+  const avatar = own ? me?.avatar : other?.avatar;
+  const frame = own ? me?.frame : other?.frame;
+
+  const copyHandle = async () => {
+    if (!handle) return;
+    try {
+      await navigator.clipboard.writeText(handle);
+      toast('Đã chép tên đăng nhập', 'success');
+    } catch {
+      toast(`@${handle}`);
+    }
+  };
 
   return (
     <main className={styles.profile}>
@@ -135,12 +148,26 @@ export function Profile({ userId }: { userId?: string }) {
       <div className={`${styles.columns} ${own ? '' : styles.single}`}>
         <section className={styles.side} aria-label="Thống kê">
           <div className={styles.identity}>
-            <span className={styles.face} aria-hidden="true">
-              {name.slice(0, 1).toUpperCase()}
+            <span className={styles.portrait} aria-hidden="true">
+              <img src={avatarSrc(avatar ?? '')} alt="" draggable={false} />
+              <img src={frameSrc(frame ?? '')} alt="" draggable={false} />
             </span>
             <span className={styles.who}>
               <span className={styles.name}>{name}</span>
-              {handle && <span className={styles.handle}>@{handle}</span>}
+              {handle && (
+                <span className={styles.handleRow}>
+                  <span className={styles.handle}>@{handle}</span>
+                  <Button
+                    variant="ghost"
+                    className={styles.copy}
+                    aria-label="Chép tên đăng nhập"
+                    title="Chép tên đăng nhập"
+                    onClick={() => void copyHandle()}
+                  >
+                    <IconCopy stroke={2} aria-hidden />
+                  </Button>
+                </span>
+              )}
             </span>
           </div>
           {error && (
