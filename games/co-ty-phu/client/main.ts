@@ -35,6 +35,7 @@ import {
 } from './decisions.js';
 import { Hud } from './hud.js';
 import { Moments } from './moments.js';
+import { MonopolyShow } from './monopoly.js';
 import { type Change, changes, grandeur, pace } from './present.js';
 import { BoardView, SEAT_COLORS } from './scene.js';
 import { Sounds, ticks } from './sound.js';
@@ -56,6 +57,7 @@ const board = new BoardView(canvas);
 const hud = new Hud();
 const cards = new CardShow();
 const moments = new Moments();
+const crowning = new MonopolyShow();
 const sounds = new Sounds();
 
 let myId = '';
@@ -224,6 +226,7 @@ function restart() {
   sounds.stop();
   cards.hide();
   moments.clear();
+  crowning.hide();
 }
 
 /** Redraws everything from `view` at once; `fanfare` when the Match just ended on screen. */
@@ -460,17 +463,21 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         });
         await board.fullSet(step.tiles, step.seat, ms(1400));
         break;
-      case 'monopoly':
+      case 'monopoly': {
         await building;
         if (!live()) return;
         board.follow(null);
+        const title = step.of === 'station' ? 'Ông hoàng vận tải!' : 'Con cưng Nhà nước!';
+        const sub = `${names[step.seat] ?? ''} · ${
+          step.of === 'station'
+            ? `mỗi bến thu ${money(stationRent(TUNING, step.tiles.length))}`
+            : `thu xúc xắc ×${TUNING.utilityRent[1]}`
+        }`;
+        await crowning.play(step.of, title, sub, SEAT_COLORS[step.seat] ?? '#e8c04a', show, low);
+        if (!live()) return;
         fullSetBeats(step.tiles.length, ms);
-        board.say(step.of === 'station' ? 'Ông hoàng vận tải!' : 'Con cưng Nhà nước!', {
-          sub: `${names[step.seat] ?? ''} · ${
-            step.of === 'station'
-              ? `mỗi bến thu ${money(stationRent(TUNING, step.tiles.length))}`
-              : `thu xúc xắc ×${TUNING.utilityRent[1]}`
-          }`,
+        board.say(title, {
+          sub,
           tone: 'gold',
           big: true,
           ms: 2800,
@@ -485,6 +492,7 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         board.shake(0.08, 500);
         await board.fullSet(step.tiles, step.seat, ms(2000), true);
         break;
+      }
       case 'quiz':
         if (after.quiz) await revealQuiz(after, step.right, ms, show, live);
         break;

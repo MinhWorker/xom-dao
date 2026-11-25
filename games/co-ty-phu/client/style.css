@@ -1882,3 +1882,314 @@ body.quake .roster {
     font-size: 13px;
   }
 }
+
+/* A monopoly's moment (monopoly.ts) */
+.monopoly {
+  --pace: 1;
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  animation: fade-in calc(0.2s * var(--pace)) ease-out;
+}
+
+.monopoly[hidden] {
+  display: none;
+}
+
+.monopoly.leaving {
+  animation: mono-out calc(0.28s * var(--pace)) ease-in forwards;
+}
+
+@keyframes mono-out {
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+.monopoly[data-of="station"] {
+  background: radial-gradient(circle at 50% 45%, rgba(70, 44, 4, 0.94), rgba(6, 5, 16, 0.97) 70%);
+}
+
+.monopoly .rays {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  width: 220vmax;
+  height: 220vmax;
+  margin: -110vmax 0 0 -110vmax;
+  background: repeating-conic-gradient(rgba(255, 210, 31, 0.16) 0 7deg, transparent 7deg 18deg);
+  animation: mono-spin calc(14s * var(--pace)) linear infinite;
+}
+
+@keyframes mono-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.monopoly .road {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: min(46vh, 340px);
+  background:
+    linear-gradient(transparent 49%, rgba(255, 210, 31, 0.9) 49% 51%, transparent 51%) 0 0 / 60px
+    100%,
+    linear-gradient(#3a3a46, #24242e);
+  background-repeat: repeat-x, no-repeat;
+  box-shadow:
+    0 -6px 0 #e8ecf2,
+    0 6px 0 #e8ecf2,
+    0 0 40px rgba(0, 0, 0, 0.6);
+  transform: translateY(-20%) scaleY(0);
+  animation: mono-road calc(0.35s * var(--pace)) cubic-bezier(0.2, 0.9, 0.3, 1.3) forwards;
+}
+
+@keyframes mono-road {
+  to {
+    transform: translateY(-20%) scaleY(1);
+  }
+}
+
+.monopoly .vehicle {
+  position: absolute;
+  left: 0;
+  width: min(46vh, 360px);
+  filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.5));
+}
+
+.monopoly .vehicle.near {
+  bottom: 4%;
+  z-index: 2;
+}
+
+.monopoly .vehicle.far {
+  top: 2%;
+  width: min(32vh, 250px);
+  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.5)) brightness(0.85);
+}
+
+.monopoly .vehicle svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: mono-bump calc(0.18s * var(--pace)) ease-in-out infinite alternate;
+}
+
+@keyframes mono-bump {
+  to {
+    transform: translateY(-2px);
+  }
+}
+
+.monopoly .vehicle .spin {
+  animation: mono-spin calc(0.3s * var(--pace)) linear infinite;
+}
+
+.monopoly .vehicle .lines {
+  position: absolute;
+  right: 100%;
+  top: 22%;
+  width: 70%;
+  height: 50%;
+  background: repeating-linear-gradient(transparent 0 8px, rgba(255, 255, 255, 0.55) 8px 10px);
+  mask-image: linear-gradient(90deg, transparent, #000);
+}
+
+.monopoly .banner {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin-top: -50vh;
+  font-family: var(--display);
+  text-align: center;
+  animation: mono-slam calc(0.55s * var(--pace)) cubic-bezier(0.2, 1.6, 0.4, 1)
+    calc(0.25s * var(--pace)) both;
+}
+
+.monopoly .banner b {
+  padding: 6px 28px 10px;
+  font-size: clamp(30px, 8vh, 64px);
+  font-weight: 900;
+  line-height: 1.05;
+  color: #fff6c2;
+  background: linear-gradient(180deg, #c0392b, #8e1f14);
+  border: 3px solid #ffd21f;
+  border-radius: 10px;
+  text-shadow:
+    0 3px 0 #6b1208,
+    0 0 18px rgba(255, 210, 31, 0.6);
+  box-shadow:
+    0 6px 0 #5a0f06,
+    0 12px 30px rgba(0, 0, 0, 0.5);
+  transform: rotate(-2deg);
+}
+
+.monopoly .banner span {
+  padding: 4px 14px;
+  font-size: clamp(14px, 3.4vh, 22px);
+  font-weight: 800;
+  color: #1d1406;
+  background: #ffd21f;
+  border-radius: 999px;
+  box-shadow: 0 3px 0 #b8860b;
+}
+
+@keyframes mono-slam {
+  from {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.monopoly[data-of="utility"] {
+  background: linear-gradient(180deg, rgba(8, 14, 34, 0.97), rgba(18, 34, 58, 0.95));
+}
+
+.monopoly[data-of="utility"] .banner {
+  margin-top: 22vh;
+  justify-self: end;
+  margin-right: 8vw;
+}
+
+.monopoly[data-of="utility"] .banner b {
+  background: linear-gradient(180deg, #2f80ed, #1a4fa0);
+  text-shadow:
+    0 3px 0 #0e2d5e,
+    0 0 18px rgba(255, 246, 194, 0.6);
+  box-shadow:
+    0 6px 0 #0e2d5e,
+    0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.monopoly .clouds {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 32%;
+  z-index: 1;
+}
+
+.monopoly .cloud {
+  position: absolute;
+  top: calc(-4% + var(--k) * 3%);
+  width: 32%;
+  color: #2a3348;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+  animation: mono-drift calc(3s * var(--pace)) ease-in-out infinite alternate;
+}
+
+.monopoly .cloud:nth-child(even) {
+  color: #354059;
+  animation-direction: alternate-reverse;
+}
+
+.monopoly .cloud svg {
+  display: block;
+  width: 100%;
+}
+
+@keyframes mono-drift {
+  from {
+    transform: translate(-3%, -30%);
+  }
+  to {
+    transform: translate(3%, 0);
+  }
+}
+
+.monopoly .rain {
+  position: absolute;
+  inset: 0;
+}
+
+.monopoly .drop {
+  position: absolute;
+  top: -12%;
+  width: 2px;
+  height: 9vh;
+  background: linear-gradient(transparent, rgba(190, 220, 255, 0.9));
+  transform: rotate(12deg);
+  animation: mono-rain 0.6s linear infinite;
+}
+
+@keyframes mono-rain {
+  to {
+    transform: translate(-22vh, 115vh) rotate(12deg);
+  }
+}
+
+.monopoly .flash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #eaf3ff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.monopoly .bolt {
+  position: absolute;
+  top: 8%;
+  z-index: 2;
+  width: min(12vh, 70px);
+  opacity: 0;
+  filter: drop-shadow(0 0 14px #fff2a0) drop-shadow(0 0 30px #ffd21f);
+}
+
+.monopoly .bolt svg {
+  display: block;
+  width: 100%;
+}
+
+.monopoly .engineer {
+  position: absolute;
+  left: 10vw;
+  bottom: -2%;
+  z-index: 3;
+  height: 82vh;
+  aspect-ratio: 2 / 3;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6));
+  animation:
+    mono-rise calc(0.6s * var(--pace)) cubic-bezier(0.2, 1.4, 0.4, 1) calc(0.1s * var(--pace)) both,
+    mono-breathe calc(1.2s * var(--pace)) ease-in-out calc(0.7s * var(--pace)) infinite alternate;
+}
+
+.monopoly .engineer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes mono-rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes mono-breathe {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-1.5%);
+  }
+}
+
+.monopoly.low .rays,
+.monopoly.low .cloud {
+  animation: none;
+}
