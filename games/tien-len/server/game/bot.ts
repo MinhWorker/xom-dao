@@ -214,7 +214,7 @@ function follow(
   if (piece.length) return piece[0] as Card[];
 
   // 2s: on a high card, when the hand is nearly done, or someone is.
-  const highTable = rankOf(table.top) >= 9 || table.kind !== 'single';
+  const highTable = rankOf(table.top) >= 9;
   const twos = hand.filter((c) => rankOf(c) === TWO);
   if (twos.length && (highTable || urgent || plainSets.length <= 2)) {
     const twoPlays = combosOf(twos).filter(allowed);
