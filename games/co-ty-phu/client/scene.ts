@@ -580,7 +580,7 @@ export class BoardView {
       const rising = g.children.filter(
         (c) => has.includes(c.userData.building) && !(kept && had.includes(c.userData.building)),
       );
-      if (rising.length > 0) this.focus = g;
+      if (rising.length > 0 && topped) this.focus = g;
       rising.forEach((b, k) => {
         jobs.push(this.rise(b, k * Math.round(ms * 0.18), ms));
       });
@@ -600,7 +600,9 @@ export class BoardView {
         jobs.push(this.sink(ghost, !now, ms));
       }
     }
-    return Promise.all(jobs).then(() => {});
+    return Promise.all(jobs).then(() => {
+      if (g && this.focus === g) this.focus = null;
+    });
   }
 
   /**
@@ -651,6 +653,7 @@ export class BoardView {
         this.shake(0.07, 280);
       }
     });
+    if (this.focus === g) this.focus = null;
   }
 
   /** A sheet of `color` light over a Tile that fades. */
@@ -942,7 +945,7 @@ export class BoardView {
     }).then(() => this.setDice(values));
   }
 
-  /** Walks a token `steps` Tiles ahead from `from`, a hop per Tile, the camera following. */
+  /** Walks a token `steps` Tiles ahead from `from`, a hop per Tile, the camera following until it stands. */
   async walk(seat: number, from: number, steps: number, perStep = 170) {
     const t = this.tokens[seat];
     if (!t) return;
@@ -964,6 +967,7 @@ export class BoardView {
     if (mine !== this.generation) return;
     this.spots[seat] = (from + steps) % 40;
     this.placeTokens(seat);
+    if (this.focus === t) this.focus = null;
   }
 
   /**
@@ -988,6 +992,7 @@ export class BoardView {
     this.spots[seat] = to;
     this.placeTokens(seat);
     if (how === 'jail') await this.lock(seat, Math.round(ms * 0.9));
+    if (this.focus === t) this.focus = null;
   }
 
   /**
@@ -1227,7 +1232,6 @@ export class BoardView {
     const bars = this.cages[seat];
     if (!bars?.group.visible) return Promise.resolve();
     const { group, iron } = bars;
-    this.focus = this.tokens[seat] ?? null;
     return this.tween(ms, (u) => {
       group.position.y = ease(u) * 1.2;
       iron.opacity = 1 - u * u;

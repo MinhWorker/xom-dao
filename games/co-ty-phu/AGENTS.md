@@ -23,7 +23,7 @@ tests built on real Matches (`server/game/test-match.ts`):
   with the Lots it takes down. `grandeur(amount)` is how grand a payment looks (0–3).
 
 `scene.ts` is the board (`show` places everything; `tileAt` picks) and plays the moves: `roll`
-throws the dice with bounces, `walk` hops Tile by Tile with the camera following, `jump` drops
+throws the dice with bounces, `walk` hops Tile by Tile with the camera following (it comes in only while a token moves and for a Takeover or a new Hotel, and goes back over the whole board once that is done: a plain buy or Level does not move it), `jump` drops
 the bars round a jailed token or sends the plane (`plane()` in `pieces.ts`, the legacy Blender
 model rebuilt from its ellipsoids) to pick the token up at Sân bay, turn over the board and drop
 it with an impact, `release` lifts the bars, `build` raises houses and Hotels and sinks those
