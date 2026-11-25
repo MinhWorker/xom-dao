@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { BOARD, tilesOf } from '../server/game/board.js';
 import type { CardId } from '../server/game/cards.js';
+import { landPrice } from '../server/game/economy.js';
 import type { State } from '../server/game/model.js';
 import { all, open, own, player, viewOf } from '../server/game/test-match.js';
+import { TUNING } from '../server/game/tuning.js';
 import { changes, grandeur, pace } from './present.js';
 
 /** What changes when `a` rolls `dice` from the first state after `arrange`. */
@@ -76,6 +78,33 @@ describe('what a new view shows', () => {
     ]);
   });
 
+  it('counts in what a Sale fetched before paying the Debt out of it', () => {
+    const arrange = all(player(0, { cash: 50 }), player(1, { cash: 100 }), own(1, [39], 3, 400));
+    const game = open({ rolls: [[3, 4]], arrange, chance: ['chance-charity'] }).send('a', 'roll');
+    const owing = viewOf(game, 'a');
+    game.send('b', 'sell', { sale: owing.debt?.suggested });
+    const after = viewOf(game, 'a');
+    const steps = changes(owing, after).filter((s) => s.kind === 'sale' || s.kind === 'pay');
+    const raised = (after.players[1]?.cash ?? 0) - 100 + 150;
+    expect(steps).toEqual([
+      { kind: 'sale', seat: 1, amount: raised },
+      { kind: 'pay', from: 1, to: 0, amount: 150, why: 'debt', tile: null },
+    ]);
+  });
+
+  it('tells a player who lands on an empty Lot without the cash to buy it', () => {
+    const steps = roll([1, 2], player(0, { cash: 10 }));
+    expect(steps.find((s) => s.kind === 'short')).toEqual({
+      kind: 'short',
+      seat: 0,
+      tile: 3,
+      what: 'buy',
+      need: landPrice(TUNING, 3),
+      have: 10,
+    });
+    expect(roll([1, 2]).some((s) => s.kind === 'short')).toBe(false);
+  });
+
   it('bills a Takeover to the owner who lost the Lot', () => {
     const game = open({ rolls: [[2, 4]], arrange: own(1, [6], 2, 140) }).send('a', 'roll');
     const before = viewOf(game, 'a');
@@ -94,6 +123,13 @@ describe('what a new view shows', () => {
     ]);
   });
 
+  it('gives another roll on a double', () => {
+    expect(roll([2, 2]).slice(0, 2)).toEqual([
+      { kind: 'dice', dice: [2, 2] },
+      { kind: 'doubles', seat: 0, jail: false },
+    ]);
+  });
+
   it('jumps to jail on a third double without walking', () => {
     const game = open({
       rolls: [
@@ -107,6 +143,7 @@ describe('what a new view shows', () => {
     game.send('a', 'roll');
     expect(changes(before, viewOf(game, 'a'))).toEqual([
       { kind: 'dice', dice: [3, 3] },
+      { kind: 'doubles', seat: 0, jail: true },
       { kind: 'jump', seat: 0, to: 10, how: 'jail' },
     ]);
   });
@@ -136,6 +173,7 @@ describe('what a new view shows', () => {
     game.send('a', 'roll');
     expect(changes(before, viewOf(game, 'a'))).toEqual([
       { kind: 'dice', dice: [3, 3] },
+      { kind: 'doubles', seat: 0, jail: true },
       { kind: 'jump', seat: 0, to: 10, how: 'jail' },
     ]);
   });
@@ -292,10 +330,10 @@ describe('how fast the moves play', () => {
     expect(pace(viewOf(open({ speed: 'fast' }), 'a'), 0)).toBe(0.5);
   });
 
-  it('hurries while more than two views wait', () => {
-    expect(pace(viewOf(open(), 'a'), 2)).toBe(1);
-    expect(pace(viewOf(open(), 'a'), 3)).toBe(0.4);
-    expect(pace(viewOf(open({ speed: 'fast' }), 'a'), 3)).toBe(0.2);
+  it('hurries a little once more than three views wait', () => {
+    expect(pace(viewOf(open(), 'a'), 3)).toBe(1);
+    expect(pace(viewOf(open(), 'a'), 4)).toBe(0.6);
+    expect(pace(viewOf(open({ speed: 'fast' }), 'a'), 4)).toBe(0.3);
   });
 });
 

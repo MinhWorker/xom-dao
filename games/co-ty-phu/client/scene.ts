@@ -530,10 +530,11 @@ export class BoardView {
   }
 
   /**
-   * Miễn thuê, as its holder sees it: the price on each of `tiles` (Lots of others) crossed out
-   * in red with a green 0 beside it, like a discount; an empty list prints them as they are.
+   * Lots that charge nothing now (a jailed owner's, or everyone else's under Miễn thuê): the
+   * price on each of `tiles` crossed out in red with a green 0 beside it, like a discount; an
+   * empty list prints them as they are.
    */
-  exempt(tiles: readonly number[]) {
+  rentFree(tiles: readonly number[]) {
     const next = new Set(tiles);
     const changed = [...new Set([...this.struck, ...next])].filter(
       (i) => this.struck.has(i) !== next.has(i),
@@ -1951,10 +1952,18 @@ function spot(tile: number, k: number, n: number) {
   return p.inward.x === 0 ? at(cu + spread, cv) : at(cu, cv + spread);
 }
 
+/** A flat mark on a Tile, drawn over the moving faces (`ambience`) as well as the print. */
 const flat = (w: number, h: number, color: string, opacity = 1) => {
   const m = new Mesh(
     new PlaneGeometry(w, h),
-    new MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity === 1 }),
+    new MeshBasicMaterial({
+      color,
+      transparent: opacity < 1,
+      opacity,
+      depthWrite: opacity === 1,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+    }),
   );
   m.rotation.x = -Math.PI / 2;
   return m;

@@ -3,14 +3,16 @@
  * Card drawn, the Lots and marks that changed, then the money that moved and who went bankrupt.
  * The board is then redrawn from the new view.
  */
-import { BOARD, JAIL_TILE, setTiles, tilesOf } from '../server/game/board.js';
+import { BOARD, isLot, JAIL_TILE, setTiles, tilesOf } from '../server/game/board.js';
 import { type CardId, cardOf } from '../server/game/cards.js';
-import { isFullSet, isMonopoly, taxOf } from '../server/game/economy.js';
-import { DOUBLES_TO_JAIL, type Lot, type View } from '../server/game/model.js';
+import { isFullSet, isMonopoly, landPrice, taxOf, upgradeCost } from '../server/game/economy.js';
+import { DOUBLES_TO_JAIL, HOTEL, type Lot, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
 
 export type Change =
   | { kind: 'dice'; dice: number[] }
+  /** The roll was a double: `seat` rolls again, or goes to jail on the third in a row. */
+  | { kind: 'doubles'; seat: number; jail: boolean }
   /** Forward along the board, `steps` Tiles from `from`. */
   | { kind: 'walk'; seat: number; from: number; steps: number }
   /** Straight to `to`: into jail, a flight from Sân bay, or a Card's move. */
@@ -26,8 +28,29 @@ export type Change =
   | { kind: 'festival'; tile: number | null }
   | { kind: 'blackout'; tile: number | null }
   | { kind: 'quiz'; seat: number; right: boolean }
-  /** Money from one player to another, `why`; `tile` is the Lot paid for (rent, a Takeover). */
-  | { kind: 'pay'; from: number; to: number; amount: number; why: PayReason; tile: number | null }
+  /**
+   * Money from one player to another (`to` is `null` for the bank), `why`; `tile` is the Lot paid
+   * for (rent, a Takeover).
+   */
+  | {
+      kind: 'pay';
+      from: number;
+      to: number | null;
+      amount: number;
+      why: PayReason;
+      tile: number | null;
+    }
+  /** `seat` landed on `tile` without the `need` to buy it, build on it or fly from it: they `have` less. */
+  | {
+      kind: 'short';
+      seat: number;
+      tile: number;
+      what: 'buy' | 'upgrade' | 'fly';
+      need: number;
+      have: number;
+    }
+  /** What a debtor's Sale fetched, counted in before their Debt is paid out of it. */
+  | { kind: 'sale'; seat: number; amount: number }
   /** `seat` landed on a Thuế `tile`: `rate` of `base`, their cash on landing, but at least `min`. */
   | {
       kind: 'tax';
@@ -59,9 +82,13 @@ const forward = (id: CardId) => {
   );
 };
 
-/** How fast the moves into `view` play (1 is normal): 2× under Nhanh, faster while more wait. */
+/**
+ * How fast the moves into `view` play (1 is normal): 2× under Nhanh. The bots wait for the screen
+ * (`thinkMs`), so moves pile up only after the screen fell far behind, a hidden tab or a lost
+ * connection; then it catches up a little faster.
+ */
 export const pace = (view: View, waiting: number) =>
-  (view.speed === 'fast' ? 0.5 : 1) * (waiting > 2 ? 0.4 : 1);
+  (view.speed === 'fast' ? 0.5 : 1) * (waiting > 3 ? 0.6 : 1);
 
 /** Where a payment gets grander, as shares of the starting cash: a level-1 rent stays below the first. */
 const GRAND = [0.15, 0.4, 1] as const;
@@ -92,6 +119,8 @@ export function changes(before: View, after: View): Change[] {
     const double = after.dice.length === 2 && after.dice[0] === after.dice[1];
     const tripled = double && before.doubles === DOUBLES_TO_JAIL - 1 && !was?.jailed;
     const stuck = was?.jailed && after.players[roller]?.jailed;
+    if (double && was && !was.jailed && (tripled || !after.players[roller]?.jailed))
+      out.push({ kind: 'doubles', seat: roller, jail: tripled });
     if (was && !tripled && !stuck) {
       out.push({ kind: 'walk', seat: roller, from: was.tile, steps: sum });
       at[roller] = (was.tile + sum) % TILES;
@@ -122,6 +151,9 @@ export function changes(before: View, after: View): Change[] {
       });
     }
   });
+
+  const short = shortOf(before, after, out);
+  if (short) out.push(short);
 
   const broke = after.bankrupt.filter((seat) => !before.bankrupt.includes(seat));
   /** A bankrupt player's Lots go with them, after the money. */
@@ -169,6 +201,12 @@ export function changes(before: View, after: View): Change[] {
   if (quiz && quiz.answer !== null && before.quiz?.answer === null)
     out.push({ kind: 'quiz', seat: quiz.seat, right: quiz.picked === quiz.answer });
 
+  const debt = before.debt;
+  if (debt && !after.debt && !broke.includes(debt.from)) {
+    const was = before.players[debt.from]?.cash ?? 0;
+    const raised = (after.players[debt.from]?.cash ?? was) - was + debt.amount;
+    if (raised > 0) out.push({ kind: 'sale', seat: debt.from, amount: raised });
+  }
   const paid = payment(before, after, drawn);
   if (paid) out.push(paid);
   const taxed = tax(before, after, out);
@@ -200,6 +238,8 @@ function payment(before: View, after: View, drawn: View['card']): Change | null 
   const debt = before.debt;
   if (debt && debt.to !== null && !after.debt && gained(debt.to) > 0)
     return { ...paid(debt.from, debt.to, gained(debt.to), 'debt'), tile: null };
+  if (debt && debt.to === null && !after.debt && !after.bankrupt.includes(debt.from))
+    return { ...paid(debt.from, null, debt.amount, 'debt'), tile: null };
   const action = drawn ? cardOf(TUNING, drawn.id).action : null;
   if (action?.kind === 'rich-to-poor') {
     const { amount } = action;
@@ -214,6 +254,33 @@ function payment(before: View, after: View, drawn: View['card']): Change | null 
   const tile = after.players[turn]?.tile ?? 0;
   const took = before.lots[tile]?.owner === to && after.lots[tile]?.owner === turn;
   return { ...paid(turn, to, gained(to), took ? 'takeover' : 'rent'), tile };
+}
+
+/**
+ * The offer the turn player missed for want of cash on the Tile they just moved to: an empty Lot
+ * to buy, their own City to build on, or Sân bay to fly from.
+ */
+function shortOf(before: View, after: View, steps: readonly Change[]): Change | null {
+  const seat = before.turn;
+  const now = after.players[seat];
+  const moved = steps.some((s) => (s.kind === 'walk' || s.kind === 'jump') && s.seat === seat);
+  if (!now || !moved || now.jailed || now.bankrupt || after.debt) return null;
+  const tile = now.tile;
+  const at = BOARD[tile];
+  const have = now.cash;
+  const lot = after.lots[tile];
+  const short = (what: 'buy' | 'upgrade' | 'fly', need: number): Change | null =>
+    have < need ? { kind: 'short', seat, tile, what, need, have } : null;
+  if (isLot(at) && !lot && !before.lots[tile]) return short('buy', landPrice(TUNING, tile));
+  if (
+    at?.kind === 'city' &&
+    lot?.owner === seat &&
+    before.lots[tile]?.owner === seat &&
+    lot.level < HOTEL
+  )
+    return short('upgrade', upgradeCost(TUNING, after, seat, tile));
+  if (at?.kind === 'airport') return short('fly', TUNING.airportFee);
+  return null;
 }
 
 /** The Thuế the turn player paid, or owes, on landing on it this move. */
@@ -233,5 +300,5 @@ function tax(before: View, after: View, steps: readonly Change[]): Change | null
   return { kind: 'tax', seat, tile: now.tile, base, rate, min, amount, paid: !owed };
 }
 
-const paid = (from: number, to: number, amount: number, why: PayReason) =>
+const paid = (from: number, to: number | null, amount: number, why: PayReason) =>
   ({ kind: 'pay', from, to, amount, why }) as const;

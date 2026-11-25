@@ -248,9 +248,11 @@ function present(view: View | null, fanfare = false) {
   }
   board.show(view);
   const exempt = view.players[me]?.effects.some((e) => e.id === 'exempt') ?? false;
-  board.exempt(
-    exempt ? view.lots.flatMap((lot, tile) => (lot && lot.owner !== me ? [tile] : [])) : [],
+  /** Lots that charge nothing: every Lot of a jailed owner, and all but mine while I am exempt. */
+  const free = view.lots.flatMap((lot, tile) =>
+    lot && (view.players[lot.owner]?.jailed || (exempt && lot.owner !== me)) ? [tile] : [],
   );
+  board.rentFree(free);
   hud.players(view);
   if (isOver(view)) {
     endedAt ??= performance.now() - END_MS;
@@ -477,6 +479,22 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           sounds.play('coins', { at: (BOARD.length - step.from) * ms(170) });
         await board.walk(step.seat, step.from, step.steps, ms(170), TUNING.startBonus);
         break;
+      case 'doubles':
+        if (step.jail) {
+          sounds.play('wrong', { gain: 0.7 });
+          board.say('ĐÔI... ĐI TÙ!', { sub: names[step.seat], tone: 'bad', big: true, ms: 1800 });
+          await wait(ms(1300));
+        } else {
+          sounds.play('coins', { gain: 0.5 });
+          board.say('ĐÔI! THÊM LƯỢT!', {
+            sub: names[step.seat],
+            tone: 'gold',
+            big: true,
+            ms: 1800,
+          });
+          await wait(ms(500));
+        }
+        break;
       case 'release':
         board.say(`${names[step.seat] ?? ''} ra tù`);
         sounds.play('release');
@@ -630,28 +648,38 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         const { from, to, amount } = step;
         /** What the owner's Thần tài added to the rent: it shows at the Thần tài, not on the bill. */
         const lucky =
-          step.why === 'rent' && !!shown?.players[to]?.effects.some((e) => e.id === 'lucky');
+          step.why === 'rent' &&
+          to !== null &&
+          !!shown?.players[to]?.effects.some((e) => e.id === 'lucky');
         const extra = lucky ? amount - Math.round(amount / TUNING.luckyRent) : 0;
         const bill = {
           title: billTitle(step, after),
           from: names[step.from] ?? '',
-          to: names[step.to] ?? '',
+          to: to === null ? 'Ngân hàng' : (names[to] ?? ''),
           amount: amount - extra,
           ...(extra > 0 && { note: `Thần tài thu thêm ${money(extra)}` }),
         };
-        await moments.pay(hud.card(from), hud.card(to), bill, grand, show, {
-          low,
-          payer: from === me,
-          onPaid: () => sounds.play('stamp'),
-          onCoin: () => sounds.play('coin', { gain: 0.55, rate: 0.9 + Math.random() * 0.35 }),
-          onFly: (flight) => {
-            hud.delta(from, -amount, flight);
-            hud.delta(to, amount - extra, flight);
-            counted[from] = (counted[from] ?? 0) - amount;
-            counted[to] = (counted[to] ?? 0) + amount;
+        await moments.pay(
+          hud.card(from),
+          to === null ? undefined : hud.card(to),
+          bill,
+          grand,
+          show,
+          {
+            low,
+            payer: from === me,
+            onPaid: () => sounds.play('stamp'),
+            onCoin: () => sounds.play('coin', { gain: 0.55, rate: 0.9 + Math.random() * 0.35 }),
+            onFly: (flight) => {
+              hud.delta(from, -amount, flight);
+              counted[from] = (counted[from] ?? 0) - amount;
+              if (to === null) return;
+              hud.delta(to, amount - extra, flight);
+              counted[to] = (counted[to] ?? 0) + amount;
+            },
           },
-        });
-        if (extra > 0 && live()) {
+        );
+        if (extra > 0 && to !== null && live()) {
           sounds.play('coins');
           board.luck(to, extra);
           hud.delta(to, extra, ms(700));
@@ -659,6 +687,30 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
         }
         break;
       }
+      case 'short': {
+        const name = BOARD[step.tile]?.name ?? '';
+        const title = {
+          buy: `Không đủ tiền mua ${name}`,
+          upgrade: `Không đủ tiền nâng ${name}`,
+          fly: 'Không đủ tiền bay',
+        }[step.what];
+        sounds.play('wrong', { gain: 0.5 });
+        board.say(title, {
+          sub: `${step.seat === me ? 'Bạn' : (names[step.seat] ?? '')} cần ${money(step.need)} · có ${money(step.have)}`,
+          tone: 'bad',
+          ms: 2200,
+        });
+        await wait(ms(1100));
+        break;
+      }
+      case 'sale':
+        await building;
+        if (!live()) return;
+        sounds.play('coins');
+        hud.delta(step.seat, step.amount, ms(600));
+        counted[step.seat] = (counted[step.seat] ?? 0) + step.amount;
+        await wait(ms(800));
+        break;
       case 'tax': {
         await building;
         if (!live()) return;
@@ -979,7 +1031,7 @@ function clock() {
   if (decider(shown) === me && ticks(clockLeft, ms)) sounds.play('tick');
   clockLeft = ms;
   hud.timer(left, decider(shown));
-  cards.timer(shown.phase === 'quiz' ? left : null);
+  cards.timer(shown.phase === 'quiz' || shown.phase === 'card' ? left : null);
 }
 clock();
 
