@@ -730,6 +730,33 @@ export class BoardView {
     const where = at(p.x + p.w / 2, p.y + p.h / 2);
     this.flash(0, GOLD, ms * 0.4);
     this.sparks(where, 18, [GOLD, '#fff2c2', '#58b368'], ms * 0.7, 1.8);
+    this.floatText(where, `+${amount.toLocaleString('vi-VN')}`, true, ms);
+  }
+
+  /**
+   * A Card that counts houses and Hotels (Du lịch, Sửa nhà, Thuế Khách sạn) touches each of
+   * `tiles` at once: it flashes, throws up sparks (gold and green when `good`, red brick dust
+   * when not) and its share of the amount, `text`, floats up from it.
+   */
+  levy(tiles: { tile: number; text: string }[], good: boolean, ms = 1600) {
+    ms *= this.pace;
+    for (const { tile, text } of tiles) {
+      const p = placement(tile);
+      const where = at(p.x + p.w / 2, p.y + p.h / 2);
+      this.flash(tile, good ? GOLD : '#e0553d', ms * 0.4);
+      this.sparks(
+        where,
+        12,
+        good ? [GOLD, '#fff2c2', '#58b368'] : ['#e0553d', '#8a8f9c', '#c46a3a'],
+        ms * 0.6,
+        good ? 1.6 : 1.1,
+      );
+      this.floatText(where, text, good, ms, 0.8);
+    }
+  }
+
+  /** `text` pops up over `where` and floats away: gold when `good`, red when not; `size` scales it. */
+  private floatText(where: Vector3, text: string, good: boolean, ms: number, size = 1) {
     const c = document.createElement('canvas');
     c.width = 320;
     c.height = 120;
@@ -739,12 +766,11 @@ export class BoardView {
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 14;
-    ctx.strokeStyle = '#3a2606';
-    const text = `+${amount.toLocaleString('vi-VN')}`;
+    ctx.strokeStyle = good ? '#3a2606' : '#3a0a06';
     ctx.strokeText(text, 160, 62);
     const fill = ctx.createLinearGradient(0, 20, 0, 104);
-    fill.addColorStop(0, '#fff2c2');
-    fill.addColorStop(1, GOLD);
+    fill.addColorStop(0, good ? '#fff2c2' : '#ffd0c4');
+    fill.addColorStop(1, good ? GOLD : '#e0553d');
     ctx.fillStyle = fill;
     ctx.fillText(text, 160, 62);
     const map = new CanvasTexture(c);
@@ -755,8 +781,8 @@ export class BoardView {
     this.fx.add(label);
     this.tween(ms, (u) => {
       const pop = u < 0.15 ? 0.6 + (u / 0.15) * 0.5 : 1.1 - Math.min(1, (u - 0.15) * 4) * 0.1;
-      label.scale.set(1.5 * pop, 0.56 * pop, 1);
-      label.position.set(where.x, BOARD_H + 0.5 + ease(u) * 1.3, where.z);
+      label.scale.set(1.5 * pop * size, 0.56 * pop * size, 1);
+      label.position.set(where.x, BOARD_H + 0.5 + ease(u) * 1.3 * size, where.z);
       material.opacity = u < 0.7 ? 1 : (1 - u) / 0.3;
     }).then(() => {
       this.fx.remove(label);

@@ -15,7 +15,7 @@ import {
   createGameBridge,
 } from '@xomdao/bridge';
 import { BOARD, JAIL_TILE, setTiles, tilesOf } from '../server/game/board.js';
-import { cardOf } from '../server/game/cards.js';
+import { type CardId, cardOf } from '../server/game/cards.js';
 import { stationRent } from '../server/game/economy.js';
 import { HOTEL, type Sale, type View } from '../server/game/model.js';
 import { TUNING } from '../server/game/tuning.js';
@@ -323,6 +323,39 @@ function ask(view: View) {
     );
 }
 
+/**
+ * The Lots a Card that counts houses or Hotels charges or pays for, drawn by `seat`: the drawer's
+ * Cities with their Levels (Du lịch, Sửa nhà), or the Hotels of whoever pays Thuế Khách sạn, who lost
+ * cash between the view on the board and `after`. `null` for any other Card.
+ */
+function levied(id: CardId, seat: number, after: View) {
+  const { action } = cardOf(TUNING, id);
+  const sign = (n: number) => (n > 0 ? '+' : '−');
+  if (action.kind === 'per-level') {
+    const tiles = after.lots.flatMap((lot, tile) =>
+      lot?.owner === seat && BOARD[tile]?.kind === 'city'
+        ? [{ tile, text: `${sign(action.amount)}${money(Math.abs(action.amount) * lot.level)}` }]
+        : [],
+    );
+    return tiles.length > 0 ? { tiles, good: action.amount > 0 } : null;
+  }
+  if (action.kind === 'hotel-tax') {
+    const payer = after.players.findIndex(
+      (p, s) =>
+        p.cash < (shown?.players[s]?.cash ?? p.cash) &&
+        after.lots.some((l) => l?.owner === s && l.level >= HOTEL),
+    );
+    if (payer < 0) return null;
+    const tiles = after.lots.flatMap((lot, tile) =>
+      lot?.owner === payer && lot.level >= HOTEL
+        ? [{ tile, text: `−${money(action.amount)}` }]
+        : [],
+    );
+    return { tiles, good: false };
+  }
+  return null;
+}
+
 /** The winner's token in a beam of light, and confetti over everything. */
 function celebrate(view: View) {
   const winner = view.players.findIndex((p) => !p.bankrupt);
@@ -362,7 +395,7 @@ async function play() {
   if (mine === epoch) playing = false;
 }
 
-/** `?showcase` on the page: a Kẹt xe roll, a Full set, a Quiz answered right, the monopoly moments, "Có tội!!!", Xuất phát's pay, a flight's aim and the rim going to jail and flying play on the first view, for a look without a Match that reaches them. */
+/** `?showcase` on the page: a Kẹt xe roll, Du lịch and Sửa nhà on some houses, a Full set, a Quiz answered right, the monopoly moments, "Có tội!!!", Xuất phát's pay, a flight's aim and the rim going to jail and flying play on the first view, for a look without a Match that reaches them. */
 const SHOWCASE = new URLSearchParams(location.search).has('showcase');
 
 let showcased = false;
@@ -392,6 +425,35 @@ async function showcase(view: View, live: () => boolean) {
   board.say('Kẹt xe!', { tone: 'bad', big: true, ms: 1800 });
   await board.roll([4], 900);
   await wait(1800);
+  if (!live()) return;
+  const built = [
+    [1, 2],
+    [3, 5],
+    [6, 1],
+    [8, 3],
+  ] as const;
+  const housed = {
+    ...view,
+    lots: view.lots.map((lot, i) => {
+      const level = built.find(([tile]) => tile === i)?.[1];
+      return level ? { owner: 0, level, built: 0 } : lot;
+    }),
+  };
+  board.showLots(housed);
+  for (const [good, rate] of [
+    [true, TUNING.cards.tourism],
+    [false, TUNING.cards.repairs],
+  ] as const) {
+    await wait(900);
+    if (!live()) return;
+    sounds.play(good ? 'coins' : 'crumble', { gain: 0.8 });
+    board.levy(
+      built.map(([tile, level]) => ({ tile, text: `${good ? '+' : '−'}${money(rate * level)}` })),
+      good,
+    );
+    await wait(1600);
+  }
+  board.showLots(view);
   const set = setTiles('magenta');
   const owned = {
     ...view,
@@ -510,6 +572,13 @@ async function animate(after: View, steps: Change[], pace: number, live: () => b
           after.card?.seat === me &&
           decide(after, me, names).buttons.length > 0;
         if (!choosing && live()) await cards.hold(Math.round(1800 * speed));
+        if (!live()) return;
+        const levy = levied(step.id, step.seat, after);
+        if (levy) {
+          sounds.play(levy.good ? 'coins' : 'crumble', { gain: 0.8 });
+          board.levy(levy.tiles, levy.good);
+          await wait(ms(1300));
+        }
         break;
       }
       case 'lot':
