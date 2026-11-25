@@ -1039,4 +1039,4 @@ new ResizeObserver(() => board.resize(window.innerWidth, window.innerHeight)).ob
   document.body,
 );
 board.resize(window.innerWidth, window.innerHeight);
-bridge.ready();
+void board.warm.then(() => bridge.ready());

@@ -478,24 +478,6 @@ const frame = (ctx: CanvasRenderingContext2D, px: number) => {
   ctx.strokeRect(CORNER * px, CORNER * px, (SIDE - 2 * CORNER) * px, (SIDE - 2 * CORNER) * px);
 };
 
-/** Paints `tiles` again on a board `printBoard` drew at `px`, those in `struck` crossed out. */
-export const reprint = (
-  canvas: HTMLCanvasElement,
-  tiles: Iterable<number>,
-  struck: ReadonlySet<number>,
-  px = 336,
-) => {
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-  for (const i of tiles) {
-    const p = placement(i);
-    ctx.save();
-    ctx.translate(p.x * px, p.y * px);
-    paintTile(ctx, i, px, undefined, 0, struck.has(i));
-    ctx.restore();
-  }
-  frame(ctx, px);
-};
-
 /** The back of a Cơ hội or Khí vận card: the deck colour with its icon repeated small. */
 export const cardBack = (
   deck: keyof typeof DECK_COLORS,

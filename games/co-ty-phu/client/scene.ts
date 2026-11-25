@@ -63,12 +63,13 @@ import {
   bandRect,
   CORNER,
   cardBack,
+  paintTile,
   placement,
   printBoard,
-  reprint,
   SET_COLORS,
   SIDE,
 } from './print.js';
+import { isSpecial } from './special.js';
 
 export const SEAT_COLORS = ['#e0553d', '#4a8fe0', '#e8c04a', '#58b368'] as const;
 
@@ -277,11 +278,17 @@ export class BoardView {
   private readonly contacts: Mesh[];
   private readonly glow: Mesh[] = [];
   private readonly tick: (t?: number, neon?: number, struck?: ReadonlySet<number>) => void;
-  /** The printed board, repainted where prices are crossed out (`exempt`). */
-  private readonly printed: CanvasTexture;
+  /** Per Tile whose price is crossed out (`rentFree`): its face printed again, laid over the board. */
+  private readonly strikes = new Map<number, Mesh>();
   /** The Tiles whose price the player sees crossed out for a 0 under Miễn thuê. */
   private struck: ReadonlySet<number> = new Set();
   private readonly tweens: Tween[] = [];
+  /** Shader programs held for the whole session (`keepPrograms`). */
+  private readonly kept = new Set<object>();
+  /** Resolves once the shaders are built (`warmUp`): the Game says it is ready after that. */
+  readonly warm: Promise<void>;
+  /** The shaders are built: until then nothing is drawn, so the first frame cannot stall. */
+  private warmed = false;
   private readonly ray = new Raycaster();
   private readonly ground = new Plane(new Vector3(0, 1, 0), -BOARD_H);
   /** Where each seat's token stands, `null` when it is off the board. */
@@ -375,7 +382,6 @@ export class BoardView {
     const printed = new CanvasTexture(printBoard(336, false));
     printed.colorSpace = SRGBColorSpace;
     printed.anisotropy = anisotropy;
-    this.printed = printed;
     const top = new Mesh(
       new PlaneGeometry(SIDE, SIDE),
       new MeshStandardMaterial({ roughness: 0.85, map: printed }),
@@ -470,7 +476,58 @@ export class BoardView {
     });
 
     this.tick = ambience(this.world, at, anisotropy);
+    this.warm = this.warmUp();
     r.setAnimationLoop((ms) => this.frame(ms));
+  }
+
+  /**
+   * Builds the board's shaders and those the moments use (sparks, rings, beams, sprites) off the
+   * main thread where the GPU allows, so neither the first frame nor the first moment of each kind
+   * freezes the screen; `keepPrograms` then holds them. Resolves when they are built.
+   */
+  private warmUp() {
+    const map = new CanvasTexture(document.createElement('canvas'));
+    const plane = new PlaneGeometry(0.01, 0.01);
+    const soft = { transparent: true, depthWrite: false };
+    const materials = [
+      new MeshBasicMaterial({ ...soft }),
+      new MeshBasicMaterial({ ...soft, side: DoubleSide }),
+      new MeshBasicMaterial({ ...soft, blending: AdditiveBlending, side: DoubleSide }),
+      new MeshBasicMaterial({ ...soft, map }),
+      new SpriteMaterial({ map, transparent: true, depthTest: false }),
+      new SpriteMaterial({ map, depthTest: false }),
+    ];
+    const warm = new Group();
+    for (const m of materials)
+      warm.add(m instanceof SpriteMaterial ? new Sprite(m) : new Mesh(plane, m));
+    this.scene.add(warm);
+    return this.renderer
+      .compileAsync(this.scene, this.camera)
+      .then(
+        () => undefined,
+        () => undefined,
+      )
+      .finally(() => {
+        this.warmed = true;
+        this.keepPrograms();
+        this.scene.remove(warm);
+        for (const m of materials) m.dispose();
+        plane.dispose();
+        map.dispose();
+      });
+  }
+
+  /**
+   * Holds every shader program built so far. three.js frees a program with the last material that
+   * uses it, and a moment's materials go when it ends, so the next moment had to compile it again:
+   * up to 1.5 s frozen on some GPUs.
+   */
+  private keepPrograms() {
+    for (const program of this.renderer.info.programs ?? []) {
+      if (this.kept.has(program)) continue;
+      this.kept.add(program);
+      program.usedTimes++;
+    }
   }
 
   resize(w: number, h: number) {
@@ -541,9 +598,47 @@ export class BoardView {
     );
     if (changed.length === 0) return;
     this.struck = next;
-    reprint(this.printed.image as HTMLCanvasElement, changed, next);
-    this.printed.needsUpdate = true;
+    for (const i of changed) {
+      const kind = BOARD[i]?.kind;
+      if (!kind || isSpecial(kind) || kind === 'utility') continue;
+      const old = this.strikes.get(i);
+      if (old) {
+        drop(this.world, old);
+        (old.material as MeshStandardMaterial).map?.dispose();
+        this.strikes.delete(i);
+      }
+      if (next.has(i)) this.strikes.set(i, this.strikeFace(i));
+    }
     this.tick(undefined, 0, next);
+  }
+
+  /**
+   * Tile `i` printed again with its price crossed out, laid just over the board: a small texture,
+   * where repainting the whole printed board stalled the screen.
+   */
+  private strikeFace(i: number) {
+    const p = placement(i);
+    const px = 160;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(p.w * px);
+    canvas.height = Math.ceil(p.h * px);
+    paintTile(canvas.getContext('2d') as CanvasRenderingContext2D, i, px, undefined, 0, true);
+    const map = new CanvasTexture(canvas);
+    map.colorSpace = SRGBColorSpace;
+    const face = new Mesh(
+      new PlaneGeometry(p.w, p.h),
+      new MeshStandardMaterial({
+        map,
+        roughness: 0.85,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+      }),
+    );
+    face.rotation.x = -Math.PI / 2;
+    face.position.copy(at(p.x + p.w / 2, p.y + p.h / 2, 0.002));
+    face.receiveShadow = true;
+    this.world.add(face);
+    return face;
   }
 
   /** A Quiz answered right: the rim's bulbs celebrate (`Marquee`). */
@@ -1807,7 +1902,7 @@ export class BoardView {
         tw.done();
       }
     }
-    if (this.paused) return;
+    if (this.paused || !this.warmed) return;
     if (!this.low) this.marquee.paint(performance.now());
     const pulse = this.low ? 0.28 : 0.22 + Math.sin(ms / 220) * 0.12;
     this.glow.forEach((g, i) => {
@@ -1837,6 +1932,7 @@ export class BoardView {
     this.steer(dt);
     this.placeContacts();
     this.renderer.render(this.scene, this.camera);
+    this.keepPrograms();
   }
 
   /** Puts each die's contact shadow under it: dark and tight on the board, faint and wide in the air. */
