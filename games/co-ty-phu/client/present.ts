@@ -111,6 +111,9 @@ export function changes(before: View, after: View): Change[] {
       out.push({ kind: 'walk', seat, from, steps: ahead(from, p.tile) || TILES });
     else {
       const flew = before.phase === 'fly' && seat === before.turn;
+      const goJail = BOARD.findIndex((t) => t.kind === 'go-jail');
+      if (flew && jailed && from !== goJail && drawn?.seat !== seat)
+        out.push({ kind: 'jump', seat, to: goJail, how: 'flight' });
       out.push({
         kind: 'jump',
         seat,

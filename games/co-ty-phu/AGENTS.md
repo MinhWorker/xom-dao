@@ -17,7 +17,7 @@ tests built on real Matches (`server/game/test-match.ts`):
   and the Tiles a tap may pick (Sân bay, a Card's Lot, a Debt's Lots), and the Card it is about. Prices come
   from `economy.ts`, so they match the server.
 - `present.ts`: `changes(before, after)` lists what to play between two views: dice, getting out
-  of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn, Lots and marks,
+  of jail, walks and jumps (into jail, a flight, a Card's move), the Card drawn (after the token reaches the Tile it is drawn on, `Drawn.tile`, as a flight lands before its Tile acts), Lots and marks,
   a Full set made, all four bến xe or both Điện lực and Cấp nước owned (`monopoly`, hailed "Ông hoàng vận tải!" or "Con cưng Nhà nước!" after a 2D overlay in `monopoly.ts` (a convoy of buses and trucks on a road under gold rays; a storm over a faceless engineer in a yellow hard hat; `convoy`, or `rain` with a `thunder` per strike, play under it), then the same lighting over the whole board and confetti; their Tiles keep a Full set's gold rim), the Quiz result, a Thuế landed on (`tax`: the cash it was worked out on, the rate and minimum, billed to Ngân hàng with its sum printed under the title), money paid from one player to another (`pay`, worked out from
   the cash, with `why`: rent, a Takeover, a Card or a Debt), each player's cash, and Bankruptcy
   with the Lots it takes down. `grandeur(amount)` is how grand a payment looks (0–3).

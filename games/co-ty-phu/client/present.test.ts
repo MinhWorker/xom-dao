@@ -149,6 +149,35 @@ describe('what a new view shows', () => {
     ]);
   });
 
+  it('flies to Vào tù before going to jail from it', () => {
+    const goJail = BOARD.findIndex((t) => t.kind === 'go-jail');
+    const game = open({ rolls: [[1, 2]], arrange: player(0, { tile: 17 }) }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'fly', { to: goJail });
+    expect(changes(before, viewOf(game, 'a')).slice(0, 2)).toEqual([
+      { kind: 'jump', seat: 0, to: goJail, how: 'flight' },
+      { kind: 'jump', seat: 0, to: 10, how: 'jail' },
+    ]);
+  });
+
+  it('flies to Khí vận, draws a Card sending to jail, and goes there straight', () => {
+    const chest = BOARD.findIndex((t, i) => i > 20 && t.kind === 'chest');
+    const game = open({
+      rolls: [[1, 2]],
+      chest: ['chest-jailed'],
+      arrange: player(0, { tile: 17 }),
+    }).send('a', 'roll');
+    const before = viewOf(game, 'a');
+    game.send('a', 'fly', { to: chest });
+    expect(
+      changes(before, viewOf(game, 'a')).filter((s) => s.kind === 'jump' || s.kind === 'card'),
+    ).toEqual([
+      { kind: 'jump', seat: 0, to: chest, how: 'flight' },
+      { kind: 'card', seat: 0, id: 'chest-jailed' },
+      { kind: 'jump', seat: 0, to: 10, how: 'jail' },
+    ]);
+  });
+
   it('flies to a Cơ hội before its Card is drawn there', () => {
     const chance = BOARD.findIndex((t, i) => i > 20 && t.kind === 'chance');
     const game = open({
