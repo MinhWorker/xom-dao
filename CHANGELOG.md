@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/MinhWorker/xom-dao/compare/v0.29.0...v0.29.1) (2026-11-25)
+
+
+### Bug fixes
+
+* **co-ty-phu:** second playtest (bot pacing, utilities, debts, notices, card countdown) ([#377](https://github.com/MinhWorker/xom-dao/issues/377)) ([c6f6d75](https://github.com/MinhWorker/xom-dao/commit/c6f6d7560fa9e80298dca2fc5944a4aaf1ad2522))
+
 ## [0.29.0](https://github.com/MinhWorker/xom-dao/compare/v0.28.0...v0.29.0) (2026-11-25)
 
 
