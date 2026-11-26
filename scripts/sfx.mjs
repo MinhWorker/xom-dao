@@ -297,7 +297,7 @@ function boardGame(pitch, weight) {
 
 const SOUNDS = {
   'co-vua': boardGame(1, 1),
-  'co-tuong': boardGame(0.8, 1.5),
+  'co-tuong': (({ castle, promote, ...rest }) => rest)(boardGame(0.8, 1.5)),
   'co-vay': {
     place: () => finish(reverb(stoneClack(1), { wet: 0.12, size: 0.6 }), 0.8),
     other: () => finish(reverb(stoneClack(2, 0.92), { wet: 0.12, size: 0.6 }), 0.7),

@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@xomdao/game-caro": "*",
+    "@xomdao/game-co-tuong": "*",
     "@xomdao/game-co-ty-phu": "*",
     "@xomdao/game-co-vay": "*",
     "@xomdao/game-co-vua": "*",
