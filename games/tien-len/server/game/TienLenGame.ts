@@ -19,19 +19,19 @@ import {
   shuffle,
 } from '@xomdao/sdk';
 import { z } from 'zod';
-import { botPlay } from './bot.js';
 import { beats, type Card, cardName, comboOf, fullDeck, isChop } from './cards.js';
 import { roundPoints, standings } from './match.js';
 import {
   dealMs,
   INTRO,
   type Options,
-  type Play,
   ROUND_OVER_MS,
   type State,
   TURN_MS,
   type View,
 } from './model.js';
+import { afterPass, afterPlay, isPlaying } from './round.js';
+import { bestMove } from './search.js';
 
 const play = z.object({ cards: z.array(z.number().int().min(0).max(51)).min(1).max(13) });
 
@@ -39,6 +39,11 @@ type Ctx = GameContext<State, Options>;
 
 export class TienLenGame extends Game<State, Options, View> {
   readonly events = { play, pass: z.object({}) };
+
+  /** `playouts`: how hard the computer looks ahead (search.ts); 0 plays by the quick rules. */
+  constructor(private readonly config: { playouts?: number } = {}) {
+    super();
+  }
 
   /** The Match begins: the first deal. */
   onStart(ctx: StartContext<Options>): State {
@@ -114,7 +119,7 @@ export class TienLenGame extends Game<State, Options, View> {
   /** The computer's move for its seat (see bot.ts). */
   bot({ state, player }: BotContext<State, Options>) {
     if (state.phase !== 'play' || state.turn !== player.seat) return null;
-    const cards = botPlay(state, player.seat);
+    const cards = bestMove(state, player.seat, this.config.playouts);
     return cards ? { event: 'play', payload: { cards } } : { event: 'pass' };
   }
 
@@ -127,19 +132,6 @@ export class TienLenGame extends Game<State, Options, View> {
       counts: hands.map((h) => h.length),
     };
   }
-}
-
-/** Still in this round with cards in hand. */
-const isPlaying = (state: State, seat: number) => (state.hands[seat]?.length ?? 0) > 0;
-
-/** The first seat after `seat` still holding cards. */
-function nextPlaying(state: State, seat: number) {
-  const n = state.hands.length;
-  for (let k = 1; k <= n; k++) {
-    const next = (seat + k) % n;
-    if (isPlaying(state, next)) return next;
-  }
-  return null;
 }
 
 /**
@@ -187,60 +179,13 @@ function deal(ctx: Ctx, state: State): State {
 
 /** `seat` puts `cards` (already checked) on the table. */
 function playCards(ctx: Ctx, seat: number, cards: Card[]): State {
-  const { state } = ctx;
-  const sorted = [...cards].sort((a, b) => a - b);
-  const hand = (state.hands[seat] ?? []).filter((c) => !sorted.includes(c));
-  const played: Play = {
-    seat,
-    cards: sorted,
-    kind: comboOf(sorted)?.kind ?? 'single',
-    trick: state.trick,
-  };
-  const next = advance({
-    ...state,
-    hands: state.hands.map((h, s) => (s === seat ? hand : h)),
-    table: played,
-    played: [...state.played, played],
-    mustPlay: null,
-    out: hand.length === 0 ? [...state.out, seat] : state.out,
-  });
+  const next = afterPlay(ctx.state, seat, cards);
   return endRound(ctx, next) ?? withClock(ctx, next);
 }
 
 function pass(ctx: Ctx, seat: number): State {
-  const next = advance({
-    ...ctx.state,
-    passed: ctx.state.passed.map((p, s) => p || s === seat),
-  });
-  return withClock(ctx, next);
+  return withClock(ctx, afterPass(ctx.state, seat));
 }
-
-/**
- * The turn moves on to the next seat still in the trick. When it comes back to whoever played
- * last, everyone else passed: they start a new trick. If they have no cards left, the first
- * player after them leads instead.
- */
-function advance(state: State): State {
-  const n = state.hands.length;
-  const owner = state.table?.seat;
-  for (let k = 1; k <= n; k++) {
-    const seat = (state.turn + k) % n;
-    if (seat === owner && isPlaying(state, seat)) return newTrick(state, seat);
-    if (seat !== owner && isPlaying(state, seat) && !state.passed[seat]) {
-      return { ...state, turn: seat };
-    }
-  }
-  const lead = nextPlaying(state, owner ?? state.turn);
-  return lead === null ? state : newTrick(state, lead);
-}
-
-const newTrick = (state: State, lead: number): State => ({
-  ...state,
-  turn: lead,
-  table: null,
-  trick: state.trick + 1,
-  passed: state.passed.map(() => false),
-});
 
 /**
  * When one player (or none) still holds cards, the round is over: rank it, add the points, and

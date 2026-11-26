@@ -22,6 +22,10 @@ var active := false
 ## The turn clock, 1 down to 0; below 0 there is none.
 var clock := -1.0
 var mine := false
+## Đồ họa thấp: no pulsing.
+var calm := false
+
+var _pulse := 0.0
 
 
 func _init() -> void:
@@ -35,6 +39,17 @@ func refresh() -> void:
 	queue_redraw()
 
 
+func _process(delta: float) -> void:
+	if _warns() and not calm:
+		_pulse += delta
+		queue_redraw()
+
+
+## Down to the last card ("báo"): the plate glows red and says so.
+func _warns() -> bool:
+	return count == 1 and place == 0
+
+
 func _draw() -> void:
 	var rect := Rect2(Vector2.ZERO, SIZE)
 	var border := Style.BRASS if active else Color(1, 1, 1, 0.14)
@@ -43,6 +58,13 @@ func _draw() -> void:
 	plate.shadow_size = 6
 	plate.shadow_offset = Vector2(0, 3)
 	draw_style_box(plate, rect)
+	if _warns():
+		var glow := 0.75 if calm else 0.45 + 0.4 * sin(_pulse * 6.0)
+		var ring := Style.box(Color(0, 0, 0, 0), 13.0, Color(Style.DANGER, glow), 3.0)
+		draw_style_box(ring, rect.grow(2.0))
+		var tag := Rect2(SIZE.x - 46.0, -9.0, 40.0, 18.0)
+		draw_style_box(Style.box(Style.DANGER, 9.0), tag)
+		Style.draw_centered(self, "Báo", tag.get_center(), 12, Style.INK, true)
 	var disc := Vector2(30.0, SIZE.y * 0.5)
 	draw_circle(disc, 20.0, Color(0, 0, 0, 0.35))
 	draw_circle(disc, 18.0, tint)

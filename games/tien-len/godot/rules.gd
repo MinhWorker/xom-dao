@@ -124,3 +124,85 @@ static func _in_row(ranks: Array[int], step: int) -> bool:
 
 static func _pairs(combo: Dictionary) -> int:
 	return int(combo["size"]) / 2 if combo["kind"] == "pairs" else 0
+
+
+## The plays worth suggesting for `hand` on `table` (`[]` when leading), weakest first, one per
+## shape and rank. Following: the table's shape, then the bombs. Leading: the sets holding the
+## lowest card first, longest first.
+static func hints(hand: Array, table: Array, must_play: int) -> Array:
+	var legal: Array = []
+	for cards: Array in combos(hand):
+		if can_play(cards, table, must_play):
+			legal.append(cards)
+	legal.sort_custom(func(a: Array, b: Array) -> bool: return a.max() < b.max())
+	var seen := {}
+	var unique: Array = []
+	for cards: Array in legal:
+		var combo := combo_of(cards)
+		var key := "%s/%d/%d" % [combo["kind"], combo["size"], rank_of(int(combo["top"]))]
+		if not seen.has(key):
+			seen[key] = true
+			unique.append(cards)
+	if table.is_empty():
+		unique.sort_custom(
+			func(a: Array, b: Array) -> bool:
+				if a.min() != b.min():
+					return a.min() < b.min()
+				if a.size() != b.size():
+					return a.size() > b.size()
+				return a.max() < b.max()
+		)
+		return unique
+	var shape := combo_of(table)
+	var same: Array = []
+	var other: Array = []
+	for cards: Array in unique:
+		var combo := combo_of(cards)
+		if combo["kind"] == shape["kind"] and combo["size"] == shape["size"]:
+			same.append(cards)
+		else:
+			other.append(cards)
+	return same + other
+
+
+## Every combination `hand` can make (as `combosOf` in `server/game/bot.ts`): each single, each
+## choice of suits for sets of one rank, and straights and runs of pairs with every suit choice
+## for the top rank.
+static func combos(hand: Array) -> Array:
+	var by_rank := {}
+	var cards: Array[int] = []
+	for card: Variant in hand:
+		cards.append(int(card))
+	cards.sort()
+	for card: int in cards:
+		if not by_rank.has(rank_of(card)):
+			by_rank[rank_of(card)] = []
+		(by_rank[rank_of(card)] as Array).append(card)
+	var out: Array = []
+	for card: int in cards:
+		out.append([card])
+	for rank: int in by_rank:
+		for count: int in [2, 3, 4]:
+			out.append_array(_choose(by_rank[rank], count))
+	for start in TWO:
+		for width: int in [1, 2]:
+			var run: Array = []
+			for rank in range(start, TWO):
+				var here: Array = by_rank.get(rank, [])
+				if here.size() < width:
+					break
+				if rank - start + 1 >= 3:
+					for top: Array in _choose(here, width):
+						out.append(run + top)
+				run.append_array(here.slice(0, width))
+	return out
+
+
+static func _choose(cards: Array, count: int) -> Array:
+	if count == 0:
+		return [[]]
+	var out: Array = []
+	for i in cards.size():
+		for rest: Array in _choose(cards.slice(i + 1), count - 1):
+			out.append([cards[i]] + rest)
+	return out
