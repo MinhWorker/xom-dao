@@ -22,6 +22,14 @@ export default defineManifest({
         { value: 'hard', label: 'Khó' },
       ],
     },
-    swap: { type: 'toggle', label: 'Đổi bên', default: false },
+    first: {
+      type: 'choice',
+      label: 'Đi trước',
+      default: 'loser',
+      choices: [
+        { value: 'loser', label: 'Người thua' },
+        { value: 'alternate', label: 'Lần lượt' },
+      ],
+    },
   },
 });

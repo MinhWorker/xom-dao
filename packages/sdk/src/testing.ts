@@ -5,7 +5,7 @@ import { seededRng } from './rng.js';
 /**
  * Plays a `Game` the way the server does, one event at a time, so a test reads like a script:
  *
- *   const game = testGame(new CaroGame(), ['a', 'b'], { options: { swap: true } });
+ *   const game = testGame(new CaroGame(), ['a', 'b'], { options: { first: 'alternate' } });
  *   game.send('a', 'place', { x: 4, y: 4 });          // throws if the game refuses it
  *   expect(game.error('b', 'place', { x: 4, y: 4 })).toBe('Ô này đã có quân');
  *   game.fireTimer();                                  // a ctx.setTimer went off

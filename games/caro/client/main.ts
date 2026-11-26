@@ -7,7 +7,7 @@ import {
   createGameBridge,
 } from '@xomdao/bridge';
 import { at, isDraw, keyOf, markOf, points } from '../server/game/board.js';
-import type { Point, State } from '../server/game/model.js';
+import type { Mark, Point, State } from '../server/game/model.js';
 import { BoardView, END_MS, type Ending, LINE_AT, MARK_MS, type Scene } from './render.js';
 import { Sounds } from './sound.js';
 
@@ -28,8 +28,8 @@ interface MatchPush {
 
 const canvas = document.getElementById('board') as HTMLCanvasElement;
 const table = document.querySelector('.table') as HTMLElement;
-const seatX = document.getElementById('seat-x') as HTMLElement;
-const seatO = document.getElementById('seat-o') as HTMLElement;
+const seatLeft = document.getElementById('seat-left') as HTMLElement;
+const seatRight = document.getElementById('seat-right') as HTMLElement;
 const toast = document.getElementById('toast') as HTMLElement;
 const view = new BoardView(canvas);
 const sounds = new Sounds();
@@ -42,6 +42,8 @@ let doneSentFor: string | null = null;
 let donePendingFor: string | null = null;
 let doneTimer = 0;
 let hidden = false;
+/** The player's mark in the last Match shown, to tell them when sides swap. */
+let lastMine: Mark | null = null;
 const scene: Scene = {
   state: null,
   pending: null,
@@ -121,7 +123,12 @@ function show(state: State | null, animate: boolean) {
   }
   scene.state = state;
   scene.pending = null;
-  scene.mine = state && markOf(state, me);
+  const mine = state && markOf(state, me);
+  if (mine && lastMine && mine !== lastMine && status === 'playing' && !state.last) {
+    say(mine === 'X' ? 'Đổi bên: bạn cầm X, đi trước' : 'Đổi bên: bạn cầm O');
+  }
+  if (mine) lastMine = mine;
+  scene.mine = mine;
   const ending = state && endingOf(state);
   if (ending) end(ending, animate);
   if (state) view.track(state.board, now, animate);
@@ -187,21 +194,35 @@ const myTurn = () =>
   scene.ending === null &&
   scene.state.turn === me;
 
+/** Fills the seat cards: the player's own on the left (X for a spectator), with the series score. */
 function updateSeats() {
   const state = scene.state;
+  const order = scene.mine === 'O' ? [1, 0] : [0, 1];
   for (const [el, index] of [
-    [seatX, 0],
-    [seatO, 1],
+    [seatLeft, order[0]],
+    [seatRight, order[1]],
   ] as const) {
-    const id = state?.players[index];
+    const id = state?.players[index as 0 | 1];
     el.hidden = !id;
     if (!id) {
       el.classList.remove('active', 'won');
       continue;
     }
-    (el.querySelector('.name') as HTMLElement).textContent =
-      seats.find((s) => s.id === id)?.name ?? '';
-    const won = !!state.line && at(state.board, state.line[0] as Point) === (index ? 'O' : 'X');
+    const mark = index ? 'O' : 'X';
+    el.dataset.mark = mark;
+    const seat = seats.find((s) => s.id === id);
+    (el.querySelector('.name') as HTMLElement).textContent = seat?.name ?? '';
+    showAvatar(el, seat);
+    const wins = el.querySelector('.wins') as HTMLElement;
+    const score = String(state.wins?.[id] ?? 0);
+    if (wins.dataset.player === id && wins.textContent !== score) {
+      wins.classList.remove('bump');
+      void wins.offsetWidth;
+      wins.classList.add('bump');
+    }
+    wins.dataset.player = id;
+    wins.textContent = score;
+    const won = !!state.line && at(state.board, state.line[0] as Point) === mark;
     el.classList.toggle(
       'active',
       won || (status === 'playing' && scene.ending === null && state.turn === id),
@@ -209,8 +230,34 @@ function updateSeats() {
     el.classList.toggle('won', won);
     (el.querySelector('.turn') as HTMLElement).textContent = won ? 'Thắng' : 'Đến lượt';
     el.classList.toggle('me', id === me);
+    (el.querySelector('.swap') as HTMLElement).hidden = !(id === me && canSwap());
     (el.querySelector('.who') as HTMLElement).textContent = id === me ? 'Bạn' : '';
   }
+}
+
+/** The seat's account picture (the computer's own for a bot), its initial until it loads. */
+function showAvatar(card: HTMLElement, seat: BridgeSeat | undefined) {
+  (card.querySelector('.initial') as HTMLElement).textContent = (
+    seat?.name[0] ?? '?'
+  ).toUpperCase();
+  const img = card.querySelector('.avatar img') as HTMLImageElement;
+  const picture = seat?.bot ? 'bot' : seat?.avatar;
+  const src = picture ? `/avatars/${encodeURIComponent(picture)}.webp` : '';
+  if (img.dataset.src === src) return;
+  img.dataset.src = src;
+  img.hidden = true;
+  img.classList.toggle('bot', picture === 'bot');
+  if (src) img.src = src;
+  else img.removeAttribute('src');
+}
+
+for (const img of document.querySelectorAll<HTMLImageElement>('.avatar img')) {
+  img.addEventListener('load', () => {
+    img.hidden = false;
+  });
+  img.addEventListener('error', () => {
+    img.hidden = true;
+  });
 }
 
 let raf = 0;
@@ -266,6 +313,31 @@ canvas.addEventListener('pointerdown', (event) => {
   });
 });
 
+/** Before the first mark, the player may hand the other side X or take it, with no question. */
+const canSwap = () =>
+  status === 'playing' &&
+  !!scene.state &&
+  !scene.state.last &&
+  !scene.pending &&
+  scene.ending === null &&
+  scene.mine !== null;
+
+for (const button of document.querySelectorAll<HTMLButtonElement>('.swap')) {
+  button.addEventListener('click', () => {
+    if (!canSwap()) return;
+    button.disabled = true;
+    bridge
+      .send('swap', {})
+      .catch((error: unknown) => {
+        const refusal = error instanceof BridgeError ? error.code : '';
+        if (refusal && refusal !== BRIDGE_RESET && refusal !== BRIDGE_UNAVAILABLE) say(refusal);
+      })
+      .finally(() => {
+        button.disabled = false;
+      });
+  });
+}
+
 let toastTimer = 0;
 /** Shows the server's refusal of a move. */
 function say(message: string) {
@@ -283,8 +355,8 @@ function layout() {
     table.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
   const portrait = matchMedia('(orientation: portrait)').matches;
   const [w, h] = portrait
-    ? [width, height - 2 * (seatX.offsetHeight + 12)]
-    : [width - 2 * (Math.max(seatX.offsetWidth, 120) + 12), height];
+    ? [width, height - 2 * (seatLeft.offsetHeight + 12)]
+    : [width - 2 * (Math.max(seatLeft.offsetWidth, 120) + 12), height];
   view.resize(Math.max(120, Math.floor(w)), Math.max(120, Math.floor(h)));
   frame();
 }

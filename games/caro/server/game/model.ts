@@ -41,6 +41,8 @@ export interface State {
   last: Point | null;
   /** The five that won, `null` while playing or after a draw. */
   line: Point[] | null;
+  /** Matches each player won in this Room since the seats last changed, this one included. */
+  wins: Record<PlayerId, number>;
 }
 
 export type Options = ManifestOptions<typeof manifest>;
