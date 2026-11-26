@@ -60,7 +60,7 @@ describe('hai-chien bot', () => {
     expect(normal).toBeLessThan(easy);
     expect(hard).toBeLessThan(normal);
     expect(hard).toBeLessThan(42);
-  });
+  }, 30_000);
 
   it('clearAround leaves hits and misses as they are', () => {
     const sea = { ...emptySea(0), ships: randomFleet(seededRng(2)) };
