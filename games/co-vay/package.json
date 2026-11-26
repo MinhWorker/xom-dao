@@ -1,0 +1,30 @@
+{
+  "name": "@xomdao/game-co-vay",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": {
+      "xomdao-source": "./server/index.ts",
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs && node ../../tools/hub-assets/dist/cli.js",
+    "dev": "vite build --watch --emptyOutDir false",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "simulate": "tsx --conditions=xomdao-source sim/simulate.ts"
+  },
+  "dependencies": {
+    "@xomdao/bridge": "*",
+    "@xomdao/sdk": "*",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@xomdao/hub-assets": "*",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}

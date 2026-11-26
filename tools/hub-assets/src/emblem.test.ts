@@ -54,7 +54,7 @@ describe("the Games' manifests and Emblems", () => {
 
   it('fill every Island, with the soon Games', async () => {
     const manifests = await Promise.all(ids.map(load));
-    expect(manifests.filter((m) => m.status === 'soon')).toHaveLength(10);
+    expect(manifests.filter((m) => m.status === 'soon')).toHaveLength(6);
     expect(new Set(manifests.map((m) => m.island))).toEqual(new Set(ISLANDS));
   });
 

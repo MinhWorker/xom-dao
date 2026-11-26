@@ -1,0 +1,31 @@
+{
+  "name": "@xomdao/game-hai-chien",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": {
+      "xomdao-source": "./server/index.ts",
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.server.build.json --incremental false && node ../../scripts/game-version.mjs && node ../../tools/hub-assets/dist/cli.js",
+    "dev": "vite build --watch --emptyOutDir false",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@xomdao/bridge": "*",
+    "@xomdao/sdk": "*",
+    "three": "^0.187.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "@xomdao/hub-assets": "*",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
