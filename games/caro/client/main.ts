@@ -210,8 +210,9 @@ function updateSeats() {
     }
     const mark = index ? 'O' : 'X';
     el.dataset.mark = mark;
-    (el.querySelector('.name') as HTMLElement).textContent =
-      seats.find((s) => s.id === id)?.name ?? '';
+    const seat = seats.find((s) => s.id === id);
+    (el.querySelector('.name') as HTMLElement).textContent = seat?.name ?? '';
+    showAvatar(el, seat);
     const wins = el.querySelector('.wins') as HTMLElement;
     const score = String(state.wins?.[id] ?? 0);
     if (wins.dataset.player === id && wins.textContent !== score) {
@@ -232,6 +233,31 @@ function updateSeats() {
     (el.querySelector('.swap') as HTMLElement).hidden = !(id === me && canSwap());
     (el.querySelector('.who') as HTMLElement).textContent = id === me ? 'Bạn' : '';
   }
+}
+
+/** The seat's account picture (the computer's own for a bot), its initial until it loads. */
+function showAvatar(card: HTMLElement, seat: BridgeSeat | undefined) {
+  (card.querySelector('.initial') as HTMLElement).textContent = (
+    seat?.name[0] ?? '?'
+  ).toUpperCase();
+  const img = card.querySelector('.avatar img') as HTMLImageElement;
+  const picture = seat?.bot ? 'bot' : seat?.avatar;
+  const src = picture ? `/avatars/${encodeURIComponent(picture)}.webp` : '';
+  if (img.dataset.src === src) return;
+  img.dataset.src = src;
+  img.hidden = true;
+  img.classList.toggle('bot', picture === 'bot');
+  if (src) img.src = src;
+  else img.removeAttribute('src');
+}
+
+for (const img of document.querySelectorAll<HTMLImageElement>('.avatar img')) {
+  img.addEventListener('load', () => {
+    img.hidden = false;
+  });
+  img.addEventListener('error', () => {
+    img.hidden = true;
+  });
 }
 
 let raf = 0;
