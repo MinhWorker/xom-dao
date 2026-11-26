@@ -28,8 +28,8 @@ interface MatchPush {
 
 const canvas = document.getElementById('board') as HTMLCanvasElement;
 const table = document.querySelector('.table') as HTMLElement;
-const seatX = document.getElementById('seat-x') as HTMLElement;
-const seatO = document.getElementById('seat-o') as HTMLElement;
+const seatLeft = document.getElementById('seat-left') as HTMLElement;
+const seatRight = document.getElementById('seat-right') as HTMLElement;
 const toast = document.getElementById('toast') as HTMLElement;
 const view = new BoardView(canvas);
 const sounds = new Sounds();
@@ -187,21 +187,34 @@ const myTurn = () =>
   scene.ending === null &&
   scene.state.turn === me;
 
+/** Fills the seat cards: the player's own on the left (X for a spectator), with the series score. */
 function updateSeats() {
   const state = scene.state;
+  const order = scene.mine === 'O' ? [1, 0] : [0, 1];
   for (const [el, index] of [
-    [seatX, 0],
-    [seatO, 1],
+    [seatLeft, order[0]],
+    [seatRight, order[1]],
   ] as const) {
-    const id = state?.players[index];
+    const id = state?.players[index as 0 | 1];
     el.hidden = !id;
     if (!id) {
       el.classList.remove('active', 'won');
       continue;
     }
+    const mark = index ? 'O' : 'X';
+    el.dataset.mark = mark;
     (el.querySelector('.name') as HTMLElement).textContent =
       seats.find((s) => s.id === id)?.name ?? '';
-    const won = !!state.line && at(state.board, state.line[0] as Point) === (index ? 'O' : 'X');
+    const wins = el.querySelector('.wins') as HTMLElement;
+    const score = String(state.wins?.[id] ?? 0);
+    if (wins.dataset.player === id && wins.textContent !== score) {
+      wins.classList.remove('bump');
+      void wins.offsetWidth;
+      wins.classList.add('bump');
+    }
+    wins.dataset.player = id;
+    wins.textContent = score;
+    const won = !!state.line && at(state.board, state.line[0] as Point) === mark;
     el.classList.toggle(
       'active',
       won || (status === 'playing' && scene.ending === null && state.turn === id),
@@ -283,8 +296,8 @@ function layout() {
     table.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
   const portrait = matchMedia('(orientation: portrait)').matches;
   const [w, h] = portrait
-    ? [width, height - 2 * (seatX.offsetHeight + 12)]
-    : [width - 2 * (Math.max(seatX.offsetWidth, 120) + 12), height];
+    ? [width, height - 2 * (seatLeft.offsetHeight + 12)]
+    : [width - 2 * (Math.max(seatLeft.offsetWidth, 120) + 12), height];
   view.resize(Math.max(120, Math.floor(w)), Math.max(120, Math.floor(h)));
   frame();
 }

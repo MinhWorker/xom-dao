@@ -48,8 +48,8 @@ describe('caro', () => {
     const game = play([...rows(4), [6, 4]]);
     expect(game.result).toEqual({
       seats: [
-        { player: 'a', place: 1 },
-        { player: 'b', place: 2 },
+        { player: 'a', place: 1, score: 1 },
+        { player: 'b', place: 2, score: 0 },
       ],
     });
     expect(game.state.line).toEqual([2, 3, 4, 5, 6].map((x) => ({ x, y: 4 })));
@@ -110,18 +110,35 @@ describe('caro', () => {
     const game = play(rows(2)).leave('a');
     expect(game.result).toEqual({
       seats: [
-        { player: 'a', place: 2 },
-        { player: 'b', place: 1 },
+        { player: 'a', place: 2, score: 0 },
+        { player: 'b', place: 1, score: 1 },
       ],
     });
     expect(game.error('b', 'place', { x: 7, y: 7 })).toBe('Ván đã kết thúc');
   });
 
+  it('keeps the series score across rematches; a draw scores nobody', () => {
+    const game = play([...rows(4), [6, 4]]);
+    expect(game.state.wins).toEqual({ a: 1, b: 0 });
+    game.newMatch();
+    expect(game.state.wins).toEqual({ a: 1, b: 0 });
+    playToDraw(game);
+    expect(game.result?.seats).toEqual([
+      { player: 'a', place: 1, score: 1 },
+      { player: 'b', place: 1, score: 0 },
+    ]);
+    game.newMatch();
+    const x = game.state.players[0];
+    for (const [px, py] of [...rows(4), [6, 4]])
+      game.send(game.state.turn, 'place', { x: px, y: py });
+    expect(game.state.wins[x]).toBe(x === 'a' ? 2 : 1);
+  });
+
   it('lets the second seat play X with "Đổi bên"', () => {
     expect(play([], { swap: true }).state).toMatchObject({ players: ['b', 'a'], turn: 'b' });
     expect(play([...rows(4), [6, 4]], { swap: true }).result?.seats).toEqual([
-      { player: 'a', place: 2 },
-      { player: 'b', place: 1 },
+      { player: 'a', place: 2, score: 0 },
+      { player: 'b', place: 1, score: 1 },
     ]);
   });
 

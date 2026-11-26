@@ -81,7 +81,7 @@ body::after {
   --ink: var(--ink-o);
 }
 
-#seat-o {
+#seat-right {
   transform: rotate(1.5deg);
 }
 
@@ -117,6 +117,35 @@ body::after {
 .seat[data-mark="O"] .glyph {
   color: var(--ink-o);
   --glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='7.5' stroke='black' stroke-width='3.2' fill='none'/%3E%3C/svg%3E");
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wins {
+  min-width: 1ch;
+  color: var(--ink);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.wins:empty {
+  display: none;
+}
+
+.wins.bump {
+  animation: bump 600ms ease-out;
+}
+
+@keyframes bump {
+  30% {
+    scale: 1.45;
+  }
 }
 
 .name {
@@ -231,7 +260,8 @@ body::after {
     transition: none;
   }
 
-  .turn::before {
+  .turn::before,
+  .wins.bump {
     animation: none;
   }
 }
