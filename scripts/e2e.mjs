@@ -220,8 +220,14 @@ async function caroAfterMatch({ a, b, code }) {
     if (new URL(page.url()).pathname !== `/room/${code}`)
       throw new Error('Playing again left the Room');
   }
-  await b.frameLocator('iframe').locator('.seat.me[data-mark="X"] .wins', { hasText: '0' }).waitFor();
-  await a.frameLocator('iframe').locator('.seat.me[data-mark="O"] .wins', { hasText: '1' }).waitFor();
+  await b
+    .frameLocator('iframe')
+    .locator('.seat.me[data-mark="X"] .wins', { hasText: '0' })
+    .waitFor();
+  await a
+    .frameLocator('iframe')
+    .locator('.seat.me[data-mark="O"] .wins', { hasText: '1' })
+    .waitFor();
   await markCaro(b, { x: 4, y: 4 });
   await markCaro(a, { x: 4, y: 3 });
 
