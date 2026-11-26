@@ -27,6 +27,7 @@
     "@xomdao/game-caro": "*",
     "@xomdao/game-co-ty-phu": "*",
     "@xomdao/game-co-vay": "*",
+    "@xomdao/game-co-vua": "*",
     "@xomdao/game-dat-bom": "*",
     "@xomdao/game-hai-chien": "*",
     "@xomdao/game-tien-len": "*",

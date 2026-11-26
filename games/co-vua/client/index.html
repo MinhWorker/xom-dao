@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#1f1812" />
+    <title>Cờ Vua</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="table">
+      <section class="side" id="side-me">
+        <section class="seat" id="seat-me">
+          <span class="avatar" aria-hidden="true"><span class="initial"></span><img alt="" draggable="false" hidden /></span>
+          <span class="info"><span class="name"></span><span class="who"></span></span>
+          <span class="stone" aria-hidden="true"></span>
+          <span class="wins"></span>
+          <span class="tally"></span>
+          <span class="turn">Đến lượt</span>
+          <span class="offer" hidden>Cầu hoà</span>
+        </section>
+        <div class="actions" id="actions">
+          <button class="act" id="draw" type="button" hidden>Cầu hoà</button>
+          <button class="act" id="decline" type="button" hidden>Từ chối</button>
+          <button class="act" id="resign" type="button" hidden>Xin thua</button>
+        </div>
+      </section>
+      <canvas id="board" aria-label="Bàn cờ"></canvas>
+      <section class="side" id="side-them">
+        <section class="seat" id="seat-them">
+          <span class="avatar" aria-hidden="true"><span class="initial"></span><img alt="" draggable="false" hidden /></span>
+          <span class="info"><span class="name"></span><span class="who"></span></span>
+          <span class="stone" aria-hidden="true"></span>
+          <span class="wins"></span>
+          <span class="tally"></span>
+          <span class="turn">Đến lượt</span>
+          <span class="offer" hidden>Cầu hoà</span>
+        </section>
+      </section>
+    </main>
+    <p class="status" id="status" role="status"></p>
+    <p class="banner" id="banner" aria-live="polite"></p>
+    <p class="toast" id="toast" role="status"></p>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

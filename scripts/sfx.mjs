@@ -256,7 +256,48 @@ function rattle(count, seed) {
   return out;
 }
 
+
+/** A wooden piece set on a board: a soft felt thud and a short knock; `weight` makes it deeper. */
+function woodPiece(seed, pitch = 1, weight = 1) {
+  const thud = env(biquad(noise(0.3, seed), 'lowpass', 500 * pitch), 0.001, 0.025 * weight);
+  const knockBody = knock(520 * pitch, { q: 4, decay: 0.035 * weight, click: 0.12, seed: seed + 3, seconds: 0.3 });
+  const low = env(osc(0.3, 150 * pitch), 0.001, 0.03 * weight);
+  return mix(mix(mix(buffer(0.3), thud, 0, 1.4), knockBody, 0, 0.9), low, 0, 0.5 * weight);
+}
+
+/** Pieces for a chess-like game: every move, capture and result. */
+function boardGame(pitch, weight) {
+  return {
+    move: () => finish(reverb(woodPiece(51, pitch, weight), { wet: 0.1, size: 0.6 }), 0.75),
+    other: () => finish(reverb(woodPiece(52, pitch * 0.93, weight), { wet: 0.1, size: 0.6 }), 0.65),
+    capture: () => {
+      const out = buffer(0.5);
+      mix(out, woodPiece(53, pitch * 1.08, weight), 0, 0.8);
+      mix(out, woodPiece(54, pitch * 0.9, weight * 1.2), 0.05, 1);
+      return finish(reverb(out, { wet: 0.14, size: 0.6 }), 0.85);
+    },
+    castle: () => {
+      const out = buffer(0.5);
+      mix(out, woodPiece(55, pitch, weight), 0, 1);
+      mix(out, woodPiece(56, pitch * 0.95, weight), 0.11, 0.85);
+      return finish(reverb(out, { wet: 0.12, size: 0.6 }), 0.75);
+    },
+    check: () => finish(reverb(arpeggio(880, [[0, 0], [-2, 0.07]], 0.8, 0.18), { wet: 0.25 }), 0.4),
+    promote: () =>
+      finish(reverb(mix(woodPiece(57, pitch, weight), arpeggio(659.25, [[0, 0.04], [7, 0.12], [12, 0.2]], 1.1, 0.35), 0, 0.5), { wet: 0.25 }), 0.7),
+    pick: () => finish(knock(1300 * pitch, { q: 5, decay: 0.012, click: 0.15, seed: 58, seconds: 0.08 }), 0.25),
+    offer: () => finish(reverb(arpeggio(587.33, [[0, 0], [5, 0.14]], 1.0, 0.35), { wet: 0.3 }), 0.45),
+    refused: () => finish(env(biquad(osc(0.2, 140, 'square'), 'lowpass', 600), 0.005, 0.06), 0.35),
+    win: () =>
+      finish(reverb(arpeggio(523.25, [[0, 0], [4, 0.12], [7, 0.24], [12, 0.4, 1.2]], 2.0, 0.7), { wet: 0.3 }), 0.65),
+    lose: () => finish(reverb(arpeggio(392, [[3, 0], [0, 0.22], [-4, 0.46, 1.1]], 2.0, 0.7), { wet: 0.35 }), 0.55),
+    draw: () => finish(reverb(arpeggio(440, [[0, 0], [5, 0.18], [0, 0.36, 0.8]], 1.6, 0.5), { wet: 0.3 }), 0.5),
+  };
+}
+
 const SOUNDS = {
+  'co-vua': boardGame(1, 1),
+  'co-tuong': boardGame(0.8, 1.5),
   'co-vay': {
     place: () => finish(reverb(stoneClack(1), { wet: 0.12, size: 0.6 }), 0.8),
     other: () => finish(reverb(stoneClack(2, 0.92), { wet: 0.12, size: 0.6 }), 0.7),
