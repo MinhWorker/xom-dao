@@ -7,7 +7,7 @@ import {
   createGameBridge,
 } from '@xomdao/bridge';
 import { at, isDraw, keyOf, markOf, points } from '../server/game/board.js';
-import type { Point, State } from '../server/game/model.js';
+import type { Mark, Point, State } from '../server/game/model.js';
 import { BoardView, END_MS, type Ending, LINE_AT, MARK_MS, type Scene } from './render.js';
 import { Sounds } from './sound.js';
 
@@ -42,6 +42,8 @@ let doneSentFor: string | null = null;
 let donePendingFor: string | null = null;
 let doneTimer = 0;
 let hidden = false;
+/** The player's mark in the last Match shown, to tell them when sides swap. */
+let lastMine: Mark | null = null;
 const scene: Scene = {
   state: null,
   pending: null,
@@ -121,7 +123,12 @@ function show(state: State | null, animate: boolean) {
   }
   scene.state = state;
   scene.pending = null;
-  scene.mine = state && markOf(state, me);
+  const mine = state && markOf(state, me);
+  if (mine && lastMine && mine !== lastMine && status === 'playing' && !state.last) {
+    say(mine === 'X' ? 'Đổi bên: bạn cầm X, đi trước' : 'Đổi bên: bạn cầm O');
+  }
+  if (mine) lastMine = mine;
+  scene.mine = mine;
   const ending = state && endingOf(state);
   if (ending) end(ending, animate);
   if (state) view.track(state.board, now, animate);
@@ -222,6 +229,7 @@ function updateSeats() {
     el.classList.toggle('won', won);
     (el.querySelector('.turn') as HTMLElement).textContent = won ? 'Thắng' : 'Đến lượt';
     el.classList.toggle('me', id === me);
+    (el.querySelector('.swap') as HTMLElement).hidden = !(id === me && canSwap());
     (el.querySelector('.who') as HTMLElement).textContent = id === me ? 'Bạn' : '';
   }
 }
@@ -278,6 +286,31 @@ canvas.addEventListener('pointerdown', (event) => {
     }
   });
 });
+
+/** Before the first mark, the player may hand the other side X or take it, with no question. */
+const canSwap = () =>
+  status === 'playing' &&
+  !!scene.state &&
+  !scene.state.last &&
+  !scene.pending &&
+  scene.ending === null &&
+  scene.mine !== null;
+
+for (const button of document.querySelectorAll<HTMLButtonElement>('.swap')) {
+  button.addEventListener('click', () => {
+    if (!canSwap()) return;
+    button.disabled = true;
+    bridge
+      .send('swap', {})
+      .catch((error: unknown) => {
+        const refusal = error instanceof BridgeError ? error.code : '';
+        if (refusal && refusal !== BRIDGE_RESET && refusal !== BRIDGE_UNAVAILABLE) say(refusal);
+      })
+      .finally(() => {
+        button.disabled = false;
+      });
+  });
+}
 
 let toastTimer = 0;
 /** Shows the server's refusal of a move. */

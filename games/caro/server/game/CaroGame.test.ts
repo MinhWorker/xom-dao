@@ -51,6 +51,7 @@ describe('caro', () => {
         { player: 'a', place: 1, score: 1 },
         { player: 'b', place: 2, score: 0 },
       ],
+      stats: [{ player: 'a', name: 'first', amount: 1 }],
     });
     expect(game.state.line).toEqual([2, 3, 4, 5, 6].map((x) => ({ x, y: 4 })));
     expect(game.error('b', 'place', { x: 7, y: 7 })).toBe('Ván đã kết thúc');
@@ -113,6 +114,7 @@ describe('caro', () => {
         { player: 'a', place: 2, score: 0 },
         { player: 'b', place: 1, score: 1 },
       ],
+      stats: [{ player: 'a', name: 'first', amount: 1 }],
     });
     expect(game.error('b', 'place', { x: 7, y: 7 })).toBe('Ván đã kết thúc');
   });
@@ -134,12 +136,39 @@ describe('caro', () => {
     expect(game.state.wins[x]).toBe(x === 'a' ? 2 : 1);
   });
 
-  it('lets the second seat play X with "Đổi bên"', () => {
-    expect(play([], { swap: true }).state).toMatchObject({ players: ['b', 'a'], turn: 'b' });
-    expect(play([...rows(4), [6, 4]], { swap: true }).result?.seats).toEqual([
-      { player: 'a', place: 2, score: 0 },
-      { player: 'b', place: 1, score: 1 },
-    ]);
+  it('gives X to the loser of the last Match, and swaps sides after a draw', () => {
+    const game = play([...rows(4), [6, 4]]);
+    game.newMatch();
+    expect(game.state).toMatchObject({ players: ['b', 'a'], turn: 'b' });
+    playToDraw(game);
+    game.newMatch();
+    expect(game.state).toMatchObject({ players: ['a', 'b'], turn: 'a' });
+  });
+
+  it('lets either player swap sides before the first mark, at once', () => {
+    const game = play([]);
+    game.send('b', 'swap', {});
+    expect(game.state).toMatchObject({ players: ['b', 'a'], turn: 'b' });
+    game.send('b', 'swap', {});
+    expect(game.state).toMatchObject({ players: ['a', 'b'], turn: 'a' });
+    game.send('a', 'place', { x: 4, y: 4 });
+    expect(game.error('b', 'swap', {})).toBe('Đã có nước đi, không đổi bên được');
+  });
+
+  it('plays first for the computer once a player hands it X', () => {
+    const game = play([], {}, ['b']);
+    game.send('a', 'swap', {});
+    expect(game.bot('b')).toMatchObject({ event: 'place' });
+  });
+
+  it('swaps sides every Match with "Lần lượt", whoever wins', () => {
+    const game = play([...rows(4), [6, 4]], { first: 'alternate' });
+    game.newMatch();
+    expect(game.state.players).toEqual(['b', 'a']);
+    for (const [x, y] of [...rows(4), [6, 4]]) game.send(game.state.turn, 'place', { x, y });
+    expect(game.result?.seats.find((s) => s.place === 1)?.player).toBe('b');
+    game.newMatch();
+    expect(game.state.players).toEqual(['a', 'b']);
   });
 
   it('plays the computer’s seat on its turn', () => {
@@ -153,8 +182,9 @@ describe('caro', () => {
   });
 
   it('lets the computer think for a moment, a little longer once the board fills', () => {
-    const swapped = play([], { swap: true }, ['b']);
-    const first = swapped.botDelay('b');
+    const lost = play([...rows(4), [6, 4]], {}, ['b']).newMatch();
+    expect(lost.state.turn).toBe('b');
+    const first = lost.botDelay('b');
     expect(first).toBeGreaterThanOrEqual(450);
     expect(first).toBeLessThan(750);
 

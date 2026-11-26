@@ -4,6 +4,7 @@ import {
   Game,
   type GameContext,
   type LeaveContext,
+  type MatchResult,
   type PlayerId,
   type StartContext,
 } from '@xomdao/sdk';
@@ -12,6 +13,25 @@ import { at, grow, inside, isDraw, markOf, newBoard, place, winningLine, winsAt 
 import { botMove } from './bot.js';
 import { MAX_SIDE, type Mark, type Options, type Point, type State } from './model.js';
 
+/** The stat that marks who played X, which the next Match reads back from `ctx.lastResult`. */
+const FIRST = 'first';
+
+/**
+ * Who plays X: the first seat in a new series; then the loser of the last Match ("Người thua")
+ * or each in turn ("Lần lượt"); after a draw, whoever played O.
+ */
+export function xOf(
+  ids: readonly [PlayerId, PlayerId],
+  { first }: Options,
+  last: MatchResult | null,
+): PlayerId {
+  if (!last) return ids[0];
+  const loser = last.seats.find((seat) => seat.place > 1)?.player;
+  if (first === 'loser' && loser && ids.includes(loser)) return loser;
+  const before = last.stats?.find((stat) => stat.name === FIRST)?.player;
+  return ids.find((id) => id !== before) ?? ids[0];
+}
+
 /**
  * Ends the Match won by `winner` (`null`: a draw). Each seat's score is the Matches it won in
  * the series, which the next Match reads back from `ctx.lastResult`.
@@ -19,6 +39,7 @@ import { MAX_SIDE, type Mark, type Options, type Point, type State } from './mod
 function won(ctx: GameContext<State, Options>, winner: PlayerId | null) {
   const wins = { ...ctx.state.wins };
   if (winner) wins[winner] = (wins[winner] ?? 0) + 1;
+  ctx.stat(ctx.state.players[0], FIRST);
   ctx.finish(
     ctx.players.map((seat) => (!winner || seat.id === winner ? 1 : 2)),
     { scores: ctx.players.map((seat) => wins[seat.id] ?? 0) },
@@ -33,12 +54,13 @@ const coord = z
   .max(MAX_SIDE * 2);
 
 export class CaroGame extends Game<State, Options> {
-  readonly events = { place: z.object({ x: coord, y: coord }) };
+  readonly events = { place: z.object({ x: coord, y: coord }), swap: z.object({}) };
 
-  /** X starts: the first seat, or the second with "Đổi bên". */
+  /** X starts (see `xOf`); each seat's wins so far come from the last Match's scores. */
   onStart({ players, options, lastResult }: StartContext<Options>): State {
-    const [first, second] = players.map((p) => p.id) as [string, string];
-    const [x, o] = options.swap ? [second, first] : [first, second];
+    const ids = players.map((p) => p.id) as [string, string];
+    const x = xOf(ids, options, lastResult);
+    const o = ids.find((id) => id !== x) as string;
     const wins = Object.fromEntries(
       players.map(({ id }) => [id, lastResult?.seats.find((s) => s.player === id)?.score ?? 0]),
     );
@@ -69,6 +91,13 @@ export class CaroGame extends Game<State, Options> {
       if (isDraw(board)) won(ctx, null);
     }
     return { ...state, board, turn: mark === 'X' ? o : x, last: p, line, wins };
+  }
+
+  /** Before the first mark, either player swaps X and O at once; the new X starts. */
+  onSwap({ state, reject }: EventContext<State, Record<string, never>, Options>): State {
+    if (state.last) reject('Đã có nước đi, không đổi bên được');
+    const [x, o] = state.players;
+    return { ...state, players: [o, x], turn: o };
   }
 
   /** A player left mid-Match: it stops there and the one who stays wins. */

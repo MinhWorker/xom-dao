@@ -201,6 +201,27 @@ body::after {
   animation: none;
 }
 
+.swap {
+  padding: 6px 12px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.swap:active {
+  background: color-mix(in srgb, var(--ink) 15%, transparent);
+}
+
+.swap[hidden] {
+  display: none;
+}
+
 .paused *,
 .paused *::before {
   animation-play-state: paused;
