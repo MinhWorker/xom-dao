@@ -212,7 +212,7 @@ async function playCaro({ alice, a, b }) {
 async function caroAfterMatch({ a, b, code }) {
   const results = (page) => page.getByText('Kết quả', { exact: true });
 
-  // Playing again keeps the Room: both leave Results for a new Match with Alice as X again.
+  // Playing again keeps the Room: both leave Results for a new Match where Bob, who lost, is X.
   await a.getByRole('button', { name: 'Chơi lại' }).click();
   await results(a).waitFor({ state: 'hidden' });
   await results(b).waitFor({ state: 'hidden' });
@@ -220,7 +220,10 @@ async function caroAfterMatch({ a, b, code }) {
     if (new URL(page.url()).pathname !== `/room/${code}`)
       throw new Error('Playing again left the Room');
   }
-  await markCaro(a, { x: 4, y: 4 });
+  await b.frameLocator('iframe').locator('.seat.me[data-mark="X"] .wins', { hasText: '0' }).waitFor();
+  await a.frameLocator('iframe').locator('.seat.me[data-mark="O"] .wins', { hasText: '1' }).waitFor();
+  await markCaro(b, { x: 4, y: 4 });
+  await markCaro(a, { x: 4, y: 3 });
 
   // Bob reloads mid-Match: he is back in his seat, his Game redraws the board and his turn.
   b.once('dialog', (dialog) => void dialog.accept());
@@ -228,7 +231,7 @@ async function caroAfterMatch({ a, b, code }) {
   await b.frameLocator('iframe').locator('.seat.me.active').waitFor({ timeout: 30000 });
   await a.getByText('Bob đã kết nối lại').waitFor();
   await b.screenshot({ path: resolve(shots, 'caro-7-rejoined.png') });
-  await markCaro(b, { x: 4, y: 3 });
+  await markCaro(b, { x: 5, y: 4 });
 
   // The back button asks before leaving; staying keeps the Match.
   // (A test page's first entries can be skipped by back, so it goes back over one of its own.)
@@ -240,7 +243,7 @@ async function caroAfterMatch({ a, b, code }) {
   await ask.waitFor();
   await ask.getByRole('button', { name: 'Ở lại' }).click();
   await ask.waitFor({ state: 'hidden' });
-  await markCaro(a, { x: 5, y: 4 });
+  await markCaro(a, { x: 5, y: 3 });
 
   // Bob leaves from the menu, after saying yes: Alice is told, the Match stops and she wins.
   await b.getByRole('button', { name: 'Menu ván' }).click();

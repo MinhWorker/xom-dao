@@ -245,6 +245,7 @@ body::after {
   background: rgb(20 14 10 / 0.9);
   color: var(--paper);
   font-size: 14px;
+  white-space: nowrap;
   border-radius: 3px;
   opacity: 0;
   transition: opacity 200ms;
@@ -273,6 +274,10 @@ body::after {
   .glyph {
     width: 28px;
     height: 28px;
+  }
+
+  .toast {
+    bottom: max(88px, calc(env(safe-area-inset-bottom) + 76px));
   }
 }
 
