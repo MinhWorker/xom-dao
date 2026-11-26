@@ -87,14 +87,15 @@ class Pool {
     g.setAttribute('position', new BufferAttribute(this.position, 3));
     g.setAttribute('size', new BufferAttribute(this.size, 1));
     g.setAttribute('tint', new BufferAttribute(this.tint, 4));
-    const material = (this.material = new ShaderMaterial({
+    const material = new ShaderMaterial({
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
       uniforms: { scale: { value: 600 }, soft: { value: additive ? 1.6 : 1.1 } },
       transparent: true,
       depthWrite: false,
       blending: additive ? AdditiveBlending : NormalBlending,
-    }));
+    });
+    this.material = material;
     this.points = new Points(g, material);
     this.points.frustumCulled = false;
     this.points.renderOrder = additive ? 3 : 2;
@@ -245,7 +246,16 @@ export class Effects {
 
   /** A blast of fire, smoke and sparks; `scale` 1 for a hit, more for a ship going down. */
   blast(x: number, y: number, z: number, scale = 1) {
-    this.glow.add({ x, y: y + 0.2, z, life: 0.35, size: 2.2 * scale, grow: 3.4 * scale, color: FLASH, alpha: 0.9 });
+    this.glow.add({
+      x,
+      y: y + 0.2,
+      z,
+      life: 0.35,
+      size: 2.2 * scale,
+      grow: 3.4 * scale,
+      color: FLASH,
+      alpha: 0.9,
+    });
     for (let i = 0; i < 34 * scale; i++) {
       this.glow.add({
         x: x + this.r() * 0.15,
@@ -333,7 +343,17 @@ export class Effects {
 
   /** The glowing trail a shell leaves behind it. */
   trail(x: number, y: number, z: number) {
-    this.glow.add({ x, y, z, life: 0.28, size: 0.32, grow: 0.05, color: FIRE, to: EMBER, alpha: 0.9 });
+    this.glow.add({
+      x,
+      y,
+      z,
+      life: 0.28,
+      size: 0.32,
+      grow: 0.05,
+      color: FIRE,
+      to: EMBER,
+      alpha: 0.9,
+    });
     this.haze.add({ x, y, z, life: 0.7, size: 0.12, grow: 0.45, color: STEAM, alpha: 0.25 });
   }
 }

@@ -78,8 +78,18 @@ function part(geometry: BufferGeometry, material: Material, x: number, y: number
 /** A gun turret with `barrels` guns pointing towards the bow (`dir` 1) or the stern (-1). */
 function turret(look: ShipLook, x: number, y: number, dir: 1 | -1, scale = 1, barrels = 2) {
   const g = new Group();
-  const base = part(new CylinderGeometry(0.13 * scale, 0.15 * scale, 0.09 * scale, 8), look.trim, 0, 0);
-  const top = part(new BoxGeometry(0.2 * scale, 0.07 * scale, 0.2 * scale), look.hull, 0.01 * dir, 0.07 * scale);
+  const base = part(
+    new CylinderGeometry(0.13 * scale, 0.15 * scale, 0.09 * scale, 8),
+    look.trim,
+    0,
+    0,
+  );
+  const top = part(
+    new BoxGeometry(0.2 * scale, 0.07 * scale, 0.2 * scale),
+    look.hull,
+    0.01 * dir,
+    0.07 * scale,
+  );
   g.add(base, top);
   for (let i = 0; i < barrels; i++) {
     const barrel = part(
@@ -114,7 +124,9 @@ function carrier(look: ShipLook, length: number) {
   const stripe = part(new BoxGeometry(length * 0.86, 0.006, 0.025), look.glass, 0.05, 0.297);
   g.add(stripe);
   for (let i = 0; i < 6; i++) {
-    g.add(part(new BoxGeometry(0.12, 0.006, 0.015), look.deck, -length * 0.38 + i * 0.5, 0.297, -0.18));
+    g.add(
+      part(new BoxGeometry(0.12, 0.006, 0.015), look.deck, -length * 0.38 + i * 0.5, 0.297, -0.18),
+    );
   }
   const island = new Group();
   island.add(part(new BoxGeometry(0.55, 0.32, 0.16), look.hull, 0, 0.16));

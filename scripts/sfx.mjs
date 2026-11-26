@@ -33,7 +33,8 @@ function mix(a, b, at = 0, gain = 1) {
 function env(out, attack, decay, hold = 0) {
   for (let i = 0; i < out.length; i++) {
     const t = i / RATE;
-    const g = t < attack ? t / attack : t < attack + hold ? 1 : Math.exp(-(t - attack - hold) / decay);
+    const g =
+      t < attack ? t / attack : t < attack + hold ? 1 : Math.exp(-(t - attack - hold) / decay);
     out[i] *= g;
   }
   return out;
@@ -69,7 +70,7 @@ function osc(seconds, freq, shape = 'sine') {
 }
 
 /** A biquad filter (RBJ): `type` lowpass, highpass or bandpass; `freq` may follow time. */
-function biquad(input, type, freq, q = 0.707) {
+function biquad(input, type, freq, q = Math.SQRT1_2) {
   const out = new Float32Array(input.length);
   let x1 = 0;
   let x2 = 0;
@@ -184,8 +185,16 @@ function wav(path, samples) {
 
 /** A boom: a falling sine thump under a burst of low noise. */
 function boom(seconds, { from = 120, to = 38, body = 0.35, seed = 3, bright = 900 } = {}) {
-  const thump = env(osc(seconds, (t) => to + (from - to) * Math.exp(-t * 9)), 0.004, body);
-  const rumble = env(biquad(noise(seconds, seed), 'lowpass', (t) => 200 + bright * Math.exp(-t * 6)), 0.003, body * 0.9);
+  const thump = env(
+    osc(seconds, (t) => to + (from - to) * Math.exp(-t * 9)),
+    0.004,
+    body,
+  );
+  const rumble = env(
+    biquad(noise(seconds, seed), 'lowpass', (t) => 200 + bright * Math.exp(-t * 6)),
+    0.003,
+    body * 0.9,
+  );
   return drive(mix(mix(buffer(seconds), thump, 0, 1), rumble, 0, 0.9), 2.2);
 }
 
@@ -200,7 +209,11 @@ function splash(seconds, seed = 5) {
   for (let i = 0; i < 14; i++) {
     const at = 0.08 + Math.abs(r()) * (seconds * 0.6);
     const f = 900 + Math.abs(r()) * 1800;
-    const drop = env(osc(0.06, (t) => f + t * 6000), 0.001, 0.015);
+    const drop = env(
+      osc(0.06, (t) => f + t * 6000),
+      0.001,
+      0.015,
+    );
     mix(out, drop, at, 0.12);
   }
   return out;
@@ -240,7 +253,13 @@ function arpeggio(root, notes, seconds, decay = 0.7) {
 /** A stone set down on a wooden board: a hard click and a short hollow knock under it. */
 function stoneClack(seed, pitch = 1) {
   const click = env(biquad(noise(0.3, seed), 'highpass', 2500), 0.0003, 0.006);
-  const knockBody = knock(420 * pitch, { q: 6, decay: 0.07, click: 0.1, seed: seed + 5, seconds: 0.3 });
+  const knockBody = knock(420 * pitch, {
+    q: 6,
+    decay: 0.07,
+    click: 0.1,
+    seed: seed + 5,
+    seconds: 0.3,
+  });
   const ring = env(osc(0.3, 2350 * pitch), 0.0005, 0.02);
   return mix(mix(mix(buffer(0.3), click, 0, 1.2), knockBody, 0, 1), ring, 0, 0.12);
 }
@@ -251,16 +270,26 @@ function rattle(count, seed) {
   const out = buffer(0.25 + count * 0.04);
   for (let i = 0; i < count; i++) {
     const at = 0.02 + Math.abs(r()) * (0.06 + count * 0.025);
-    mix(out, env(biquad(noise(0.06, seed + i), 'bandpass', 3000 + Math.abs(r()) * 3000, 3), 0.0005, 0.01), at, 0.7);
+    mix(
+      out,
+      env(biquad(noise(0.06, seed + i), 'bandpass', 3000 + Math.abs(r()) * 3000, 3), 0.0005, 0.01),
+      at,
+      0.7,
+    );
   }
   return out;
 }
 
-
 /** A wooden piece set on a board: a soft felt thud and a short knock; `weight` makes it deeper. */
 function woodPiece(seed, pitch = 1, weight = 1) {
   const thud = env(biquad(noise(0.3, seed), 'lowpass', 500 * pitch), 0.001, 0.025 * weight);
-  const knockBody = knock(520 * pitch, { q: 4, decay: 0.035 * weight, click: 0.12, seed: seed + 3, seconds: 0.3 });
+  const knockBody = knock(520 * pitch, {
+    q: 4,
+    decay: 0.035 * weight,
+    click: 0.12,
+    seed: seed + 3,
+    seconds: 0.3,
+  });
   const low = env(osc(0.3, 150 * pitch), 0.001, 0.03 * weight);
   return mix(mix(mix(buffer(0.3), thud, 0, 1.4), knockBody, 0, 0.9), low, 0, 0.5 * weight);
 }
@@ -282,16 +311,118 @@ function boardGame(pitch, weight) {
       mix(out, woodPiece(56, pitch * 0.95, weight), 0.11, 0.85);
       return finish(reverb(out, { wet: 0.12, size: 0.6 }), 0.75);
     },
-    check: () => finish(reverb(arpeggio(880, [[0, 0], [-2, 0.07]], 0.8, 0.18), { wet: 0.25 }), 0.4),
+    check: () =>
+      finish(
+        reverb(
+          arpeggio(
+            880,
+            [
+              [0, 0],
+              [-2, 0.07],
+            ],
+            0.8,
+            0.18,
+          ),
+          { wet: 0.25 },
+        ),
+        0.4,
+      ),
     promote: () =>
-      finish(reverb(mix(woodPiece(57, pitch, weight), arpeggio(659.25, [[0, 0.04], [7, 0.12], [12, 0.2]], 1.1, 0.35), 0, 0.5), { wet: 0.25 }), 0.7),
-    pick: () => finish(knock(1300 * pitch, { q: 5, decay: 0.012, click: 0.15, seed: 58, seconds: 0.08 }), 0.25),
-    offer: () => finish(reverb(arpeggio(587.33, [[0, 0], [5, 0.14]], 1.0, 0.35), { wet: 0.3 }), 0.45),
+      finish(
+        reverb(
+          mix(
+            woodPiece(57, pitch, weight),
+            arpeggio(
+              659.25,
+              [
+                [0, 0.04],
+                [7, 0.12],
+                [12, 0.2],
+              ],
+              1.1,
+              0.35,
+            ),
+            0,
+            0.5,
+          ),
+          { wet: 0.25 },
+        ),
+        0.7,
+      ),
+    pick: () =>
+      finish(
+        knock(1300 * pitch, { q: 5, decay: 0.012, click: 0.15, seed: 58, seconds: 0.08 }),
+        0.25,
+      ),
+    offer: () =>
+      finish(
+        reverb(
+          arpeggio(
+            587.33,
+            [
+              [0, 0],
+              [5, 0.14],
+            ],
+            1.0,
+            0.35,
+          ),
+          { wet: 0.3 },
+        ),
+        0.45,
+      ),
     refused: () => finish(env(biquad(osc(0.2, 140, 'square'), 'lowpass', 600), 0.005, 0.06), 0.35),
     win: () =>
-      finish(reverb(arpeggio(523.25, [[0, 0], [4, 0.12], [7, 0.24], [12, 0.4, 1.2]], 2.0, 0.7), { wet: 0.3 }), 0.65),
-    lose: () => finish(reverb(arpeggio(392, [[3, 0], [0, 0.22], [-4, 0.46, 1.1]], 2.0, 0.7), { wet: 0.35 }), 0.55),
-    draw: () => finish(reverb(arpeggio(440, [[0, 0], [5, 0.18], [0, 0.36, 0.8]], 1.6, 0.5), { wet: 0.3 }), 0.5),
+      finish(
+        reverb(
+          arpeggio(
+            523.25,
+            [
+              [0, 0],
+              [4, 0.12],
+              [7, 0.24],
+              [12, 0.4, 1.2],
+            ],
+            2.0,
+            0.7,
+          ),
+          { wet: 0.3 },
+        ),
+        0.65,
+      ),
+    lose: () =>
+      finish(
+        reverb(
+          arpeggio(
+            392,
+            [
+              [3, 0],
+              [0, 0.22],
+              [-4, 0.46, 1.1],
+            ],
+            2.0,
+            0.7,
+          ),
+          { wet: 0.35 },
+        ),
+        0.55,
+      ),
+    draw: () =>
+      finish(
+        reverb(
+          arpeggio(
+            440,
+            [
+              [0, 0],
+              [5, 0.18],
+              [0, 0.36, 0.8],
+            ],
+            1.6,
+            0.5,
+          ),
+          { wet: 0.3 },
+        ),
+        0.5,
+      ),
   };
 }
 
@@ -306,14 +437,63 @@ const SOUNDS = {
     pass: () => finish(env(biquad(noise(0.35, 41), 'bandpass', 700, 1.2), 0.02, 0.08), 0.35),
     mark: () => finish(knock(1500, { decay: 0.02, seed: 42 }), 0.35),
     turn: () => finish(reverb(arpeggio(784, [[0, 0]], 0.9, 0.25), { wet: 0.3 }), 0.3),
-    count: () => finish(reverb(arpeggio(523.25, [[0, 0], [7, 0.1], [12, 0.2]], 1.4, 0.4), { wet: 0.3 }), 0.5),
+    count: () =>
+      finish(
+        reverb(
+          arpeggio(
+            523.25,
+            [
+              [0, 0],
+              [7, 0.1],
+              [12, 0.2],
+            ],
+            1.4,
+            0.4,
+          ),
+          { wet: 0.3 },
+        ),
+        0.5,
+      ),
     refused: () => finish(env(biquad(osc(0.2, 140, 'square'), 'lowpass', 600), 0.005, 0.06), 0.35),
     win: () =>
-      finish(reverb(arpeggio(523.25, [[0, 0], [4, 0.12], [7, 0.24], [12, 0.4, 1.2]], 2.0, 0.7), { wet: 0.3 }), 0.65),
-    lose: () => finish(reverb(arpeggio(392, [[3, 0], [0, 0.22], [-4, 0.46, 1.1]], 2.0, 0.7), { wet: 0.35 }), 0.55),
+      finish(
+        reverb(
+          arpeggio(
+            523.25,
+            [
+              [0, 0],
+              [4, 0.12],
+              [7, 0.24],
+              [12, 0.4, 1.2],
+            ],
+            2.0,
+            0.7,
+          ),
+          { wet: 0.3 },
+        ),
+        0.65,
+      ),
+    lose: () =>
+      finish(
+        reverb(
+          arpeggio(
+            392,
+            [
+              [3, 0],
+              [0, 0.22],
+              [-4, 0.46, 1.1],
+            ],
+            2.0,
+            0.7,
+          ),
+          { wet: 0.35 },
+        ),
+        0.55,
+      ),
   },
   'hai-chien': {
-    fire: () => finish(reverb(boom(0.9, { from: 150, to: 45, body: 0.22 }), { wet: 0.3, size: 1.3 })),
+    fire: () =>
+      finish(reverb(boom(0.9, { from: 150, to: 45, body: 0.22 }), { wet: 0.3, size: 1.3 })),
     whistle: () =>
       finish(
         env(
@@ -331,14 +511,24 @@ const SOUNDS = {
       ),
     splash: () => finish(reverb(splash(1.1), { wet: 0.2 }), 0.7),
     hit: () =>
-      finish(reverb(boom(1.4, { from: 110, to: 32, body: 0.45, bright: 1400, seed: 7 }), { wet: 0.35, size: 1.4 })),
+      finish(
+        reverb(boom(1.4, { from: 110, to: 32, body: 0.45, bright: 1400, seed: 7 }), {
+          wet: 0.35,
+          size: 1.4,
+        }),
+      ),
     sunk: () => {
       const out = buffer(3.2);
       mix(out, boom(1.6, { from: 90, to: 28, body: 0.6, bright: 1100, seed: 8 }), 0, 1);
       mix(out, boom(1.2, { from: 120, to: 35, body: 0.4, seed: 9 }), 0.45, 0.7);
       mix(out, boom(1.2, { from: 100, to: 30, body: 0.4, seed: 10 }), 0.9, 0.55);
       const groan = env(
-        biquad(osc(2.2, (t) => 70 - t * 18, 'saw'), 'lowpass', 260, 4),
+        biquad(
+          osc(2.2, (t) => 70 - t * 18, 'saw'),
+          'lowpass',
+          260,
+          4,
+        ),
         0.4,
         0.8,
         0.6,
@@ -369,20 +559,86 @@ const SOUNDS = {
         ),
         0.6,
       ),
-    rotate: () => finish(mix(knock(620, { decay: 0.03, seed: 33 }), knock(880, { decay: 0.025, seed: 34 }), 0.06, 0.7), 0.5),
-    ready: () => finish(reverb(arpeggio(523.25, [[0, 0], [7, 0.09]], 1.0, 0.35), { wet: 0.25 }), 0.55),
-    turn: () => finish(reverb(arpeggio(659.25, [[0, 0], [5, 0.12]], 1.0, 0.3), { wet: 0.3 }), 0.45),
+    rotate: () =>
+      finish(
+        mix(
+          knock(620, { decay: 0.03, seed: 33 }),
+          knock(880, { decay: 0.025, seed: 34 }),
+          0.06,
+          0.7,
+        ),
+        0.5,
+      ),
+    ready: () =>
+      finish(
+        reverb(
+          arpeggio(
+            523.25,
+            [
+              [0, 0],
+              [7, 0.09],
+            ],
+            1.0,
+            0.35,
+          ),
+          { wet: 0.25 },
+        ),
+        0.55,
+      ),
+    turn: () =>
+      finish(
+        reverb(
+          arpeggio(
+            659.25,
+            [
+              [0, 0],
+              [5, 0.12],
+            ],
+            1.0,
+            0.3,
+          ),
+          { wet: 0.3 },
+        ),
+        0.45,
+      ),
     refused: () => finish(env(biquad(osc(0.25, 110, 'square'), 'lowpass', 700), 0.005, 0.07), 0.4),
     win: () =>
       finish(
         reverb(
-          arpeggio(392, [[0, 0], [4, 0.14], [7, 0.28], [12, 0.42, 1.2], [16, 0.62, 0.6]], 2.2, 0.8),
+          arpeggio(
+            392,
+            [
+              [0, 0],
+              [4, 0.14],
+              [7, 0.28],
+              [12, 0.42, 1.2],
+              [16, 0.62, 0.6],
+            ],
+            2.2,
+            0.8,
+          ),
           { wet: 0.3 },
         ),
         0.7,
       ),
     lose: () =>
-      finish(reverb(arpeggio(330, [[7, 0], [3, 0.2], [0, 0.42], [-5, 0.7, 1.1]], 2.2, 0.8), { wet: 0.35 }), 0.6),
+      finish(
+        reverb(
+          arpeggio(
+            330,
+            [
+              [7, 0],
+              [3, 0.2],
+              [0, 0.42],
+              [-5, 0.7, 1.1],
+            ],
+            2.2,
+            0.8,
+          ),
+          { wet: 0.35 },
+        ),
+        0.6,
+      ),
   },
 };
 
@@ -390,5 +646,6 @@ const wanted = process.argv[2] ? [process.argv[2]] : Object.keys(SOUNDS);
 for (const game of wanted) {
   const recipes = SOUNDS[game];
   if (!recipes) throw new Error(`no sounds for "${game}"; use ${Object.keys(SOUNDS).join(', ')}`);
-  for (const [name, make] of Object.entries(recipes)) wav(`games/${game}/assets/${name}.wav`, make());
+  for (const [name, make] of Object.entries(recipes))
+    wav(`games/${game}/assets/${name}.wav`, make());
 }

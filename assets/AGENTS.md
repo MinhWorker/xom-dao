@@ -4,10 +4,12 @@
   the web.
 - **Splash art is drawn in code**: the 20:9 Sea chart backgrounds (each Game's `hub/key-art.png`
   and each Island's `apps/hub/src/island-art/<island>.png`, 2560×1152) come from
-  `npm run splash -- [caro|tien-len|co-ty-phu|islands]`. A Game's splash uses its client's own colours
+  `npm run splash -- [caro|tien-len|co-ty-phu|hai-chien|co-vay|co-vua|co-tuong|islands]`. A Game's splash uses its client's own colours
   and shapes, so it matches the game (Caro: ink marks on squared paper; Tiến Lên: ivory cards on
   felt). Cờ Tỷ Phú's is its Three.js board itself: the script renders its look prototype's
-  `?splash` page in headless Chromium (needs `npx playwright-core install chromium`). An
+  `?splash` page in headless Chromium (needs `npx playwright-core install chromium`, or
+  `--chrome=<path>` to a Chromium binary). Hải Chiến, Cờ Vây, Cờ Vua and Cờ Tướng are rendered
+  the same way from their clients' own `?splash` mode (a staged Match). An
   Island's splash is a wallpaper of objects of its genre (`MOTIFS` in the script: marks, stones and
   discs for Cờ; cards for Bài; dice and pawns for Xúc Xắc; bombs, stars and crates for Náo Nhiệt) on
   a tinted backdrop, fading out to the left. A Game whose look is not settled gets the same kind of
@@ -84,6 +86,8 @@
   - unsorted ones in `assets/app/audio/unsorted/`.
 - Originals (Veo clips in `assets/**/sfx-selected/`, `xomdao-*` files, downloads in
   `assets/**/sfx/`) are kept as an archive.
+- **Synthesized sounds**: Hải Chiến's, Cờ Vây's, Cờ Vua's and Cờ Tướng's are made in code by
+  `scripts/sfx.mjs` (`node scripts/sfx.mjs [game]`); change a recipe there and run it again.
 - **To change a sound**, edit the app-ready file in place with ffmpeg, then measure it with
   ffprobe. A sound may also be made once from an original.
   - Cut: `-ss`/`-t` plus a short `afade`.

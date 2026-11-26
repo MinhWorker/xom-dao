@@ -11,7 +11,12 @@ export const fits = (ships: readonly Placement[], id: number, at: Placement) =>
   layoutProblem(withShip(ships, id, at)) === null;
 
 /** Ship `id` placed so its `grab`-th cell lies on `cell`, kept on the sea. */
-export function dragTo(id: number, at: Placement, grab: number, cell: { x: number; y: number }): Placement {
+export function dragTo(
+  id: number,
+  at: Placement,
+  grab: number,
+  cell: { x: number; y: number },
+): Placement {
   const size = FLEET[id]?.size ?? 1;
   const x = at.v ? cell.x : cell.x - grab;
   const y = at.v ? cell.y - grab : cell.y;

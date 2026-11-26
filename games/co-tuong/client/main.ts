@@ -497,9 +497,40 @@ function layout() {
 }
 let sized = 0;
 
-new ResizeObserver(() => {
-  sized = 0;
+/** `?splash`: a staged Match, large and tilted, for the Hub's art. */
+function stage() {
+  scene.state = {
+    board:
+      '..bak.bnrr.........cna..c..p.p.p.pC................P.pP.P.P...PR...C.N.B..........NBAKA..R',
+    players: ['a', 'b'],
+    turn: 'a',
+    ply: 14,
+    quiet: 0,
+    keys: [],
+    checks: [],
+    last: { from: 44, to: 53, taken: null, check: false },
+    offer: null,
+    phase: 'play',
+    winner: null,
+    ending: null,
+    wins: {},
+  };
+  view.resize(COLS * 84, ROWS * 84);
+  view.draw(scene, performance.now());
+}
+
+if (new URLSearchParams(location.search).has('splash')) {
+  document.body.classList.add('splash');
+  stage();
+  void document.fonts.ready.then(() => {
+    view.draw(scene, performance.now());
+    document.body.setAttribute('data-ready', '');
+  });
+} else {
+  new ResizeObserver(() => {
+    sized = 0;
+    layout();
+  }).observe(table);
   layout();
-}).observe(table);
-layout();
-bridge.ready();
+  bridge.ready();
+}

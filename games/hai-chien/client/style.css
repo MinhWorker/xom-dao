@@ -517,5 +517,5 @@ body::after {
 .splash .status,
 .splash .banner,
 .splash .toast {
-  display: none !important;
+  display: none;
 }

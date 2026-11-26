@@ -1,5 +1,12 @@
 /** A staged Match for `?demo` (and the splash art): a battle well under way, nothing live. */
-import { cellsOf, clearAround, emptySea, index, isSunk, randomFleet } from '../server/game/fleet.js';
+import {
+  cellsOf,
+  clearAround,
+  emptySea,
+  index,
+  isSunk,
+  randomFleet,
+} from '../server/game/fleet.js';
 import { FLEET, Hit, type Mark, Miss, type Sea, type View } from '../server/game/model.js';
 
 function lcg(seed: number) {

@@ -24,8 +24,15 @@ Where to look:
   Matches with no server and prints their length, first Bankruptcy and Takeovers. Its numbers
   are in `server/game/tuning.ts`; run it after changing one. Its own notes are in
   `games/co-ty-phu/AGENTS.md`.
-- **Soon Games**: every other folder (`co-vua`, `bai-cao`, `hai-chien`, ...) is a Game not made
-  yet (below).
+  `games/hai-chien` (Hải Chiến) is the hidden-information Three.js Game: the view hides the other
+  fleet until sunk, and the computer aims by probability density (`server/game/bot.ts`).
+  `games/co-vay`, `games/co-vua` and `games/co-tuong` (Cờ Vây, Cờ Vua, Cờ Tướng) are board
+  Games on a canvas, each with its rules engine in `server/game/` shared by the referee, the
+  client's hints and the computer (Monte Carlo tree search for Cờ Vây, alpha-beta for the other
+  two; work counted in playouts or nodes, never time). Each has `npm run simulate -w
+  @xomdao/game-<id> -- [--games 10] [--levels hard,normal]`, which plays computer Matches with no
+  server and prints wins and the slowest move; keep that move well under the server's hook limit.
+- **Soon Games**: every other folder (`bai-cao`, ...) is a Game not made yet (below).
 - **Skills** in `.claude/skills/`: `anti-slop-game-ui` (when designing, implementing or reviewing a
   game's board, HUD, menus or overlays).
 - **The source of truth for the API** is the header of `packages/sdk/src/game.ts` (the

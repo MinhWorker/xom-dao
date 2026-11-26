@@ -93,7 +93,12 @@ export class Chart {
       ctx.fillStyle = input.shade.ok ? 'rgb(140 230 255 / 0.28)' : 'rgb(255 80 60 / 0.4)';
       for (const i of input.shade.cells) {
         if (i < 0) continue;
-        ctx.fillRect(o + (i % SIZE) * cell + 2, o + Math.floor(i / SIZE) * cell + 2, cell - 4, cell - 4);
+        ctx.fillRect(
+          o + (i % SIZE) * cell + 2,
+          o + Math.floor(i / SIZE) * cell + 2,
+          cell - 4,
+          cell - 4,
+        );
       }
     }
 
@@ -133,7 +138,12 @@ export class Chart {
       ctx.strokeStyle = 'rgb(98 240 168 / 0.95)';
       ctx.lineWidth = 5;
       ctx.setLineDash([cell * 0.22, cell * 0.12]);
-      ctx.strokeRect(o + x0 * cell + 5, o + y0 * cell + 5, (x1 - x0 + 1) * cell - 10, (y1 - y0 + 1) * cell - 10);
+      ctx.strokeRect(
+        o + x0 * cell + 5,
+        o + y0 * cell + 5,
+        (x1 - x0 + 1) * cell - 10,
+        (y1 - y0 + 1) * cell - 10,
+      );
       ctx.setLineDash([]);
       ctx.fillStyle = 'rgb(8 40 30 / 0.75)';
       const cx = o + (scan.x + 0.5) * cell;

@@ -11,7 +11,14 @@ import {
   createGameBridge,
 } from '@xomdao/bridge';
 import { cellsOf, index, randomFleet, shipAt } from '../server/game/fleet.js';
-import { FLEET, Hit, type Placement, type Point, type View, Unknown } from '../server/game/model.js';
+import {
+  FLEET,
+  Hit,
+  type Placement,
+  type Point,
+  Unknown,
+  type View,
+} from '../server/game/model.js';
 import { demoView } from './demo.js';
 import { type Beat, beats } from './present.js';
 import { BattleView, type SeaPicture, type Side, wait } from './scene.js';
@@ -49,7 +56,7 @@ const sounds = new Sounds();
 let me = '';
 let seats: BridgeSeat[] = [];
 let matchId: string | null = null;
-let status: MatchPush['status'] = 'loading';
+let _status: MatchPush['status'] = 'loading';
 /** The view on screen (pushes still to play wait in `queue`). */
 let shown: View | null = null;
 const queue: MatchPush[] = [];
@@ -90,7 +97,7 @@ const bridge = createGameBridge({
     me = init.player.id;
     seats = init.room.seats;
     matchId = null;
-    status = 'loading';
+    _status = 'loading';
     queue.length = 0;
     clearTimeout(doneTimer);
     ending = false;
@@ -171,7 +178,7 @@ async function pump() {
       const push = queue.shift() as MatchPush;
       const fresh = push.matchId !== matchId;
       matchId = push.matchId;
-      status = push.status;
+      _status = push.status;
       if (fresh) {
         clearTimeout(doneTimer);
         ending = false;
@@ -228,7 +235,11 @@ async function play(beat: Beat, after: View) {
   if (beat.kind === 'scan') {
     sounds.play('radar');
     await view.scan(side, beat);
-    view.show(side, side === 'home' ? homePicture(after) : (after.seas[beat.target] as SeaPicture), true);
+    view.show(
+      side,
+      side === 'home' ? homePicture(after) : (after.seas[beat.target] as SeaPicture),
+      true,
+    );
     banner(`Ra-đa: ${beat.count}`, 'scan');
     await wait(700);
     return;
@@ -246,11 +257,13 @@ async function play(beat: Beat, after: View) {
     return;
   }
   const at = beat.ship !== undefined ? sea.ships[beat.ship] : null;
-  const sunkCells = beat.result === 'sunk' && at && beat.ship !== undefined ? cellsOf(beat.ship, at) : null;
+  const sunkCells =
+    beat.result === 'sunk' && at && beat.ship !== undefined ? cellsOf(beat.ship, at) : null;
   view.explode(side, beat, sunkCells);
   sounds.play(beat.result === 'sunk' ? 'sunk' : 'hit');
   const ship = FLEET[beat.ship ?? -1]?.name ?? '';
-  if (beat.result === 'sunk') banner(mine ? `Chìm ${ship}!` : `Mất ${ship}`, mine ? 'good' : 'bad', 1800);
+  if (beat.result === 'sunk')
+    banner(mine ? `Chìm ${ship}!` : `Mất ${ship}`, mine ? 'good' : 'bad', 1800);
   else banner(mine ? 'Trúng!' : 'Trúng tàu ta', mine ? 'good' : 'bad', 900);
   await wait(beat.result === 'sunk' ? 1700 : 800);
 }
@@ -265,7 +278,11 @@ function finish(push: MatchPush) {
     left = ABORT_MS;
     const mine = push.result?.seats.find((s) => s.player === me);
     if (mine) {
-      banner(mine.place === 1 ? 'Chiến thắng!' : 'Thua trận', mine.place === 1 ? 'good' : 'bad', END_MS);
+      banner(
+        mine.place === 1 ? 'Chiến thắng!' : 'Thua trận',
+        mine.place === 1 ? 'good' : 'bad',
+        END_MS,
+      );
       left = END_MS;
     }
   }
@@ -291,7 +308,7 @@ function updateHud(v: View | null) {
   const myReady = !!v.seas[me]?.ready;
   const theirReady = !!v.seas[enemy]?.ready;
   shuffleBtn.hidden = !setup || !seated(v) || myReady;
-  radarBtn.hidden = !battle || !seated(v) || (v.seas[me]?.radar ?? 0) <= 0 && !radarMode;
+  radarBtn.hidden = !battle || !seated(v) || ((v.seas[me]?.radar ?? 0) <= 0 && !radarMode);
   (radarBtn.querySelector('.count') as HTMLElement).textContent = String(v.seas[me]?.radar ?? 0);
   radarBtn.setAttribute('aria-pressed', String(radarMode));
   lookBtn.hidden = v.phase !== 'battle';
@@ -330,7 +347,8 @@ function fillSeat(card: HTMLElement, v: View, id: string) {
   card.hidden = false;
   const seat = seats.find((s) => s.id === id);
   (card.querySelector('.name') as HTMLElement).textContent = seat?.name ?? '';
-  (card.querySelector('.who') as HTMLElement).textContent = id === me ? 'Bạn' : seat?.bot ? 'Máy' : '';
+  (card.querySelector('.who') as HTMLElement).textContent =
+    id === me ? 'Bạn' : seat?.bot ? 'Máy' : '';
   showAvatar(card, seat);
   const wins = card.querySelector('.wins') as HTMLElement;
   const score = String(v.wins[id] ?? 0);
@@ -366,7 +384,9 @@ function fillSeat(card: HTMLElement, v: View, id: string) {
 }
 
 function showAvatar(card: HTMLElement, seat: BridgeSeat | undefined) {
-  (card.querySelector('.initial') as HTMLElement).textContent = (seat?.name[0] ?? '?').toUpperCase();
+  (card.querySelector('.initial') as HTMLElement).textContent = (
+    seat?.name[0] ?? '?'
+  ).toUpperCase();
   const img = card.querySelector('.avatar img') as HTMLImageElement;
   const picture = seat?.bot ? 'bot' : seat?.avatar;
   const src = picture ? `/avatars/${encodeURIComponent(picture)}.webp` : '';
@@ -564,7 +584,12 @@ function layoutHud() {
   const pad = 6;
   const rect =
     w > h
-      ? { x: mine.right + pad, y: pad, w: Math.max(50, them.left - mine.right - pad * 2), h: h - pad * 2 }
+      ? {
+          x: mine.right + pad,
+          y: pad,
+          w: Math.max(50, them.left - mine.right - pad * 2),
+          h: h - pad * 2,
+        }
       : {
           x: pad,
           y: them.bottom + pad,
@@ -572,6 +597,8 @@ function layoutHud() {
           h: Math.max(50, mine.top - them.bottom - pad * 2),
         };
   if (seatThem.hidden) Object.assign(rect, { x: pad, y: pad, w: w - pad * 2, h: h - pad * 2 });
+  if (document.body.classList.contains('splash'))
+    Object.assign(rect, { x: w * 0.42, y: h * 0.06, w: w * 0.52, h: h * 0.88 });
   const key = JSON.stringify([w, h, rect]);
   if (key === sized) return;
   sized = key;

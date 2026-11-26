@@ -1,15 +1,20 @@
 // Draws splash art (2560×1152, 20:9) in code, in the Game's own colours:
-//   node scripts/splash.mjs [caro|tien-len|co-ty-phu|islands]     (no argument: all of them)
+//   node scripts/splash.mjs [caro|tien-len|co-ty-phu|hai-chien|co-vay|co-vua|co-tuong|islands]
+//                                                                  (no argument: all of them)
 // Caro and Tiến Lên are drawn to match their clients (`games/caro/client/render.ts`,
 // `games/tien-len/godot/style.gd`). Cờ Tỷ Phú's is its own Three.js board: the look prototype's
 // `?splash` page, rendered in headless Chromium, under the same dark left side. The Islands' art
 // is a placeholder: the Island's Emblem on a tinted backdrop, until the Games of that Island have
-// a look of their own. Đặt Bom's `hub/key-art.png` is not made here.
+// a look of their own. Hải Chiến, Cờ Vây, Cờ Vua and Cờ Tướng are their own clients' `?splash`
+// pages (a staged Match), rendered the same way. Đặt Bom's `hub/key-art.png` is not made here.
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..');
+/** `--chrome=<path>`: a Chromium to render the `?splash` pages with, if Playwright's own is missing. */
+const CHROME = process.argv.find((a) => a.startsWith('--chrome='))?.slice('--chrome='.length);
+const names = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const W = 2560;
 const H = 1152;
 
@@ -471,15 +476,61 @@ async function coTyPhu() {
   }
 }
 
+/** Backdrops behind the board Games' staged boards. */
+const TABLE_CSS = {
+  'co-vay': 'radial-gradient(70% 90% at 68% 45%, #6b4a2c, #2a1c12 75%)',
+  'co-vua': 'radial-gradient(70% 90% at 68% 45%, #5e4a38, #1f1812 75%)',
+  'co-tuong': 'radial-gradient(70% 90% at 68% 45%, #6d2f22, #24120d 75%)',
+};
+
+/** A Game client's `?splash` page (its staged Match), rendered at full size. */
+async function clientSplash(id) {
+  const game = resolve(ROOT, `games/${id}`);
+  const { createServer } = await import('vite');
+  const { chromium } = await import('playwright-core');
+  const vite = await createServer({
+    configFile: resolve(game, 'vite.config.ts'),
+    root: resolve(game, 'client'),
+    server: { port: 0, host: '127.0.0.1' },
+    logLevel: 'warn',
+  });
+  await vite.listen();
+  const browser = await chromium.launch({
+    executablePath: CHROME,
+    args: [
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+      '--ignore-gpu-blocklist',
+    ],
+  });
+  try {
+    const page = await browser.newPage({ viewport: { width: W, height: H } });
+    await page.goto(`${vite.resolvedUrls.local[0]}?splash`);
+    await page.waitForSelector('body[data-ready]', { timeout: 60_000 });
+    if (TABLE_CSS[id])
+      await page.addStyleTag({ content: `html, body { background: ${TABLE_CSS[id]}; }` });
+    await page.waitForTimeout(300);
+    return { board: await page.screenshot(), svg: frame(`<defs>${SHADE_DEFS}</defs>`) };
+  } finally {
+    await browser.close();
+    await vite.close();
+  }
+}
+
 const jobs = {
   caro: () => ['games/caro/hub/key-art.png', caro()],
   'tien-len': () => ['games/tien-len/hub/key-art.png', tienLen()],
   'co-ty-phu': async () => ['games/co-ty-phu/hub/key-art.png', await coTyPhu()],
+  'hai-chien': async () => ['games/hai-chien/hub/key-art.png', await clientSplash('hai-chien')],
+  'co-vay': async () => ['games/co-vay/hub/key-art.png', await clientSplash('co-vay')],
+  'co-vua': async () => ['games/co-vua/hub/key-art.png', await clientSplash('co-vua')],
+  'co-tuong': async () => ['games/co-tuong/hub/key-art.png', await clientSplash('co-tuong')],
   islands: () =>
     Object.keys(ISLANDS).map((id) => [`apps/hub/src/island-art/${id}.png`, island(id)]),
 };
 
-const wanted = process.argv[2] ? [process.argv[2]] : Object.keys(jobs);
+const wanted = names.length ? names : Object.keys(jobs);
 for (const name of wanted) {
   if (!jobs[name]) throw new Error(`unknown splash "${name}"; use ${Object.keys(jobs).join(', ')}`);
   const made = await jobs[name]();

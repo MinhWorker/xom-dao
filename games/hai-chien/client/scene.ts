@@ -5,7 +5,6 @@
  */
 import {
   AmbientLight,
-  BoxGeometry,
   CanvasTexture,
   Color,
   ConeGeometry,
@@ -17,7 +16,6 @@ import {
   HemisphereLight,
   InstancedMesh,
   MathUtils,
-  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -29,7 +27,6 @@ import {
   Raycaster,
   RingGeometry,
   Scene,
-  SphereGeometry,
   SRGBColorSpace,
   Vector2,
   Vector3,
@@ -37,7 +34,16 @@ import {
   WebGLRenderer,
 } from 'three';
 import { cellsOf, index } from '../server/game/fleet.js';
-import { FLEET, Hit, type Mark, Miss, type Placement, type Point, type Scan, SIZE } from '../server/game/model.js';
+import {
+  FLEET,
+  Hit,
+  type Mark,
+  Miss,
+  type Placement,
+  type Point,
+  type Scan,
+  SIZE,
+} from '../server/game/model.js';
 import { Chart, SPAN } from './chart.js';
 import { Effects, RADAR } from './effects.js';
 import { buildShip, type ShipLook, shipLook } from './ships.js';
@@ -103,7 +109,10 @@ class SeaView {
   constructor(
     readonly side: Side,
     scene: Scene,
-    pegs: { miss: [CylinderGeometry, MeshStandardMaterial]; hit: [CylinderGeometry, MeshStandardMaterial] },
+    pegs: {
+      miss: [CylinderGeometry, MeshStandardMaterial];
+      hit: [CylinderGeometry, MeshStandardMaterial];
+    },
   ) {
     const plane = new Mesh(
       new PlaneGeometry(SPAN, SPAN),
@@ -161,7 +170,6 @@ export class BattleView {
   private readonly flash = new PointLight('#ffb070', 0, 9, 2);
   private readonly raycaster = new Raycaster();
   private readonly ground = new Plane(new Vector3(0, 1, 0), 0);
-  private readonly scratch = new Matrix4();
   private readonly dummy = new Object3D();
   private readonly v = new Vector3();
   private look: CameraMove = { from: CENTRE.home, to: CENTRE.home, at: 0 };
@@ -175,7 +183,8 @@ export class BattleView {
   private aim: { side: Side; p: Point; radar: boolean } | null = null;
   private sweepAt = -Infinity;
   private sweepCentre = new Vector3();
-  private shellFlight: { from: Vector3; to: Vector3; at: number; resolve: () => void } | null = null;
+  private shellFlight: { from: Vector3; to: Vector3; at: number; resolve: () => void } | null =
+    null;
   private last = performance.now();
   private raf = 0;
   private paused = false;
@@ -183,7 +192,11 @@ export class BattleView {
   private readonly start = performance.now();
 
   constructor(canvas: HTMLCanvasElement) {
-    this.renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new WebGLRenderer({
+      canvas,
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
     this.scene.background = SKY.haze.clone();
@@ -218,12 +231,20 @@ export class BattleView {
         new MeshStandardMaterial({ color: '#e04a2c', roughness: 0.4, emissive: '#7a1808' }),
       ] as [CylinderGeometry, MeshStandardMaterial],
     };
-    this.seas = { home: new SeaView('home', this.scene, pegs), enemy: new SeaView('enemy', this.scene, pegs) };
+    this.seas = {
+      home: new SeaView('home', this.scene, pegs),
+      enemy: new SeaView('enemy', this.scene, pegs),
+    };
     this.effects = new Effects(this.scene, false);
 
     this.reticle = new Mesh(
       new PlaneGeometry(1, 1),
-      new MeshBasicMaterial({ map: reticleTexture(), transparent: true, depthWrite: false, color: '#ffd166' }),
+      new MeshBasicMaterial({
+        map: reticleTexture(),
+        transparent: true,
+        depthWrite: false,
+        color: '#ffd166',
+      }),
     );
     this.reticle.rotation.x = -Math.PI / 2;
     this.reticle.renderOrder = 4;
@@ -232,7 +253,13 @@ export class BattleView {
 
     this.sweep = new Mesh(
       new RingGeometry(0.05, 1, 48, 1, 0, Math.PI / 3),
-      new MeshBasicMaterial({ color: RADAR, transparent: true, opacity: 0.5, depthWrite: false, side: DoubleSide }),
+      new MeshBasicMaterial({
+        color: RADAR,
+        transparent: true,
+        opacity: 0.5,
+        depthWrite: false,
+        side: DoubleSide,
+      }),
     );
     this.sweep.rotation.x = -Math.PI / 2;
     this.sweep.visible = false;
@@ -240,9 +267,15 @@ export class BattleView {
     this.scene.add(this.sweep);
 
     this.shell = new Group();
-    const body = new Mesh(new CylinderGeometry(0.06, 0.08, 0.34, 8), new MeshStandardMaterial({ color: '#2d2a28', metalness: 0.6, roughness: 0.4 }));
+    const body = new Mesh(
+      new CylinderGeometry(0.06, 0.08, 0.34, 8),
+      new MeshStandardMaterial({ color: '#2d2a28', metalness: 0.6, roughness: 0.4 }),
+    );
     body.rotation.x = Math.PI / 2;
-    const tip = new Mesh(new ConeGeometry(0.06, 0.14, 8), new MeshBasicMaterial({ color: '#ffcf7a' }));
+    const tip = new Mesh(
+      new ConeGeometry(0.06, 0.14, 8),
+      new MeshBasicMaterial({ color: '#ffcf7a' }),
+    );
     tip.rotation.x = Math.PI / 2;
     tip.position.z = 0.24;
     this.shell.add(body, tip);
@@ -301,7 +334,10 @@ export class BattleView {
     );
     this.camera.updateProjectionMatrix();
     this.fit();
-    this.effects.setScale(this.height * this.renderer.getPixelRatio() / (2 * Math.tan(MathUtils.degToRad(this.camera.fov / 2))));
+    this.effects.setScale(
+      (this.height * this.renderer.getPixelRatio()) /
+        (2 * Math.tan(MathUtils.degToRad(this.camera.fov / 2))),
+    );
     this.frame();
   }
 
@@ -334,7 +370,11 @@ export class BattleView {
   }
 
   private place(x: number, distance: number, sway = 0) {
-    this.camera.position.set(x + sway * 0.25, Math.sin(PITCH) * distance, Math.cos(PITCH) * distance + 0.4);
+    this.camera.position.set(
+      x + sway * 0.25,
+      Math.sin(PITCH) * distance,
+      Math.cos(PITCH) * distance + 0.4,
+    );
     this.camera.lookAt(x, 0, 0.4);
     this.camera.updateMatrixWorld();
   }
@@ -464,12 +504,15 @@ export class BattleView {
     this.shakeBy(sunk ? 0.35 : 0.18, sunk ? 900 : 450);
     if (!sunk) return;
     sunk.forEach((cell, i) => {
-      window.setTimeout(() => {
-        const w = cellWorld(target, cell);
-        this.effects.blast(w.x, 0.2, w.z, this.low ? 0.5 : 0.8);
-        this.flashAt = performance.now();
-        this.flash.position.set(w.x, 1.2, w.z);
-      }, 260 + i * 180);
+      window.setTimeout(
+        () => {
+          const w = cellWorld(target, cell);
+          this.effects.blast(w.x, 0.2, w.z, this.low ? 0.5 : 0.8);
+          this.flashAt = performance.now();
+          this.flash.position.set(w.x, 1.2, w.z);
+        },
+        260 + i * 180,
+      );
     });
   }
 
@@ -556,7 +599,10 @@ export class BattleView {
       );
       const fade = Math.min(1, (now - ship.shownAt) / REVEAL_MS);
       const dark = sinking * 0.55;
-      for (const [key, m] of Object.entries(ship.look) as [keyof ShipLook, MeshStandardMaterial][]) {
+      for (const [key, m] of Object.entries(ship.look) as [
+        keyof ShipLook,
+        MeshStandardMaterial,
+      ][]) {
         m.opacity = fade;
         m.depthWrite = fade > 0.98;
         const base = BASE[key];
@@ -634,7 +680,11 @@ export class BattleView {
     const t = Math.min(1, (now - flight.at) / SHELL_MS);
     const { from, to } = flight;
     const arc = (k: number, out: Vector3) =>
-      out.set(from.x + (to.x - from.x) * k, from.y + (to.y - from.y) * k + Math.sin(Math.PI * k) * 5.5, from.z + (to.z - from.z) * k);
+      out.set(
+        from.x + (to.x - from.x) * k,
+        from.y + (to.y - from.y) * k + Math.sin(Math.PI * k) * 5.5,
+        from.z + (to.z - from.z) * k,
+      );
     const p = arc(t, new Vector3());
     const ahead = arc(Math.min(1, t + 0.02), new Vector3());
     this.shell.position.copy(p);
@@ -695,4 +745,3 @@ const easeInOut = (t: number) => {
 };
 
 export const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
-

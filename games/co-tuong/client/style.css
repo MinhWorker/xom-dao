@@ -473,3 +473,18 @@ body::after {
 .offer[hidden] {
   display: none;
 }
+
+/* `?splash`: only the board, large and tilted, for the Hub's art. */
+.splash .side,
+.splash .status,
+.splash .banner,
+.splash .toast {
+  display: none;
+}
+
+.splash #board {
+  position: fixed;
+  left: 68%;
+  top: 46%;
+  transform: translate(-50%, -50%) perspective(2600px) rotateX(30deg) rotateZ(-12deg);
+}

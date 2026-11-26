@@ -7,7 +7,15 @@ import {
   createGameBridge,
 } from '@xomdao/bridge';
 import { count } from '../server/game/board.js';
-import { BLACK, EMPTY, type Point, type State, type Stone, WHITE } from '../server/game/model.js';
+import {
+  BLACK,
+  type Cell,
+  EMPTY,
+  type Point,
+  type State,
+  type Stone,
+  WHITE,
+} from '../server/game/model.js';
 import { BoardView, DROP_MS, END_MS, type Scene } from './render.js';
 import { Sounds } from './sound.js';
 
@@ -412,9 +420,51 @@ function layout() {
 }
 let sized = 0;
 
-new ResizeObserver(() => {
-  sized = 0;
+/** `?splash`: a staged Match, large and tilted, for the Hub's art. */
+function stage() {
+  const board = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 1, 0, 0, 0, 2, 1, 0, 2, 0,
+    2, 1, 0, 0, 2, 0, 0, 0, 2, 1, 1, 0, 0, 1, 0, 0, 1, 2, 0, 0, 0, 2, 1, 0, 1, 0, 2, 2, 1, 0, 0, 0,
+    0, 0, 1, 0, 0, 1, 2, 2, 1, 0, 2, 0, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 2, 2, 1, 0, 0, 0, 0, 0, 1, 0,
+    0, 0, 2, 2, 1, 1, 0, 0, 0, 1, 1, 0, 2, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 1, 0, 0,
+    2, 0, 0, 0, 1, 2, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ] as Cell[];
+  scene.state = {
+    size: 13,
+    board,
+    players: ['a', 'b'],
+    turn: 'a',
+    phase: 'play',
+    last: { x: 1, y: 2, stone: WHITE, captured: 0 },
+    passes: 0,
+    captures: {},
+    moves: 60,
+    seen: [],
+    dead: [],
+    agreed: [],
+    count: null,
+    winner: null,
+    ending: null,
+    wins: {},
+  };
+  scene.mine = BLACK;
+  view.resize(860, 860);
+  view.draw(scene, performance.now());
+}
+
+if (new URLSearchParams(location.search).has('splash')) {
+  document.body.classList.add('splash');
+  stage();
+  void document.fonts.ready.then(() => {
+    view.draw(scene, performance.now());
+    document.body.setAttribute('data-ready', '');
+  });
+} else {
+  new ResizeObserver(() => {
+    sized = 0;
+    layout();
+  }).observe(table);
   layout();
-}).observe(table);
-layout();
-bridge.ready();
+  bridge.ready();
+}
