@@ -34,7 +34,7 @@ jobs:
           cache: npm
       - run: npm ci
       # Tiến Lên's build exports its Godot client: install the pinned editor and web templates.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .tools/godot
           key: godot-${{ hashFiles('tools/godot/version.json') }}
