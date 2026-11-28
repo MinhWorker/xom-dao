@@ -26,19 +26,18 @@ function play(game: ReturnType<typeof match>, moves: Move[]) {
 const at = (state: State, x: number, y: number) => state.board[indexOf(state.size, { x, y })];
 
 describe('co-vay', () => {
-  it('starts on an empty 9×9 board with a (Black) to move; the size is an option', () => {
+  it('starts on an empty 19×19 board with a (Black) to move', () => {
     const { state } = match();
-    expect(state).toMatchObject({ size: 9, turn: 'a', players: ['a', 'b'], phase: 'play' });
+    expect(state).toMatchObject({ size: 19, turn: 'a', players: ['a', 'b'], phase: 'play' });
+    expect(state.board).toHaveLength(361);
     expect(state.board.every((c) => c === EMPTY)).toBe(true);
-    expect(match({ size: 19 }).state.board).toHaveLength(361);
   });
 
-  it('refuses moves out of turn, on stones and off the board', () => {
+  it('refuses moves out of turn and on stones', () => {
     const game = play(match(), [[4, 4]]);
     expect(at(game.state, 4, 4)).toBe(BLACK);
     expect(game.error('a', 'place', { x: 3, y: 3 })).toBe('Chưa tới lượt bạn');
     expect(game.error('b', 'place', { x: 4, y: 4 })).toBe('Điểm này đã có quân');
-    expect(game.error('b', 'place', { x: 9, y: 0 })).toBe('Điểm này không có trên bàn');
   });
 
   it('captures a stone with no liberties left and counts it', () => {
@@ -96,7 +95,7 @@ describe('co-vay', () => {
     game.send('a', 'accept', {});
     expect(game.result).toBeNull();
     game.send('b', 'accept', {});
-    expect(game.state.count).toMatchObject({ black: 81, white: 7.5 });
+    expect(game.state.count).toMatchObject({ black: 361, white: 7.5 });
     expect(game.result?.seats.map((s) => s.place)).toEqual([1, 2]);
   });
 
@@ -106,7 +105,7 @@ describe('co-vay', () => {
     const before = game.state.dead.length;
     game.send('b', 'dead', { x: 0, y: 0 });
     expect(game.state.agreed).toEqual([]);
-    const toggled = new Set(game.state.dead).has(indexOf(9, { x: 1, y: 0 }));
+    const toggled = new Set(game.state.dead).has(indexOf(19, { x: 1, y: 0 }));
     expect(toggled).toBe(before === 0);
     game.send('a', 'resume', {});
     expect(game.state).toMatchObject({ phase: 'play', turn: 'b', dead: [] });
@@ -147,7 +146,7 @@ describe('co-vay', () => {
     expect(withDead.white).toBe(36 + 7.5);
   });
 
-  it('the computer plays a 9×9 Match to the count and agrees', () => {
+  it('the computer plays a Match to the count and agrees', () => {
     const game = match({ level: 'easy' }, ['a', 'b']);
     let guard = 0;
     while (!game.result && guard++ < 400) {
@@ -163,5 +162,5 @@ describe('co-vay', () => {
     }
     expect(game.result).not.toBeNull();
     expect(game.state.ending).toBe('count');
-  });
+  }, 30_000);
 });

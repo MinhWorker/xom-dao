@@ -1,7 +1,7 @@
 # Luật Cờ Vây
 
 Hai người lần lượt đặt quân đen và trắng lên giao điểm. Đen đi trước. Có thể chơi với bạn
-hoặc máy ở mức Dễ, Vừa, Khó; bàn 9×9, 13×13 hoặc 19×19.
+hoặc máy ở mức Dễ, Vừa, Khó, trên bàn tiêu chuẩn 19×19.
 
 ## Khí và bắt quân
 

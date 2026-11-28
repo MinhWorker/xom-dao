@@ -366,7 +366,7 @@ canvas.addEventListener('pointerdown', (event) => {
     return;
   }
   if (!myTurn() || state.board[i] !== EMPTY) return;
-  const confirm = event.pointerType !== 'mouse' && state.size > 9;
+  const confirm = event.pointerType !== 'mouse';
   if (confirm && (scene.ghost?.x !== p.x || scene.ghost?.y !== p.y)) {
     scene.ghost = p;
     sounds.play('mark');
@@ -402,19 +402,41 @@ resignBtn.addEventListener('click', () => {
 acceptBtn.addEventListener('click', () => void send('accept', {}));
 resumeBtn.addEventListener('click', () => void send('resume', {}));
 
-/** Gives the board the space the side panels leave. */
+type Arrangement = 'split' | 'column' | 'stack';
+
+/**
+ * The board's side in `arrangement`: `split` puts a panel on each side of it, `column` both in
+ * one column on its right, `stack` one above and one below.
+ */
+function boardSide(arrangement: Arrangement, width: number, height: number) {
+  table.dataset.layout = arrangement;
+  const style = getComputedStyle(table);
+  const gap = parseFloat(style.columnGap) || 0;
+  const panel = parseFloat(style.getPropertyValue('--side'));
+  const panels = sideMe.offsetHeight + sideThem.offsetHeight;
+  if (arrangement === 'stack') return Math.min(width, height - panels - 2 * gap);
+  if (arrangement === 'column')
+    return height < panels + gap ? 0 : Math.min(width - panel - gap, height);
+  return Math.min(width - 2 * (panel + gap), height);
+}
+
+/** Picks the arrangement that leaves the board the most room and sizes the board to it. */
 function layout() {
   const style = getComputedStyle(table);
   const width = table.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
   const height =
     table.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-  const portrait = matchMedia('(orientation: portrait)').matches;
-  const [w, h] = portrait
-    ? [width, height - sideMe.offsetHeight - sideThem.offsetHeight - 16]
-    : [width - 2 * (Math.max(sideMe.offsetWidth, sideThem.offsetWidth, 150) + 12), height];
-  const side = Math.max(120, Math.floor(Math.min(w, h)));
+  let best: Arrangement = 'split';
+  let side = 0;
+  for (const arrangement of ['split', 'column', 'stack'] as const) {
+    const fits = boardSide(arrangement, width, height);
+    if (fits > side) [best, side] = [arrangement, fits];
+  }
+  table.dataset.layout = best;
+  side = Math.max(120, Math.floor(side));
   if (side === sized) return;
   sized = side;
+  document.documentElement.style.setProperty('--board', `${side}px`);
   view.resize(side, side);
   frame();
 }
@@ -423,20 +445,36 @@ let sized = 0;
 /** `?splash`: a staged Match, large and tilted, for the Hub's art. */
 function stage() {
   const board = [
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 1, 0, 0, 0, 2, 1, 0, 2, 0,
-    2, 1, 0, 0, 2, 0, 0, 0, 2, 1, 1, 0, 0, 1, 0, 0, 1, 2, 0, 0, 0, 2, 1, 0, 1, 0, 2, 2, 1, 0, 0, 0,
-    0, 0, 1, 0, 0, 1, 2, 2, 1, 0, 2, 0, 1, 0, 0, 0, 1, 1, 0, 0, 2, 0, 2, 2, 1, 0, 0, 0, 0, 0, 1, 0,
-    0, 0, 2, 2, 1, 1, 0, 0, 0, 1, 1, 0, 2, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 1, 0, 0,
-    2, 0, 0, 0, 1, 2, 2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0,
-  ] as Cell[];
+    '...................',
+    '...................',
+    '...................',
+    '............o.x.o..',
+    '........oo...x..x..',
+    '....ox.o.ox..o.....',
+    '....oxx..x..xo.....',
+    '....ox.x.oox.......',
+    '.x..x..xoox.o.x....',
+    '.....xx..o.oox.....',
+    '......x...ooxx...o.',
+    '....xx.o.o...x.....',
+    '.....x...o.x..o....',
+    '.....xoo.....x.....',
+    '.....xo.......x....',
+    '..x.............o..',
+    '..o............x...',
+    '...................',
+    '...................',
+  ]
+    .join('')
+    .split('')
+    .map((c) => '.xo'.indexOf(c)) as Cell[];
   scene.state = {
-    size: 13,
+    size: 19,
     board,
     players: ['a', 'b'],
     turn: 'a',
     phase: 'play',
-    last: { x: 1, y: 2, stone: WHITE, captured: 0 },
+    last: { x: 4, y: 5, stone: WHITE, captured: 0 },
     passes: 0,
     captures: {},
     moves: 60,

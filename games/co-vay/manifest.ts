@@ -12,16 +12,6 @@ export default defineManifest({
   island: 'co',
   focus: { x: 68, y: 50 },
   options: {
-    size: {
-      type: 'choice',
-      label: 'Cỡ bàn',
-      default: 9,
-      choices: [
-        { value: 9, label: '9×9' },
-        { value: 13, label: '13×13' },
-        { value: 19, label: '19×19' },
-      ],
-    },
     level: {
       type: 'choice',
       label: 'Mức máy',
