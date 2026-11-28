@@ -7,6 +7,9 @@
   --muted: rgb(51 41 31 / 0.6);
   --accent: #b5482c;
   --gutter: max(10px, env(safe-area-inset-left), env(safe-area-inset-right));
+  --side: 250px;
+  --gap: 12px;
+  --board: 0px;
   color-scheme: dark;
 }
 
@@ -39,7 +42,7 @@ body::after {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: var(--gap);
   height: 100dvh;
   padding: max(8px, env(safe-area-inset-top)) var(--gutter) max(8px, env(safe-area-inset-bottom));
 }
@@ -80,7 +83,7 @@ body::after {
     "stone tally turn";
   align-items: center;
   gap: 6px 10px;
-  width: min(250px, 100%);
+  width: min(var(--side), 100%);
   padding: 10px 12px;
   background: var(--card);
   color: var(--graphite);
@@ -267,7 +270,7 @@ body::after {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  width: min(250px, 100%);
+  width: min(var(--side), 100%);
 }
 
 .act {
@@ -397,53 +400,96 @@ body::after {
   transition: none;
 }
 
-@media (orientation: portrait) {
-  .table {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: 8px;
-  }
+.table[data-layout="column"] {
+  grid-template-columns: auto var(--side);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  justify-content: center;
+}
 
-  #side-them {
-    grid-column: 1;
-    grid-row: 1;
-    padding: 0 52px 0 0;
-    align-items: flex-start;
-  }
+[data-layout="column"] #board {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
 
-  #board {
-    grid-column: 1;
-    grid-row: 2;
-  }
+[data-layout="column"] #side-them {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+}
 
-  #side-me {
-    grid-column: 1;
-    grid-row: 3;
-  }
+[data-layout="column"] #side-me {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: end;
+}
 
-  .seat,
-  .actions {
-    width: min(420px, 100%);
-  }
+:has([data-layout="column"]) .status,
+:has([data-layout="column"]) .toast {
+  left: calc(50% + (var(--board) + var(--gap)) / 2);
+  max-width: var(--side);
+  white-space: normal;
+  text-align: center;
+}
 
-  .seat {
-    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
-    grid-template-areas: "avatar info tally stone wins" "avatar info turn turn turn";
-    padding: 8px 12px;
-  }
+:has([data-layout="column"]) .status {
+  top: 50%;
+  translate: -50% -100%;
+}
 
-  .actions {
-    flex-wrap: nowrap;
-  }
+:has([data-layout="column"]) .toast {
+  top: calc(50% + 8px);
+  bottom: auto;
+}
 
-  .status {
-    top: auto;
-    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 150px);
-  }
+:has([data-layout="column"]) .banner {
+  left: calc(50% - (var(--side) + var(--gap)) / 2);
+}
 
-  .toast {
-    bottom: calc(max(8px, env(safe-area-inset-bottom)) + 120px);
-  }
+.table[data-layout="stack"] {
+  --gap: 8px;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+[data-layout="stack"] #side-them {
+  grid-column: 1;
+  grid-row: 1;
+  padding: 0 52px 0 0;
+  align-items: flex-start;
+}
+
+[data-layout="stack"] #board {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+[data-layout="stack"] #side-me {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+[data-layout="stack"] .seat,
+[data-layout="stack"] .actions {
+  width: min(420px, 100%);
+}
+
+[data-layout="stack"] .seat {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas: "avatar info tally stone wins" "avatar info turn turn turn";
+  padding: 8px 12px;
+}
+
+[data-layout="stack"] .actions {
+  flex-wrap: nowrap;
+}
+
+:has([data-layout="stack"]) .status {
+  top: auto;
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 150px);
+}
+
+:has([data-layout="stack"]) .toast {
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 120px);
 }
 
 @media (prefers-reduced-motion: reduce) {

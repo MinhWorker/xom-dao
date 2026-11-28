@@ -479,19 +479,43 @@ resignBtn.addEventListener('click', () => {
   void send('resign', {});
 });
 
-/** Gives the board the space the side panels leave. */
+type Arrangement = 'split' | 'column' | 'stack';
+
+/** The board's grid step that fits a `w` × `h` room. */
+const fit = (w: number, h: number) => (w > 0 && h > 0 ? Math.min(w / COLS, h / ROWS) : 0);
+
+/**
+ * The board's grid step in `arrangement`: `split` puts a panel on each side of it, `column` both in
+ * one column on its right, `stack` one above and one below.
+ */
+function boardFit(arrangement: Arrangement, width: number, height: number) {
+  table.dataset.layout = arrangement;
+  const style = getComputedStyle(table);
+  const gap = parseFloat(style.columnGap) || 0;
+  const panel = parseFloat(style.getPropertyValue('--side'));
+  const panels = sideMe.offsetHeight + sideThem.offsetHeight;
+  if (arrangement === 'stack') return fit(width, height - panels - 2 * gap);
+  if (arrangement === 'column') return height < panels + gap ? 0 : fit(width - panel - gap, height);
+  return fit(width - 2 * (panel + gap), height);
+}
+
+/** Picks the arrangement that leaves the board the most room and sizes the board to it. */
 function layout() {
   const style = getComputedStyle(table);
   const width = table.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
   const height =
     table.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-  const portrait = matchMedia('(orientation: portrait)').matches;
-  const [w, h] = portrait
-    ? [width, height - sideMe.offsetHeight - sideThem.offsetHeight - 16]
-    : [width - 2 * (Math.max(sideMe.offsetWidth, sideThem.offsetWidth, 150) + 12), height];
-  const step = Math.max(12, Math.floor(Math.min(w / COLS, h / ROWS)));
+  let best: Arrangement = 'split';
+  let side = 0;
+  for (const arrangement of ['split', 'column', 'stack'] as const) {
+    const fits = boardFit(arrangement, width, height);
+    if (fits > side) [best, side] = [arrangement, fits];
+  }
+  table.dataset.layout = best;
+  const step = Math.max(12, Math.floor(side));
   if (step === sized) return;
   sized = step;
+  document.documentElement.style.setProperty('--board', `${step * COLS}px`);
   view.resize(step * COLS, step * ROWS);
   frame();
 }
