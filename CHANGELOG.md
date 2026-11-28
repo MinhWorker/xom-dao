@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.32.0](https://github.com/MinhWorker/xom-dao/compare/v0.31.0...v0.32.0) (2026-11-28)
+
+
+### Features
+
+* **caro:** series score and swapping sides ([#406](https://github.com/MinhWorker/xom-dao/issues/406)) ([b66b3bd](https://github.com/MinhWorker/xom-dao/commit/b66b3bdcf6cb614a41e889a81577fc3e815d31ff))
+* Hải Chiến, Cờ Vây, Cờ Vua and Cờ Tướng ([#407](https://github.com/MinhWorker/xom-dao/issues/407)) ([09ae88f](https://github.com/MinhWorker/xom-dao/commit/09ae88fd11fe5422d28acbad07f68d7b5decf6b1))
+* **tien-len:** smarter bot, Gợi ý, tier-1 moments, and ready ([#398](https://github.com/MinhWorker/xom-dao/issues/398)) ([e5f73ef](https://github.com/MinhWorker/xom-dao/commit/e5f73ef21adeb678714b092bc319611b7019fbb0))
+
+
+### Bug fixes
+
+* **co-vay:** standard 19×19 board only, and a bigger board in play ([#410](https://github.com/MinhWorker/xom-dao/issues/410)) ([cf82278](https://github.com/MinhWorker/xom-dao/commit/cf822783cbcdb3109afe8a7f6729bc98295095c5))
+* **co-vua, co-tuong:** the board takes the most room it can ([#411](https://github.com/MinhWorker/xom-dao/issues/411)) ([5074e3c](https://github.com/MinhWorker/xom-dao/commit/5074e3c39345c830ef2e91175acf75cb76a112ff))
+
 ## [0.31.0](https://github.com/MinhWorker/xom-dao/compare/v0.30.1...v0.31.0) (2026-11-25)
 
 
