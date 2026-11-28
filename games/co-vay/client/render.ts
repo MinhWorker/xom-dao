@@ -69,7 +69,7 @@ export class BoardView {
 
   /** Grid spacing and where the first line lies. */
   private layout(size: number) {
-    const pad = Math.max(18, this.width * 0.06);
+    const pad = Math.max(18, this.width * 0.045);
     const step = (this.width - pad * 2) / size;
     return { step, origin: pad + step / 2, pad };
   }

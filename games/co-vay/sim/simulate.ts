@@ -2,12 +2,12 @@
  * Plays computer Matches with no server, one level against another, and prints how often each
  * wins, the longest a move took to think and the average Match length.
  *
- *   npm run simulate -w @xomdao/game-co-vay -- [--games 10] [--size 9] [--levels hard,easy]
+ *   npm run simulate -w @xomdao/game-co-vay -- [--games 10] [--levels hard,easy]
  */
 import { optionsSchema, testGame } from '@xomdao/sdk';
 import manifest from '../manifest.js';
 import { CoVayGame, stoneOf } from '../server/game/CoVayGame.js';
-import type { BotLevel, Options } from '../server/game/model.js';
+import { type BotLevel, SIZE } from '../server/game/model.js';
 
 const arg = (name: string, fallback: string) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -15,7 +15,6 @@ const arg = (name: string, fallback: string) => {
 };
 
 const games = Number(arg('games', '10'));
-const size = Number(arg('size', '9')) as Options['size'];
 const [a, b] = arg('levels', 'hard,easy').split(',') as [BotLevel, BotLevel];
 let aWins = 0;
 let slowest = 0;
@@ -27,7 +26,7 @@ for (let g = 0; g < games; g++) {
     players.map((p) => [
       p,
       testGame(new CoVayGame(), players, {
-        options: optionsSchema(manifest).parse({ size, level: levels[p] }),
+        options: optionsSchema(manifest).parse({ level: levels[p] }),
         bots: players,
         seed: g + 1,
       }),
@@ -36,7 +35,7 @@ for (let g = 0; g < games; g++) {
   const game = games_.p0 as ReturnType<typeof testGame>;
   const shadow = games_.p1 as ReturnType<typeof testGame>;
   let guard = 0;
-  while (!game.result && guard++ < size * size * 4) {
+  while (!game.result && guard++ < SIZE * SIZE * 4) {
     const state = game.state as ReturnType<CoVayGame['onStart']>;
     const who = state.phase === 'score' ? (state.agreed.includes('p0') ? 'p1' : 'p0') : state.turn;
     const t = performance.now();

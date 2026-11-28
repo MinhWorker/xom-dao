@@ -8,6 +8,9 @@ export const WHITE = 2;
 export type Stone = typeof BLACK | typeof WHITE;
 export type Cell = typeof EMPTY | Stone;
 
+/** Lines each way: only the standard 19×19 board. */
+export const SIZE = 19;
+
 /** Points White gets for moving second (area scoring: the half point rules out a draw). */
 export const KOMI = 7.5;
 

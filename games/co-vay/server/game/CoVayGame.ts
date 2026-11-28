@@ -17,6 +17,7 @@ import {
   EMPTY,
   type Options,
   type Point,
+  SIZE,
   type State,
   type Stone,
   WHITE,
@@ -57,7 +58,10 @@ function won(ctx: GameContext<State, Options>, winner: PlayerId) {
   return wins;
 }
 
-const coord = z.int().min(0).max(18);
+const coord = z
+  .int()
+  .min(0)
+  .max(SIZE - 1);
 
 export class CoVayGame extends Game<State, Options> {
   readonly events = {
@@ -73,10 +77,9 @@ export class CoVayGame extends Game<State, Options> {
     const ids = players.map((p) => p.id) as [PlayerId, PlayerId];
     const black = blackOf(ids, options, lastResult);
     const white = ids.find((id) => id !== black) as PlayerId;
-    const size = Number(options.size);
-    const board = new Array(size * size).fill(EMPTY);
+    const board = new Array(SIZE * SIZE).fill(EMPTY);
     return {
-      size,
+      size: SIZE,
       board,
       players: [black, white],
       turn: black,
@@ -103,7 +106,6 @@ export class CoVayGame extends Game<State, Options> {
     const { state, player, payload, reject } = ctx;
     this.check(ctx);
     const { size } = state;
-    if (payload.x >= size || payload.y >= size) reject('Điểm này không có trên bàn');
     const i = indexOf(size, payload);
     const stone = stoneOf(state, player.id);
     const result = play(state.board, size, i, stone);
@@ -155,7 +157,6 @@ export class CoVayGame extends Game<State, Options> {
   onDead(ctx: EventContext<State, Point, Options>): State {
     const { state, payload, reject } = ctx;
     if (state.phase !== 'score') reject('Chưa tới lúc đếm');
-    if (payload.x >= state.size || payload.y >= state.size) reject('Điểm này không có trên bàn');
     const i = indexOf(state.size, payload);
     if (state.board[i] === EMPTY) reject('Chọn một quân để đánh dấu');
     const { stones } = group(state.board, state.size, i);
